@@ -86,28 +86,33 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const baseDropdownStyle = isForm ? formTreeSelectDropdownStyle : filterTreeSelectDropdownStyle;
   const baseControlStyle = isForm ? formTreeSelectStyle : filterTreeSelectStyle;
 
-  const effectiveAllLabel = allLabel !== undefined ? allLabel : (isForm ? undefined : 'Tất cả');
+  const effectiveAllLabel = isForm ? undefined : (allLabel ?? 'Tất cả');
 
   // Tự động nạp danh mục đơn vị qua cache nếu không được truyền từ props
-  const [internalOrgs, setInternalOrgs] = useState<readonly OrgUnitTreeOption[]>([]);
+  const [internalOrgs, setInternalOrgs] = useState<OrgUnitTreeOption[]>([]);
 
   useEffect(() => {
-    if (Array.isArray(propOrganizations) && propOrganizations.length > 0) {
-      return;
-    }
+    if (propOrganizations && propOrganizations.length > 0) return;
     let cancelled = false;
     organizationService.getAll()
       .then((data) => {
-        if (!cancelled && Array.isArray(data) && data.length > 0) {
-          setInternalOrgs(data);
-        }
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : [];
+        setInternalOrgs(
+          list.map((o) => ({
+            id: String(o.id),
+            name: o.name,
+            code: o.code,
+            parentId: o.parentId ? String(o.parentId) : undefined,
+          }))
+        );
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [propOrganizations]);
 
   const effectiveOrganizations = useMemo(() => {
-    if (Array.isArray(propOrganizations) && propOrganizations.length > 0) {
+    if (propOrganizations && propOrganizations.length > 0) {
       return propOrganizations;
     }
     return internalOrgs;
@@ -132,20 +137,17 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     };
 
     if (currentValue && currentValue !== '__all__' && !findNode(base, currentValue)) {
-      // Trong form tạo/sửa KCHT, không chèn fallback node Bộ Giao thông Vận tải (G17)
-      if (isForm && (currentValue === '00000000-0000-0000-0000-000000000017' || currentValue === 'G17')) {
-        return base;
-      }
       const org = byId.get(currentValue);
+      const isMinistryVal = currentValue === '00000000-0000-0000-0000-000000000017' || currentValue === 'G17';
       const title = org
         ? (org.name || (org.code ? `${org.code} - ${org.name}` : org.name))
-        : (currentOrgName || (currentValue === '00000000-0000-0000-0000-000000000017' ? 'Bộ Giao thông Vận tải' : 'Đơn vị quản lý'));
+        : (isMinistryVal ? 'G17 - Bộ Giao thông Vận tải' : (currentOrgName || 'Đơn vị quản lý'));
       base = [
         {
           key: currentValue,
           value: currentValue,
           title,
-          label: org?.name || title,
+          label: org?.name || (isMinistryVal ? 'Bộ Giao thông Vận tải' : title),
         },
         ...base,
       ];

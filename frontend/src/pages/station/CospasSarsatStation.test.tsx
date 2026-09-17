@@ -2,7 +2,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OrgUnitTreeSelect from '../../components/org-unit/OrgUnitTreeSelect';
-import { resolveDefaultOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
+import { resolveDefaultOrgUnitId, resolveDefaultFormOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
 import type { CoastalStationCospasSarsatResponse } from '../../services/station/types';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
@@ -169,6 +169,39 @@ describe('OrgUnitTreeSelect & useUserDefaultOrgUnit', () => {
     expect(defaultId).toBe('org-hp');
   });
 
+  it('resolveDefaultOrgUnitId should return undefined for admin / ministry user so filter shows "Tất cả"', () => {
+    const adminUser = {
+      id: 'u-admin',
+      username: 'admin',
+      role: 'ADMIN',
+      orgUnitId: '00000000-0000-0000-0000-000000000017',
+    } as any;
+    const orgs = [{ id: 'org-1', name: 'Cục Hàng hải' }];
+    expect(resolveDefaultOrgUnitId(adminUser, orgs)).toBeUndefined();
+  });
+
+  it('resolveDefaultFormOrgUnitId should return first unit for admin in create form', () => {
+    const adminUser = {
+      id: 'u-admin',
+      username: 'admin',
+      role: 'ADMIN',
+      orgUnitId: '00000000-0000-0000-0000-000000000017',
+    } as any;
+    const orgs = [{ id: 'org-1', name: 'Cục Hàng hải' }, { id: 'org-2', name: 'Cảng vụ Hải Phòng' }];
+    expect(resolveDefaultFormOrgUnitId(adminUser, orgs)).toBe('org-1');
+  });
+
+  it('resolveDefaultFormOrgUnitId should return user orgUnitId for subordinate user', () => {
+    const subUser = {
+      id: 'u-sub',
+      username: 'user_sub',
+      role: 'USER',
+      orgUnitId: 'org-2',
+    } as any;
+    const orgs = [{ id: 'org-1', name: 'Cục Hàng hải' }, { id: 'org-2', name: 'Cảng vụ Hải Phòng' }];
+    expect(resolveDefaultFormOrgUnitId(subUser, orgs)).toBe('org-2');
+  });
+
   it('resolveDefaultOrgUnitId should return undefined for null/undefined user or empty orgUnitId', () => {
     expect(resolveDefaultOrgUnitId(null)).toBeUndefined();
     expect(resolveDefaultOrgUnitId({ id: 'u-none' } as any)).toBeUndefined();
@@ -330,8 +363,8 @@ describe('CospasSarsatStationForm & DetailContent', () => {
       />
     );
     expect(detailHtml).toContain('Dịch vụ cung cấp');
-    expect(detailHtml).toContain('COSPAS-SARSAT — Tìm kiếm cứu nạn vệ tinh');
-    expect(detailHtml).toContain('LRIT — Nhận dạng và theo dõi tầm xa');
+    expect(detailHtml).toContain('Dịch vụ trực canh cấp cứu COSPAS-SARSAT (COSPASSARSAT Distress Watch-keeping Service)');
+    expect(detailHtml).toContain('Dịch vụ thông tin nhận dạng và truy theo tầm xa LRIT (Longrange Identification and Tracking...)');
   });
 
   it('renders attached files in both detail content and form', () => {
@@ -459,6 +492,33 @@ describe('CospasSarsatStationForm & DetailContent', () => {
       // Nút 3: Lưu và phê duyệt (xanh lá statusOperational #1BAF7A)
       expect(html).toContain('#1BAF7A');
       expect(html).toContain('Lưu và phê duyệt');
+    });
+
+    it('renders Tab Thông tin vị trí with VTS standards (controls, buttons, table)', () => {
+      const html = renderToStaticMarkup(
+        <CospasSarsatStationForm
+          open={true}
+          mode="create"
+          initialData={null}
+          onClose={vi.fn()}
+          onSuccess={vi.fn()}
+        />
+      );
+
+      // Tab label with count
+      expect(html).toContain('Thông tin vị trí');
+      // Section header
+      expect(html).toContain('Thông số đối tượng bản đồ');
+      expect(html).toContain('Loại đối tượng');
+      expect(html).toContain('Biểu tượng');
+      expect(html).toContain('Hệ quy chiếu');
+      expect(html).toContain('Quy tắc hiển thị');
+      // Section GPS
+      expect(html).toContain('Tọa độ GPS');
+      expect(html).toContain('Chọn tọa độ trên bản đồ');
+      expect(html).toContain('Thêm tọa độ');
+      expect(html).toContain('Vĩ độ (Latitude - N)');
+      expect(html).toContain('Kinh độ (Longitude - E)');
     });
   });
 

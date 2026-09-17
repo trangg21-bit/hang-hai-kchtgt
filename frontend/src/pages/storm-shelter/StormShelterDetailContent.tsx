@@ -116,6 +116,7 @@ export interface StormShelterDetailContentProps {
   portOptions?: Array<{ value: string; label: string }>;
   portMap?: Map<string, string>;
   buoyStationMap?: Map<string, string>;
+  buoyStationOptions?: Array<{ value: string; label: string }>;
   waterwayMap?: Map<string, string>;
   waterwayOptions?: Array<{ value: string; label: string }>;
   userMap?: Map<string, string>;

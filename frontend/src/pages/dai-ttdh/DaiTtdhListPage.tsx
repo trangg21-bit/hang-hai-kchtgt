@@ -19,11 +19,11 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
@@ -35,6 +35,7 @@ import {
 } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
@@ -72,7 +73,8 @@ import { canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/appr
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import DaiTtdhDetailContent from './DaiTtdhDetailContent';
-import DaiTtdhForm, { DAI_TTDH_SERVICES_OPTIONS, DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
+import DaiTtdhForm, { DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
+import { resolveMaritimeServiceLabel } from '../../constants/maritimeServices';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ─────
 const fontSizeMd = 13.5;
@@ -286,12 +288,7 @@ function histVal(
     normKey === 'dich vu cung cap'
   ) {
     const parts = trimmedVal.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
-    const mappedParts = parts.map((code) => {
-      const opt = DAI_TTDH_SERVICES_OPTIONS.find(
-        (o) => o.value === code || o.value.toLowerCase() === code.toLowerCase()
-      );
-      return opt ? opt.label : code;
-    });
+    const mappedParts = parts.map((code) => resolveMaritimeServiceLabel(code));
     return mappedParts.join(', ');
   }
 
@@ -438,6 +435,7 @@ export default function DaiTtdhListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
 
+  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -592,19 +590,13 @@ export default function DaiTtdhListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        if (data.length > 0) {
-          try {
-            const p = await api.get('/users/me');
-            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
-            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
-            setOrgUnit(matchedOrgId);
-            defaultOrgUnitRef.current = matchedOrgId;
-          } catch {
-            setOrgUnit(data[0].id);
-            defaultOrgUnitRef.current = data[0].id;
-          }
-        }
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        setOrgUnit(resolvedDefault);
+        defaultOrgUnitRef.current = resolvedDefault;
       } catch { /* ignore */ }
+      finally {
+        setInitialLoadDone(true);
+      }
     })();
 
     (async () => {
@@ -643,11 +635,7 @@ export default function DaiTtdhListPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (orgUnit !== undefined && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [orgUnit, initialLoadDone]);
+
 
   // ── Fetch counts ────────────────────────────────────────────────
   const fetchCounts = useCallback(async (oid: string | undefined) => {
@@ -715,7 +703,7 @@ export default function DaiTtdhListPage() {
   }, []);
 
   const handleFilterReset = useCallback(() => {
-    const defaultOrg = defaultOrgUnitRef.current || '__all__';
+    const defaultOrg = defaultOrgUnitRef.current;
     setOrgUnit(defaultOrg);
     setFilterName('');
     setFilterCode('');

@@ -30,9 +30,11 @@ import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import api from '../../services/api';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   fetchBuoyStationList, fetchBuoyStationById, fetchBuoyStationHistory,
-  deleteBuoyStation, rejectBuoyStation,
+  deleteBuoyStation, rejectBuoyStation, fetchStationBuoys,
+  submitBuoyStationForApproval, approveBuoyStationL1, approveBuoyStationL2,
 } from './api';
 import { documentApi } from '../../app/document/api';
 import { fetchBuoyById } from '../buoy/api';
@@ -95,8 +97,7 @@ import {
 // Đồng bộ cỡ chữ 13.5px toàn màn hình theo chuẩn VTS CHK / Cầu cảng
 const fontSizeMd = 13.5;
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
@@ -324,22 +325,15 @@ export default function BuoyStationListPage() {
         // nếu không khớp hoặc user không có đơn vị thì lấy đơn vị đầu tiên
         if (data.length > 0 && !defaultOrgApplied.current) {
           defaultOrgApplied.current = true;
-          try {
-            const profileRes = await api.get('/users/me');
-            const profile = profileRes.data?.data ?? profileRes.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : data[0].id;
-            defaultOrgUnitId.current = defaultId;
-            setManagingUnitId(defaultId);
-            setFilterValues((prev) => ({ ...prev, managingUnitId: defaultId }));
-          } catch {
-            defaultOrgUnitId.current = data[0].id;
-            setManagingUnitId(data[0].id);
-            setFilterValues((prev) => ({ ...prev, managingUnitId: data[0].id }));
-          }
+          const defaultId = resolveDefaultOrgUnitId(currentUser, data);
+          defaultOrgUnitId.current = defaultId;
+          setManagingUnitId(defaultId);
+          setFilterValues((prev) => ({ ...prev, managingUnitId: defaultId }));
         }
       } catch { /* */ }
+      finally {
+        setInitialLoadDone(true);
+      }
     })();
     (async () => {
       try {
@@ -399,11 +393,7 @@ export default function BuoyStationListPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (managingUnitId !== undefined && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [managingUnitId, initialLoadDone]);
+
 
   const symbolMap = useMemo(() => {
     const m = new Map<string, string>();

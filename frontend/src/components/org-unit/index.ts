@@ -34,7 +34,9 @@ export {
   useUserDefaultOrgUnit,
   useOrgUnitFilter,
   resolveDefaultOrgUnitId,
+  resolveDefaultFormOrgUnitId,
   isMinistryLevelUser,
+  getFirstOrgUnitId,
   MINISTRY_ROOT_ID,
   MINISTRY_ROOT_CODE,
 } from './useUserDefaultOrgUnit';

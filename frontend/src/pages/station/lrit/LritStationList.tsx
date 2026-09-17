@@ -3,7 +3,6 @@ import { Modal, Input, DatePicker, Select } from 'antd';
 import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
 import { lritStationService, type LritStationListParams } from '../../../services/lritStationService';
 import { organizationService } from '../../../services/organizationService';
-import { symbolService } from '../../../services/symbolService';
 import type { LritStationItem } from '../../../types/lritStation';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
@@ -187,7 +186,6 @@ export default function LritStationList() {
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
 
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
-  const [symbols, setSymbols] = useState<Array<{ id: string; name?: string; code?: string }>>([]);
   const [filterValues, setFilterValues] = useState<Record<string, unknown>>({});
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
@@ -267,10 +265,8 @@ export default function LritStationList() {
     let mounted = true;
     (async () => {
       try {
-        const [orgs, syms] = await Promise.all([
-          organizationService.getAll().then((res: any) => Array.isArray(res) ? res : (res?.data || [])),
-          symbolService.getOptions().catch(() => []),
-        ]);
+        const orgs = await organizationService.getAll()
+          .then((res: any) => Array.isArray(res) ? res : (res?.data || []));
         if (!mounted) return;
         const mappedOrgs = (orgs || []).map((o: any) => ({
           id: String(o.id),
@@ -279,8 +275,7 @@ export default function LritStationList() {
           parentId: o.parentId ? String(o.parentId) : undefined,
         }));
         setOrgUnitOptions(mappedOrgs);
-        setSymbols(Array.isArray(syms) ? syms : []);
-        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, mappedOrgs);
+        const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, mappedOrgs);
         defaultOrgUnitRef.current = resolvedDefault;
         if (resolvedDefault) {
           setFilterOrgUnitId(resolvedDefault);
@@ -297,7 +292,7 @@ export default function LritStationList() {
     return () => {
       mounted = false;
     };
-  }, [currentUser]);
+  }, []);
 
 
   // Fetch list data
@@ -367,9 +362,10 @@ export default function LritStationList() {
   const serverSideSorter = () => 0;
 
   const refreshList = useCallback(() => {
+    if (!isOptionsReady) return;
     statusCountFilterKey.current = null;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, isOptionsReady]);
 
   // ── Delete confirmation modal (Chuẩn Bến cảng) ───────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -990,8 +986,6 @@ export default function LritStationList() {
             initialData={selectedRecord}
             mode={modalMode}
             orgUnits={orgUnitOptions}
-            symbols={symbols}
-            symbolOptions={symbols}
             onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
             onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
             onClose={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}

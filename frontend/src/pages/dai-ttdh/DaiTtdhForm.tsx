@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-refresh/only-export-components */
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Tabs, Row, Col, Input, Select, Form, Space, Button, Modal } from 'antd';
+import { Tabs, Row, Col, Input, InputNumber, Select, Form, Space, Button, Modal } from 'antd';
+import { fmtInputNumber } from '../../utils/numFmt';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -82,18 +83,10 @@ export const DAI_TTDH_STATION_LEVEL_OPTIONS = [
   { value: 4, label: 'Đài thông tin duyên hải loại V' },
 ];
 
+import { MARITIME_SERVICES_OPTIONS } from '../../constants/maritimeServices';
+
 /** Dịch vụ cung cấp — 9 dịch vụ chính thức (user chốt 2026-08-28). */
-export const DAI_TTDH_SERVICES_OPTIONS = [
-  { value: 'INMARSAT_DISTRESS', label: 'Dịch vụ trực canh cấp cứu INMARSAT (INMARSAT CospasSarsat Distress Watch-keeping Service)' },
-  { value: 'COSPAS_SARSAT_DISTRESS', label: 'Dịch vụ trực canh cấp cứu COSPAS-SARSAT (COSPASSARSAT Distress Watch-keeping Service)' },
-  { value: 'DSC_DISTRESS', label: 'Dịch vụ trực canh cấp cứu DSC (DSC Distress Watch-keeping Service)' },
-  { value: 'RTP_DISTRESS', label: 'Dịch vụ trực canh cấp cứu RTP (RTP Distress Watch-keeping Service)' },
-  { value: 'MSI_RTP', label: 'Dịch vụ phát MSI RTP (MSI Broadcasting Service on RTP)' },
-  { value: 'MSI_NAVTEX', label: 'Dịch vụ phát MSI NAVTEX (MSI Broadcasting Service via Navtex)' },
-  { value: 'MSI_EGC', label: 'Dịch vụ phát MSI EGC (MSI Broadcasting Service via EGC)' },
-  { value: 'LRIT', label: 'Dịch vụ thông tin nhận dạng và truy theo tầm xa LRIT (Longrange Identification and Tracking...)' },
-  { value: 'MARITIME_INFO_CONNECT', label: 'Dịch vụ kết nối thông tin ngành hàng hải' },
-];
+export const DAI_TTDH_SERVICES_OPTIONS = MARITIME_SERVICES_OPTIONS;
 
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },

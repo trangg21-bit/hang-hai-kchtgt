@@ -16,7 +16,7 @@ import toast from '../../../components/ToastNotification';
 import api from '../../../services/api';
 import { hanoiStationService } from '../../../services/hanoiStationService';
 import type { HanoiStationItem, OperationPlanItem, MaintenancePlanItem, IncidentItem } from '../../../types/hanoiStation';
-import { HANOI_SERVICE_OPTIONS } from '../../../types/hanoiStation';
+import { resolveMaritimeServiceLabel } from '../../../constants/maritimeServices';
 import { ConditionStatus } from '../../../types/vtsSystem';
 import {
   colors,
@@ -157,8 +157,7 @@ export const renderServicesBadges = (services?: string[] | string) => {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {list.map((srv) => {
-        const found = HANOI_SERVICE_OPTIONS.find((o) => o.value === srv || o.label === srv);
-        const label = found ? found.label : srv;
+        const label = resolveMaritimeServiceLabel(srv);
         return (
           <span
             key={srv}

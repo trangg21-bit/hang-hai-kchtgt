@@ -18,8 +18,8 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -355,8 +355,9 @@ export default function StormShelterListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
 
+  const authUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = useAuthStore((s) => s.user?.permissions) || [];
+  const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
 
@@ -440,26 +441,19 @@ export default function StormShelterListPage() {
 
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  // Load master data
   useEffect(() => {
     (async () => {
       try {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        if (data.length > 0) {
-          try {
-            const p = await api.get('/users/me');
-            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
-            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
-            setOrgUnit(matchedOrgId);
-            defaultOrgUnitRef.current = matchedOrgId;
-          } catch {
-            setOrgUnit(data[0].id);
-            defaultOrgUnitRef.current = data[0].id;
-          }
-        }
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        setOrgUnit(resolvedDefault);
+        defaultOrgUnitRef.current = resolvedDefault;
       } catch {}
+      finally {
+        setInitialLoadDone(true);
+      }
     })();
 
     (async () => {
@@ -488,11 +482,7 @@ export default function StormShelterListPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (orgUnit !== undefined && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [orgUnit, initialLoadDone]);
+
 
   // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
   useEffect(() => {
@@ -623,7 +613,7 @@ export default function StormShelterListPage() {
   }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
-    const oid = defaultOrgUnitRef.current || '__all__';
+    const oid = defaultOrgUnitRef.current;
     setOrgUnit(oid);
     setNameInput('');
     setCodeInput('');

@@ -47,7 +47,8 @@ import {
 import type { DaiTtdh } from '../../types/port';
 import { resolveOrgLevel2Name } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { DAI_TTDH_STATION_LEVEL_OPTIONS, DAI_TTDH_SERVICES_OPTIONS } from './DaiTtdhForm';
+import { DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
+import { resolveMaritimeServiceLabel } from '../../constants/maritimeServices';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 
 const fontSizeMd = 13.5;
@@ -190,8 +191,8 @@ export default function DaiTtdhDetailContent({
   const stationLevelLabel = (v?: number) => DAI_TTDH_STATION_LEVEL_OPTIONS.find(o => o.value === v)?.label || (v != null ? String(v) : '');
   const servicesLabels = (v?: string) => {
     if (!v) return '';
-    return v.split(',').map(s => s.trim()).filter(Boolean)
-      .map(s => DAI_TTDH_SERVICES_OPTIONS.find(o => o.value === s)?.label || s)
+    return v.split(/[,;]+/).map(s => s.trim()).filter(Boolean)
+      .map(s => resolveMaritimeServiceLabel(s))
       .join(', ') || '';
   };
 
@@ -871,7 +872,7 @@ export default function DaiTtdhDetailContent({
                         { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                         { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v, rec) => v || rec.type || '' },
                         { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v) => v || '' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v) => fmtDateTime(v || rec.time || null) },
+                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v, rec: any) => fmtDateTime(v || rec?.time || null) },
                       ]}
                     />
                   )}

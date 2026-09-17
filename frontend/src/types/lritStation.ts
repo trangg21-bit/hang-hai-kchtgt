@@ -141,17 +141,9 @@ export interface LritStationSearchResponse {
   statusCounts?: Record<string, number>;
 }
 
-export const LRIT_SERVICE_OPTIONS = [
-  { value: 'LRIT', label: 'LRIT — Nhận dạng và theo dõi tầm xa' },
-  { value: 'INMARSAT', label: 'INMARSAT — Thông tin vệ tinh Inmarsat' },
-  { value: 'COSPAS-SARSAT', label: 'COSPAS-SARSAT — Tìm kiếm cứu nạn vệ tinh' },
-  { value: 'DSC', label: 'DSC — Gọi chọn số kỹ thuật số' },
-  { value: 'RTP', label: 'RTP — Vô tuyến thoại hàng hải' },
-  { value: 'MSI RTP', label: 'MSI RTP — Thông tin an toàn hàng hải thoại' },
-  { value: 'MSI NAVTEX', label: 'MSI NAVTEX — Bản tin an toàn hàng hải Navtex' },
-  { value: 'MSI EGC', label: 'MSI EGC — Điện báo gọi nhóm nâng cao EGC' },
-  { value: 'Kết nối TT hàng hải', label: 'Kết nối thông tin hàng hải chuyên dùng' },
-];
+import { MARITIME_SERVICES_OPTIONS } from '../constants/maritimeServices';
+
+export const LRIT_SERVICE_OPTIONS = MARITIME_SERVICES_OPTIONS;
 
 export interface OperationPlanItem {
   id?: string;

@@ -17,8 +17,8 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
+import { OrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -38,6 +38,7 @@ import {
 } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
@@ -309,6 +310,7 @@ export function formatBerthHistoryValue(
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BerthList() {
+  const { user: authUser } = useAuthStore();
   const [searchParams] = useSearchParams();
   const linkedAction = searchParams.get('action');
   const linkedRecordId = searchParams.get('id');
@@ -582,8 +584,9 @@ export default function BerthList() {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        defaultOrgUnitId.current = parentOrgUnits[0].id;
-        setManagingUnitId(parentOrgUnits[0].id);
+        const defaultId = resolveDefaultOrgUnitId(authUser, parentOrgUnits);
+        defaultOrgUnitId.current = defaultId;
+        setManagingUnitId(defaultId);
       }
       setOrgUnitReady(true);
     } else {
@@ -594,18 +597,9 @@ export default function BerthList() {
           setOrganizations(data);
           if (data.length > 0 && !defaultOrgApplied.current) {
             defaultOrgApplied.current = true;
-            try {
-              const profileRes = await api.get('/users/me');
-              const profile = profileRes.data?.data ?? profileRes.data;
-              const userOrgId = profile?.orgUnitId;
-              const match = userOrgId && data.find((o: any) => o.id === userOrgId);
-              const defaultId = userOrgId ? (match ? userOrgId : data[0].id) : '__all__';
-              defaultOrgUnitId.current = defaultId;
-              setManagingUnitId(defaultId === '__all__' ? undefined : defaultId);
-            } catch {
-              defaultOrgUnitId.current = data[0].id;
-              setManagingUnitId(data[0].id);
-            }
+            const defaultId = resolveDefaultOrgUnitId(authUser, data);
+            defaultOrgUnitId.current = defaultId;
+            setManagingUnitId(defaultId);
           }
           setOrgUnitReady(true);
         } catch (err) {

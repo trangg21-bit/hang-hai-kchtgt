@@ -23,6 +23,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -123,7 +124,7 @@ public class CoastalStationLRITController {
     @GetMapping
     @Operation(summary = "Tìm kiếm phân trang danh sách Đài LRIT")
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:read', 'specialstation:read', 'data:read')")
-    public ResponseEntity<Page<CoastalStationLRITListResponse>> search(
+    public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             // Bộ lọc riêng theo Tên đài / Mã đài (khác `keyword` là tìm chung nhiều cột)
@@ -139,6 +140,7 @@ public class CoastalStationLRITController {
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String sortBy,
             @RequestParam(required = false) String sortDir,
+            @RequestParam(defaultValue = "true") boolean includeCounts,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         // Chặn trần số bản ghi mỗi trang: "size" đến từ client, không giới hạn thì
@@ -151,7 +153,19 @@ public class CoastalStationLRITController {
         Page<CoastalStationLRITListResponse> results = service.searchPaged(
                 orgUnitId, keyword, name, code, operatingOrgId, provinceId, parsedCondition, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, sanitizedPageable);
-        return ResponseEntity.ok(results);
+        Map<String, Long> statusCounts = includeCounts
+                ? service.countByApprovalStatus(
+                        orgUnitId, keyword, name, code, parsedCondition, provinceId, updatedFrom, updatedTo)
+                : Map.of();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("content", results.getContent());
+        data.put("totalElements", results.getTotalElements());
+        data.put("totalPages", results.getTotalPages());
+        data.put("number", results.getNumber());
+        data.put("size", results.getSize());
+        data.put("statusCounts", statusCounts);
+        return ResponseEntity.ok(data);
     }
 
     @GetMapping("/counts")

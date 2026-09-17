@@ -19,8 +19,8 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
+import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -32,6 +32,7 @@ import { organizationService } from '../../services/organizationService';
 import { portCRUD, transferAreaApproval, transferAreaCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
@@ -354,6 +355,7 @@ export default function TransferAreaListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
 
+  const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
@@ -549,20 +551,13 @@ export default function TransferAreaListPage() {
         const r = await organizationService.list({ pageSize: 1000 });
         const data = r.data || [];
         setOrganizations(data);
-        if (data.length > 0) {
-          try {
-            const p = await api.get('/users/me');
-            const uOrgId = (p.data?.data ?? p.data)?.orgUnitId;
-            const matchedOrgId = uOrgId ? (data.find((o: any) => o.id === uOrgId) ? uOrgId : data[0].id) : '__all__';
-            setOrgUnit(matchedOrgId);
-            defaultOrgUnitRef.current = matchedOrgId;
-          } catch {
-            setOrgUnit(data[0].id);
-            defaultOrgUnitRef.current = data[0].id;
-          }
-        }
+        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        setOrgUnit(resolvedDefault);
+        defaultOrgUnitRef.current = resolvedDefault;
       } catch {
         /* ignore */
+      } finally {
+        setInitialLoadDone(true);
       }
     })();
     (async () => {
@@ -603,11 +598,7 @@ export default function TransferAreaListPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (orgUnit !== undefined && !initialLoadDone) {
-      setInitialLoadDone(true);
-    }
-  }, [orgUnit, initialLoadDone]);
+
 
   useEffect(() => {
     (async () => {
@@ -714,7 +705,7 @@ export default function TransferAreaListPage() {
   }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
-    const oid = defaultOrgUnitRef.current || '__all__';
+    const oid = defaultOrgUnitRef.current;
     setOrgUnit(oid);
     setNameInput('');
     setCodeInput('');

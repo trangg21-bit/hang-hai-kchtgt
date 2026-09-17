@@ -1371,10 +1371,17 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   const [symbols, setSymbols] = useState<SymbolOption[]>([]);
 
   useEffect(() => {
+    if (!open) return;
+    let mounted = true;
     symbolService.getOptions().then((opts) => {
-      setSymbols(opts || []);
-    }).catch(() => setSymbols([]));
-  }, []);
+      if (mounted) setSymbols(opts || []);
+    }).catch(() => {
+      if (mounted) setSymbols([]);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [open]);
 
   const { symbolByCode, symbolById, symbolByName } = useMemo(() => {
     const byCode = new Map<string, SymbolOption>();

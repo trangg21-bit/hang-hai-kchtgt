@@ -38,7 +38,7 @@ public class CoastalStationCospasSarsat extends BaseApprovableEntity {
     @Column(name = "name", length = 255)
     private String name;
 
-    @Column(name = "description", length = 1000)
+    @Column(name = "description", length = 2000)
     private String description;
 
     @Column(name = "note", length = 2000)
@@ -69,7 +69,7 @@ public class CoastalStationCospasSarsat extends BaseApprovableEntity {
     @Column(name = "frequency", length = 255)
     private String frequency;
 
-    @Column(name = "coverage_area", length = 1000)
+    @Column(name = "coverage_area", length = 4000)
     private String coverageArea;
 
     @Column(name = "beacon_protocol", length = 255)

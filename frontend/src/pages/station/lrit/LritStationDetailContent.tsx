@@ -17,7 +17,7 @@ import toast from '../../../components/ToastNotification';
 import api from '../../../services/api';
 import { lritStationService } from '../../../services/lritStationService';
 import type { LritStationItem, OperationPlanItem, MaintenancePlanItem, IncidentItem } from '../../../types/lritStation';
-import { LRIT_SERVICE_OPTIONS } from '../../../types/lritStation';
+import { resolveMaritimeServiceLabel } from '../../../constants/maritimeServices';
 import { ConditionStatus } from '../../../types/vtsSystem';
 import {
   colors,
@@ -284,8 +284,7 @@ export const renderServicesBadges = (services?: string[] | string) => {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
       {list.map((srv) => {
-        const found = LRIT_SERVICE_OPTIONS.find((o) => o.value === srv || o.label === srv);
-        const label = found ? found.label : srv;
+        const label = resolveMaritimeServiceLabel(srv);
         return (
           <span
             key={srv}
