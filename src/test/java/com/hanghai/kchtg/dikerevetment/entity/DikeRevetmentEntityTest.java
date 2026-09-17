@@ -71,6 +71,12 @@ class DikeRevetmentEntityTest {
         entity.setRejectionReason("Thiet ke chua dat yeu cau");
         assertEquals("Thiet ke chua dat yeu cau", entity.getRejectionReason());
 
+        entity.setConstructionDate(LocalDate.of(2020, 5, 15));
+        assertEquals(LocalDate.of(2020, 5, 15), entity.getConstructionDate());
+
+        entity.setLastMaintenanceYear(2024);
+        assertEquals(2024, entity.getLastMaintenanceYear());
+
         entity.setCreatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getCreatedBy());
 
@@ -87,6 +93,8 @@ class DikeRevetmentEntityTest {
                 .height(new BigDecimal("8.0"))
                 .surfaceMaterial("Thep")
                 .status("Tot")
+                .constructionDate(LocalDate.of(2021, 6, 20))
+                .lastMaintenanceYear(2023)
                 .approvalStatus(ApprovalStatus.APPROVED)
                 .isApprovedLevel1(true)
                 .isApprovedLevel2(true)
@@ -99,6 +107,8 @@ class DikeRevetmentEntityTest {
         assertEquals(ApprovalStatus.APPROVED, dr.getApprovalStatus());
         assertTrue(dr.getIsApprovedLevel1());
         assertTrue(dr.getIsApprovedLevel2());
+        assertEquals(LocalDate.of(2021, 6, 20), dr.getConstructionDate());
+        assertEquals(2023, dr.getLastMaintenanceYear());
         assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), dr.getCreatedBy());
     }
 

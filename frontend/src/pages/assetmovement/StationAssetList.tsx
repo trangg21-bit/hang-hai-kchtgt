@@ -10,24 +10,26 @@ import {
     SearchOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type ScreenHeaderAction
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type ScreenHeaderAction,
+  type FilterOption,
+  type TableOption,
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-    resolveMimeType,
-    triggerBlobDownload,
-    type InfrastructureAttachmentItem,
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -53,6 +55,8 @@ import type {
     AssetIncreaseResponse,
     StationAsset,
     StationAssetFilters,
+    StationAssetPayload,
+    AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
 import { organizationService, type Organization } from '../../services/organizationService';
 import type { GenericStationOption } from '../../services/stationOptionsService';
@@ -290,7 +294,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
   const [historyTo, setHistoryTo] = useState('');
 
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
-  const stationMap = useMemo(() => new Map(stations.map((item) => [item.id, item])), [stations]);
+  const stationMap = useMemo(
+    () => new Map(stations.map((item) => [item.id, { id: item.id, name: item.name || item.stationName || item.code || '', code: item.code || item.stationCode }])),
+    [stations],
+  );
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -638,13 +645,13 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         const formatted = formatHistoryValue(fn, raw);
         return isBlankOrDash(formatted) ? '' : formatted;
       },
-      resolveUnitName: (rec) => {
+      resolveUnitName: (rec): string => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
-      resolveActorName: (rawActor, rec) => {
-        return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
+      resolveActorName: (rawActor, rec): string => {
+        return String(rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An');
       },
       emptyMessage:
         q || historyFrom || historyTo
@@ -700,13 +707,13 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         const formatted = formatHistoryValue(fn, raw);
         return isBlankOrDash(formatted) ? '' : formatted;
       },
-      resolveUnitName: (rec) => {
+      resolveUnitName: (rec): string => {
         const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
       },
-      resolveActorName: (rawActor, rec) => {
-        return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
+      resolveActorName: (rawActor, rec): string => {
+        return String(rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An');
       },
     });
   };
@@ -1177,7 +1184,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           ];
         }
 
-        const actionList = [
+        const actionList: any[] = [
           {
             key: 'detail',
             label: 'Xem chi tiết',
@@ -1416,7 +1423,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
           config={config}
           form={form}
           organizations={organizations}
-          stations={stations}
+          stations={stations.map((item) => ({ id: item.id, name: item.name || item.stationName || item.code || '', code: item.code || item.stationCode }))}
           attachments={attachments}
           exploitationRows={exploitationRows}
           increaseRows={increaseRows}

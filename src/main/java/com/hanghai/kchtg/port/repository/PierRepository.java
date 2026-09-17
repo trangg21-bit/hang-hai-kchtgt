@@ -25,28 +25,29 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
 
     boolean existsByPierName(String pierName);
 
-    @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL " +
+    @Query("SELECT p FROM Pier p WHERE (p.deletedAt IS NULL AND p.deletedBy IS NULL) " +
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId)")
     Page<Pier> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
-    @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL AND p.berthId = :berthId")
+    @Query("SELECT p FROM Pier p WHERE (p.deletedAt IS NULL AND p.deletedBy IS NULL) AND p.berthId = :berthId")
     List<Pier> findByBerthIdAndDeletedAtIsNull(@Param("berthId") UUID berthId);
 
-    @Query("SELECT COUNT(p) FROM Pier p WHERE p.deletedAt IS NULL AND p.berthId = :berthId")
+    @Query("SELECT COUNT(p) FROM Pier p WHERE (p.deletedAt IS NULL AND p.deletedBy IS NULL) AND p.berthId = :berthId")
     long countByBerthIdAndDeletedAtIsNull(@Param("berthId") UUID berthId);
 
-    @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL AND p.berthId = :berthId")
+    @Query("SELECT p FROM Pier p WHERE (p.deletedAt IS NULL AND p.deletedBy IS NULL) AND p.berthId = :berthId")
     Page<Pier> findByBerthId(@Param("berthId") UUID berthId, Pageable pageable);
 
-    long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
+    @Query("SELECT COUNT(p) FROM Pier p WHERE (p.deletedAt IS NULL AND p.deletedBy IS NULL) AND p.approvalStatus = :approvalStatus")
+    long countByApprovalStatusAndDeletedAtIsNull(@Param("approvalStatus") ApprovalStatus approvalStatus);
 
-    @Query("SELECT p FROM Pier p WHERE " +
-            "((:approvalStatus IS NULL AND p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
-            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (p.deletedAt IS NOT NULL OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
-            "  OR (p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
-            "      p.approvalStatus = :approvalStatus " +
-            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
-            "  )) " +
+    @Query("SELECT COUNT(p) FROM Pier p WHERE p.deletedAt IS NOT NULL OR p.deletedBy IS NOT NULL")
+    long countDeleted();
+
+    @Query("SELECT p FROM Pier p WHERE (" +
+            "  (:deletedOnly = true AND (p.deletedAt IS NOT NULL OR p.deletedBy IS NOT NULL)) " +
+            "  OR (:deletedOnly = false AND :approvalStatus IS NULL) " +
+            "  OR (:deletedOnly = false AND :approvalStatus IS NOT NULL AND p.deletedAt IS NULL AND p.deletedBy IS NULL AND p.approvalStatus = :approvalStatus)" +
             ") " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(p.pierCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(p.pierName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
@@ -64,6 +65,8 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR p.updatedAt >= :updatedFrom) " +
             "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR p.updatedAt <= :updatedTo)")
     Page<Pier> searchPiers(
+            @Param("deletedOnly") boolean deletedOnly,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("includeAll") boolean includeAll,
             @Param("orgUnitIds") Collection<UUID> orgUnitIds,
             @Param("search") String search,
@@ -74,7 +77,6 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             @Param("pierType") PierType pierType,
             @Param("province") String province,
             @Param("operationalStatus") OperationalStatus operationalStatus,
-            @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("navigationChannelId") UUID navigationChannelId,
             @Param("constructionGrade") Integer constructionGrade,
             @Param("structureType") Integer structureType,
@@ -83,11 +85,63 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             @Param("updatedTo") java.time.LocalDateTime updatedTo,
             Pageable pageable);
 
+    /** Backward-compatible overload with isDeleted Boolean. */
+    default Page<Pier> searchPiers(
+            Boolean isDeleted,
+            boolean includeAll,
+            Collection<UUID> orgUnitIds,
+            String search,
+            String pierCode,
+            String pierName,
+            UUID berthId,
+            UUID portId,
+            PierType pierType,
+            String province,
+            OperationalStatus operationalStatus,
+            ApprovalStatus approvalStatus,
+            UUID navigationChannelId,
+            Integer constructionGrade,
+            Integer structureType,
+            String operationalFunction,
+            java.time.LocalDateTime updatedFrom,
+            java.time.LocalDateTime updatedTo,
+            Pageable pageable) {
+        boolean deletedOnly = Boolean.TRUE.equals(isDeleted);
+        return searchPiers(deletedOnly, approvalStatus, includeAll, orgUnitIds, search, pierCode, pierName, berthId, portId, pierType,
+                province, operationalStatus, navigationChannelId, constructionGrade, structureType,
+                operationalFunction, updatedFrom, updatedTo, pageable);
+    }
+
+    /** Backward-compatible overload without isDeleted. */
+    default Page<Pier> searchPiers(
+            boolean includeAll,
+            Collection<UUID> orgUnitIds,
+            String search,
+            String pierCode,
+            String pierName,
+            UUID berthId,
+            UUID portId,
+            PierType pierType,
+            String province,
+            OperationalStatus operationalStatus,
+            ApprovalStatus approvalStatus,
+            UUID navigationChannelId,
+            Integer constructionGrade,
+            Integer structureType,
+            String operationalFunction,
+            java.time.LocalDateTime updatedFrom,
+            java.time.LocalDateTime updatedTo,
+            Pageable pageable) {
+        return searchPiers(false, approvalStatus, includeAll, orgUnitIds, search, pierCode, pierName, berthId, portId, pierType,
+                province, operationalStatus, navigationChannelId, constructionGrade, structureType,
+                operationalFunction, updatedFrom, updatedTo, pageable);
+    }
+
     /** Backward-compatible overload used by GIS search — no port/province filter. */
     default Page<Pier> searchPiers(UUID orgUnitId, String search, UUID berthId, PierType pierType,
             OperationalStatus operationalStatus, ApprovalStatus approvalStatus, Pageable pageable) {
-        return searchPiers(orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
-                search, null, null, berthId, null, pierType, null, operationalStatus, approvalStatus,
+        return searchPiers(false, approvalStatus, orgUnitId == null, orgUnitId != null ? List.of(orgUnitId) : List.of(),
+                search, null, null, berthId, null, pierType, null, operationalStatus,
                 null, null, null, null, null, null, pageable);
     }
 }

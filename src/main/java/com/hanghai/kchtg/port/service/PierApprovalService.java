@@ -138,8 +138,12 @@ public class PierApprovalService {
     }
 
     private Pier loadForApproval(UUID id) {
-        return pierRepository.findById(id)
+        Pier entity = pierRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalArgumentException("Không thể phê duyệt/từ chối cầu cảng đã bị xóa");
+        }
+        return entity;
     }
 
     @Transactional(readOnly = true)

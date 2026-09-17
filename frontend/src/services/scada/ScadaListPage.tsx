@@ -3,14 +3,12 @@ import {
     BankOutlined,
     DownOutlined,
     EnvironmentOutlined,
-    ExclamationCircleOutlined,
     HistoryOutlined,
     RightOutlined,
     SearchOutlined,
     SlidersOutlined,
 } from "@ant-design/icons";
 import {
-    Alert,
     Button,
     DatePicker,
     Drawer,
@@ -60,15 +58,16 @@ import {
     fetchScadaById,
     fetchScadaHistory,
     fetchScadaList,
+    generateScadaCode,
     submitScada,
 } from "./api";
+import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import { OPERATIONAL_STATUS_OPTIONS } from "./schema";
 import type { ApprovalRequest, ScadaResponse } from "./types";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
-
 /** Map unitOfMeasure code (Integer) → label cho hiển thị */
 const UOM_LABELS: Record<number, string> = {
   1: 'Bộ',
@@ -123,7 +122,6 @@ import {
     drawerFooterStyle,
     drawerProps,
     drawerTitleStyle,
-    fontSans,
     fontSizeCellTitle,
     fontSizeLg,
     fontSizeMd,
@@ -201,12 +199,7 @@ export function isScadaDeleted(record?: Partial<ScadaResponse> | null): boolean 
   );
 }
 
-/* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-const pillStyle: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  fontFamily: fontSans,
-};// ── Section card trong Drawer Xem chi tiết — đồng bộ chuẩn /cctv /berth ──
+// ── Section card trong Drawer Xem chi tiết — đồng bộ chuẩn /cctv /berth ──
 const scadaDetailSectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid #e2e8f0',
@@ -339,15 +332,27 @@ const ScadaListPage = () => {
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
+    const filterScope = {
+      orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+        ? filterValues.orgUnitId
+        : undefined),
+      deviceCode: filterDeviceCode.trim() || undefined,
+      deviceName: filterDeviceName.trim() || undefined,
+      operationalStatus: filterValues.operationalStatus != null ? filterValues.operationalStatus : undefined,
+      province: filterValues.province || undefined,
+      vtsSystemId: filterValues.vtsSystemId || undefined,
+      attachedInfraType: filterValues.attachedInfraType,
+      attachedInfraId: filterValues.attachedInfraId || undefined,
+      yearOfUse: filterValues.yearOfUse,
+      updatedFrom: filterValues.updatedFrom || undefined,
+      updatedTo: filterValues.updatedTo || undefined,
+    };
     const results = await Promise.allSettled(
       statuses.map((s) =>
         fetchScadaList({
           page: 0,
           size: 1,
-          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
-                          ? filterValues.orgUnitId
-                          : undefined),
-          deviceName: filterDeviceName.trim() || undefined,
+          ...filterScope,
           approvalStatus: s.status,
         })
       )
@@ -356,8 +361,10 @@ const ScadaListPage = () => {
     results.forEach((r, i) => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
+    // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
+    counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
@@ -365,9 +372,21 @@ const ScadaListPage = () => {
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
         (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || counts.DELETED || 0)
+        (counts.ARCHIVED || 0)
     );
-  }, [filterValues.orgUnitId, filterDeviceName]);
+  }, [
+    filterValues.orgUnitId,
+    filterDeviceCode,
+    filterDeviceName,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.vtsSystemId,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
   // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -495,7 +514,6 @@ const ScadaListPage = () => {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<ScadaResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Create modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -569,10 +587,15 @@ const ScadaListPage = () => {
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend">("descend");
-  const handleSort = useCallback((field: string, order: "asc" | "desc") => {
-    setSortField(field);
-    setSortOrder(order === "asc" ? "ascend" : "descend");
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
+  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order === "asc" ? "ascend" : "descend");
+    }
     setPage(0);
   }, []);
 
@@ -698,6 +721,7 @@ const ScadaListPage = () => {
         label: "Đơn vị tính",
         dataIndex: "unitOfMeasure",
         width: 130,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
         ),
@@ -706,9 +730,9 @@ const ScadaListPage = () => {
         key: "quantity",
         label: "Số lượng",
         dataIndex: "quantity",
-        width: 140,
+        width: 120,
         type: "number" as const,
-        align: "center" as const,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -719,13 +743,48 @@ const ScadaListPage = () => {
         key: "yearOfUse",
         label: "Năm đưa vào sử dụng",
         dataIndex: "yearOfUse",
-        width: 220,
+        width: 210,
         type: "mono" as const,
-        align: "center" as const,
+        align: 'center' as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
+      },
+      {
+        key: "operationalStatus",
+        label: "Tình trạng",
+        dataIndex: "operationalStatus",
+        width: 270,
+        type: "status" as const,
+        render: (val: number | string) => {
+          const map: Record<string, { color: string; label: string }> = {
+            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
+            "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
+            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
+          };
+          const s = map[String(val || "").toUpperCase()] || {
+            color: textTertiary,
+            label: String(val || ""),
+          };
+          if (!s.label) return null;
+          return (
+            <span className="kcht-cell-badge" style={statusBadgeStyle(s.color)}>
+              {s.label}
+            </span>
+          );
+        },
+      },
+      {
+        key: "approvalStatus",
+        label: "Trạng thái",
+        dataIndex: "approvalStatus",
+        width: 300,
+        type: "status" as const,
+        render: (val: string, record: ScadaResponse) => {
+          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          return renderApprovalBadge(val, isDeleted);
+        },
       },
       {
         key: "updatedByName",
@@ -756,41 +815,6 @@ const ScadaListPage = () => {
         dataIndex: "approverLevel2Name",
         width: 270,
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
-      },
-      {
-        key: "operationalStatus",
-        label: "Tình trạng",
-        dataIndex: "operationalStatus",
-        width: 270,
-        type: "status" as const,
-        render: (val: number | string) => {
-          const map: Record<string, { color: string; label: string }> = {
-            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
-            "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
-            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
-          };
-          const s = map[String(val || "").toUpperCase()] || {
-            color: textTertiary,
-            label: String(val || ""),
-          };
-          if (!s.label) return null;
-          return (
-            <span className="kcht-cell-badge" style={statusBadgeStyle(s.color)}>
-              {s.label}
-            </span>
-          );
-        },
-      },
-      {
-        key: "approvalStatus",
-        label: "Trạng thái",
-        dataIndex: "approvalStatus",
-        width: 180,
-        type: "status" as const,
-        render: (val: string, record: ScadaResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
-          return renderApprovalBadge(val, isDeleted);
-        },
       },
     ];
     },
@@ -1322,9 +1346,10 @@ const ScadaListPage = () => {
       toast.warning("Bạn không có quyền chỉnh sửa hệ thống SCADA này");
       return;
     }
+    updateForm.resetFields();
     setUpdateTarget(record);
     setUpdateModalOpen(true);
-  }, [hasPerm]);
+  }, [hasPerm, updateForm]);
 
   useEffect(() => {
     if (!isMapLinkedView || !linkedRecordId || !linkedAction) return;
@@ -1419,7 +1444,8 @@ const ScadaListPage = () => {
         hasPerm?.("scada:update") &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
-          record.approvalStatus === "REJECTED_LEVEL2")
+          record.approvalStatus === "REJECTED_LEVEL2" ||
+          record.approvalStatus === "REJECTED")
       ) {
         actions.push({
           key: "submit",
@@ -1500,7 +1526,6 @@ const ScadaListPage = () => {
           icon: icons.delete,
           danger: true,
           onClick: () => {
-            setDeleteConfirmText("");
             setDeleteTarget(record);
           },
         });
@@ -1535,7 +1560,7 @@ const ScadaListPage = () => {
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
         sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder === "ascend" ? "asc" : "desc",
+        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -1649,27 +1674,20 @@ const ScadaListPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    if (
-      deleteConfirmText !== "XÓA" &&
-      deleteConfirmText !== deleteTarget.deviceName
-    ) {
-      toast.error('Vui lòng nhập đúng tên thiết bị hoặc "XÓA" để xác nhận');
-      return;
-    }
     setDeleteLoading(true);
     try {
       await deleteScada(deleteTarget.id);
       toast.success("Xóa hệ thống SCADA thành công");
       setDeleteTarget(null);
-      setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[scada] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || "Lỗi khi xóa hệ thống SCADA");
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     async (content?: string) => {
@@ -1699,19 +1717,7 @@ const ScadaListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error("Lý do từ chối tối thiểu 10 ký tự");
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error("Lý do từ chối tối đa 500 ký tự");
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason };
@@ -1879,11 +1885,12 @@ const ScadaListPage = () => {
           height: 10px !important;
           display: block !important;
         }
-        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13) */
+        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13.5) */
         .scada-page-wrapper.scada-page-wrapper .ant-table-row .kcht-cell-title.kcht-cell-title { font-size: 14px !important; }
         .scada-page-wrapper.scada-page-wrapper .kcht-cell-code { font-size: 12px !important; }
         .scada-page-wrapper.scada-page-wrapper .kcht-cell-badge { font-size: 13px !important; }
-        .scada-page-wrapper.scada-page-wrapper button[aria-pressed] span { font-size: 13px !important; }
+        .scada-page-wrapper.scada-page-wrapper button[aria-pressed],
+        .scada-page-wrapper.scada-page-wrapper button[aria-pressed] span { font-size: 13.5px !important; }
         /* Tiêu đề card (Section header) trong Drawer Xem chi tiết — 14px như /cctv */
         .scada-drawer-scope.scada-drawer-scope .scada-section-card-title { font-size: 14px !important; }
 
@@ -1985,6 +1992,11 @@ const ScadaListPage = () => {
                     orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
                   });
                   setCreateModalOpen(true);
+                  generateScadaCode()
+                    .then((code) => {
+                      if (code) createForm.setFieldsValue({ deviceCode: code });
+                    })
+                    .catch(() => {});
                 },
               }
             : null,
@@ -2027,7 +2039,7 @@ const ScadaListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị..." allowClear
+              <Input placeholder="Tìm theo tên thiết bị" allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
@@ -2037,7 +2049,7 @@ const ScadaListPage = () => {
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị..." allowClear
+                  <Input placeholder="Tìm theo mã thiết bị" allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
@@ -2156,56 +2168,60 @@ const ScadaListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: totalAll || 0,
+            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },
           {
             key: "DRAFT",
             label: "Lưu tạm",
-            count: tabCounts["DRAFT"] ?? 0,
+            count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
             key: "PENDING_APPROVAL",
             label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-            count: tabCounts["PENDING_APPROVAL"] ?? 0,
+            count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
             label: "Chờ phê duyệt cấp cục",
-            count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
             label: "Đã phê duyệt",
-            count: tabCounts["APPROVED"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
             key: "REJECTED_LEVEL1",
             label: "Từ chối cấp Cảng vụ/Chi cục",
-            count: tabCounts["REJECTED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL1",
           },
           {
             key: "REJECTED_LEVEL2",
             label: "Từ chối cấp cục",
-            count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+            count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
+              ? total
+              : (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+            active: filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED",
           },
           {
             key: "ARCHIVED",
             label: "Đã xóa",
-            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
+            count: (filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED")
+              ? total
+              : (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
@@ -2218,7 +2234,6 @@ const ScadaListPage = () => {
             approvalStatus,
           }));
           setPage(0);
-          fetchData();
         }}
       >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -2930,7 +2945,7 @@ const ScadaListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho hệ thống SCADA:
+            Vui lòng nhập lý do từ chối cho hệ thống SCADA (không bắt buộc):
           </p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -2940,111 +2955,36 @@ const ScadaListPage = () => {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
-            maxLength={500}
-            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
       {/* Delete Modal */}
-      <Modal
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận xóa
-          </span>
-        }
-        open={!!deleteTarget}
+      <DeleteConfirmModal
+        open={Boolean(deleteTarget)}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText("");
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteTarget(null);
-              setDeleteConfirmText("");
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="delete"
-            type="primary"
-            danger
-            loading={deleteLoading}
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-            }}
-          >
-            Xác nhận xóa
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <Alert
-            message="Hành động này không thể hoàn tác"
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-          />
-          <p
-            style={{
-              fontSize: fontSizeMd,
-              color: textPrimary,
-              marginBottom: spaceFormField,
-            }}
-          >
-            Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ{" "}
-            <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p
-              style={{
-                fontSize: fontSizeMd,
-                color: textSecondary,
-                marginBottom: spaceFormField,
-              }}
-            >
-              Thiết bị:{" "}
-              <strong style={{ color: textPrimary }}>
-                {deleteTarget.deviceName}
-              </strong>
-            </p>
-          )}
-          <Input
-            placeholder="Nhập tên thiết bị hoặc XÓA"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            onPressEnter={handleDeleteConfirm}
-            style={pillStyle}
-            autoFocus
-          />
-        </div>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+        itemType="hệ thống SCADA"
+        itemName={deleteTarget?.deviceName}
+        itemCode={deleteTarget?.deviceCode}
+      />
 
       {/* ── Create Drawer ─────────────────────────────── */}
       <AppDrawer
         width={DRAWER_WIDTH}
         rootClassName="scada-drawer-scope"
         className="scada-drawer-scope"
+        destroyOnHidden
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
             Thêm mới hệ thống SCADA
@@ -3115,7 +3055,7 @@ const ScadaListPage = () => {
         }}
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" initialValues={{}}>
+        <Form form={createForm} layout="vertical" preserve={true} initialValues={{}}>
           <ScadaForm
             ref={scadaFormRef}
             form={createForm}
@@ -3134,6 +3074,7 @@ const ScadaListPage = () => {
         width={DRAWER_WIDTH}
         rootClassName="scada-drawer-scope"
         className="scada-drawer-scope"
+        destroyOnHidden
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
             Chỉnh sửa thông tin — {updateTarget?.deviceName || 'Hệ thống SCADA'}
@@ -3162,7 +3103,8 @@ const ScadaListPage = () => {
             )}
             {(updateTarget?.approvalStatus === 'DRAFT' ||
               updateTarget?.approvalStatus === 'REJECTED_LEVEL1' ||
-              updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
+              updateTarget?.approvalStatus === 'REJECTED_LEVEL2' ||
+              updateTarget?.approvalStatus === 'REJECTED') && (
               <Button
                 type="primary"
                 onClick={() => {
@@ -3210,14 +3152,18 @@ const ScadaListPage = () => {
         {updateTarget?.id && (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={updateForm} layout="vertical" initialValues={{}}>
+            <Form form={updateForm} layout="vertical" preserve={true} initialValues={{}}>
               <ScadaForm
+                key={updateTarget.id}
                 ref={editScadaFormRef}
                 form={updateForm}
                 id={updateTarget.id}
+                isEdit={true}
+                initialData={updateTarget}
                 onFinish={() => {
                   setUpdateModalOpen(false);
                   setUpdateTarget(null);
+                  updateForm.resetFields();
                   fetchData();
                   fetchTabCounts();
                 }}

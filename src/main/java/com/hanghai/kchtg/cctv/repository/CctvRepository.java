@@ -41,7 +41,7 @@ public interface CctvRepository extends JpaRepository<Cctv, UUID> {
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'CCTV-000010' < 'CCTV-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 6) AS INTEGER)) " +
-            "FROM cctv WHERE device_code LIKE 'CCTV-%'", nativeQuery = true)
+            "FROM cctv WHERE device_code ~ '^CCTV-[0-9]+$'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**

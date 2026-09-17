@@ -102,17 +102,22 @@ class DikeRevetmentServiceTest {
                 .height(new BigDecimal("8.0"))
                 .surfaceMaterial("Thep")
                 .status("1")
+                .constructionDate(LocalDate.of(2018, 1, 15))
+                .lastMaintenanceYear(2022)
                 .build();
     }
 
     @Test
     void create_shouldSaveEntity() {
+        ArgumentCaptor<DikeRevetment> captor = ArgumentCaptor.forClass(DikeRevetment.class);
         when(repo.save(any())).thenReturn(testEntity);
         DikeRevetmentResponse r = service.create(createReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
         assertThat(r.getDikeRevetmentType()).isEqualTo(DikeRevetmentType.RIVER_DIKE);
         assertThat(r.getApprovalStatus()).isEqualTo(ApprovalStatus.DRAFT);
-        verify(repo, times(1)).save(any());
+        verify(repo, times(1)).save(captor.capture());
+        assertThat(captor.getValue().getConstructionDate()).isEqualTo(LocalDate.of(2018, 1, 15));
+        assertThat(captor.getValue().getLastMaintenanceYear()).isEqualTo(2022);
     }
 
     @Test
@@ -136,6 +141,8 @@ class DikeRevetmentServiceTest {
                 .dikeRevetmentType(DikeRevetmentType.BANK_PROTECTION_REVETMENT)
                 .location("Hai Phong")
                 .length(new BigDecimal("300.0"))
+                .constructionDate(LocalDate.of(2020, 5, 10))
+                .lastMaintenanceYear(2023)
                 .build();
 
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
@@ -143,6 +150,8 @@ class DikeRevetmentServiceTest {
 
         DikeRevetmentResponse r = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
+        assertThat(testEntity.getConstructionDate()).isEqualTo(LocalDate.of(2020, 5, 10));
+        assertThat(testEntity.getLastMaintenanceYear()).isEqualTo(2023);
         verify(repo, times(1)).save(any());
     }
 
@@ -372,6 +381,101 @@ class DikeRevetmentServiceTest {
             assertThat(service.formatDisplayValue("coordinateSystem", "1")).isEqualTo("WGS 84");
             assertThat(service.formatDisplayValue("coordinateSystem", "2")).isEqualTo("VN-2000");
             assertThat(service.formatDisplayValue("commissioningDate", "2026-06-15")).isEqualTo("15/06/2026");
+        }
+
+        @Test
+        @DisplayName("Update on approved entity with equivalent BigDecimal scales (5555.0000 vs 5555) should NOT record history")
+        void update_onApprovedEntity_whenBigDecimalScaleDiffers_shouldNotRecordHistory() {
+            DikeRevetment approvedEntity = DikeRevetment.builder()
+                    .id(TEST_ID)
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("5555.0000"))
+                    .crestElevation(new BigDecimal("10.0000"))
+                    .height(new BigDecimal("5.0000"))
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .approvalStatus(ApprovalStatus.APPROVED)
+                    .build();
+
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
+            when(repo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            DikeRevetmentUpdateRequest req = DikeRevetmentUpdateRequest.builder()
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("5555")) // Scale 0 vs Scale 4
+                    .crestElevation(new BigDecimal("10.0")) // Scale 1 vs Scale 4
+                    .height(new BigDecimal("5")) // Scale 0 vs Scale 4
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .build();
+
+            service.update(TEST_ID, req, USER_ID);
+
+            verify(approvalHistoryRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Update on approved entity with actual changes should record history only for changed fields")
+        void update_onApprovedEntity_whenFieldsActuallyChanged_shouldRecordHistoryForChangedFieldsOnly() {
+            DikeRevetment approvedEntity = DikeRevetment.builder()
+                    .id(TEST_ID)
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("5555.0000"))
+                    .crestElevation(new BigDecimal("10.0000"))
+                    .height(new BigDecimal("5.0000"))
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .approvalStatus(ApprovalStatus.APPROVED)
+                    .build();
+
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
+            when(repo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            DikeRevetmentUpdateRequest req = DikeRevetmentUpdateRequest.builder()
+                    .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                    .location("Bac Giang")
+                    .length(new BigDecimal("6000.0000")) // Actually changed
+                    .crestElevation(new BigDecimal("10.0")) // Scale differs, value identical
+                    .height(new BigDecimal("5.0000")) // Identical
+                    .surfaceMaterial("Betong")
+                    .status("1")
+                    .build();
+
+            service.update(TEST_ID, req, USER_ID);
+
+            ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+            verify(approvalHistoryRepo, times(1)).save(historyCaptor.capture());
+
+            InfrastructureHistory recorded = historyCaptor.getValue();
+            assertThat(recorded.getChangedField()).isEqualTo("Chiều dài (m)");
+            assertThat(recorded.getPreviousValue()).isEqualTo("5555.0000");
+            assertThat(recorded.getNewValue()).isEqualTo("6000.0000");
+            assertThat(recorded.getStatus()).isEqualTo(InfrastructureHistoryStatus.UPDATED);
+        }
+
+        @Test
+        @DisplayName("searchPaged passes correct date range when commissioningYear is provided")
+        void searchPaged_withCommissioningYear_shouldPassDateRangeToRepository() {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+            when(repo.searchPaged(any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testEntity)));
+
+            service.searchPaged(null, null, null, null, null, null, null, null, null, null, null, null, 2024, pageable);
+
+            ArgumentCaptor<LocalDate> fromCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            ArgumentCaptor<LocalDate> toCaptor = ArgumentCaptor.forClass(LocalDate.class);
+            verify(repo).searchPaged(
+                    any(), anyBoolean(), any(), any(), any(),
+                    any(), any(), any(), any(), any(), any(), any(),
+                    any(), any(),
+                    fromCaptor.capture(), toCaptor.capture(),
+                    eq(pageable));
+
+            assertThat(fromCaptor.getValue()).isEqualTo(LocalDate.of(2024, 1, 1));
+            assertThat(toCaptor.getValue()).isEqualTo(LocalDate.of(2024, 12, 31));
         }
     }
 }

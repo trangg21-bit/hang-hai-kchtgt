@@ -96,8 +96,20 @@ public class ScadaService {
    */
   public String generateScadaCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = scadaRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("SCA-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = scadaRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị SCADA, fallback: {}", e.getMessage());
+      sequence = (int) scadaRepository.count();
+    }
+    sequence++;
+    String code = String.format("SCA-%06d", sequence);
+    while (scadaRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("SCA-%06d", sequence);
+    }
+    return code;
   }
 
   /**

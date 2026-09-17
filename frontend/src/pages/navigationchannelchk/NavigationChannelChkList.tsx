@@ -224,9 +224,14 @@ export default function NavigationChannelChkList() {
     setPage(1);
   }, []);
 
-  const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
-    setSortField(key);
-    setSortOrder(order);
+  const handleSort = useCallback((key: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(key);
+      setSortOrder(order);
+    }
     setPage(1);
   }, []);
 

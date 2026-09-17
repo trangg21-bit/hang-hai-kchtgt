@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.common.util;
 
+import java.math.BigDecimal;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.*;
@@ -61,7 +62,7 @@ public final class EntityUpdateUtils {
                     entityField.setAccessible(true);
                     Object oldValue = entityField.get(entity);
 
-                    if (!Objects.equals(newValue, oldValue)) {
+                    if (!areEqual(oldValue, newValue)) {
                         com.hanghai.kchtg.fieldvisibility.FieldVisibilityContext.assertWritable(name);
                         if (previousValues != null) {
                             previousValues.put(name, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
@@ -99,7 +100,7 @@ public final class EntityUpdateUtils {
             return;
         }
         T oldValue = getter.get();
-        if (!Objects.equals(newValue, oldValue)) {
+        if (!areEqual(oldValue, newValue)) {
             if (previousValues != null && fieldName != null) {
                 previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
             }
@@ -109,5 +110,64 @@ public final class EntityUpdateUtils {
 
     public static <T> void updateIfPresent(T newValue, Supplier<T> getter, Consumer<T> setter) {
         updateIfPresent(newValue, getter, setter, null, null);
+    }
+
+    /**
+     * So sánh đẳng trị an toàn giữa 2 giá trị:
+     * - Bỏ qua khác biệt scale của BigDecimal (ví dụ 5555.0000 == 5555).
+     * - Xử lý Number tổng quát.
+     * - Bỏ qua khoảng trắng đầu/cuối của String và coi null tương đương chuỗi rỗng.
+     */
+    public static boolean areEqual(Object o1, Object o2) {
+        if (o1 == null && o2 == null) return true;
+        if (o1 == null || o2 == null) {
+            if (o1 instanceof String s) return s.trim().isEmpty();
+            if (o2 instanceof String s) return s.trim().isEmpty();
+            return false;
+        }
+        if (Objects.equals(o1, o2)) return true;
+        if (o1 instanceof BigDecimal b1 && o2 instanceof BigDecimal b2) {
+            return b1.compareTo(b2) == 0;
+        }
+        if (o1 instanceof Number n1 && o2 instanceof Number n2) {
+            try {
+                return new BigDecimal(n1.toString()).compareTo(new BigDecimal(n2.toString())) == 0;
+            } catch (Exception ignored) {
+                return Double.compare(n1.doubleValue(), n2.doubleValue()) == 0;
+            }
+        }
+        if (o1 instanceof String s1 && o2 instanceof String s2) {
+            String t1 = s1.trim();
+            String t2 = s2.trim();
+            if (t1.equals(t2)) return true;
+            try {
+                String c1 = t1.replace(",", "");
+                String c2 = t2.replace(",", "");
+                if (c1.matches("^-?\\d+(\\.\\d+)?$") && c2.matches("^-?\\d+(\\.\\d+)?$")) {
+                    return new BigDecimal(c1).compareTo(new BigDecimal(c2)) == 0;
+                }
+            } catch (Exception ignored) {
+            }
+            return false;
+        }
+        if (o1 instanceof Number n && o2 instanceof String s) {
+            try {
+                String cs = s.trim().replace(",", "");
+                if (cs.matches("^-?\\d+(\\.\\d+)?$")) {
+                    return new BigDecimal(n.toString()).compareTo(new BigDecimal(cs)) == 0;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        if (o1 instanceof String s && o2 instanceof Number n) {
+            try {
+                String cs = s.trim().replace(",", "");
+                if (cs.matches("^-?\\d+(\\.\\d+)?$")) {
+                    return new BigDecimal(cs).compareTo(new BigDecimal(n.toString())) == 0;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return false;
     }
 }

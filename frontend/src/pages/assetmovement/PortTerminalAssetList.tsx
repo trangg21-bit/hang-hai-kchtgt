@@ -82,7 +82,7 @@ import {
     spaceXl,
     textTertiary,
 } from "../../themetokenchk";
-import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards } from "../../utils/changeHistoryRenderer";
+import { countStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from "../../utils/changeHistoryRenderer";
 import { formatHistoryNumber } from "../../utils/numFmt";
 import PortTerminalAssetDetailContent from "./PortTerminalAssetDetailContent";
 import PortTerminalAssetForm, {
@@ -105,6 +105,7 @@ const STATUS_COUNT_KEYS = [
   "APPROVED",
   "REJECTED_LEVEL1",
   "REJECTED_LEVEL2",
+  "ARCHIVED",
 ];
 
 type DrawerMode = "create" | "edit" | "detail";
@@ -117,6 +118,9 @@ const PORT_TERMINAL_ASSET_FIELD_LABELS: Record<string, string> = {
   usingOrgUnitId: 'Đơn vị sử dụng',
   berthId: 'Mã bến cảng',
   portTerminalId: 'Mã bến cảng',
+  anchorageId: 'Mã khu neo đậu',
+  beaconStationId: 'Mã đèn biển và nhà trạm gắn liền với đèn biển',
+  dikeRevetmentId: 'Mã đê kè',
   assetType: 'Loại tài sản',
   types: 'Phân loại tài sản',
   assetCode: 'Mã tài sản',
@@ -127,7 +131,14 @@ const PORT_TERMINAL_ASSET_FIELD_LABELS: Record<string, string> = {
   assetGroup: 'Nhóm tài sản',
   assetSubgroup: 'Phân nhóm tài sản',
   origin: 'Nguồn gốc',
+  quantity: 'Số lượng',
+  quantityUnit: 'Đơn vị tính',
+  model: 'Model',
+  serialNumber: 'Số serial',
+  countryOfOrigin: 'Xuất xứ',
+  manufacturer: 'Hãng sản xuất',
   address: 'Địa chỉ',
+  assetLocation: 'Vị trí tài sản',
   landArea: 'Diện tích đất (m²)',
   floorArea: 'Diện tích sàn (m²)',
   constructionYear: 'Năm xây dựng',
@@ -242,7 +253,7 @@ function PortTerminalAssetList({
   // ── History state (chuẩn /berth) ───────────────────────────────────────
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<PortTerminalAsset | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [historyFrom, setHistoryFrom] = useState("");
@@ -832,7 +843,7 @@ function PortTerminalAssetList({
         label: "Loại tài sản",
         type: "select",
         placeholder: "Chọn loại tài sản",
-        options: [{ value: "PORT_TERMINAL", label: "Tài sản bến cảng" }],
+        options: [{ value: screenConfig.assetType, label: screenConfig.title }],
       },
       {
         key: "assetCode",
@@ -893,6 +904,7 @@ function PortTerminalAssetList({
         subField: 'assetCode',
         width: 230,
         fixed: 'left',
+        allowSort: true,
         onClick: (record) => void openDetail(record),
       },
       {
@@ -901,6 +913,7 @@ function PortTerminalAssetList({
         type: TableColumnType.Text,
         width: 250,
         bold: true,
+        allowSort: true,
         render: (v) => <span style={{ fontWeight: fontWeightBold }}>{orgName.get(v as string) || ''}</span>,
       },
       {
@@ -908,51 +921,67 @@ function PortTerminalAssetList({
         dataIndex: 'usingOrgUnitId',
         type: TableColumnType.Text,
         width: 250,
+        allowSort: true,
         render: (v) => orgName.get(v as string) || '',
       },
       {
-        title: 'MÃ BẾN CẢNG',
-        dataIndex: 'berthId',
+        title: screenConfig.relationColumnTitle,
+        dataIndex: screenConfig.relationField,
         type: TableColumnType.Text,
-        width: 190,
-        render: (v) => relatedInfrastructureMap.get(v as string)?.code || '',
+        width: screenConfig.relationColumnWidth,
+        allowSort: true,
+        render: (v, record) => {
+          const relId = (v || record[screenConfig.relationField]) as string | undefined;
+          const item = relId ? relatedInfrastructureMap.get(relId) : undefined;
+          return item ? (
+            <span title={`${item.code} - ${item.name}`}>
+              {item.code}
+            </span>
+          ) : (relId || '—');
+        },
       },
       {
         title: 'LOẠI TÀI SẢN',
         dataIndex: 'assetType',
         type: TableColumnType.Text,
-        width: 160,
-        render: () => 'Tài sản bến cảng',
+        width: 220,
+        allowSort: true,
+        render: () => screenConfig.title,
       },
       {
         title: 'TÌNH TRẠNG TÀI SẢN',
         dataIndex: 'assetCondition',
         type: TableColumnType.Status,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'HIỆN TRẠNG SỬ DỤNG',
         dataIndex: 'usageStatus',
         type: TableColumnType.Status,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'NHÓM TÀI SẢN',
         dataIndex: 'assetGroup',
         type: TableColumnType.Text,
         width: 210,
+        allowSort: true,
       },
       {
         title: 'NGÀY SỬ DỤNG TÀI SẢN',
         dataIndex: 'useDate',
         type: TableColumnType.Date,
         width: 190,
+        allowSort: true,
       },
       {
         title: 'TRẠNG THÁI',
         dataIndex: 'approvalStatus',
         type: TableColumnType.Status,
         width: 260,
+        allowSort: true,
       },
       {
         title: 'CÁN BỘ CẬP NHẬT',
@@ -960,6 +989,8 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'updatedAt',
         width: 210,
+        allowSort: true,
+        sortField: 'updatedBy',
       },
       {
         title: 'CÁN BỘ GỬI PHÊ DUYỆT',
@@ -967,6 +998,8 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'submittedAt',
         width: 240,
+        allowSort: true,
+        sortField: 'submittedBy',
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
@@ -974,12 +1007,15 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'portAuthorityApprovedAt',
         width: 340,
+        allowSort: true,
+        sortField: 'portAuthorityApprovedBy',
       },
       {
         title: 'NỘI DUNG PHÊ DUYỆT CẤP CẢNG VỤ/CHI CỤC',
         dataIndex: 'portAuthorityApprovalContent',
         type: TableColumnType.Text,
         width: 280,
+        allowSort: true,
       },
       {
         title: 'CÁN BỘ PHÊ DUYỆT CẤP CỤC',
@@ -987,12 +1023,15 @@ function PortTerminalAssetList({
         type: TableColumnType.TwoLine,
         subField: 'departmentApprovedAt',
         width: 260,
+        allowSort: true,
+        sortField: 'departmentApprovedBy',
       },
       {
         title: 'NỘI DUNG PHÊ DUYỆT CẤP CỤC',
         dataIndex: 'departmentApprovalContent',
         type: TableColumnType.Text,
         width: 260,
+        allowSort: true,
       },
     ],
     actions: (record: PortTerminalAsset) => [
@@ -1006,7 +1045,7 @@ function PortTerminalAssetList({
         ? [{ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, danger: true, onClick: () => setDeleteTarget(record) }]
         : []),
     ],
-  }), [openDetail, openEdit, openHistory, operationForm, orgName, relatedInfrastructureMap]);
+  }), [openDetail, openEdit, openHistory, operationForm, orgName, relatedInfrastructureMap, screenConfig]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(
     () => [
@@ -1348,7 +1387,13 @@ function PortTerminalAssetList({
                   if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
                     return orgName.get(raw!) || raw;
                   }
-                  if (fn === 'berthId' || fn === 'portTerminalId') {
+                  if (
+                    fn === 'berthId' ||
+                    fn === 'portTerminalId' ||
+                    fn === 'beaconStationId' ||
+                    fn === 'anchorageId' ||
+                    fn === 'dikeRevetmentId'
+                  ) {
                     const item = relatedInfrastructureMap.get(raw!);
                     return item ? `${item.code} - ${item.name}` : raw;
                   }

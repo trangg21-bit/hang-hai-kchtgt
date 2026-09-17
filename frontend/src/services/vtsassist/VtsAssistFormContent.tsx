@@ -225,11 +225,11 @@ const VtsAssistFormContent = ({ initialData, onSuccess }: VtsAssistFormProps) =>
       </Form.Item>
 
       <Form.Item name="maintenanceInformation" label="Thông tin bảo trì" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
-        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
+        <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <Form.Item name="note" label="Ghi chú" style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}>
-        <Input.TextArea rows={2} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
+        <Input.TextArea rows={2} placeholder="Nhập ghi chú" maxLength={2000} showCount style={{ borderRadius: radiusPill }} />
       </Form.Item>
 
       <div style={{ textAlign: 'right', marginTop: spaceMd }}>

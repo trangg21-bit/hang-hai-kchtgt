@@ -179,7 +179,8 @@ public class BerthService {
                 Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus)
                 : null;
-        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus)
+        ApprovalStatus approvalEnum = approvalStatus != null && !approvalStatus.trim().isEmpty()
+                ? ApprovalStatus.fromString(approvalStatus)
                 : null;
         BerthType berthTypeEnum = null;
         if (berthType != null && !berthType.trim().isEmpty()) {
@@ -616,7 +617,9 @@ public class BerthService {
                 .departmentApprovedBy(e.getDepartmentApprovedBy())
                 .portAuthorityApprovalContent(e.getPortAuthorityApprovalContent())
                 .departmentApprovalContent(e.getDepartmentApprovalContent())
-                .rejectionReason(e.getRejectionReason());
+                .rejectionReason(e.getRejectionReason())
+                .deletedAt(e.getDeletedAt())
+                .deletedBy(e.getDeletedBy());
 
         if (e.getSpatialId() != null) {
             builder.spatialId(e.getSpatialId());

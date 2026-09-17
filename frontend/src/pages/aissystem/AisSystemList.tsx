@@ -208,7 +208,7 @@ export function AisSystemList() {
   // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
   // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
 
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -461,7 +461,7 @@ export function AisSystemList() {
         page,
         size: pageSize,
         sortBy: sortField,
-        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+        sortDir: sortField && sortDirection ? sortDirection.toUpperCase() : undefined,
         // Chỉ yêu cầu backend đếm lại khi bộ lọc đổi; lật trang hay đổi sắp xếp
         // không làm thay đổi số trên tab nên bỏ được truy vấn GROUP BY.
         includeCounts: shouldIncludeCounts,
@@ -487,15 +487,20 @@ export function AisSystemList() {
     fetchData();
   }, [fetchData, isOptionsReady]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 
   const sortOrderFor = useCallback(
     (key: string): 'ascend' | 'descend' | null =>
-      (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null),
+      (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null),
     [sortField, sortDirection]
   );
 

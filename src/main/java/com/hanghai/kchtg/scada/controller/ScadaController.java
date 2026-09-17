@@ -57,7 +57,7 @@ public class ScadaController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'scada:create')")
+  @PreAuthorize("@auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating SCADA device code");
     String code = scadaService.generateScadaCode();

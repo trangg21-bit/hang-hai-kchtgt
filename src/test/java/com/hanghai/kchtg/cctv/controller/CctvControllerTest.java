@@ -95,4 +95,13 @@ class CctvControllerTest {
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
     }
+
+    @Test
+    void testGenerateCode() {
+        when(cctvService.generateCctvCode()).thenReturn("CCTV-000053");
+        ResponseEntity<?> result = controller.generateCode();
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        verify(cctvService).generateCctvCode();
+    }
 }

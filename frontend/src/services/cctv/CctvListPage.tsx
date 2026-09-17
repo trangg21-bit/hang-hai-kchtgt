@@ -10,7 +10,6 @@ const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
   value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 import { usePermissionStore } from "../../store/permissionStore";
 import {
-  Alert,
   Button,
   DatePicker,
   Space,
@@ -27,7 +26,6 @@ import {
   PlusOutlined,
   SearchOutlined,
   HistoryOutlined,
-  ExclamationCircleOutlined,
   EnvironmentOutlined,
   BankOutlined,
   SlidersOutlined,
@@ -46,6 +44,7 @@ import {
   fetchCctvHistory,
   fetchCctvAttachments,
   downloadCctvAttachment,
+  generateCctvCode,
 } from "./api";
 import {
   OPERATIONAL_STATUS_OPTIONS,
@@ -54,6 +53,7 @@ import {
 import type { CctvResponse, ApprovalRequest } from "./types";
 import toast from "../../components/ToastNotification";
 import ApprovalModal from "../../components/shared/ApprovalModal";
+import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import AppDrawer from "../../components/shared/AppDrawer";
 import CctvForm, { type CctvFormRef } from "./CctvForm";
@@ -135,7 +135,6 @@ import {
   surfaceCard,
   surfacePage,
   radiusPill,
-  fontSans,
   spaceMd,
   spaceFormField,
   spaceSm,
@@ -180,14 +179,6 @@ const APPROVAL_COLOR: Record<string, string> = {
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
   DELETED: statusCritical,
-};
-
-/* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
-
-const pillStyle: React.CSSProperties = {
-  borderRadius: radiusPill,
-  height: 40,
-  fontFamily: fontSans,
 };
 
 // ── Card/section trong Drawer Xem chi tiết — đồng bộ chuẩn /berth (BerthDetailContent) ──
@@ -345,17 +336,30 @@ const CctvListPage = () => {
       { key: "APPROVED", status: "APPROVED" },
       { key: "REJECTED_LEVEL1", status: "REJECTED_LEVEL1" },
       { key: "REJECTED_LEVEL2", status: "REJECTED_LEVEL2" },
+      { key: "REJECTED", status: "REJECTED" },
       { key: "ARCHIVED", status: "ARCHIVED" },
     ];
+    const filterScope = {
+      orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
+        ? filterValues.orgUnitId
+        : undefined),
+      deviceCode: filterDeviceCode.trim() || undefined,
+      deviceName: filterDeviceName.trim() || undefined,
+      operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
+      province: filterValues.province || undefined,
+      vtsSystemId: filterValues.vtsSystemId || undefined,
+      attachedInfraType: filterValues.attachedInfraType,
+      attachedInfraId: filterValues.attachedInfraId || undefined,
+      yearOfUse: filterValues.yearOfUse,
+      updatedFrom: filterValues.updatedFrom || undefined,
+      updatedTo: filterValues.updatedTo || undefined,
+    };
     const results = await Promise.allSettled(
       statuses.map((s) =>
         fetchCctvList({
           page: 0,
           size: 1,
-          orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__'
-                          ? filterValues.orgUnitId
-                          : undefined),
-          deviceName: filterDeviceName.trim() || undefined,
+          ...filterScope,
           approvalStatus: s.status,
         })
       )
@@ -364,6 +368,12 @@ const CctvListPage = () => {
     results.forEach((r, i) => {
       counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements ?? 0) : 0;
     });
+    // Gộp trạng thái từ chối legacy (REJECTED) vào REJECTED_LEVEL2 nếu có
+    if (counts.REJECTED) {
+      counts.REJECTED_LEVEL2 = (counts.REJECTED_LEVEL2 || 0) + counts.REJECTED;
+    }
+    // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
+    counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
     // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
     setTotalAll(
@@ -373,9 +383,21 @@ const CctvListPage = () => {
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
         (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || counts.DELETED || 0)
+        (counts.ARCHIVED || 0)
     );
-  }, [filterValues.orgUnitId, filterDeviceName]);
+  }, [
+    filterValues.orgUnitId,
+    filterDeviceCode,
+    filterDeviceName,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.vtsSystemId,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
   // Org units — đồng bộ 100% chuẩn /radar-station (load tree từ organizationService)
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
@@ -475,7 +497,6 @@ const CctvListPage = () => {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<CctvResponse | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Create modal
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -559,10 +580,15 @@ const CctvListPage = () => {
 
   // Sorting
   const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend">("descend");
-  const handleSort = useCallback((field: string, order: "asc" | "desc") => {
-    setSortField(field);
-    setSortOrder(order === "asc" ? "ascend" : "descend");
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
+  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order === "asc" ? "ascend" : "descend");
+    }
     setPage(0);
   }, []);
 
@@ -606,8 +632,8 @@ const CctvListPage = () => {
         label: "STT",
         width: 60,
         type: "mono" as const,
-        align: "center" as const,
         fixed: "left" as const,
+        align: "center" as const,
         render: (_: unknown, __: CctvResponse, index: number) => (
           <span style={{ ...tableMetaStyle, fontWeight: fontWeightMedium }}>
             {page * pageSize + index + 1}
@@ -690,6 +716,7 @@ const CctvListPage = () => {
         label: "Đơn vị tính",
         dataIndex: "unitOfMeasure",
         width: 130,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val != null ? formatUnitOfMeasure(val) : null}</span>
         ),
@@ -698,9 +725,9 @@ const CctvListPage = () => {
         key: "quantity",
         label: "Số lượng",
         dataIndex: "quantity",
-        width: 140,
+        width: 120,
         type: "number" as const,
-        align: "center" as const,
+        align: 'center' as const,
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -711,13 +738,48 @@ const CctvListPage = () => {
         key: "yearOfUse",
         label: "Năm đưa vào sử dụng",
         dataIndex: "yearOfUse",
-        width: 220,
+        width: 210,
         type: "mono" as const,
-        align: "center" as const,
+        align: 'center' as const,
         ellipsis: false,
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
+      },
+      {
+        key: "operationalStatus",
+        label: "Tình trạng",
+        dataIndex: "operationalStatus",
+        width: 270,
+        type: "status" as const,
+        render: (val: number | string) => {
+          const map: Record<string, { color: string; label: string }> = {
+            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
+            "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
+            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
+          };
+          const s = map[String(val || "").toUpperCase()] || {
+            color: textTertiary,
+            label: String(val || ""),
+          };
+          if (!s.label) return null;
+          return (
+            <span className="kcht-cell-badge" style={statusBadgeStyle(s.color)}>
+              {s.label}
+            </span>
+          );
+        },
+      },
+      {
+        key: "approvalStatus",
+        label: "Trạng thái",
+        dataIndex: "approvalStatus",
+        width: 300,
+        type: "status" as const,
+        render: (val: string, record: CctvResponse) => {
+          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          return renderApprovalBadge(val, isDeleted);
+        },
       },
       {
         key: "updatedByName",
@@ -748,41 +810,6 @@ const CctvListPage = () => {
         dataIndex: "approverLevel2Name",
         width: 270,
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
-      },
-      {
-        key: "operationalStatus",
-        label: "Tình trạng",
-        dataIndex: "operationalStatus",
-        width: 270,
-        type: "status" as const,
-        render: (val: number | string) => {
-          const map: Record<string, { color: string; label: string }> = {
-            "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
-            "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
-            "SUSPENDED": { color: statusCritical, label: "Dừng khai thác/vận hành" },
-          };
-          const s = map[String(val || "").toUpperCase()] || {
-            color: textTertiary,
-            label: String(val || ""),
-          };
-          if (!s.label) return null;
-          return (
-            <span className="kcht-cell-badge" style={statusBadgeStyle(s.color)}>
-              {s.label}
-            </span>
-          );
-        },
-      },
-      {
-        key: "approvalStatus",
-        label: "Trạng thái",
-        dataIndex: "approvalStatus",
-        width: 180,
-        type: "status" as const,
-        render: (val: string, record: CctvResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
-          return renderApprovalBadge(val, isDeleted);
-        },
       },
     ];
     },
@@ -1063,17 +1090,37 @@ const CctvListPage = () => {
     'Tài liệu đính kèm',
   ];
 
-  const renderCctvHistoryTimeline = (records: any[]) => {
+  const isMeaningfulChange = (
+    _field: string,
+    rawOld: string | null | undefined,
+    rawNew: string | null | undefined,
+  ): boolean => {
+    const ov = rawOld != null ? String(rawOld).trim() : '';
+    const nv = rawNew != null ? String(rawNew).trim() : '';
+    if (ov === '' && nv === '') return false;
+    if (ov !== '' && nv !== '' && ov === nv) return false;
+    // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 5555.0000 vs 5555, 1.00 vs 1)
+    if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
+      return false;
+    }
+    // Bỏ qua nếu sau khi format hiển thị giống nhau
+    const ovFmt = !isNaN(Number(ov)) ? fmtNum(ov) : ov;
+    const nvFmt = !isNaN(Number(nv)) ? fmtNum(nv) : nv;
+    if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
+      return false;
+    }
+    return true;
+  };
+
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
     const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort(
+    const sorted = [...historyRecords].sort(
       (a: any, b: any) =>
         new Date(historyTimestamp(b) || 0).getTime() -
         new Date(historyTimestamp(a) || 0).getTime()
     );
-    const q = historySearch.toLowerCase().trim();
 
-    // Chuẩn /vts-operation-center: gộp nhóm theo ĐÚNG giây (một lần Lưu ghi nhiều dòng cùng
-    // thời điểm) và merge liên tiếp các hành động dạng update (UPDATED/đính kèm) cùng người dùng.
     const isUpdateAction = (status: string, reason?: string) => {
       const s = String(status || '').toUpperCase();
       const r = String(reason || '').toLowerCase();
@@ -1095,7 +1142,57 @@ const CctvListPage = () => {
       else groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
     }
 
-    if (groups.length === 0)
+    return groups.map((g) => {
+      const changes = deduplicateAttachmentHistoryChanges(
+        g.items.flatMap((item: any) => {
+          const fn = historyField(item);
+          if (!fn) return [];
+          const ov = historyOldValue(item);
+          const nv = historyNewValue(item);
+          if (!isMeaningfulChange(fn, ov, nv)) return [];
+          return [{ field: fn, oldValue: ov, newValue: nv }];
+        })
+      );
+
+      const orderedChanges = [...changes]
+        .sort((a: any, b: any) => {
+          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        })
+        .filter(
+          (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments'
+        );
+
+      const reasons = g.items.map((i: any) => i.reason || i.note).filter(Boolean);
+
+      if (orderedChanges.length === 0 && reasons.length === 0) {
+        return null;
+      }
+
+      return {
+        ...g,
+        orderedChanges,
+        reasons,
+      };
+    }).filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      status?: any;
+      approvalLevel?: any;
+      items: any[];
+      orderedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }>;
+      reasons: string[];
+    }>;
+  }, [historyRecords]);
+
+  const historyFieldCount = validHistoryGroups.length;
+
+  const renderCctvHistoryTimeline = () => {
+    const q = historySearch.toLowerCase().trim();
+
+    if (validHistoryGroups.length === 0)
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1110,7 +1207,7 @@ const CctvListPage = () => {
 
     return (
       <div>
-        {groups.map((g, gi) => {
+        {validHistoryGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : '';
@@ -1119,27 +1216,13 @@ const CctvListPage = () => {
             (orgName ? orgName.split(' - ').pop() || orgName : '') ||
             selectedRecord?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
-          // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
-          const changes = deduplicateAttachmentHistoryChanges(
-            g.items.flatMap((item: any) => {
-              const fn = historyField(item);
-              return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
-            })
-          );
+          const changes = g.orderedChanges;
           const actionMeta = resolveHistoryActionMeta(g.items[0] || {});
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
           );
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-          const orderedChanges = [...changes]
-            .sort((a: any, b: any) => {
-              const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-              const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-              return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            })
-            .filter(
-              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments'
-            );
+          const orderedChanges = changes;
 
           const formatHistoryValue = (fn: string, raw: string | null) => {
             if (raw === null || raw === '(null)' || raw === '') return null;
@@ -1465,7 +1548,6 @@ const CctvListPage = () => {
           icon: icons.delete,
           danger: true,
           onClick: () => {
-            setDeleteConfirmText("");
             setDeleteTarget(record);
           },
         });
@@ -1611,27 +1693,20 @@ const CctvListPage = () => {
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
-    if (
-      deleteConfirmText !== "XÓA" &&
-      deleteConfirmText !== deleteTarget.deviceName
-    ) {
-      toast.error('Vui lòng nhập đúng tên thiết bị hoặc "XÓA" để xác nhận');
-      return;
-    }
     setDeleteLoading(true);
     try {
       await deleteCctv(deleteTarget.id);
       toast.success("Xóa hệ thống CCTV thành công");
       setDeleteTarget(null);
-      setDeleteConfirmText("");
       fetchData();
       fetchTabCounts();
     } catch (error: unknown) {
-      console.error("[cctv] delete error", error); // toast toàn cục đã xử lý ở interceptor api.ts
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message || (error instanceof Error ? error.message : "Xóa thất bại"));
     } finally {
       setDeleteLoading(false);
     }
-  }, [deleteTarget, deleteConfirmText, fetchData, fetchTabCounts]);
+  }, [deleteTarget, fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     async (content?: string) => {
@@ -1661,19 +1736,7 @@ const CctvListPage = () => {
 
   const handleReject = useCallback(async () => {
     if (!rejectTarget) return;
-    const reason = rejectReason.trim();
-    if (!reason) {
-      toast.error("Vui lòng nhập lý do từ chối");
-      return;
-    }
-    if (reason.length < 10) {
-      toast.error("Lý do từ chối tối thiểu 10 ký tự");
-      return;
-    }
-    if (reason.length > 500) {
-      toast.error("Lý do từ chối tối đa 500 ký tự");
-      return;
-    }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       const payload: ApprovalRequest = { decision: "REJECTED", reason };
@@ -1857,11 +1920,12 @@ const CctvListPage = () => {
           height: 10px !important;
           display: block !important;
         }
-        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13) */
+        /* Chuẩn cỡ chữ giá trị trong bảng: tên 14 / mã 12 / badge 13 / còn lại 13.5 (+StatusTab text 13.5) */
         .cctv-page-wrapper.cctv-page-wrapper .ant-table-row .kcht-cell-title.kcht-cell-title { font-size: 14px !important; }
         .cctv-page-wrapper.cctv-page-wrapper .kcht-cell-code { font-size: 12px !important; }
         .cctv-page-wrapper.cctv-page-wrapper .kcht-cell-badge { font-size: 13px !important; }
-        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed] span { font-size: 13px !important; }
+        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed],
+        .cctv-page-wrapper.cctv-page-wrapper button[aria-pressed] span { font-size: 13.5px !important; }
         /* Divider giữa các dòng của tab "Thông tin chung" — nhạt như /berth (#f1f5f9). Drawer portal ra body nên anchor theo .cctv-drawer-scope */
         .cctv-drawer-scope.cctv-drawer-scope .chk-detail-row,
         .cctv-page-wrapper.cctv-page-wrapper .chk-detail-row { border-bottom: 1px solid #f1f5f9 !important; }
@@ -2018,6 +2082,11 @@ const CctvListPage = () => {
                     orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
                   });
                   setCreateModalOpen(true);
+                  generateCctvCode()
+                    .then((code) => {
+                      if (code) createForm.setFieldsValue({ deviceCode: code });
+                    })
+                    .catch(() => {});
                 },
               }
             : null,
@@ -2061,7 +2130,7 @@ const CctvListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị..." allowClear
+              <Input placeholder="Tìm theo tên thiết bị" allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
                 onPressEnter={handleFilterApply}
@@ -2071,7 +2140,7 @@ const CctvListPage = () => {
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị..." allowClear
+                  <Input placeholder="Tìm theo mã thiết bị" allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
                     onPressEnter={handleFilterApply}
@@ -2174,56 +2243,60 @@ const CctvListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: totalAll || 0,
+            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },
           {
             key: "DRAFT",
             label: "Lưu tạm",
-            count: tabCounts["DRAFT"] ?? 0,
+            count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
             color: statusDraft,
             active: filterValues.approvalStatus === "DRAFT",
           },
           {
             key: "PENDING_APPROVAL",
             label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-            count: tabCounts["PENDING_APPROVAL"] ?? 0,
+            count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
             color: statusAttention,
             active: filterValues.approvalStatus === "PENDING_APPROVAL",
           },
           {
             key: "APPROVED_LEVEL1",
             label: "Chờ phê duyệt cấp cục",
-            count: tabCounts["APPROVED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
           },
           {
             key: "APPROVED",
             label: "Đã phê duyệt",
-            count: tabCounts["APPROVED"] ?? 0,
+            count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
             color: statusOperational,
             active: filterValues.approvalStatus === "APPROVED",
           },
           {
             key: "REJECTED_LEVEL1",
             label: "Từ chối cấp Cảng vụ/Chi cục",
-            count: tabCounts["REJECTED_LEVEL1"] ?? 0,
+            count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "REJECTED_LEVEL1",
           },
           {
             key: "REJECTED_LEVEL2",
             label: "Từ chối cấp cục",
-            count: tabCounts["REJECTED_LEVEL2"] ?? 0,
+            count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
+              ? total
+              : (tabCounts["REJECTED_LEVEL2"] ?? 0),
             color: statusCritical,
-            active: filterValues.approvalStatus === "REJECTED_LEVEL2",
+            active: filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED",
           },
           {
             key: "ARCHIVED",
             label: "Đã xóa",
-            count: (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
+            count: (filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED")
+              ? total
+              : (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
             color: statusCritical,
             active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
           },
@@ -2236,7 +2309,6 @@ const CctvListPage = () => {
             approvalStatus,
           }));
           setPage(0);
-          fetchData();
         }}
       >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -2964,7 +3036,7 @@ const CctvListPage = () => {
       >
         <div style={{ padding: "8px 0" }}>
           <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối cho hệ thống CCTV:
+            Vui lòng nhập lý do từ chối cho hệ thống CCTV (không bắt buộc):
           </p>
           {rejectTarget && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
@@ -2974,106 +3046,29 @@ const CctvListPage = () => {
             </p>
           )}
           <Input.TextArea
-            placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..."
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={3}
-            maxLength={500}
-            showCount
             style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
-      {/* Delete Modal */}
-      <Modal
-        rootClassName="cctv-modal-scope"
-        title={
-          <span
-            style={{
-              color: colors.sidebarBg,
-              fontWeight: fontWeightBold,
-              fontSize: fontSizeLg,
-            }}
-          >
-            Xác nhận xóa
-          </span>
-        }
-        open={!!deleteTarget}
+      {/* ── Delete Confirmation Modal (chuẩn /berth) ─────────────── */}
+      <DeleteConfirmModal
+        open={Boolean(deleteTarget)}
         onCancel={() => {
-          setDeleteTarget(null);
-          setDeleteConfirmText("");
+          if (!deleteLoading) {
+            setDeleteTarget(null);
+          }
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              setDeleteTarget(null);
-              setDeleteConfirmText("");
-            }}
-            style={outlineButtonStyle}
-          >
-            Hủy
-          </Button>,
-          <Button
-            key="delete"
-            type="primary"
-            danger
-            loading={deleteLoading}
-            onClick={handleDeleteConfirm}
-            style={{
-              borderRadius: radiusPill,
-              height: 40,
-              fontSize: fontSizeMd,
-            }}
-          >
-            Xác nhận xóa
-          </Button>,
-        ]}
-        width={480}
-      >
-        <div style={{ padding: "8px 0" }}>
-          <Alert
-            message="Hành động này không thể hoàn tác"
-            type="warning"
-            showIcon
-            icon={<ExclamationCircleOutlined />}
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }}
-          />
-          <p
-            style={{
-              fontSize: fontSizeMd,
-              color: textPrimary,
-              marginBottom: spaceFormField,
-            }}
-          >
-            Vui lòng nhập <strong>tên thiết bị</strong> hoặc gõ{" "}
-            <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deleteTarget && (
-            <p
-              style={{
-                fontSize: fontSizeMd,
-                color: textSecondary,
-                marginBottom: spaceFormField,
-              }}
-            >
-              Thiết bị:{" "}
-              <strong style={{ color: textPrimary }}>
-                {deleteTarget.deviceName}
-              </strong>
-            </p>
-          )}
-          <Input
-            placeholder="Nhập tên thiết bị hoặc XÓA"
-            value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)}
-            onPressEnter={handleDeleteConfirm}
-            style={pillStyle}
-            autoFocus
-          />
-        </div>
-      </Modal>
+        onConfirm={handleDeleteConfirm}
+        loading={deleteLoading}
+        itemType="hệ thống CCTV"
+        itemName={deleteTarget?.deviceName}
+        itemCode={deleteTarget?.deviceCode}
+      />
 
       {/* Modal Chọn vị trí trên bản đồ — dùng chung Tạo mới / Cập nhật / Xem chi tiết (chuẩn /vts-operation-center) */}
       <Modal
@@ -3319,8 +3314,7 @@ const CctvListPage = () => {
                 {historyEntityName ? `Lịch sử thay đổi — ${historyEntityName}` : 'Lịch sử thay đổi'}
               </span>
               <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: radiusSm, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
-                {/* Nhật ký nạp theo trang nên đây là số đã tải, không phải tổng (chuẩn /vts-operation-center). */}
-                {`Đã tải ${historyRecords.length}`}
+                {`Tổng cộng ${historyFieldCount}`}
               </span>
             </Space>
           </div>
@@ -3380,11 +3374,11 @@ const CctvListPage = () => {
           </Button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
-          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
+          {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>
           ) : (
             <>
-              {renderCctvHistoryTimeline(historyRecords)}
+              {renderCctvHistoryTimeline()}
               {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
             </>
           )}

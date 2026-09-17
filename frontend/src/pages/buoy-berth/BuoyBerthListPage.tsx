@@ -328,9 +328,8 @@ export default function BuoyBerthList() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
-  const [sortField, setSortField] = useState('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend'>('descend');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -611,7 +610,7 @@ export default function BuoyBerthList() {
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const res = await buoyBerthCRUD.search({
         orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
@@ -629,9 +628,8 @@ export default function BuoyBerthList() {
         pageSize,
       });
       setDataSource(res.data); setTotal(res.total);
-    } catch (err: unknown) {
+    } catch {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách bến phao'));
     } finally { setIsLoading(false); }
   }, [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
     filterClassification,
@@ -1428,7 +1426,7 @@ export default function BuoyBerthList() {
       >
         <DataTable columns={columns}
           dataSource={[...dataSource].sort((a: any, b: any) => {
-            if (!sortField) return 0;
+            if (!sortField || !sortOrder) return 0;
             if (sortField === 'stt' || sortField === 'sequenceNo') {
               const arr = [...dataSource];
               return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
@@ -1439,7 +1437,16 @@ export default function BuoyBerthList() {
             return sortOrder === 'ascend' ? cmp : -cmp;
           })}
           rowKey="id" rowActions={rowActions} loading={false}
-          onSort={(key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); setPage(1); }}
+          onSort={(key: string, order: 'asc' | 'desc' | null) => {
+            if (!order) {
+              setSortField(null);
+              setSortOrder(null);
+            } else {
+              setSortField(key);
+              setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+            }
+            setPage(1);
+          }}
           scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}

@@ -1,32 +1,26 @@
-import { useMemo } from 'react';
-import { Form, InputNumber } from 'antd';
+import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import type { Dayjs } from 'dayjs';
-import { DeploymentUnitOutlined, SlidersOutlined } from '@ant-design/icons';
+import { useMemo } from 'react';
+import InfrastructureAttachmentTab, {
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import type { Organization } from '../../services/organizationService';
 import type { TransmissionOptionResponse } from '../../services/transmission/types';
 import type {
   TransmissionAsset,
   TransmissionAssetPayload,
 } from '../../services/transmissionAsset/types';
-import { fmtInputNumber } from '../../utils/numFmt';
-import InfrastructureAttachmentTab, {
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import {
-  colors,
-  fontWeightBold,
-  fontSizeMd,
-  radiusPill,
-  spaceSm,
-  spaceFormField,
-} from '../../themetokenchk';
+import { spaceFormField } from '../../themetokenchk';
+
+import { createAssetDepreciationFormSection } from '../../components/shared/asset-value';
 import {
   DynamicFormSidebar,
   FormFieldType,
-  type FormTabConfig,
   type FormSidebarAction,
+  type FormTabConfig,
 } from '../../components/shared/dynamic-form-sidebar';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 
 export type FormValues = Omit<
   TransmissionAssetPayload,
@@ -60,7 +54,6 @@ const ORIGINS = [
   'Khác',
 ];
 const UNITS = ['Bộ', 'Cái', 'Hệ thống', 'Tuyến', 'Chiếc'];
-const DISPOSAL_METHODS = ['Bán', 'Thanh lý', 'Điều chuyển', 'Tiêu hủy', 'Khác'];
 
 export interface TransmissionAssetFormProps {
   open: boolean;
@@ -103,9 +96,6 @@ export default function TransmissionAssetForm({
       })),
     [transmissions],
   );
-  const watchedOriginalValue = Form.useWatch('originalValue', form);
-  const watchedAccumulatedDepreciation = Form.useWatch('accumulatedDepreciation', form);
-  const watchedDepreciationMonths = Form.useWatch('depreciationMonths', form);
 
   const formTabs = useMemo<FormTabConfig<FormValues>[]>(() => {
     return [
@@ -157,11 +147,9 @@ export default function TransmissionAssetForm({
                 name: 'assetType',
                 label: 'Loại tài sản',
                 type: FormFieldType.Select,
-                initialValue: 'Tài sản HT truyền dẫn',
                 placeholder: 'Chọn loại tài sản',
-                options: [
-                  { value: 'Tài sản HT truyền dẫn', label: 'Tài sản HT truyền dẫn' },
-                ],
+                options: MARITIME_ASSET_TYPE_OPTIONS,
+                allowClear: true,
               },
               {
                 name: 'assetCode',
@@ -325,164 +313,7 @@ export default function TransmissionAssetForm({
         key: 'details',
         label: 'Thông tin chi tiết',
         sections: [
-          {
-            key: 'depreciation_info',
-            title: 'Giá trị tài sản & Khấu hao hao mòn',
-            icon: <SlidersOutlined />,
-            fields: [
-              {
-                name: 'declarationDate',
-                label: 'Ngày kê khai tài sản',
-                type: FormFieldType.Date,
-              },
-              {
-                name: 'originalValue',
-                label: 'Nguyên giá (VNĐ)',
-                type: FormFieldType.Number,
-                min: 0,
-                placeholder: 'Nhập nguyên giá',
-              },
-              {
-                name: 'depreciationRate',
-                label: 'Tỷ lệ hao mòn/khấu hao (%)',
-                type: FormFieldType.Number,
-                min: 0,
-                max: 100,
-                placeholder: 'Nhập tỷ lệ (%)',
-              },
-              {
-                name: 'remainingValue',
-                label: 'Giá trị còn lại (VNĐ)',
-                type: FormFieldType.Custom,
-                customRender: () => {
-                  let original = 0;
-                  let accumulated = 0;
-                  if (watchedOriginalValue != null) original = Number(watchedOriginalValue);
-                  if (watchedAccumulatedDepreciation != null) {
-                    accumulated = Number(watchedAccumulatedDepreciation);
-                  }
-                  const remaining = Math.max(0, Number(original) - Number(accumulated));
-                  return (
-                    <div>
-                      <span
-                        style={{
-                          display: 'block',
-                          marginBottom: spaceSm,
-                          color: colors.sidebarBg,
-                          fontWeight: fontWeightBold,
-                          fontSize: fontSizeMd,
-                        }}
-                      >
-                        Giá trị còn lại (tự tính)
-                      </span>
-                      <InputNumber
-                        value={remaining}
-                        disabled
-                        formatter={(val) => fmtInputNumber(val)}
-                        style={{
-                          width: '100%',
-                          height: 40,
-                          borderRadius: radiusPill,
-                          background: '#f8fafc',
-                          fontWeight: fontWeightBold,
-                        }}
-                        addonAfter="VNĐ"
-                      />
-                    </div>
-                  );
-                },
-              },
-              {
-                name: 'valueUnit',
-                label: 'Đơn vị tính giá trị',
-                type: FormFieldType.Select,
-                disabled: true,
-                initialValue: 'VNĐ',
-                options: [{ value: 'VNĐ', label: 'VNĐ' }],
-              },
-              {
-                name: 'assignmentDecisionNumber',
-                label: 'Số quyết định giao',
-                type: FormFieldType.Text,
-                placeholder: 'Nhập số quyết định giao',
-              },
-              {
-                name: 'depreciationStartDate',
-                label: 'Ngày tính khấu hao',
-                type: FormFieldType.Date,
-              },
-              {
-                name: 'depreciationMonths',
-                label: 'Số tháng tính khấu hao',
-                type: FormFieldType.Number,
-                min: 0,
-                placeholder: 'Nhập số tháng',
-              },
-              {
-                name: 'depreciationEndDate',
-                label: 'Ngày hết khấu hao',
-                type: FormFieldType.Date,
-              },
-              {
-                name: 'accumulatedDepreciation',
-                label: 'Khấu hao lũy kế (VNĐ)',
-                type: FormFieldType.Number,
-                min: 0,
-                placeholder: 'Nhập khấu hao lũy kế',
-              },
-              {
-                name: 'monthlyDepreciation',
-                label: 'Khấu hao tháng (VNĐ)',
-                type: FormFieldType.Custom,
-                customRender: () => {
-                  let original = 0;
-                  let months = 0;
-                  if (watchedOriginalValue != null) original = Number(watchedOriginalValue);
-                  if (watchedDepreciationMonths != null) {
-                    months = Number(watchedDepreciationMonths);
-                  }
-                  const monthly =
-                    months && Number(months) > 0
-                      ? Math.round(Number(original) / Number(months))
-                      : 0;
-                  return (
-                    <div>
-                      <span
-                        style={{
-                          display: 'block',
-                          marginBottom: spaceSm,
-                          color: colors.sidebarBg,
-                          fontWeight: fontWeightBold,
-                          fontSize: fontSizeMd,
-                        }}
-                      >
-                        Khấu hao tháng (tự tính)
-                      </span>
-                      <InputNumber
-                        value={monthly}
-                        disabled
-                        formatter={(val) => fmtInputNumber(val)}
-                        style={{
-                          width: '100%',
-                          height: 40,
-                          borderRadius: radiusPill,
-                          background: '#f8fafc',
-                        }}
-                        addonAfter="VNĐ"
-                      />
-                    </div>
-                  );
-                },
-              },
-              {
-                name: 'disposalMethod',
-                label: 'Hình thức xử lý tài sản',
-                type: FormFieldType.Select,
-                placeholder: 'Chọn hình thức xử lý',
-                options: DISPOSAL_METHODS.map((d) => ({ value: d, label: d })),
-              },
-            ],
-          },
+          createAssetDepreciationFormSection<FormValues>(),
         ],
       },
     ];
@@ -493,9 +324,6 @@ export default function TransmissionAssetForm({
     onUploadAttachment,
     onDeleteAttachment,
     onDownloadAttachment,
-    watchedAccumulatedDepreciation,
-    watchedDepreciationMonths,
-    watchedOriginalValue,
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {

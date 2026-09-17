@@ -412,6 +412,10 @@ export default function PortDetailContent({
                     {
                       label: 'Trạng thái',
                       value: (() => {
+                        const isDeleted = Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy);
+                        if (isDeleted) {
+                          return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+                        }
                         const b = trangThaiPheDuyetBadge(selectedRecord.approvalStatus || '');
                         let c = textTertiary;
                         if (b.color === 'green') c = statusOperational;

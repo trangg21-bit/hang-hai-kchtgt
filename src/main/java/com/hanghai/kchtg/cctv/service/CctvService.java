@@ -28,6 +28,8 @@ import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -91,8 +93,20 @@ public class CctvService {
    */
   public String generateCctvCode() {
     // MAX theo SỐ trên mọi bản ghi (kể cả đã xóa mềm) — tránh trùng mã đang chiếm unique index
-    int sequence = cctvRepository.findMaxDeviceCodeSequence().orElse(0) + 1;
-    return String.format("CCTV-%06d", sequence);
+    int sequence = 0;
+    try {
+      sequence = cctvRepository.findMaxDeviceCodeSequence().orElse(0);
+    } catch (Exception e) {
+      log.warn("Lỗi khi truy vấn max sequence thiết bị CCTV, fallback: {}", e.getMessage());
+      sequence = (int) cctvRepository.count();
+    }
+    sequence++;
+    String code = String.format("CCTV-%06d", sequence);
+    while (cctvRepository.existsDeviceCodeAnyState(code)) {
+      sequence++;
+      code = String.format("CCTV-%06d", sequence);
+    }
+    return code;
   }
 
   /**
@@ -363,10 +377,10 @@ public class CctvService {
       }
     }
 
-    if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
       previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
     }
-    if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+    if (request.getGeometryType() != null && !EntityUpdateUtils.areEqual(request.getGeometryType().name(), oldGeometryType)) {
       previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
     }
 
@@ -393,10 +407,19 @@ public class CctvService {
     if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
       // T12 — "Lưu và phê duyệt": request có approvalStatus=APPROVED thì giữ trạng thái
       // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
-      // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
+      // người duyệt/ngày duyệt; ngoài ra phải duyệt lại.
       if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.recordSaveAndApprove(entity, InfrastructureType.CCTV,
-            "Cập nhật hồ sơ đã duyệt", currentUserId);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        if (entity.getApproverLevel1() == null) {
+          entity.setApproverLevel1(currentUserId);
+          entity.setApprovedDateLevel1(LocalDateTime.now());
+          entity.setApprovalContentLevel1("Cấp Cục phê duyệt trực tiếp");
+        }
+        entity.setApproverLevel2(currentUserId);
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        if (entity.getApprovalContentLevel2() == null || entity.getApprovalContentLevel2().isBlank()) {
+          entity.setApprovalContentLevel2("Lưu và phê duyệt");
+        }
         approvedEdit = true;
       } else {
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
@@ -406,13 +429,12 @@ public class CctvService {
     Cctv saved = cctvRepository.save(entity);
 
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
-    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") — bản nháp/lưu tạm,
-    // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
-    if (approvedEdit) {
+    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
+    // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
+    if (approvedEdit && !previousValues.isEmpty()) {
       changeHistoryService.recordChanges("CCTV", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
       LocalDateTime now = LocalDateTime.now();
-      if (!previousValues.isEmpty()) {
-        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+      for (Map.Entry<String, String> entry : previousValues.entrySet()) {
           String field = entry.getKey();
           String fieldName = getFieldDisplayName(field);
           String oldVal = entry.getValue();
@@ -425,6 +447,11 @@ public class CctvService {
             rawNew = getEntityFieldValue(saved, field);
           }
           String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+          String oldDisp = formatDisplayValue(field, oldVal);
+          String newDisp = formatDisplayValue(field, newVal);
+          if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
+            continue;
+          }
           historyRepository.save(InfrastructureHistory.builder()
               .refId(saved.getId())
               .refType(InfrastructureType.CCTV)
@@ -433,21 +460,11 @@ public class CctvService {
               .approvedBy(currentUserId)
               .approvedDate(now)
               .changedField(fieldName)
-              .previousValue(formatDisplayValue(field, oldVal))
-              .newValue(formatDisplayValue(field, newVal))
+              .previousValue(oldDisp)
+              .newValue(newDisp)
               .build());
         }
-      } else {
-        historyRepository.save(InfrastructureHistory.builder()
-            .refId(saved.getId())
-            .refType(InfrastructureType.CCTV)
-            .approvalLevel(ApprovalLevel.LEVEL_2)
-            .status(InfrastructureHistoryStatus.UPDATED)
-            .approvedBy(currentUserId)
-            .approvedDate(now)
-            .build());
       }
-    }
 
     return toResponse(saved);
   }
@@ -596,8 +613,9 @@ public class CctvService {
 
   private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
       Map<String, String> previousValues) {
-    if (newVal == null) return;
-    if (Objects.equals(newVal, oldVal)) return;
+    if (newVal == null || EntityUpdateUtils.areEqual(oldVal, newVal)) {
+      return;
+    }
     previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
     setter.accept(newVal);
   }
@@ -1037,18 +1055,24 @@ public class CctvService {
       // ignore file deletion failure; the DB record is still removed
     }
     attachmentRepository.delete(attachment);
-    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) — mirror /vts-operation-center.
-    historyRepository.save(InfrastructureHistory.builder()
-        .refId(entityId)
-        .refType(InfrastructureType.CCTV)
-        .approvalLevel(ApprovalLevel.LEVEL_0)
-        .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
-        .approvedBy(userId)
-        .approvedDate(LocalDateTime.now())
-        .changedField("Tài liệu đính kèm")
-        .previousValue(attachment.getFileName())
-        .newValue("—")
-        .build());
+    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
+    Cctv entity = cctvRepository.findById(entityId).orElse(null);
+    boolean wasApproved = entity != null
+        && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
+            || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
+    if (wasApproved) {
+      historyRepository.save(InfrastructureHistory.builder()
+          .refId(entityId)
+          .refType(InfrastructureType.CCTV)
+          .approvalLevel(ApprovalLevel.LEVEL_0)
+          .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+          .approvedBy(userId)
+          .approvedDate(LocalDateTime.now())
+          .changedField("Tài liệu đính kèm")
+          .previousValue(attachment.getFileName())
+          .newValue("—")
+          .build());
+    }
   }
 
   private AttachmentDto toAttachmentDto(Attachment entity) {

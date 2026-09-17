@@ -67,7 +67,7 @@ import { FilterOrgUnitTreeSelect, useOrgUnitFilter } from '../../components/org-
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { approvalStatusLabel } from '../../components/shared/ApprovalStatusBadge';
 import { formatHistoryNumber } from '../../utils/numFmt';
-import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash } from '../../utils/changeHistoryRenderer';
+import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
@@ -295,7 +295,7 @@ export default function BuoyListPage() {
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   const [activeTab, setActiveTab] = useState('all');
-  const [sortField, setSortField] = useState<string>('updatedAt');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
@@ -594,9 +594,14 @@ export default function BuoyListPage() {
     setPage(1);
   }, []);
 
-  const handleSortChange = useCallback((key: string, order: 'asc' | 'desc') => {
-    setSortField(key);
-    setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+  const handleSortChange = useCallback((key: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(key);
+      setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+    }
     setPage(1);
   }, []);
 
@@ -1109,7 +1114,7 @@ export default function BuoyListPage() {
 
   const renderBuoyHistoryTimeline = (records: ChangeHistory[]) => {
     return renderStandardHistoryCards({
-      records,
+      records: records as unknown as RawHistoryRecord[],
       fieldLabels: (fn) => historyFieldLabel(fn),
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -1132,19 +1137,19 @@ export default function BuoyListPage() {
         }
         return isBlankOrDash(resolved) ? '' : resolved;
       },
-      resolveUnitName: (rec) => {
-        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+      resolveUnitName: (rec: RawHistoryRecord): string => {
+        const uId = (historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId) as string | undefined;
         const orgName = uId ? orgMap.get(uId) : undefined;
-        return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
+        return String((orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '');
       },
-      resolveActorName: (actor) => actorName(actor),
+      resolveActorName: (actor: string): string => actorName(actor),
       emptyMessage: historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
   };
 
   const historyUpdateCount = useMemo(() => {
     return countStandardHistoryCards({
-      records: filteredHistory,
+      records: filteredHistory as unknown as RawHistoryRecord[],
       fieldLabels: (fn) => historyFieldLabel(fn),
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -1167,12 +1172,12 @@ export default function BuoyListPage() {
         }
         return isBlankOrDash(resolved) ? '' : resolved;
       },
-      resolveUnitName: (rec) => {
-        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+      resolveUnitName: (rec: RawHistoryRecord): string => {
+        const uId = (historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId) as string | undefined;
         const orgName = uId ? orgMap.get(uId) : undefined;
-        return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
+        return String((orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '');
       },
-      resolveActorName: (actor) => actorName(actor),
+      resolveActorName: (actor: string): string => actorName(actor),
     });
   }, [filteredHistory, translateBuoyVal, orgMap, symbolMap, symbolImageMap, historyRecord, actorName]);
 
@@ -1799,7 +1804,7 @@ export default function BuoyListPage() {
         <DataTable
           columns={columns}
           dataSource={(() => {
-            if (!sortField) return dataSource;
+            if (!sortField || !sortOrder) return dataSource;
             if (sortField === 'sequenceNo') {
               const arr = [...dataSource];
               return sortOrder === 'descend' ? arr.reverse() : arr;

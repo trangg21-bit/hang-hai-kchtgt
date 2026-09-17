@@ -50,16 +50,22 @@ public class DikeRevetment extends BaseApprovableEntity {
     @Column(name = "operating_unit_id")
     private UUID operatingUnitId;
 
-    @Column(name = "length")
+    @Column(name = "length", precision = 24, scale = 4)
     private BigDecimal length;
 
-    @Column(name = "crest_elevation")
+    @Column(name = "crest_elevation", precision = 24, scale = 4)
     private BigDecimal crestElevation;
 
     @Column(name = "commissioning_date")
     private LocalDate commissioningDate;
 
-    @Column(name = "height")
+    @Column(name = "construction_date")
+    private LocalDate constructionDate;
+
+    @Column(name = "last_maintenance_year")
+    private Integer lastMaintenanceYear;
+
+    @Column(name = "height", precision = 24, scale = 4)
     private BigDecimal height;
 
     @Column(name = "surface_material", length = 100)

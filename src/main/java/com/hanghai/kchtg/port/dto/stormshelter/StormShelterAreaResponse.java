@@ -74,6 +74,8 @@ public class StormShelterAreaResponse {
     private UUID updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    // ── Soft delete audit fields ──
     private LocalDateTime deletedAt;
     private UUID deletedBy;
 }

@@ -373,16 +373,26 @@ public class PortService {
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId,
-                                          String portCode, String portName, String province,
-                                          String operationalStatus, String approvalStatus,
-                                          Integer portGroup, Integer portClass,
-                                          String updatedFrom, String updatedTo,
-                                          String search) {
+                                      String portCode, String portName, String province,
+                                      String operationalStatus, String approvalStatus,
+                                      Integer portGroup, Integer portClass,
+                                      String updatedFrom, String updatedTo,
+                                      String search) {
+        return findAll(page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, portGroup, portClass, updatedFrom, updatedTo, search, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PortResponse> findAll(int page, int size, UUID orgUnitId,
+                                      String portCode, String portName, String province,
+                                      String operationalStatus, String approvalStatus,
+                                      Integer portGroup, Integer portClass,
+                                      String updatedFrom, String updatedTo,
+                                      String search, Boolean isDeleted) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize,
                 Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
@@ -404,6 +414,9 @@ public class PortService {
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả cảng biển của toàn bộ đơn vị con (hậu duệ)
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
+        if (Boolean.TRUE.equals(isDeleted)) {
+            approvalEnum = ApprovalStatus.ARCHIVED;
+        }
         Page<Port> results = portRepository.searchPorts(
                 includeAll, orgUnitIds, portCode, portName, province, statusEnum, approvalEnum, portGroup, portClass, updatedFromDt, updatedToDt, search, pageable);
 
@@ -449,6 +462,9 @@ public class PortService {
         FieldWriteGuard.validateObject(request);
         Port entity = portRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể chỉnh sửa cảng biển đã bị xóa");
+        }
 
         String coordinates = request.getCoordinates();
         // Derive WKT from coordinateList if no top-level coordinates provided

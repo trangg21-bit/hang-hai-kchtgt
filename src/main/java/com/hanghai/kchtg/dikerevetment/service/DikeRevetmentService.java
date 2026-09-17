@@ -7,6 +7,7 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
@@ -134,6 +135,8 @@ public class DikeRevetmentService {
                 .length(req.getLength())
                 .crestElevation(req.getCrestElevation())
                 .commissioningDate(req.getCommissioningDate())
+                .constructionDate(req.getConstructionDate())
+                .lastMaintenanceYear(req.getLastMaintenanceYear())
                 .height(req.getHeight())
                 .surfaceMaterial(req.getSurfaceMaterial())
                 .status(req.getStatus() != null ? req.getStatus() : "1")
@@ -349,6 +352,8 @@ public class DikeRevetmentService {
         applyIfChanged("height", dr.getHeight(), req.getHeight(), dr::setHeight, previousValues);
         applyIfChanged("crestElevation", dr.getCrestElevation(), req.getCrestElevation(), dr::setCrestElevation, previousValues);
         applyIfChanged("commissioningDate", dr.getCommissioningDate(), req.getCommissioningDate(), dr::setCommissioningDate, previousValues);
+        applyIfChanged("constructionDate", dr.getConstructionDate(), req.getConstructionDate(), dr::setConstructionDate, previousValues);
+        applyIfChanged("lastMaintenanceYear", dr.getLastMaintenanceYear(), req.getLastMaintenanceYear(), dr::setLastMaintenanceYear, previousValues);
         applyIfChanged("surfaceMaterial", dr.getSurfaceMaterial(), req.getSurfaceMaterial(), dr::setSurfaceMaterial, previousValues);
         applyIfChanged("status", dr.getStatus(), req.getStatus(), dr::setStatus, previousValues);
         applyIfChanged("note", dr.getNote(), req.getNote(), dr::setNote, previousValues);
@@ -389,8 +394,7 @@ public class DikeRevetmentService {
         }
 
         // Chuẩn /vts-operation-center: mỗi trường thay đổi = 1 dòng history (tên trường + giá trị cũ/mới)
-        if (wasApproved) {
-            if (!previousValues.isEmpty()) {
+        if (wasApproved && !previousValues.isEmpty()) {
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {
                 String field = entry.getKey();
                 String fieldName = getFieldDisplayName(field);
@@ -413,16 +417,6 @@ public class DikeRevetmentService {
                         .changedField(fieldName)
                         .previousValue(formatDisplayValue(field, oldVal))
                         .newValue(formatDisplayValue(field, newVal))
-                        .build());
-            }
-            } else {
-                // Fallback: luôn ghi ít nhất 1 dòng khi sửa hồ sơ Đã duyệt (kể cả khi không bắt được diff)
-                approvalHistoryRepo.save(InfrastructureHistory.builder()
-                        .refId(saved.getId())
-                        .refType(InfrastructureType.DIKE_REVETMENT)
-                        .approvalLevel(ApprovalLevel.LEVEL_2)
-                        .status(InfrastructureHistoryStatus.UPDATED)
-                        .approvedBy(userId)
                         .build());
             }
         }
@@ -718,7 +712,8 @@ public class DikeRevetmentService {
             if ("2".equals(rawValue)) return "VN-2000";
             return rawValue;
         }
-        if ("commissioningDate".equals(field) || "Thời điểm đưa vào khai thác".equals(field)) {
+        if ("commissioningDate".equals(field) || "Thời điểm đưa vào khai thác".equals(field)
+                || "constructionDate".equals(field) || "Thời điểm xây dựng".equals(field)) {
             try {
                 if (rawValue.matches("^\\d{4}-\\d{2}-\\d{2}$")) {
                     String[] parts = rawValue.split("-");
@@ -746,7 +741,7 @@ public class DikeRevetmentService {
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
             Map<String, String> previousValues) {
         if (newVal == null) return; // null = không gửi trường này khi update
-        if (Objects.equals(newVal, oldVal)) return; // giá trị không đổi
+        if (EntityUpdateUtils.areEqual(oldVal, newVal)) return; // giá trị không đổi
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
     }
@@ -764,6 +759,8 @@ public class DikeRevetmentService {
         if (DikeRevetment.Fields.height.equals(field)) return "Chiều cao (m)";
         if (DikeRevetment.Fields.crestElevation.equals(field)) return "Cao trình đỉnh (m)";
         if (DikeRevetment.Fields.commissioningDate.equals(field)) return "Thời điểm đưa vào khai thác";
+        if (DikeRevetment.Fields.constructionDate.equals(field)) return "Thời điểm xây dựng";
+        if (DikeRevetment.Fields.lastMaintenanceYear.equals(field)) return "Năm bảo trì gần nhất";
         if (DikeRevetment.Fields.surfaceMaterial.equals(field)) return "Vật liệu bề mặt";
         if (DikeRevetment.Fields.status.equals(field)) return "Tình trạng";
         if (DikeRevetment.Fields.note.equals(field)) return "Ghi chú";
@@ -787,6 +784,8 @@ public class DikeRevetmentService {
         if (DikeRevetment.Fields.height.equals(field)) return entity.getHeight();
         if (DikeRevetment.Fields.crestElevation.equals(field)) return entity.getCrestElevation();
         if (DikeRevetment.Fields.commissioningDate.equals(field)) return entity.getCommissioningDate();
+        if (DikeRevetment.Fields.constructionDate.equals(field)) return entity.getConstructionDate();
+        if (DikeRevetment.Fields.lastMaintenanceYear.equals(field)) return entity.getLastMaintenanceYear();
         if (DikeRevetment.Fields.surfaceMaterial.equals(field)) return entity.getSurfaceMaterial();
         if (DikeRevetment.Fields.status.equals(field)) return entity.getStatus();
         if (DikeRevetment.Fields.note.equals(field)) return entity.getNote();
@@ -900,7 +899,9 @@ public class DikeRevetmentService {
         } catch (IOException ignored) {
         }
         attachmentRepository.delete(att);
-        if (approvalHistoryRepo != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (approvalHistoryRepo != null && wasApproved) {
             approvalHistoryRepo.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.DIKE_REVETMENT)
@@ -1001,6 +1002,8 @@ public class DikeRevetmentService {
                 .length(dr.getLength())
                 .crestElevation(dr.getCrestElevation())
                 .commissioningDate(dr.getCommissioningDate())
+                .constructionDate(dr.getConstructionDate())
+                .lastMaintenanceYear(dr.getLastMaintenanceYear())
                 .height(dr.getHeight())
                 .surfaceMaterial(dr.getSurfaceMaterial())
                 .status(dr.getStatus())

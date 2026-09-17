@@ -210,4 +210,42 @@ class ScadaServiceTest {
                 () -> service.restore(ID));
         verify(scadaRepository, never()).restoreScadaById(any());
     }
+
+    @Test
+    void generateScadaCode_withExistingMax_incrementsCorrectly() {
+        when(scadaRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(46));
+        when(scadaRepository.existsDeviceCodeAnyState("SCA-000047")).thenReturn(false);
+
+        String code = service.generateScadaCode();
+        assertEquals("SCA-000047", code);
+    }
+
+    @Test
+    void generateScadaCode_withEmptyDatabase_generatesFirstCode() {
+        when(scadaRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.empty());
+        when(scadaRepository.existsDeviceCodeAnyState("SCA-000001")).thenReturn(false);
+
+        String code = service.generateScadaCode();
+        assertEquals("SCA-000001", code);
+    }
+
+    @Test
+    void generateScadaCode_whenQueryThrowsException_fallsBackGracefully() {
+        when(scadaRepository.findMaxDeviceCodeSequence()).thenThrow(new RuntimeException("SQL syntax error"));
+        when(scadaRepository.count()).thenReturn(10L);
+        when(scadaRepository.existsDeviceCodeAnyState("SCA-000011")).thenReturn(false);
+
+        String code = service.generateScadaCode();
+        assertEquals("SCA-000011", code);
+    }
+
+    @Test
+    void generateScadaCode_whenCodeExists_skipsToNextAvailable() {
+        when(scadaRepository.findMaxDeviceCodeSequence()).thenReturn(Optional.of(5));
+        when(scadaRepository.existsDeviceCodeAnyState("SCA-000006")).thenReturn(true);
+        when(scadaRepository.existsDeviceCodeAnyState("SCA-000007")).thenReturn(false);
+
+        String code = service.generateScadaCode();
+        assertEquals("SCA-000007", code);
+    }
 }

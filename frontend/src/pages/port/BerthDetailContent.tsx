@@ -567,11 +567,16 @@ export default function BerthDetailContent({
                           r.approvalStatus === 'PROPOSED' ||
                           approvalStyleMap[r.approvalStatus || '']?.label === 'Chờ phê duyệt cấp Cảng vụ/Chi cục' ||
                           approvalStyleMap[r.approvalStatus || '']?.label?.toLowerCase().includes('chi cục');
+                        const isDeleted = Boolean(r.deletedAt || r.deletedBy);
                         return (
                           <div className={`chk-detail-row chk-detail-row--full ${isPendingPortAuthority ? 'chk-detail-row--compact' : ''}`}>
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
-                              {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                              {isDeleted ? (
+                                <span style={statusBadgeStyle(statusCritical)}>
+                                  Đã xóa
+                                </span>
+                              ) : r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
                                 <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
                                   {approvalStyleMap[r.approvalStatus].label}
                                 </span>

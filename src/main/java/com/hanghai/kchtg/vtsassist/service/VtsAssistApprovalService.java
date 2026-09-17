@@ -8,7 +8,10 @@ import com.hanghai.kchtg.vtsassist.entity.VtsAssist;
 import com.hanghai.kchtg.vtsassist.repository.VtsAssistRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import java.math.BigDecimal;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
@@ -207,8 +210,10 @@ public class VtsAssistApprovalService {
               orgUnitName = orgUnitCacheService.getName(parent.getOrgUnitId());
             }
           }
-          if (orgUnitName == null) {
-            orgUnitName = "Cục Hàng hải Việt Nam";
+          String prevDisp = formatDisplayValue(h.getChangedField(), h.getPreviousValue());
+          String newDisp = formatDisplayValue(h.getChangedField(), h.getNewValue());
+          if (h.getStatus() == InfrastructureHistoryStatus.UPDATED && EntityUpdateUtils.areEqual(prevDisp, newDisp)) {
+            return null;
           }
           return HistoryEntry.builder()
               .id(h.getId())
@@ -218,10 +223,11 @@ public class VtsAssistApprovalService {
               .orgUnitName(orgUnitName)
               .approvedDate(h.getApprovedDate())
               .changedField(h.getChangedField())
-              .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
-              .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
+              .previousValue(prevDisp)
+              .newValue(newDisp)
               .build();
         })
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 
@@ -266,6 +272,18 @@ public class VtsAssistApprovalService {
   public String formatDisplayValue(String field, String rawValue) {
     if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
       return "Chưa có";
+    }
+    if ("quantity".equals(field) || "Số lượng".equals(field)
+        || "yearOfUse".equals(field) || "Năm đưa vào sử dụng".equals(field)) {
+      try {
+        String c = rawValue.replace(",", "").trim();
+        if (c.matches("^-?\\d+(\\.\\d+)?$")) {
+          BigDecimal bd = new BigDecimal(c).stripTrailingZeros();
+          return bd.scale() < 0 ? bd.setScale(0).toPlainString() : bd.toPlainString();
+        }
+      } catch (Exception ignored) {
+      }
+      return rawValue;
     }
     if ("mapSymbolId".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
       try {
@@ -388,7 +406,7 @@ public class VtsAssistApprovalService {
       if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
         return "Chưa có";
       }
-      return rawValue.trim();
+      return rawValue.trim().replaceAll("\\s+", " ").replace(" (", "(");
     }
     return rawValue;
   }

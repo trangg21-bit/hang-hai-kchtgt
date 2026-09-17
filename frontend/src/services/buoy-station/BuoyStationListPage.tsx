@@ -242,7 +242,7 @@ export default function BuoyStationListPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string>('updatedAt');
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [allData, setAllData] = useState<BuoyStationResponse[]>([]);
   const [dataSource, setDataSource] = useState<BuoyStationResponse[]>([]);
@@ -444,7 +444,7 @@ export default function BuoyStationListPage() {
   // ── Client-side sort (tham khảo cơ chế sort của BuoyListPage) ─────
   const sortedAll = useMemo(() => {
     const arr = [...allData];
-    if (!sortField) return arr;
+    if (!sortField || !sortOrder) return arr;
     return arr.sort((a: any, b: any) => {
       let aVal: unknown; let bVal: unknown;
       if (sortField === 'classifications') {
@@ -499,9 +499,14 @@ export default function BuoyStationListPage() {
 
   useEffect(() => { setDataSource(sortedAll.slice((page - 1) * pageSize, page * pageSize)); }, [sortedAll, page, pageSize]);
 
-  const handleSortChange = useCallback((key: string, order: 'asc' | 'desc') => {
-    setSortField(key);
-    setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+  const handleSortChange = useCallback((key: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(null);
+      setSortOrder(null);
+    } else {
+      setSortField(key);
+      setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+    }
     setPage(1);
   }, []);
 

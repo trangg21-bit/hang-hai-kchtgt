@@ -185,7 +185,7 @@ export default function VtsOperationCenterList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
@@ -347,7 +347,7 @@ export default function VtsOperationCenterList() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         sortBy: sortField,
-        sortDir: sortField ? sortDirection.toUpperCase() : undefined,
+        sortDir: sortField && sortDirection ? sortDirection.toUpperCase() : undefined,
         includeCounts: shouldIncludeCounts,
       };
 
@@ -386,14 +386,19 @@ export default function VtsOperationCenterList() {
     };
   }, [fetchData, isOptionsReady]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
-    (sortField === key ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
+    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
 
   const serverSideSorter = () => 0;
 

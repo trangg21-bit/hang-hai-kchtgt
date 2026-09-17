@@ -55,17 +55,17 @@ Tên dưới đây lấy từ enum VMD. Mã thường ánh xạ **F = số VMD �
 
 Mỗi mã có template `template_export/<mã VMD>.xlsx`. “Default” là cờ metadata nguồn; cả các mã có cờ Không vẫn phải kiểm tra call path lấy dữ liệu mặc định/kỳ trước trong API/SQL. Cờ nhập/lưu không có nghĩa mọi mã đều có cùng bộ thao tác tạo/sửa/xóa.
 
-### 3.1. BCC — Thống kê chung (7 mã)
+### 3.1. BCC — Thống kê chung (7 mã) [HOÀN THÀNH]
 
-| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default |
-| --- | --- | --- | --- | --- |
-| `BCC_156` | `F-141` | Báo cáo thống kê tăng giảm tài sản | Không | Không |
-| `BCC_157` | `F-142` | Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng | Có | Không |
-| `BCC_158` | `F-143` | Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải | Không | Không |
-| `BCC_159` | `F-144` | Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải | Không | Không |
-| `BCC_160` | `F-145` | Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải | Không | Không |
-| `BCC_161` | `F-146` | Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải | Không | Không |
-| `BCC_162` | `F-147` | Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý | Không | Không |
+| Mã VMD | Mã hh.kcht | Tên báo cáo | Nhập/lưu | Default | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| `BCC_156` | `F-141` | Báo cáo thống kê tăng giảm tài sản | Không | Không | Hoàn thành |
+| `BCC_157` | `F-142` | Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng | Có | Không | Hoàn thành |
+| `BCC_158` | `F-143` | Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải | Không | Không | Hoàn thành |
+| `BCC_159` | `F-144` | Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải | Không | Không | Hoàn thành |
+| `BCC_160` | `F-145` | Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải | Không | Không | Hoàn thành |
+| `BCC_161` | `F-146` | Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải | Không | Không | Hoàn thành |
+| `BCC_162` | `F-147` | Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý | Không | Không | Hoàn thành |
 
 ### 3.2. BCKCHT — Kết cấu hạ tầng (13 mã)
 

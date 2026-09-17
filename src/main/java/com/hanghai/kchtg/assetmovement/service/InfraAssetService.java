@@ -275,6 +275,27 @@ public class InfraAssetService {
             recordFieldChangeIfDifferent(id, refType, currentUserId, now, "ttxlttStationId", oldStation, newStation);
         } else if (entity.getAssetType() == InfraAssetType.DRY_PORT) {
             recordFieldChangeIfDifferent(id, refType, currentUserId, now, "dryPortId", entity.getDryPortId(), request.getDryPortId());
+        } else if (entity.getAssetType() == InfraAssetType.PORT_TERMINAL) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "berthId", entity.getBerthId(), request.getBerthId());
+        } else if (entity.getAssetType() == InfraAssetType.ANCHORAGE) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "anchorageId", entity.getAnchorageId(), request.getAnchorageId());
+        } else if (entity.getAssetType() == InfraAssetType.LIGHTHOUSE) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "beaconStationId", entity.getBeaconStationId(), request.getBeaconStationId());
+        } else if (entity.getAssetType() == InfraAssetType.DIKE_REVETMENT) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "dikeRevetmentId", entity.getDikeRevetmentId(), request.getDikeRevetmentId());
+        } else if (entity.getAssetType() == InfraAssetType.BUOY) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "buoyId", entity.getBuoyId(), request.getBuoyId());
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "buoyStationId", entity.getBuoyStationId(), request.getBuoyStationId());
+        } else if (entity.getAssetType() == InfraAssetType.NAVIGATION_CHANNEL) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "navigationChannelId", entity.getNavigationChannelId(), request.getNavigationChannelId());
+        } else if (entity.getAssetType() == InfraAssetType.TRANSFER_AREA) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "transferAreaId", entity.getTransferAreaId(), request.getTransferAreaId());
+        } else if (entity.getAssetType() == InfraAssetType.STORM_SHELTER) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "stormShelterId", entity.getStormShelterId(), request.getStormShelterId());
+        } else if (entity.getAssetType() == InfraAssetType.BUOY_BERTH) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "buoyBerthId", entity.getBuoyBerthId(), request.getBuoyBerthId());
+        } else if (entity.getAssetType() == InfraAssetType.PIER) {
+            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "pierId", entity.getPierId(), request.getPierId());
         } else {
             recordFieldChangeIfDifferent(id, refType, currentUserId, now, "stationId", entity.getStationId(), request.getStationId());
         }
@@ -619,7 +640,20 @@ public class InfraAssetService {
         repository.save(asset);
 
         InfrastructureType refType = mapAssetTypeToInfrastructureType(asset.getAssetType());
-        recordFieldChangeIfDifferent(assetId, refType, userId, LocalDateTime.now(), "attachments", oldNames, mergedNames);
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(assetId)
+                .refType(refType)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                .approvedBy(userId)
+                .approvedDate(LocalDateTime.now())
+                .changedField("attachments")
+                .previousValue(oldNames)
+                .newValue(mergedNames)
+                .reason("Tải lên tệp đính kèm: " + files.stream()
+                        .map(f -> f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown")
+                        .collect(Collectors.joining(", ")))
+                .build());
 
         return allAttachments.stream().map(this::toAttachmentResponse).collect(Collectors.toList());
     }
@@ -661,7 +695,18 @@ public class InfraAssetService {
         repository.save(asset);
 
         InfrastructureType refType = mapAssetTypeToInfrastructureType(asset.getAssetType());
-        recordFieldChangeIfDifferent(assetId, refType, userId, LocalDateTime.now(), "attachments", oldNames, mergedNames);
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(assetId)
+                .refType(refType)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                .approvedBy(userId)
+                .approvedDate(LocalDateTime.now())
+                .changedField("attachments")
+                .previousValue(oldNames)
+                .newValue(mergedNames)
+                .reason("Xóa tệp đính kèm: " + attachment.getFileName())
+                .build());
     }
 
     private InfraAssetAttachmentResponse toAttachmentResponse(Attachment entity) {
@@ -705,11 +750,20 @@ public class InfraAssetService {
                     m.put("id", h.getId());
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
+                    m.put("refId", h.getRefId());
+                    m.put("refType", h.getRefType());
+                    m.put("status", h.getStatus() != null ? h.getStatus().name() : null);
                     m.put("fieldName", h.getChangedField());
+                    m.put("changedField", h.getChangedField());
                     m.put("oldValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
+                    m.put("previousValue", h.getPreviousValue() != null ? h.getPreviousValue() : "");
                     m.put("newValue", h.getNewValue() != null ? h.getNewValue() : "");
+                    m.put("value", h.getNewValue() != null ? h.getNewValue() : "");
                     m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("approvedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("changedAt", h.getApprovedDate());
+                    m.put("approvedDate", h.getApprovedDate());
+                    m.put("reason", h.getReason());
                     m.put("orgUnitId", entity.getOrgUnitId());
                     return m;
                 })

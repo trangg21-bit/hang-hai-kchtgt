@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.service;
 
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
@@ -9,6 +11,7 @@ import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -251,7 +254,7 @@ public class RadarStationService {
         if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
             newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
-        if (newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
+if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
             previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
         }
         if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeom)) {
@@ -284,39 +287,34 @@ public class RadarStationService {
             }
         }
 
-        if (wasApproved) {
-            if (!previousValues.isEmpty()) {
-                for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-                    String field = entry.getKey();
-                    String fieldName = getFieldDisplayName(field);
-                    String oldVal = entry.getValue() != null ? entry.getValue() : "";
-                    Object rawNew;
-                    if ("coordinates".equals(field)) {
-                        rawNew = newCoord;
-                    } else if ("geometryType".equals(field)) {
-                        rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
-                    } else {
-                        rawNew = getEntityFieldValue(saved, field);
-                    }
-                    String newVal = rawNew != null ? String.valueOf(rawNew) : null;
-                    historyRepository.save(InfrastructureHistory.builder()
-                            .refId(saved.getId())
-                            .refType(InfrastructureType.RADAR_STATION)
-                            .approvalLevel(ApprovalLevel.LEVEL_2)
-                            .status(InfrastructureHistoryStatus.UPDATED)
-                            .approvedBy(updatedBy)
-                            .changedField(fieldName)
-                            .previousValue(formatDisplayValue(field, oldVal))
-                            .newValue(formatDisplayValue(field, newVal))
-                            .build());
+        if (wasApproved && !previousValues.isEmpty()) {
+            for (Map.Entry<String, String> entry : previousValues.entrySet()) {
+                String field = entry.getKey();
+                String fieldName = getFieldDisplayName(field);
+                String oldVal = entry.getValue() != null ? entry.getValue() : "";
+                Object rawNew;
+                if ("coordinates".equals(field)) {
+                    rawNew = newCoord;
+                } else if ("geometryType".equals(field)) {
+                    rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
+                } else {
+                    rawNew = getEntityFieldValue(saved, field);
                 }
-            } else {
+                String newVal = rawNew != null ? String.valueOf(rawNew) : null;
+                String oldDisp = formatDisplayValue(field, oldVal);
+                String newDisp = formatDisplayValue(field, newVal);
+                if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
+                    continue;
+                }
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(saved.getId())
                         .refType(InfrastructureType.RADAR_STATION)
                         .approvalLevel(ApprovalLevel.LEVEL_2)
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(updatedBy)
+                        .changedField(fieldName)
+                        .previousValue(oldDisp)
+                        .newValue(newDisp)
                         .build());
             }
         }
@@ -327,7 +325,7 @@ public class RadarStationService {
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
             Map<String, String> previousValues) {
         if (newVal == null) return;
-        if (Objects.equals(newVal, oldVal)) return;
+        if (EntityUpdateUtils.areEqual(oldVal, newVal)) return;
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
     }
@@ -682,6 +680,20 @@ public class RadarStationService {
         if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
             return "Chưa có";
         }
+        if ("towerHeight".equals(field) || "Chiều cao tháp".equals(field) || "Chiều cao tháp radar (m)".equals(field)
+                || "radarRange".equals(field) || "Tầm phủ radar".equals(field) || "Tầm hiệu lực radar".equals(field)
+                || "emissionArea".equals(field) || "Diện tích phát xạ".equals(field)
+                || "quantity".equals(field) || "Số lượng".equals(field)) {
+            try {
+                String c = rawValue.replace(",", "").trim();
+                if (c.matches("^-?\\d+(\\.\\d+)?$")) {
+                    BigDecimal bd = new BigDecimal(c).stripTrailingZeros();
+                    return bd.scale() < 0 ? bd.setScale(0).toPlainString() : bd.toPlainString();
+                }
+            } catch (Exception ignored) {
+            }
+            return rawValue;
+        }
         if ("mapIcon".equals(field) || "Biểu tượng".equals(field) || "Biểu tượng bản đồ".equals(field) || "symbolId".equals(field)) {
             try {
                 UUID symId = UUID.fromString(rawValue);
@@ -792,7 +804,7 @@ public class RadarStationService {
             if (rawValue == null || rawValue.trim().isEmpty() || "Chưa có".equals(rawValue) || "null".equalsIgnoreCase(rawValue)) {
                 return "Chưa có";
             }
-            return rawValue.trim();
+            return rawValue.trim().replaceAll("\\s+", " ").replace(" (", "(");
         }
         return rawValue;
     }
@@ -811,6 +823,9 @@ public class RadarStationService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
+
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
         long existingCount = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION).size();
         if (existingCount + files.size() > 10) {
@@ -844,7 +859,7 @@ public class RadarStationService {
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
 
-            if (historyRepository != null) {
+            if (historyRepository != null && wasApproved) {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(id)
                         .refType(InfrastructureType.RADAR_STATION)
@@ -882,7 +897,10 @@ public class RadarStationService {
         }
         attachmentRepository.delete(attachment);
 
-        if (historyRepository != null) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+
+        if (historyRepository != null && wasApproved) {
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.RADAR_STATION)

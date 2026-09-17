@@ -36,6 +36,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -131,7 +132,7 @@ class BeaconStationServiceTest {
                 .unitId(UUID.randomUUID())
                 .lightRange(15.0)
                 .towerColor("Trắng")
-                .area(12.0)
+                .area(BigDecimal.valueOf(12.0))
                 .isActive(true)
                 .status(status)
                 .approvalStatus(ApprovalStatus.PENDING_APPROVAL)
@@ -171,7 +172,7 @@ class BeaconStationServiceTest {
                 .lightRange(15.0)
                 .towerColor("Đỏ")
                 .primaryLightModel("Chớp 5 giây")
-                .area(12.0)
+                .area(BigDecimal.valueOf(12.0))
                 .location("Mô tả")
                 .isActive(true)
                 .action("draft")
@@ -386,14 +387,14 @@ class BeaconStationServiceTest {
             UpdateBeaconStationRequest request = UpdateBeaconStationRequest.builder()
                     .name("Tên mới")
                     .towerColor("Xanh")
-                    .area(18.0)
+                    .area(BigDecimal.valueOf(18.0))
                     .build();
 
             BeaconStationResponse result = service.update(id, request);
 
             assertThat(result.getName()).isEqualTo("Tên mới");
             assertThat(result.getTowerColor()).isEqualTo("Xanh");
-            assertThat(result.getArea()).isEqualTo(18.0);
+            assertThat(result.getArea()).isEqualByComparingTo(BigDecimal.valueOf(18.0));
             // Code should remain immutable
             assertThat(result.getCode()).isEqualTo("DEN-001");
 
@@ -456,6 +457,36 @@ class BeaconStationServiceTest {
             assertThat(result.getStatus()).isEqualTo("APPROVED");
             assertThat(result.getApprovalStatus()).isEqualTo("APPROVED");
             verify(infraHistoryRepo, atLeastOnce()).save(any());
+        }
+
+        @Test
+        @DisplayName("update approved entity with identical BigDecimal values (different scale) — does not create history")
+        void updateApprovedEntity_withSameBigDecimalScaleDifference_doesNotCreateHistory() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "APPROVED_L2");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            entity.setArea(new BigDecimal("100.0000"));
+            entity.setTowerHeight(new BigDecimal("25.0000"));
+            entity.setLightHeight(new BigDecimal("30.0000"));
+            entity.setStationArea(new BigDecimal("500.0000"));
+            entity.setLightRange(15.0);
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateBeaconStationRequest request = UpdateBeaconStationRequest.builder()
+                    .name(entity.getName())
+                    .area(new BigDecimal("100"))
+                    .towerHeight(new BigDecimal("25.0"))
+                    .lightHeight(new BigDecimal("30"))
+                    .stationArea(new BigDecimal("500.00"))
+                    .lightRange(15.0)
+                    .build();
+
+            BeaconStationResponse result = service.update(id, request);
+
+            assertThat(result.getStatus()).isEqualTo("APPROVED");
+            verify(infraHistoryRepo, never()).save(any());
         }
 
         @Test
@@ -769,8 +800,8 @@ class BeaconStationServiceTest {
         void updateRecordsDetailedChanges() {
             UUID id = UUID.randomUUID();
             BeaconStation entity = makeEntity(id, "APPROVED");
-            entity.setTowerHeight(10.0);
-            entity.setLightHeight(15.0);
+            entity.setTowerHeight(BigDecimal.valueOf(10.0));
+            entity.setLightHeight(BigDecimal.valueOf(15.0));
             entity.setTowerColor("Trắng");
 
             when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
@@ -780,8 +811,8 @@ class BeaconStationServiceTest {
                     .name(entity.getName())
                     .type(entity.getType())
                     .unitId(entity.getUnitId())
-                    .towerHeight(12.0)
-                    .lightHeight(18.0)
+                    .towerHeight(BigDecimal.valueOf(12.0))
+                    .lightHeight(BigDecimal.valueOf(18.0))
                     .towerColor("Đỏ - Trắng")
                     .build();
 

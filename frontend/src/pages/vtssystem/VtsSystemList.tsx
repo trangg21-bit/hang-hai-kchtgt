@@ -214,7 +214,7 @@ export default function VtsSystemList() {
   // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
   // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
   const [sortField, setSortField] = useState<string | undefined>();
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
 
   const [dataSource, setDataSource] = useState<VtsSystemResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -320,7 +320,7 @@ export default function VtsSystemList() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         includeCounts: shouldIncludeCounts,
-        sort: sortField ? `${sortField},${sortDirection}` : undefined,
+        sort: sortField && sortDirection ? `${sortField},${sortDirection}` : undefined,
       };
       const res = await vtsSystemCRUD.list(params);
       if (requestId !== listRequestId.current) return;
@@ -355,9 +355,14 @@ export default function VtsSystemList() {
     };
   }, [fetchData, isOptionsReady]);
 
-  const handleSort = useCallback((field: string, order: 'asc' | 'desc') => {
-    setSortField(field);
-    setSortDirection(order);
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortDirection(null);
+    } else {
+      setSortField(field);
+      setSortDirection(order);
+    }
     setPage(1);
   }, []);
 
@@ -517,7 +522,7 @@ export default function VtsSystemList() {
   const serverSideSorter = () => 0;
 
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | undefined => {
-    if (sortField === key) return sortDirection === 'asc' ? 'ascend' : 'descend';
+    if (sortField === key && sortDirection) return sortDirection === 'asc' ? 'ascend' : 'descend';
     return undefined;
   }, [sortField, sortDirection]);
 

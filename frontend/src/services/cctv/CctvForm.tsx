@@ -36,7 +36,7 @@ import type { Symbol as MapSymbol } from '../symbolService';
 import { useAuthStore } from '../../store/authStore';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
-  ddToDms,
+  ddToDms, dmsToDd,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
 import {
@@ -134,18 +134,6 @@ const UNIT_OF_MEASURE_OPTIONS = [
   { label: 'VNĐ', value: 27 },
 ];
 
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 
 const dmsUnitStyle: React.CSSProperties = {
@@ -303,12 +291,11 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
-  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [, setExistingFiles] = useState<CctvAttachmentResponse[]>([]);
 
@@ -371,20 +358,25 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
   useEffect(() => {
     if (!isEdit) {
-      setDeviceCodeLoading(true);
-      generateCctvCode()
-        .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
-        .catch(() => {})
-        .finally(() => setDeviceCodeLoading(false));
+      if (!form.getFieldValue('deviceCode')) {
+        setDeviceCodeLoading(true);
+        generateCctvCode()
+          .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
+          .catch(() => {})
+          .finally(() => setDeviceCodeLoading(false));
+      }
 
-      if (!isSystemAdmin) {
+      const currentOrgUnitId = currentUser?.orgUnitId;
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else {
         api.get('/users/me').then(r => {
           const p = r.data?.data ?? r.data;
           if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
         }).catch(() => {});
       }
     }
-  }, [isEdit, isSystemAdmin, form]);
+  }, [isEdit, currentUser, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
@@ -401,8 +393,8 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
+      if (watchedGeometryType === 'POINT') {
+        return prev.slice(0, 1);
       }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -471,8 +463,8 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
           note: data.note,
           geometryType: data.geometryType || undefined,
           mapSymbolId: data.mapSymbolId,
-          coordinateSystem: data.coordinateSystem ?? 1,
-          displayRule: 'Độ, phút, giây (DMS)',
+          coordinateSystem: data.geometryType ? (data.coordinateSystem ?? 1) : undefined,
+          displayRule: data.geometryType ? 'Độ, phút, giây (DMS)' : undefined,
         });
       } catch {
         toast.error('Không thể tải thông tin hệ thống CCTV');
@@ -529,8 +521,58 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     // Giữ tọa độ hoặc reset khi cần
   };
 
+  // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
+  const applyMapSelection = (val: any) => {
+    if (!val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+    if (val.geometryType && val.geometryType !== watchedGeometryType) {
+      form.setFieldValue('geometryType', val.geometryType);
+    }
+    if (val.symbolId) {
+      form.setFieldValue('mapSymbolId', val.symbolId);
+    }
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newPoints = points.map(toDms);
+        if (geom === 'POINT') {
+          setCoordinateList([newPoints[0]]);
+        } else {
+          setCoordinateList(newPoints);
+        }
+        setGpsError(null);
+      }
+    } else if (val.coordinates === '') {
+      setCoordinateList([]);
+    }
+  };
+
+  const handleCancelGisMap = () => {
+    setCoordinateList(gisCoordSnapshotRef.current.coords);
+    form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    if (gisCoordSnapshotRef.current.geometryType) {
+      form.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
+  const handleConfirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyMapSelection(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
   const handleSave = useCallback(async (saveAction: CctvSaveAction) => {
-    const values = form.getFieldsValue();
+    const values = form.getFieldsValue(true);
     try {
       await form.validateFields();
     } catch (e: unknown) {
@@ -552,20 +594,23 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       return;
     }
 
+    const geomType = values.geometryType || undefined;
+    const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
+
     // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-    if (hasCoordinates && !values.geometryType) {
+    if (hasCoordinates && !geomType) {
       toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setActiveTabKey('location');
       return;
     }
-    if (hasLocation && !values.mapSymbolId) {
+    if (geomType && !values.mapSymbolId) {
       toast.error('Biểu tượng bản đồ là bắt buộc');
       setActiveTabKey('location');
       return;
     }
 
     // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    const coordResult = validateDmsCoordinates(coordinateList, geomType);
     if (!coordResult.valid) {
       const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
       toast.error(errMsg);
@@ -573,8 +618,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       setActiveTabKey('location');
       return;
     }
+    setGpsError(null);
     const validCoords = coordResult.validCoords;
-    const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+    const wktCoordinates = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
 
     setSubmitting(true);
     onSubmittingChange?.(true);
@@ -599,11 +645,11 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         specifications: values.specifications || undefined,
         maintenanceInformation: values.maintenanceInformation || undefined,
         note: values.note || undefined,
-        geometryType: values.geometryType || undefined,
+        geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
         coordinates: wktCoordinates || undefined,
         mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null ? Number(values.displayRule) || null : undefined,
+        coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+        displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
       };
 
       let targetId: string;
@@ -650,7 +696,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish, hasCoordinates, hasLocation]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (đồng bộ cấu trúc 3 Section Cards như màn /berth)
@@ -667,6 +713,40 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                 <span>Thông tin cơ bản & Quản lý vận hành</span>
               </div>
             </div>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="orgUnitId"
+                  {...labelProps('Đơn vị quản lý')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
+                >
+                  <OrgUnitTreeSelect
+                    variant="form"
+                    organizations={orgUnits}
+                    placeholder="Chọn đơn vị quản lý"
+                    loading={loadingOrgs}
+                    disabled={isEdit && !isSystemAdmin}
+                    showPath
+                    treeDefaultExpandAll={false}
+                    onChange={handleOrgUnitChange}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="operatingUnitId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
+                  <Select
+                    showSearch
+                    placeholder="Chọn đơn vị khai thác"
+                    loading={loadingOperatingOrgs}
+                    options={operatingOrgs.map(o => ({ label: o.name || o.code, value: o.id }))}
+                    filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                    allowClear
+                    style={selectStyle}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }} tooltip="Mã thiết bị được sinh tự động">
@@ -692,46 +772,13 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item
-                  name="orgUnitId"
-                  {...labelProps('Đơn vị quản lý')}
-                  style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
-                >
-                  <OrgUnitTreeSelect
-                    organizations={orgUnits}
-                    placeholder="Chọn đơn vị quản lý..."
-                    loading={loadingOrgs}
-                    disabled={isEdit || !isSystemAdmin}
-                    showPath
-                    treeDefaultExpandAll={false}
-                    onChange={handleOrgUnitChange}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item name="operatingUnitId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
-                  <Select
-                    showSearch
-                    placeholder="Chọn đơn vị khai thác..."
-                    loading={loadingOperatingOrgs}
-                    options={operatingOrgs.map(o => ({ label: o.name || o.code, value: o.id }))}
-                    filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                    allowClear
-                    style={selectStyle}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={12}>
-                <Form.Item
                   name="attachedInfrastructureType"
                   {...labelProps('Thuộc loại hạ tầng')}
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Loại hạ tầng là bắt buộc' }]}
                 >
                   <Select
-                    placeholder="Chọn loại hạ tầng..."
+                    placeholder="Chọn loại hạ tầng"
                     options={ATTACHED_INFRA_TYPE_OPTIONS}
                     style={selectStyle}
                     onChange={() => {
@@ -750,9 +797,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   <Select
                     placeholder={
                       watchedAttachedType === 2
-                        ? 'Chọn trạm Radar...'
+                        ? 'Chọn trạm Radar'
                         : watchedAttachedType === 1
-                          ? 'Chọn Trung Tâm Điều Hành VTS...'
+                          ? 'Chọn Trung Tâm Điều Hành VTS'
                           : 'Chọn loại hạ tầng trước'
                     }
                     options={
@@ -776,7 +823,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
               <Col span={12}>
                 <Form.Item name="provinceName" {...labelProps('Địa điểm (Tỉnh/TP)')} style={{ marginBottom: spaceFormField }}>
                   <Select
-                    placeholder="Chọn tỉnh/thành phố..."
+                    placeholder="Chọn tỉnh/thành phố"
                     options={VIETNAM_PROVINCES.map(p => ({ label: p, value: p }))}
                     showSearch
                     filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
@@ -811,7 +858,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn đơn vị tính..." options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
+                  <Select placeholder="Chọn đơn vị tính" options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -824,13 +871,12 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     { required: true, message: 'Số lượng là bắt buộc' },
                     integer5Rule,
                   ]}
-                  initialValue={1}
                 >
                   <NumberInputWithCount
                     min={1}
                     step={1}
                     precision={0}
-                    placeholder="Nhập số lượng..."
+                    placeholder="Nhập số lượng"
                     style={numberInputStyle}
                     maxLength={5}
                     parser={parseNumber5}
@@ -898,7 +944,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   validateStatus={atMax.specifications ? 'error' : undefined}
                   help={atMax.specifications ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông số kỹ thuật" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -922,7 +968,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   validateStatus={atMax.maintenanceInformation ? 'error' : undefined}
                   help={atMax.maintenanceInformation ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập thông tin bảo trì" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -936,7 +982,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   validateStatus={atMax.note ? 'error' : undefined}
                   help={atMax.note ? 'Đã đạt tối đa 2000 ký tự' : undefined}
                 >
-                  <Input.TextArea rows={3} placeholder="Nhập ghi chú..." maxLength={2000} showCount style={textAreaStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -962,15 +1008,27 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" options={GEOMETRY_TYPE_OPTIONS} allowClear style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    allowClear
+                    style={selectStyle}
+                    onChange={(val) => {
+                      if (!val) {
+                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                        setCoordinateList([]);
+                        setGpsError(null);
+                      }
+                    }}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={!!watchedGeometryType}
+                  rules={watchedGeometryType ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
@@ -1026,7 +1084,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     gisCoordSnapshotRef.current = {
                       coords: coordinateList.map((c) => ({ ...c })),
                       symbolId: form.getFieldValue('mapSymbolId'),
+                      geometryType: form.getFieldValue('geometryType'),
                     };
+                    latestGisMapValueRef.current = null;
                     setGisModalOpen(true);
                   }}
                   disabled={!watchedGeometryType}
@@ -1227,22 +1287,14 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => {
-          setCoordinateList(gisCoordSnapshotRef.current.coords);
-          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-          setGisModalOpen(false);
-        }}
+        onCancel={handleCancelGisMap}
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => {
-              setCoordinateList(gisCoordSnapshotRef.current.coords);
-              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-              setGisModalOpen(false);
-            }}
+            onClick={handleCancelGisMap}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
@@ -1250,7 +1302,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
           <Button
             key="confirm"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
+            onClick={handleConfirmGisMap}
             style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
@@ -1264,54 +1316,19 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             height={520}
             value={{
               geometryType: (watchedGeometryType as any) || 'POINT',
-              coordinates: (() => {
-                const valid = coordinateList
-                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => c.latD != null && c.lngD != null)
                   .map((c) => ({
-                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                  }));
-                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
-              })(),
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
               symbolId: form.getFieldValue('mapSymbolId') || undefined,
             }}
-            onChange={(val: any) => {
-              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
-              const points = parseGisCoordinates(val);
-              if (points.length > 0) {
-                if (watchedGeometryType === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([{
-                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                  }]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
-              }
-            }}
+            onChange={applyMapSelection}
           />
         </div>
       </Modal>

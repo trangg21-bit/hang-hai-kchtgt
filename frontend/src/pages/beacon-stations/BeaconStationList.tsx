@@ -1,3 +1,5 @@
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
     AuditOutlined,
     BankOutlined,
@@ -20,9 +22,8 @@ import {
     Tabs,
     Typography,
 } from 'antd';
-import dayjs, { type Dayjs } from 'dayjs';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-
+import { normalizeSafeNumber, fmtNum } from '../../utils/numFmt';
+import { parseWktToCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import EmptyState from '../../components/EmptyState';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { DataTable, ScreenHeader } from '../../components/list-view';
@@ -30,12 +31,20 @@ import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { FilterOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import toast from '../../components/ToastNotification';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { portCRUD } from '../../services/portService';
+import { symbolService, type Symbol as MapSymbol } from '../../services/symbolService';
+import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import toast from '../../components/ToastNotification';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
@@ -46,12 +55,7 @@ import {
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import type { Organization } from '../../services/organizationService';
 import { organizationService } from '../../services/organizationService';
-import { portCRUD } from '../../services/portService';
-import type { Symbol as MapSymbol } from '../../services/symbolService';
-import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
-import { useAuthStore } from '../../store/authStore';
-import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     DRAWER_TABLE_SCROLL_Y,
@@ -61,8 +65,6 @@ import {
     cellSubtitleStyle,
     cellTitleStyle,
     colors,
-    confirmModalBodyStyle,
-    dangerButtonStyle,
     drawerFooterStyle,
     drawerTitleStyle,
     fontSizeLg,
@@ -106,9 +108,6 @@ import {
     BEACON_STATUS_MAP,
     type BeaconStatus,
 } from '../../types/beacon';
-import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
-import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { fmtNum } from '../../utils/numFmt';
 import BeaconStationForm from './BeaconStationForm';
 
 // Cỡ chữ màn /beacon-stations: 13.5px chuẩn /berth (bỏ token tĩnh themetokenchk fontSizeMd=13px).
@@ -132,48 +131,6 @@ const ddToDms = (dd?: number | null) => {
   return { d, m, s };
 };
 
-const parseWktToCoordinates = (wkt?: string): { latitude: number; longitude: number }[] => {
-  if (!wkt) return [];
-  try {
-    const upper = wkt.trim().toUpperCase();
-    if (upper.startsWith('POINT')) {
-      const match = upper.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-      if (match) return [{ longitude: parseFloat(match[1]), latitude: parseFloat(match[2]) }];
-    } else if (upper.startsWith('LINESTRING') || upper.startsWith('LINE')) {
-      const match = upper.match(/LINESTRING\s*\(([^)]+)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    } else if (upper.startsWith('POLYGON')) {
-      const match = upper.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    }
-  } catch {
-    /* ignore invalid WKT */
-  }
-  return [];
-};
-
-const serializeCoordinatesToWkt = (coords: { latitude: number | null; longitude: number | null }[], geomType: string = 'POINT'): string => {
-  const valid = coords.filter((c) => c.latitude != null && c.longitude != null && !isNaN(c.latitude) && !isNaN(c.longitude));
-  if (valid.length === 0) return '';
-  if (geomType === 'POINT') return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
-  if (geomType === 'LINE' || geomType === 'LINESTRING') return `LINESTRING (${valid.map((c) => `${c.longitude} ${c.latitude}`).join(', ')})`;
-  if (geomType === 'POLYGON') {
-    const pts = [...valid];
-    if (pts.length >= 3 && (pts[0].latitude !== pts[pts.length - 1].latitude || pts[0].longitude !== pts[pts.length - 1].longitude)) pts.push(pts[0]);
-    return `POLYGON ((${pts.map((c) => `${c.longitude} ${c.latitude}`).join(', ')}))`;
-  }
-  return `POINT (${valid[0].longitude} ${valid[0].latitude})`;
-};
 
 // ── Render giá trị GIS trong Lịch sử (chuẩn /vts-operation-center): WKT → summary loại + điểm DMS ──
 const historyGisTypeLabel = (raw: string): string => {
@@ -245,7 +202,7 @@ const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
   APPROVED: 'APPROVED',
   REJECTED_LEVEL1: 'REJECTED_LEVEL1',
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-  ARCHIVED: 'ARCHIVED',
+  ARCHIVED: 'DELETED',
 };
 
 // Status badge config — semantic token colors (AGENTS.md: no hardcoded hex)
@@ -267,6 +224,7 @@ const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> 
   REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 // Tình trạng hoạt động — semantic tokens (integer enum khớp backend OperationalStatus)
@@ -291,6 +249,16 @@ function formatDate(dateStr: string | null | undefined): string | null {
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
+function formatDateOnly(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY') : dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
 // Định dạng ngày riêng cho bảng con tab 'Vận hành & bảo trì' — khớp /berth:
 // khi trống trả chuỗi rỗng '' thay vì null (formatDate toàn cục giữ nguyên cho nơi khác).
 function formatOperationTableDateTime(dateStr: string | null | undefined): string {
@@ -301,8 +269,15 @@ function formatOperationTableDateTime(dateStr: string | null | undefined): strin
 // Số hiển thị: hàng nghìn ngăn bằng dấu phẩy (,), phần thập phân dùng dấu chấm (.)
 const formatNumber = (v: number | string | null | undefined, maxFractionDigits = 6): string | null => {
   if (v === null || v === undefined || v === '') return null;
-  const n = typeof v === 'string' ? Number(v) : v;
-  if (!Number.isFinite(n)) return String(v);
+  const safeStr = normalizeSafeNumber(v);
+  if (!safeStr) return null;
+  if (safeStr === '99999999999999999999') return '99,999,999,999,999,999,999';
+  const n = Number(safeStr);
+  if (!Number.isFinite(n) || safeStr.replace(/\./g, '').length > 15) {
+    const parts = safeStr.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
   return n.toLocaleString('en-US', { maximumFractionDigits: maxFractionDigits });
 };
 
@@ -394,7 +369,7 @@ export default function BeaconStationList() {
   // ── Delete state ─────────────────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<BeaconStation | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // ── Approval state ───────────────────────────────────────────────
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -510,18 +485,33 @@ export default function BeaconStationList() {
     })();
   }, []);
 
-  // ── Fetch tab counts (each tab = a separate search) ──────────────
-  const fetchCounts = useCallback(async (unitId?: string) => {
+  // ── Fetch tab counts (each tab = a separate search với ĐẦY ĐỦ bộ lọc đồng bộ như fetchData) ──
+  const fetchCounts = useCallback(async (unitIdOverride?: string) => {
     try {
-      const targetUnit = unitId !== undefined ? unitId : filterUnitId;
+      const targetUnit = unitIdOverride !== undefined ? unitIdOverride : filterUnitId;
+      const baseFilterParams = {
+        name: filterName.trim() || undefined,
+        code: filterCode.trim() || undefined,
+        type: filterType,
+        primaryLightModel: filterLightModel.trim() || undefined,
+        unitId: (targetUnit && targetUnit !== '__all__') ? targetUnit : undefined,
+        seaportId: filterSeaportId,
+        operator: filterOperator.trim() || undefined,
+        provinceId: filterProvinceId,
+        operationalStatus: filterOperationalStatus,
+        commissionedFrom: filterCommissionedFrom,
+        commissionedTo: filterCommissionedTo,
+        updatedBy: (filterUpdatedBy || '').trim() || undefined,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+        page: 1,
+        pageSize: 1,
+      };
       const results = await Promise.allSettled(
         STATUS_TAB_LIST.map((tab) =>
           beaconStationCRUD.search({
+            ...baseFilterParams,
             status: TAB_QUERY_MAP[tab.key],
-            unitId: (targetUnit && targetUnit !== '__all__') ? targetUnit : undefined,
-            name: filterName.trim() || undefined,
-            page: 1,
-            pageSize: 1,
           }),
         ),
       );
@@ -532,7 +522,22 @@ export default function BeaconStationList() {
       });
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, [filterUnitId, filterName]);
+  }, [
+    filterUnitId,
+    filterName,
+    filterCode,
+    filterType,
+    filterLightModel,
+    filterSeaportId,
+    filterOperator,
+    filterProvinceId,
+    filterOperationalStatus,
+    filterCommissionedFrom,
+    filterCommissionedTo,
+    filterUpdatedBy,
+    filterUpdatedFrom,
+    filterUpdatedTo,
+  ]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -570,12 +575,12 @@ export default function BeaconStationList() {
   }, [filterName, filterCode, filterLightModel, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterCommissionedFrom, filterCommissionedTo, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(filterUnitId); }, [filterUnitId, fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
-    setFilterName(inputName);
-    setFilterCode(inputCode);
+    setFilterName(inputName.trim());
+    setFilterCode(inputCode.trim());
     setPage(1);
   }, [inputName, inputCode]);
   const handleFilterReset = useCallback(() => {
@@ -637,7 +642,14 @@ export default function BeaconStationList() {
     }
     try {
       const files = await beaconStationCRUD.listAttachments(record.id);
-      setDetailFiles(files || []);
+      setDetailFiles(
+        (files || []).map((f: any) => ({
+          ...f,
+          id: f.id || f.uid,
+          fileType: f.contentType || f.fileType,
+          uploadedDate: f.uploadedAt || f.uploadedDate,
+        }))
+      );
     } catch {
       setDetailFiles([]);
     }
@@ -663,12 +675,7 @@ export default function BeaconStationList() {
     }
     try {
       const blob = await beaconStationCRUD.downloadAttachment(entityId, attachmentId);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = name || 'attachment';
-      a.click();
-      URL.revokeObjectURL(url);
+      triggerBlobDownload(blob, name || 'attachment');
     } catch {
       toast.error('Không thể tải xuống tệp đính kèm');
     }
@@ -685,26 +692,28 @@ export default function BeaconStationList() {
     setHistoryRecords([]); setHistoryPage(0); setHasMoreHistory(false); setLoadingMoreHistory(false);
   }, [hasPerm]);
 
-  // ── Delete handlers ─────────────────────────────────────────────
+  // ── Delete handlers (chuẩn /berth) ──────────────────────────────
   const openDeleteConfirm = useCallback((record: BeaconStation) => {
-    setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
   const confirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.name || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      toast.error('Vui lòng nhập đúng tên đèn biển hoặc gõ "XÓA" để xác nhận');
-      return;
-    }
+    setDeleteLoading(true);
     try {
       await beaconStationCRUD.delete(deletingRecord.id);
       toast.success('Đã xóa đèn biển');
-      setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
-      void fetchData(); void fetchCounts();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, fetchData, fetchCounts]);
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      void fetchData();
+      void fetchCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, fetchData, fetchCounts]);
 
   // ── Submit approval ─────────────────────────────────────────────
   const openSubmitModal = useCallback((record: BeaconStation) => { setSubmittingRecord(record); setSubmitModalOpen(true); }, []);
@@ -752,10 +761,7 @@ export default function BeaconStationList() {
 
   const handleReject = useCallback(async () => {
     if (!rejectingRecord) return;
-    const reason = rejectReason.trim();
-    if (!reason) { toast.error('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
-    if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
     setRejectLoading(true);
     try {
       await approval.reject(rejectingRecord.id, reason, useAuthStore.getState().user?.userId || 'system');
@@ -902,6 +908,15 @@ export default function BeaconStationList() {
       },
     },
     {
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
+      render: (status: string, record: BeaconStation) => {
+        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
+        const displayStatus = isDeleted ? 'ARCHIVED' : status;
+        const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
+        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+      },
+    },
+    {
       key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 220,
       render: (_: any, record: BeaconStation) => {
         const name = record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label;
@@ -1008,15 +1023,6 @@ export default function BeaconStationList() {
         );
       },
     },
-    {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 200,
-      render: (status: string, record: BeaconStation) => {
-        const isDeleted = Boolean(record.deletedAt || record.deletedBy || status === 'ARCHIVED' || status === 'DELETED');
-        const displayStatus = isDeleted ? 'ARCHIVED' : status;
-        const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
-        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
-      },
-    },
   ], [page, pageSize, openDetailDrawer, seaports, userOptions, hasPerm]);
 
   const tableData = useMemo(
@@ -1092,10 +1098,9 @@ export default function BeaconStationList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thời điểm đưa vào sử dụng</div>
             <DatePicker.RangePicker
-              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: rangeValue(filterCommissionedFrom, filterCommissionedTo),
-                onChange: (range) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
               })}
             />
           </div>
@@ -1117,10 +1122,9 @@ export default function BeaconStationList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker
-              format={['DD/MM/YYYY', 'YYYY-MM-DD']}
               {...getRangePickerProps({
                 value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
-                onChange: (range) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
               })}
             />
           </div>
@@ -1141,10 +1145,16 @@ export default function BeaconStationList() {
   );
 
   // ── Status tabs config (FilterTableLayout renders StatusTabs itself) ──
-  const statusTabs = STATUS_TAB_LIST.map((tab) => ({
-    key: tab.key, label: tab.label, count: tabCounts[tab.key] ?? 0,
-    color: tab.color, active: activeTab === tab.key,
-  }));
+  const statusTabs = useMemo(() =>
+    STATUS_TAB_LIST.map((tab) => ({
+      key: tab.key,
+      label: tab.label,
+      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? 0),
+      color: tab.color,
+      active: activeTab === tab.key,
+    })),
+    [tabCounts, activeTab, total],
+  );
 
   // ── Detail rows (57 trường theo checklist QL Đèn biển và nhà trạm) ──
   // Cấu trúc 6 tab: Thông tin chung (+ toggle 'Thông tin phê duyệt') | Thông tin kỹ thuật đèn biển
@@ -1215,8 +1225,8 @@ export default function BeaconStationList() {
         { label: 'Tầm hiệu lực ánh sáng', value: detailRecord.lightRange != null ? formatNumber(detailRecord.lightRange) : null },
         { label: 'Màu sắc tháp đèn', value: detailRecord.towerColor || null, span: true },
         { label: 'Nguồn năng lượng', value: detailRecord.powerSupply || null, span: true },
-        { label: 'Thời điểm đưa vào sử dụng', value: formatDate(detailRecord.commissionedDate) },
-        { label: 'Thời điểm sửa chữa gần nhất', value: formatDate(detailRecord.lastRepairDate) },
+        { label: 'Thời điểm đưa vào sử dụng', value: formatDateOnly(detailRecord.commissionedDate) },
+        { label: 'Thời điểm sửa chữa gần nhất', value: formatDateOnly(detailRecord.lastRepairDate) },
       ]
     : [];
 
@@ -1518,7 +1528,13 @@ export default function BeaconStationList() {
               const entityId = editingRecord?.id || detailRecord?.id;
               return entityId
                 ? beaconStationCRUD.downloadAttachment(entityId, attachmentId)
-                : Promise.reject(new Error('Chưa xác định được bản ghi đèn biển để tải ảnh'));
+                : Promise.reject(new Error('Chưa xác định được bản ghi đèn biển để tải tệp đính kèm'));
+            }}
+            loadPreviewAttachment={(attachmentId) => {
+              const entityId = editingRecord?.id || detailRecord?.id;
+              return entityId
+                ? beaconStationCRUD.downloadAttachment(entityId, attachmentId)
+                : Promise.reject(new Error('Chưa xác định được bản ghi đèn biển để tải tệp đính kèm'));
             }}
             scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
           />
@@ -1646,30 +1662,6 @@ export default function BeaconStationList() {
   const historyTimestamp = (item: any): string => item.approvedDate || item.changedAt || item.createdAt || '';
   const historyActorName = (item: any): string => item.changedByName || item.actor || item.changedBy || '—';
 
-  const countBeaconHistoryCards = (records: any[]): number => {
-    if (!Array.isArray(records) || records.length === 0) return 0;
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActorName(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
-    }
-    let count = 0;
-    for (const g of groups) {
-      const allChanges = g.items.flatMap((item: any) => (item.changes && item.changes.length > 0 ? item.changes : []));
-      if (allChanges.length > 0) count++;
-    }
-    return count;
-  };
-
-  const historyUpdateCount = useMemo(() => {
-    return countBeaconHistoryCards(historyRecords);
-  }, [historyRecords]);
 
   const resolveHistoryActionMeta = (group: any, changes: any[]): { label: string; color: string; bg: string } => {
     const item = group.items?.[0] || {};
@@ -1763,7 +1755,10 @@ export default function BeaconStationList() {
     if (field === 'type') {
       return BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === val)?.label || val;
     }
-    if (field === 'lastRepairDate' || field === 'commissionedDate' || field.endsWith('At')) {
+    if (field === 'lastRepairDate' || field === 'commissionedDate') {
+      return formatDateOnly(val) || val;
+    }
+    if (field.endsWith('At')) {
       return formatDate(val) || val;
     }
     return val;
@@ -1801,7 +1796,16 @@ export default function BeaconStationList() {
       const ov = oldValue === null || oldValue === undefined ? null : String(oldValue);
       const nv = newValue === null || newValue === undefined ? null : String(newValue);
       if (ov === null && nv === null) return;
-      if (ov !== null && nv !== null && ov.trim() === nv.trim()) return;
+      if (ov !== null && nv !== null) {
+        if (ov.trim() === nv.trim()) return;
+        if (
+          !isNaN(Number(ov.trim())) &&
+          !isNaN(Number(nv.trim())) &&
+          Math.abs(Number(ov.trim()) - Number(nv.trim())) < 1e-9
+        ) {
+          return;
+        }
+      }
       changes.push({ field, oldValue: ov, newValue: nv });
     };
     if (fieldNames.length > 0) {
@@ -1889,8 +1893,69 @@ export default function BeaconStationList() {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
   };
 
-  function renderHistoryTimeline(records: any[]) {
-    if (!records || records.length === 0) {
+  const isMeaningfulChange = useCallback((rawOld: any, rawNew: any): boolean => {
+    const ov = rawOld != null ? String(rawOld).trim() : '';
+    const nv = rawNew != null ? String(rawNew).trim() : '';
+    if (ov === '' && nv === '') return false;
+    if (ov !== '' && nv !== '' && ov === nv) return false;
+    // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25)
+    if (ov !== '' && nv !== '' && !isNaN(Number(ov)) && !isNaN(Number(nv)) && Math.abs(Number(ov) - Number(nv)) < 1e-9) {
+      return false;
+    }
+    return true;
+  }, []);
+
+  const validHistoryGroups = useMemo(() => {
+    if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
+    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
+    const sorted = [...historyRecords].sort(
+      (a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime()
+    );
+    const rawGroups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
+    for (const r of sorted) {
+      const ts = historyTimestamp(r);
+      const sec = ts ? toSec(ts) : 0;
+      const actor = historyActorName(r);
+      const prev = rawGroups[rawGroups.length - 1];
+      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      else rawGroups.push({ tsSec: sec, ts, actor, items: [r] });
+    }
+
+    return rawGroups
+      .map((g) => {
+        const allChanges = g.items.flatMap((item) => (item.changes && item.changes.length > 0 ? item.changes : []));
+        const changes = allChanges
+          .filter((c: any) => c.field !== '' || (c.oldValue != null && c.oldValue !== '') || (c.newValue != null && c.newValue !== ''))
+          .filter((c: any) => isMeaningfulChange(c.oldValue, c.newValue));
+        if (changes.length === 0) return null;
+
+        const orderedChanges = [...changes].sort((a: any, b: any) => {
+          const ia = BEACON_HISTORY_FIELD_ORDER.indexOf(a.field);
+          const ib = BEACON_HISTORY_FIELD_ORDER.indexOf(b.field);
+          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+        });
+        if (orderedChanges.length === 0) return null;
+
+        return {
+          ...g,
+          changes,
+          orderedChanges,
+        };
+      })
+      .filter(Boolean) as Array<{
+      tsSec: number;
+      ts: string;
+      actor: string;
+      items: any[];
+      changes: any[];
+      orderedChanges: any[];
+    }>;
+  }, [historyRecords, isMeaningfulChange]);
+
+  const historyUpdateCount = validHistoryGroups.length;
+
+  function renderHistoryTimeline() {
+    if (validHistoryGroups.length === 0) {
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1952,44 +2017,25 @@ export default function BeaconStationList() {
       }
       return <span title={String(txt)} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{txt}</span>;
     };
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...records].sort((a, b) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActorName(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
-      else groups.push({ tsSec: sec, ts, actor, items: [r] });
-    }
     const fmtTime = (ts: string) => {
       const d = dayjs(ts);
       return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
     };
     return (
       <div>
-        {groups.map((g, gi) => {
+        {validHistoryGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
-          const allChanges = g.items.flatMap((item) => (item.changes && item.changes.length > 0 ? item.changes : []));
-          if (allChanges.length === 0) return null;
-
-          const actionMeta = resolveHistoryActionMeta(g, allChanges);
+          const actionMeta = resolveHistoryActionMeta(g, g.changes);
           // Đơn vị của user thực hiện cập nhật (chuẩn /vts-operation-center) — KHÔNG lấy unitId của tài sản
           const orgNameFromId = (rec0.unitId && orgMap.get(rec0.unitId)) || (rec0.orgUnitId && orgMap.get(rec0.orgUnitId));
           const unitName = rec0.orgUnitName || orgNameFromId || rec0.unitName || '—';
 
-          const isCreate = allChanges.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'null');
+          const isCreate = g.changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'null');
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-
-          const orderedChanges = [...allChanges].sort((a: any, b: any) => {
-            const ia = BEACON_HISTORY_FIELD_ORDER.indexOf(a.field);
-            const ib = BEACON_HISTORY_FIELD_ORDER.indexOf(b.field);
-            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-          });
+          const orderedChanges = g.orderedChanges;
 
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -2165,9 +2211,6 @@ export default function BeaconStationList() {
               border-bottom: 1px solid #f1f5f9 !important;
               line-height: 1.5 !important;
               gap: 10px !important;
-            }
-            .ant-drawer-body .chk-detail-row:last-child {
-              border-bottom: none !important;
             }
             .ant-drawer-body .chk-detail-row--full {
               grid-column: 1 / -1 !important;
@@ -2401,7 +2444,7 @@ export default function BeaconStationList() {
                   loading={submitting && actionType === 'draft'}
                   style={outlineButtonStyle}
                 >
-                  Cập nhật
+                  Lưu tạm
                 </Button>
                 <Button
                   type="primary"
@@ -2413,7 +2456,7 @@ export default function BeaconStationList() {
                   loading={submitting && actionType === 'submit'}
                   style={primaryButtonStyle}
                 >
-                  Cập nhật và gửi phê duyệt
+                  Lưu và gửi phê duyệt
                 </Button>
                 {canApproveDirect && (
                   <Button
@@ -2455,32 +2498,21 @@ export default function BeaconStationList() {
         )}
       </AppDrawer>
 
-      {/* ── Delete Confirmation Modal ────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Xác nhận xóa đèn biển</span>}
+      {/* ── Delete Confirmation Modal (chuẩn /berth) ─────────────── */}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={outlineButtonStyle}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={confirmDelete} style={dangerButtonStyle}>Xác nhận xóa</Button>,
-        ]}
-        width={480}
-      >
-        <div style={confirmModalBodyStyle}>
-          <p style={{ marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên đèn biển</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ marginBottom: spaceFormField }}>
-              Đèn biển: <strong style={{ color: textPrimary }}>{deletingRecord.name}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên đèn biển hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={confirmDelete}
-            style={inputStyle} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        itemType="đèn biển"
+        itemName={deletingRecord?.name}
+        itemCode={deletingRecord?.code}
+      />
 
       {/* ── Submit Modal (chuẩn /berth) ──────────────────────────── */}
       <Modal
@@ -2511,7 +2543,7 @@ export default function BeaconStationList() {
 
       {/* ── Reject Reason Modal (chuẩn /berth) ────────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{rejectLevel === 'c2' ? 'Từ chối cấp Cục' : 'Từ chối cấp Cảng vụ/Chi cục'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen}
         onCancel={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
         footer={[
@@ -2522,15 +2554,21 @@ export default function BeaconStationList() {
         ]}
         width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho đèn biển:</p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho đèn biển (không bắt buộc):</p>
           {rejectingRecord && (
             <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              <strong style={{ color: textPrimary }}>{rejectingRecord.name}</strong>
+              <strong style={{ color: textPrimary }}>
+                {rejectingRecord.code ? `${rejectingRecord.code} — ` : ''}{rejectingRecord.name}
+              </strong>
             </p>
           )}
-          <Input.TextArea placeholder="Nhập lý do từ chối (tối thiểu 10, tối đa 500 ký tự)..." value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={500} showCount
-            style={{ borderRadius: 8, fontSize: fontSizeMd }} />
+          <Input.TextArea
+            placeholder="Nhập lý do từ chối (nếu có)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={3}
+            style={{ borderRadius: 8, fontSize: fontSizeMd }}
+          />
         </div>
       </Modal>
 
@@ -2641,7 +2679,7 @@ export default function BeaconStationList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
           {historyLoading && historyRecords.length === 0 ? (
             <LoadingSkeleton rows={5} />
-          ) : historyRecords.length === 0 ? (
+          ) : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
               <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
               <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
@@ -2650,7 +2688,7 @@ export default function BeaconStationList() {
             </div>
           ) : (
             <>
-              {renderHistoryTimeline(historyRecords)}
+              {renderHistoryTimeline()}
               {loadingMoreHistory && (
                 <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm…</div>
               )}

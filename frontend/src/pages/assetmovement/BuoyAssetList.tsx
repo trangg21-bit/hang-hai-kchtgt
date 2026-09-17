@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
+import { Button, DatePicker, Form, Input, Space } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
   EyeOutlined,
+  HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
   PlusOutlined,
   RocketOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import {
   ScreenHeader,
@@ -23,6 +25,10 @@ import {
   type ScreenHeaderAction,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { renderStandardHistoryCards, DEFAULT_IGNORED_FIELDS, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { formatHistoryNumber } from '../../utils/numFmt';
 import toast from '../../components/ToastNotification';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchAllBuoys } from '../../services/buoy/api';
@@ -43,6 +49,7 @@ import {
   uploadInfraAssetAttachments,
   fetchInfraAssetAttachments,
   deleteInfraAssetAttachment,
+  fetchInfraAssetHistory,
 } from '../../services/assetmovement/api';
 import api from '../../services/api';
 import type {
@@ -59,7 +66,20 @@ import {
 } from '../../components/shared/InfrastructureAttachmentTab';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold } from '../../themetokenchk';
+import {
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
+} from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import BuoyAssetForm, { type BuoyFormValues } from './BuoyAssetForm';
 import BuoyAssetDetailContent from './BuoyAssetDetailContent';
@@ -75,11 +95,55 @@ const STATUS_COUNT_KEYS = [
   'APPROVED',
   'REJECTED_LEVEL1',
   'REJECTED_LEVEL2',
+  'ARCHIVED',
 ];
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 
 const ASSET_CONDITIONS = ['Tốt', 'Hư hỏng cần sửa chữa', 'Không sử dụng được'];
+
+const BUOY_ASSET_FIELD_LABELS: Record<string, string> = {
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  orgUnitId: 'Đơn vị quản lý',
+  usingOrgUnitId: 'Đơn vị sử dụng',
+  buoyId: 'Mã phao tiêu',
+  buoyStationId: 'Mã trạm phao',
+  assetType: 'Loại tài sản',
+  types: 'Phân loại tài sản',
+  assetCode: 'Mã tài sản',
+  assetName: 'Tên tài sản',
+  barcode: 'Barcode',
+  assetCondition: 'Tình trạng tài sản',
+  usageStatus: 'Hiện trạng sử dụng',
+  assetGroup: 'Nhóm tài sản',
+  assetSubgroup: 'Phân nhóm tài sản',
+  origin: 'Nguồn gốc',
+  quantity: 'Số lượng',
+  quantityUnit: 'Đơn vị tính',
+  model: 'Model',
+  serialNumber: 'Số serial',
+  countryOfOrigin: 'Xuất xứ',
+  manufacturer: 'Hãng sản xuất',
+  address: 'Địa chỉ',
+  assetLocation: 'Vị trí tài sản',
+  landArea: 'Diện tích đất (m²)',
+  floorArea: 'Diện tích sàn (m²)',
+  constructionYear: 'Năm xây dựng',
+  useDate: 'Ngày đưa vào sử dụng',
+  declarationDate: 'Ngày kê khai',
+  originalValue: 'Nguyên giá (VNĐ)',
+  depreciationRate: 'Tỷ lệ hao mòn (%/năm)',
+  accumulatedDepreciation: 'Hao mòn/khấu hao lũy kế (VNĐ)',
+  remainingValue: 'Giá trị còn lại (VNĐ)',
+  assignmentDecisionNumber: 'Số quyết định giao tài sản',
+  depreciationStartDate: 'Ngày bắt đầu tính hao mòn',
+  depreciationMonths: 'Thời gian sử dụng (tháng)',
+  depreciationEndDate: 'Ngày kết thúc tính hao mòn',
+  monthlyDepreciation: 'Mức hao mòn/khấu hao tháng (VNĐ)',
+  disposalMethod: 'Hình thức xử lý',
+  attachmentName: 'Tài liệu đính kèm',
+  attachments: 'Tài liệu đính kèm',
+};
 
 const getErrorMessage = (cause: unknown, fallback: string) => {
   const error = cause as { response?: { data?: { message?: string } }; errorFields?: unknown };
@@ -114,6 +178,60 @@ export default function BuoyAssetList() {
   const [operationForm] = Form.useForm<OperationValues>();
   const currentUser = useAuthStore((s) => s.user);
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+
+  // ── History state (chuẩn /berth) ───────────────────────────────────────
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTarget, setHistoryTarget] = useState<BuoyAsset | null>(null);
+  const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+
+  const openHistory = useCallback(async (r: BuoyAsset) => {
+    setHistoryTarget(r);
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryRecords([]);
+    setHistorySearch('');
+    setHistoryFrom('');
+    setHistoryTo('');
+    try {
+      const d = await fetchInfraAssetHistory(r.id);
+      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      setHistoryRecords(ch);
+    } catch {
+      toast.error('Không thể tải lịch sử');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  const filteredHistoryRecords = useMemo(() => {
+    return historyRecords.filter((rec) => {
+      const fn = rec.fieldName || rec.changedField;
+      if (fn && DEFAULT_IGNORED_FIELDS.has(fn)) return false;
+      if (historySearch) {
+        const s = historySearch.toLowerCase();
+        const matchField = String(fn || '').toLowerCase().includes(s);
+        const matchOld = String(rec.oldValue || rec.previousValue || '').toLowerCase().includes(s);
+        const matchNew = String(rec.newValue || rec.value || '').toLowerCase().includes(s);
+        if (!matchField && !matchOld && !matchNew) return false;
+      }
+      if (historyFrom && dayjs(rec.changedAt || rec.approvedDate).isBefore(dayjs(historyFrom), 'day')) {
+        return false;
+      }
+      if (historyTo && dayjs(rec.changedAt || rec.approvedDate).isAfter(dayjs(historyTo), 'day')) {
+        return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historySearch, historyFrom, historyTo]);
+
+  const historyFieldCount = useMemo(
+    () => filteredHistoryRecords.length,
+    [filteredHistoryRecords]
+  );
 
   const orgName = useMemo(() => new Map(organizations.map((item) => [item.id, item.name])), [organizations]);
   const buoyMap = useMemo(() => new Map(buoys.map((item) => [item.id, item])), [buoys]);
@@ -844,6 +962,12 @@ export default function BuoyAssetList() {
         onClick: (record) => openOperation(record, 'decrease'),
       },
       {
+        key: 'history',
+        label: 'Lịch sử',
+        icon: <HistoryOutlined />,
+        onClick: (record) => void openHistory(record),
+      },
+      {
         key: 'delete',
         label: 'Xóa',
         icon: <DeleteOutlined />,
@@ -851,7 +975,7 @@ export default function BuoyAssetList() {
         onClick: (record) => setDeleteTarget(record),
       },
     ],
-  }), [buoyMap, stationMap, openDetail, openEdit, openOperation, orgName]);
+  }), [buoyMap, stationMap, openDetail, openEdit, openHistory, openOperation, orgName]);
 
   const headerActions = useMemo<ScreenHeaderAction[]>(() => [
     {
@@ -968,6 +1092,126 @@ export default function BuoyAssetList() {
           onClose={() => setOperationMode(undefined)}
           onSubmit={submitOperation}
         />
+
+        {/* ── History Drawer (chuẩn /berth) ────────────────────────── */}
+        <AppDrawer
+          width="min(880px, 96vw)"
+          rootClassName="buoy-drawer-scope"
+          className="buoy-drawer-scope"
+          mask
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <Space size={spaceSm} style={{ alignItems: 'center' }}>
+                <HistoryOutlined style={{ color: colors.sidebarBg, fontSize: fontSizeLg }} />
+                <span style={drawerTitleStyle}>
+                  {historyTarget ? `Lịch sử thay đổi — ${historyTarget.assetName}` : 'Lịch sử thay đổi'}
+                </span>
+                <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeLg - 1, fontWeight: fontWeightBold, background: `${colors.sidebarBg}15`, color: colors.sidebarBg, lineHeight: '20px' }}>
+                  Tổng cộng {historyFieldCount}
+                </span>
+              </Space>
+            </div>
+          }
+          open={historyOpen}
+          onClose={() => setHistoryOpen(false)}
+          footer={null}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '16px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
+          }}>
+          <div style={{ flexShrink: 0 }}>
+            {!historyLoading && (
+              <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
+                <Input
+                  placeholder="Tìm kiếm nội dung thay đổi..."
+                  allowClear
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
+                />
+                <DatePicker
+                  placeholder="Từ ngày"
+                  value={historyFrom ? dayjs(historyFrom) : null}
+                  onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <DatePicker
+                  placeholder="Đến ngày"
+                  value={historyTo ? dayjs(historyTo) : null}
+                  onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD') : '')}
+                  style={{ width: 140, borderRadius: radiusPill, height: 40 }}
+                  format="DD/MM/YYYY"
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  style={{
+                    borderRadius: radiusPill,
+                    height: 40,
+                    fontSize: fontSizeMd,
+                    background: actionPrimary,
+                    borderColor: actionPrimary,
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+            {historyLoading ? (
+              <LoadingSkeleton rows={5} />
+            ) : filteredHistoryRecords.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+                <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+                <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+              </div>
+            ) : (
+              renderStandardHistoryCards({
+                records: filteredHistoryRecords,
+                fieldLabels: BUOY_ASSET_FIELD_LABELS,
+                resolveUnitName: () => {
+                  const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+                  return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+                },
+                formatValue: (fn, raw) => {
+                  if (isBlankOrDash(raw)) return '';
+                  const normKey = (fn || '').toLowerCase();
+                  if (normKey.includes('orgunitid') || normKey.includes('donvi')) {
+                    return orgName.get(raw!) || raw;
+                  }
+                  if (fn === 'buoyId') {
+                    const item = buoyMap.get(raw!);
+                    return item ? `${item.code} - ${item.name}` : raw;
+                  }
+                  if (fn === 'buoyStationId') {
+                    const item = stationMap.get(raw!);
+                    return item ? `${item.stationCode || item.code} - ${item.stationName || item.name}` : raw;
+                  }
+                  if (
+                    fn === 'originalValue' ||
+                    fn === 'remainingValue' ||
+                    fn === 'accumulatedDepreciation' ||
+                    fn === 'monthlyDepreciation'
+                  ) {
+                    return formatHistoryNumber(raw);
+                  }
+                  if (
+                    fn === 'useDate' ||
+                    fn === 'declarationDate' ||
+                    fn === 'depreciationStartDate' ||
+                    fn === 'depreciationEndDate'
+                  ) {
+                    const d = dayjs(raw);
+                    return d.isValid() ? d.format('DD/MM/YYYY') : raw;
+                  }
+                  return raw;
+                },
+              })
+            )}
+          </div>
+        </AppDrawer>
 
         <DeleteConfirmModal
           open={Boolean(deleteTarget)}

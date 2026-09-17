@@ -764,16 +764,25 @@ export default function TransferAreaDetailContent({
                     </div>
                     {approvalOpen && (
                       <div className="chk-detail-grid">
-                        <div className="chk-detail-row">
-                          <span className="chk-detail-label sec-col1-label">Trạng thái</span>
-                          <span className="chk-detail-value">
-                            {r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
-                              <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
-                                {approvalStyleMap[r.approvalStatus].label}
+                        {(() => {
+                          const isDeleted = Boolean(r.deletedAt || r.deletedBy);
+                          return (
+                            <div className="chk-detail-row">
+                              <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                              <span className="chk-detail-value">
+                                {isDeleted ? (
+                                  <span style={statusBadgeStyle(statusCritical)}>
+                                    Đã xóa
+                                  </span>
+                                ) : r.approvalStatus && approvalStyleMap[r.approvalStatus] ? (
+                                  <span style={statusBadgeStyle(approvalStyleMap[r.approvalStatus].color)}>
+                                    {approvalStyleMap[r.approvalStatus].label}
+                                  </span>
+                                ) : ''}
                               </span>
-                            ) : ''}
-                          </span>
-                        </div>
+                            </div>
+                          );
+                        })()}
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
                           <span className="chk-detail-value">

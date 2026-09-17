@@ -6,6 +6,7 @@ import {
 } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
 import type { UploadFile } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
@@ -43,14 +44,15 @@ import {
   validateDmsCoordinates,
   serializeCoordinatesToWkt,
   ddToDms,
+  dmsToDd,
 } from '../../utils/gisGeometry';
 import {
   parseNumber20,
   getValueFromEvent20,
   decimalNumberRule,
-  safeNumber,
   safeDecimal,
 } from './beaconStationRules';
+import { normalizeSafeNumber } from '../../utils/numFmt';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 
 const fontSizeMd = 13.5;
@@ -146,19 +148,6 @@ const dmsUnitEndStyle: React.CSSProperties = {
   borderRadius: '0 999px 999px 0',
   fontSize: fontSizeSm,
   color: textTertiary,
-};
-
-/** Parse tọa độ từ WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — dùng chung cho GisLocationSelector (chuẩn /port). */
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
 };
 
 /**
@@ -272,9 +261,12 @@ export default forwardRef(function BeaconStationForm(
   }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const gisCoordSnapshotRef = useRef<{ coords: any[]; symbolId?: string }>({ coords: [], symbolId: undefined });
+  const gisCoordSnapshotRef = useRef<{ coords: any[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined, geometryType: undefined });
+  const latestGisMapValueRef = useRef<any>(null);
   const [codeLoading, setCodeLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
+  const [existingFiles, setExistingFiles] = useState<any[]>([]);
+  const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
 
   // Load catalogs
   useEffect(() => {
@@ -354,20 +346,20 @@ export default forwardRef(function BeaconStationForm(
           name: record.name,
           type: record.type,
           unitId: record.unitId,
-          lightRange: record.lightRange,
+          lightRange: normalizeSafeNumber(record.lightRange),
           towerColor: record.towerColor,
           location: record.location,
           shape: record.shape,
           structure: record.structure,
-          towerHeight: record.towerHeight,
-          lightHeight: record.lightHeight,
+          towerHeight: normalizeSafeNumber(record.towerHeight),
+          lightHeight: normalizeSafeNumber(record.lightHeight),
           geographicRange: record.geographicRange,
           backupLightModel: record.backupLightModel,
           powerSupply: record.powerSupply,
           staffCount: record.staffCount,
-          stationArea: record.stationArea,
+          stationArea: normalizeSafeNumber(record.stationArea),
           primaryLightModel: record.primaryLightModel,
-          area: record.area,
+          area: normalizeSafeNumber(record.area),
           lastRepairDate: record.lastRepairDate ? dayjs(record.lastRepairDate) : null,
           commissionedDate: record.commissionedDate ? dayjs(record.commissionedDate) : null,
           provinceId: record.provinceId != null ? Number(record.provinceId) : undefined,
@@ -386,8 +378,11 @@ export default forwardRef(function BeaconStationForm(
 
         try {
           const files = await beaconStationCRUD.listAttachments(id);
+          const safeFiles = files || [];
+          setExistingFiles(safeFiles);
+          setPendingDeletedAttachmentIds([]);
           setUploadedFiles(
-            (files || []).map((a: any) => ({
+            safeFiles.map((a: any) => ({
               ...a,
               uid: a.id || a.uid,
               name: a.fileName || a.name,
@@ -403,6 +398,8 @@ export default forwardRef(function BeaconStationForm(
             }))
           );
         } catch {
+          setExistingFiles([]);
+          setPendingDeletedAttachmentIds([]);
           setUploadedFiles([]);
         }
       } catch {
@@ -503,6 +500,56 @@ export default forwardRef(function BeaconStationForm(
     setGpsError(null);
   };
 
+  // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
+  const applyMapSelection = (val: any) => {
+    if (!val) return;
+    latestGisMapValueRef.current = val;
+    const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+    if (val.geometryType && val.geometryType !== watchedGeometryType) {
+      form.setFieldValue('geometryType', val.geometryType);
+    }
+    if (val.symbolId) {
+      form.setFieldValue('mapSymbolId', val.symbolId);
+    }
+    if (val.coordinates) {
+      const points = parseWktToCoordinates(val.coordinates);
+      if (points.length > 0) {
+        const toDms = (p: { latitude: number; longitude: number }) => {
+          const lat = ddToDms(p.latitude);
+          const lng = ddToDms(p.longitude);
+          return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
+        };
+        const newPoints = points.map(toDms);
+        if (geom === 'POINT') {
+          setCoordinateList([newPoints[0]]);
+        } else {
+          setCoordinateList(newPoints);
+        }
+        setGpsError(null);
+      }
+    } else if (val.coordinates === '') {
+      setCoordinateList([]);
+    }
+  };
+
+  const handleCancelGisMap = () => {
+    setCoordinateList(gisCoordSnapshotRef.current.coords);
+    form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
+    if (gisCoordSnapshotRef.current.geometryType) {
+      form.setFieldValue('geometryType', gisCoordSnapshotRef.current.geometryType);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
+  const handleConfirmGisMap = () => {
+    if (latestGisMapValueRef.current) {
+      applyMapSelection(latestGisMapValueRef.current);
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
   const handleSave = useCallback(async (action: 'draft' | 'submit' | 'approved') => {
     let values: any;
     try {
@@ -594,6 +641,16 @@ export default forwardRef(function BeaconStationForm(
         toast.success(action === 'submit' ? 'Đã gửi phê duyệt đèn biển' : action === 'approved' ? 'Đã phê duyệt đèn biển' : 'Đã lưu tạm đèn biển');
       }
 
+      if (targetId && pendingDeletedAttachmentIds.length > 0) {
+        for (const attId of pendingDeletedAttachmentIds) {
+          try {
+            await beaconStationCRUD.deleteAttachment(targetId, attId);
+          } catch {
+            /* ignore individual attachment delete error */
+          }
+        }
+      }
+
       const newFiles = uploadedFiles.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
       if (targetId && newFiles.length > 0) {
         try {
@@ -610,7 +667,7 @@ export default forwardRef(function BeaconStationForm(
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onFinish, onSubmittingChange]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, pendingDeletedAttachmentIds, onFinish, onSubmittingChange]);
 
   useImperativeHandle(ref, () => ({
     submit: (action: 'draft' | 'submit' | 'approved') => handleSave(action),
@@ -831,7 +888,7 @@ export default forwardRef(function BeaconStationForm(
               </Col>
               <Col span={12}>
                 <Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập ghi chú..." maxLength={1000} showCount style={inputStyle} />
+                  <Input placeholder="Nhập ghi chú" maxLength={1000} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -963,7 +1020,9 @@ export default forwardRef(function BeaconStationForm(
                     gisCoordSnapshotRef.current = {
                       coords: coordinateList.map((c) => ({ ...c })),
                       symbolId: form.getFieldValue('mapSymbolId'),
+                      geometryType: form.getFieldValue('geometryType'),
                     };
+                    latestGisMapValueRef.current = null;
                     setGisModalOpen(true);
                   }}
                   disabled={!watchedGeometryType}
@@ -1097,6 +1156,7 @@ export default forwardRef(function BeaconStationForm(
             ...f,
             id: f.uid || f.id,
             fileName: f.name || f.fileName,
+            fileType: f.contentType || f.fileType || f.type,
             fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
             uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
             uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
@@ -1104,33 +1164,24 @@ export default forwardRef(function BeaconStationForm(
           readonly={false}
           userMap={userMap}
           onUpload={(file) => { handleBeforeUpload(file); return false; }}
-          onDelete={(uid) => { setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid)); }}
+          onDelete={(uid) => {
+            setUploadedFiles((prev) => prev.filter((x: any) => (x.uid || x.id) !== uid));
+            if (existingFiles.some((ef: any) => (ef.id || ef.uid) === uid)) {
+              setPendingDeletedAttachmentIds((prev) => (prev.includes(uid) ? prev : [...prev, uid]));
+            }
+          }}
           onDownload={async (uid, name) => {
             const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
             const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
             if (rawFile) {
-              const url = window.URL.createObjectURL(rawFile);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = name || (rawFile as File).name || 'attachment';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              window.URL.revokeObjectURL(url);
+              triggerBlobDownload(rawFile, name || (rawFile as File).name || 'attachment');
               return;
             }
 
             if (isEdit && id) {
               try {
                 const blob = await beaconStationCRUD.downloadAttachment(id, uid);
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = name || 'attachment';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
+                triggerBlobDownload(blob, name || 'attachment');
               } catch {
                 toast.error('Không thể tải xuống tệp đính kèm');
               }
@@ -1138,6 +1189,16 @@ export default forwardRef(function BeaconStationForm(
               toast.error('Không tìm thấy tệp để tải xuống');
             }
           }}
+          loadReadonlyPreviewImage={
+            isEdit && id
+              ? (attachmentId) => beaconStationCRUD.downloadAttachment(id, attachmentId)
+              : undefined
+          }
+          loadPreviewAttachment={
+            isEdit && id
+              ? (attachmentId) => beaconStationCRUD.downloadAttachment(id, attachmentId)
+              : undefined
+          }
         />
       ),
     },
@@ -1156,22 +1217,14 @@ export default forwardRef(function BeaconStationForm(
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => {
-          setCoordinateList(gisCoordSnapshotRef.current.coords);
-          form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-          setGisModalOpen(false);
-        }}
+        onCancel={handleCancelGisMap}
         destroyOnClose
         width="94vw"
         style={{ maxWidth: 1400, top: 20 }}
         footer={[
           <Button
             key="cancel"
-            onClick={() => {
-              setCoordinateList(gisCoordSnapshotRef.current.coords);
-              form.setFieldValue('mapSymbolId', gisCoordSnapshotRef.current.symbolId);
-              setGisModalOpen(false);
-            }}
+            onClick={handleCancelGisMap}
             style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Hủy
@@ -1179,7 +1232,7 @@ export default forwardRef(function BeaconStationForm(
           <Button
             key="confirm"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
+            onClick={handleConfirmGisMap}
             style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
@@ -1193,54 +1246,19 @@ export default forwardRef(function BeaconStationForm(
             height={520}
             value={{
               geometryType: (watchedGeometryType as any) || 'POINT',
-              coordinates: (() => {
-                const valid = coordinateList
-                  .filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => c.latD != null && c.lngD != null)
                   .map((c) => ({
-                    latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-                    longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-                  }));
-                return serializeCoordinatesToWkt(valid, watchedGeometryType || 'POINT');
-              })(),
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
               symbolId: form.getFieldValue('mapSymbolId') || undefined,
             }}
-            onChange={(val: any) => {
-              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
-              const points = parseGisCoordinates(val);
-              if (points.length > 0) {
-                if (watchedGeometryType === 'POINT') {
-                  const p = points[0];
-                  const latDms = ddToDms(p.latitude);
-                  const lngDms = ddToDms(p.longitude);
-                  setCoordinateList([{
-                    latD: latDms.d, latM: latDms.m, latS: latDms.s,
-                    lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
-                  }]);
-                } else {
-                  setCoordinateList((prev) => {
-                    const toDms = (p: { latitude: number; longitude: number }) => {
-                      const lat = ddToDms(p.latitude);
-                      const lng = ddToDms(p.longitude);
-                      return { latD: lat.d, latM: lat.m, latS: lat.s, lngD: lng.d, lngM: lng.m, lngS: lng.s };
-                    };
-                    const newRows = points.map(toDms);
-                    const merged = [...prev];
-                    let newIdx = 0;
-                    const isFilled = (r: any) => r.latD != null || r.latM != null || r.latS != null || r.lngD != null || r.lngM != null || r.lngS != null;
-                    for (let i = 0; i < merged.length && newIdx < newRows.length; i++) {
-                      if (!isFilled(merged[i])) {
-                        merged[i] = newRows[newIdx++];
-                      }
-                    }
-                    while (newIdx < newRows.length) {
-                      merged.push(newRows[newIdx++]);
-                    }
-                    return merged;
-                  });
-                }
-                setGpsError(null);
-              }
-            }}
+            onChange={applyMapSelection}
           />
         </div>
       </Modal>

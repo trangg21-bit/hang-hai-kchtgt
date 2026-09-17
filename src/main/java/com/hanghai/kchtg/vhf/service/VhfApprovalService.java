@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.vhf.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.vhf.dto.ApprovalRequest;
 import com.hanghai.kchtg.vhf.dto.VhfResponse;
 import com.hanghai.kchtg.vhf.entity.Vhf;
@@ -211,6 +213,11 @@ public class VhfApprovalService {
           if (orgUnitName == null) {
             orgUnitName = "Cục Hàng hải Việt Nam";
           }
+          String prevDisp = formatDisplayValue(h.getChangedField(), h.getPreviousValue());
+          String newDisp = formatDisplayValue(h.getChangedField(), h.getNewValue());
+          if (h.getStatus() == InfrastructureHistoryStatus.UPDATED && EntityUpdateUtils.areEqual(prevDisp, newDisp)) {
+            return null;
+          }
           return HistoryEntry.builder()
               .id(h.getId())
               .approvalLevel(h.getApprovalLevel())
@@ -219,10 +226,11 @@ public class VhfApprovalService {
               .orgUnitName(orgUnitName)
               .approvedDate(h.getApprovedDate())
               .changedField(h.getChangedField())
-              .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
-              .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
+              .previousValue(prevDisp)
+              .newValue(newDisp)
               .build();
         })
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
   }
 

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vtsoperationcenter.repository;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import org.junit.jupiter.api.Test;
@@ -98,6 +99,43 @@ class VtsOperationCenterRepositoryTest {
 
         assertEquals(1, page.getTotalElements());
         assertEquals(1, page.getContent().size());
+    }
+
+    @Test
+    void testFindOptions_IncludesAllConditionStatusesWhenApproved() {
+        VtsOperationCenter op1 = createCenter("VTSOC-OP1", "TT Đang vận hành");
+        op1.setApprovalStatus(ApprovalStatus.APPROVED);
+        op1.setConditionStatus(ConditionStatus.OPERATIONAL);
+        repository.save(op1);
+
+        VtsOperationCenter op2 = createCenter("VTSOC-OP2", "TT Dừng vận hành");
+        op2.setApprovalStatus(ApprovalStatus.APPROVED);
+        op2.setConditionStatus(ConditionStatus.STOPPED);
+        repository.save(op2);
+
+        VtsOperationCenter op3 = createCenter("VTSOC-OP3", "TT Bảo trì cấp 2");
+        op3.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+        op3.setConditionStatus(ConditionStatus.MAINTENANCE);
+        repository.save(op3);
+
+        VtsOperationCenter draft = createCenter("VTSOC-DRAFT", "TT Chưa duyệt");
+        draft.setApprovalStatus(ApprovalStatus.DRAFT);
+        draft.setConditionStatus(ConditionStatus.OPERATIONAL);
+        repository.save(draft);
+
+        VtsOperationCenter deleted = createCenter("VTSOC-DEL", "TT Đã xóa");
+        deleted.setApprovalStatus(ApprovalStatus.APPROVED);
+        deleted.setConditionStatus(ConditionStatus.OPERATIONAL);
+        deleted.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(deleted);
+
+        entityManager.flush();
+
+        var options = repository.findOptions(false, List.of(), false, List.of());
+        List<String> names = options.stream().map(com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse::getName).toList();
+
+        assertEquals(3, options.size());
+        assertEquals(List.of("TT Bảo trì cấp 2", "TT Dừng vận hành", "TT Đang vận hành"), names);
     }
 
     private VtsOperationCenter createCenter(String code, String name) {

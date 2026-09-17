@@ -103,7 +103,7 @@ export interface DataTableProps {
   emptyState?: React.ReactNode;
   fill?: boolean;
   dense?: boolean;
-  onSort?: (field: string, order: any) => void;
+  onSort?: (field: string, order: 'asc' | 'desc' | null) => void;
   rowActions?: (record: any) => { key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }[];
   children?: React.ReactNode;
   scroll?: { x?: number | string; y?: number | string };
@@ -143,6 +143,12 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
     </Dropdown>
   );
 };
+
+export function getNextSortOrder(currentOrder?: 'ascend' | 'descend' | null): 'asc' | 'desc' | null {
+  if (currentOrder === 'ascend') return 'desc';
+  if (currentOrder === 'descend') return null;
+  return 'asc';
+}
 
 const DataTable: React.FC<DataTableProps> = ({
   columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, resetScrollKey, ...rest
@@ -378,7 +384,7 @@ const DataTable: React.FC<DataTableProps> = ({
         },
         onClick: isSortable ? () => {
           if (onSort && dataKey) {
-            const nextOrder = col.sortOrder === 'ascend' ? 'desc' : 'asc';
+            const nextOrder = getNextSortOrder(col.sortOrder);
             onSort(dataKey, nextOrder);
           }
         } : undefined,

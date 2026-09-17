@@ -1,7 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Form } from 'antd';
-import dayjs from 'dayjs';
-import type { Dayjs } from 'dayjs';
 import {
   DeleteOutlined,
   EditOutlined,
@@ -12,61 +8,65 @@ import {
   PlusOutlined,
   RocketOutlined,
 } from '@ant-design/icons';
+import { Form } from 'antd';
+import type { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ScreenHeader,
-  FilterTableLayout,
-  CommonTable,
-  TableFilter,
   CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
   TableColumnType,
-  type TableOption,
-  type TableActionOption,
+  TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
+  type TableActionOption,
+  type TableOption,
 } from '../../components/list-view';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
+import {
+  resolveMimeType,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
+} from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchVtsAssistOptions } from '../../services/vtsassist/api';
 import type { VtsAssistOptionResponse } from '../../services/vtsassist/types';
 import {
-  fetchVtsAssistAssets,
-  deleteVtsAssistAsset,
-  createVtsAssistAsset,
-  updateVtsAssistAsset,
-  fetchVtsAssistExploitations,
-  createVtsAssistExploitation,
-  fetchVtsAssistAdjustments,
   createVtsAssistAdjustment,
-  fetchVtsAssistAssetAttachments,
-  uploadVtsAssistAssetAttachments,
+  createVtsAssistAsset,
+  createVtsAssistExploitation,
+  deleteVtsAssistAsset,
   deleteVtsAssistAssetAttachment,
   downloadVtsAssistAssetAttachment,
+  fetchVtsAssistAdjustments,
+  fetchVtsAssistAssetAttachments,
+  fetchVtsAssistAssets,
+  fetchVtsAssistExploitations,
+  updateVtsAssistAsset,
+  uploadVtsAssistAssetAttachments,
 } from '../../services/vtsAssistAsset/api';
 import type {
   VtsAssistAsset,
+  VtsAssistAssetAdjustment,
+  VtsAssistAssetExploitation,
   VtsAssistAssetFilters,
   VtsAssistAssetPayload,
-  VtsAssistAssetExploitation,
-  VtsAssistAssetAdjustment,
 } from '../../services/vtsAssistAsset/types';
-import {
-  triggerBlobDownload,
-  resolveMimeType,
-  type InfrastructureAttachmentItem,
-} from '../../components/shared/InfrastructureAttachmentTab';
-import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import { canDeleteApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import VtsAssistAssetForm, { type FormValues } from './VtsAssistAssetForm';
 import VtsAssistAssetDetailContent from './VtsAssistAssetDetailContent';
+import VtsAssistAssetForm, { type FormValues } from './VtsAssistAssetForm';
+import VtsAssistAssetHistory, { useVtsAssistHistory } from './VtsAssistAssetHistory';
 import VtsAssistAssetOperationForm, {
   type OperationMode,
   type OperationValues,
 } from './VtsAssistAssetOperationForm';
-import VtsAssistAssetHistory, { useVtsAssistHistory } from './VtsAssistAssetHistory';
 
 const STATUS_COUNT_KEYS = [
   'DRAFT',
@@ -565,9 +565,6 @@ export default function VtsAssistAssetList() {
     }));
     setFilters({
       ...draftFilters,
-      assetCode: trimmedCode,
-      assetName: trimmedName,
-      assetType: 'Tài sản hệ thống phụ trợ VTS',
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
     });
@@ -741,68 +738,68 @@ export default function VtsAssistAssetList() {
         }
 
         const rowActions: TableActionOption<VtsAssistAsset>[] = [
-        {
-          key: 'detail',
-          label: 'Xem chi tiết',
-          icon: <EyeOutlined />,
-          onClick: () => void openDetail(record),
-        },
-        {
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: <EditOutlined />,
-          onClick: () => openEdit(record),
-        },
-        {
+          {
+            key: 'detail',
+            label: 'Xem chi tiết',
+            icon: <EyeOutlined />,
+            onClick: () => void openDetail(record),
+          },
+          {
+            key: 'edit',
+            label: 'Chỉnh sửa',
+            icon: <EditOutlined />,
+            onClick: () => openEdit(record),
+          },
+          {
             key: 'history',
             label: 'Lịch sử',
             icon: <HistoryOutlined />,
             onClick: () => void openHistory(record),
           },
           {
-          key: 'exploit',
-          label: 'Khai thác tài sản',
-          icon: <RocketOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('exploit');
-            operationForm.resetFields();
+            key: 'exploit',
+            label: 'Khai thác tài sản',
+            icon: <RocketOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('exploit');
+              operationForm.resetFields();
+            },
           },
-        },
-        {
-          key: 'increase',
-          label: 'Tăng nguyên giá',
-          icon: <PlusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('increase');
-            operationForm.resetFields();
+          {
+            key: 'increase',
+            label: 'Tăng nguyên giá',
+            icon: <PlusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('increase');
+              operationForm.resetFields();
+            },
           },
-        },
-        {
-          key: 'decrease',
-          label: 'Giảm nguyên giá',
-          icon: <MinusCircleOutlined />,
-          onClick: () => {
-            setSelected(record);
-            setOperationMode('decrease');
-            operationForm.resetFields();
+          {
+            key: 'decrease',
+            label: 'Giảm nguyên giá',
+            icon: <MinusCircleOutlined />,
+            onClick: () => {
+              setSelected(record);
+              setOperationMode('decrease');
+              operationForm.resetFields();
+            },
           },
-        },
         ];
 
         if (canDeleteApprovalRecord(record.approvalStatus, { resource: 'infraasset' })) {
           rowActions.push({
-          key: 'delete',
-          label: 'Xóa',
-          icon: <DeleteOutlined />,
-          danger: true,
-          onClick: () => setDeleteTarget(record),
+            key: 'delete',
+            label: 'Xóa',
+            icon: <DeleteOutlined />,
+            danger: true,
+            onClick: () => setDeleteTarget(record),
           });
         }
 
         return rowActions;
-        },
+      },
     }),
     [openDetail, openEdit, openHistory, operationForm, orgName, vtsAssistMap]
   );

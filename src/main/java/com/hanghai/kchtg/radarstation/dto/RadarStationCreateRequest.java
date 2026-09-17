@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.radarstation.dto;
 
+import com.hanghai.kchtg.common.validator.Decimal20_4;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -7,6 +8,7 @@ import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -27,7 +29,6 @@ public class RadarStationCreateRequest {
     @Size(max = 255, message = "Tên trạm không được vượt quá 255 ký tự")
     private String stationName;
 
-    @NotBlank(message = "Vị trí không được để trống")
     @Size(max = 500, message = "Vị trí không được vượt quá 500 ký tự")
     private String location;
 
@@ -43,7 +44,7 @@ public class RadarStationCreateRequest {
     private String coverage;
 
     @Positive(message = "Diện tích phải là số dương")
-    @Digits(integer = 16, fraction = 4, message = "Diện tích không quá 20 chữ số (tối đa 4 số lẻ)")
+    @Decimal20_4(message = "Diện tích không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal emissionArea;
 
     private String source;
@@ -51,6 +52,7 @@ public class RadarStationCreateRequest {
     /** Tình trạng (khớp dashboard KchtAssetCountService): '0' = Ngừng khai thác/vận hành (suspended), '1' = Đang khai thác/vận hành (operating), '2' = Chưa khai thác/vận hành (pending). Mặc định '1'. */
     private String conditionStatus;
 
+    @NotNull(message = "Đơn vị quản lý không được để trống")
     private UUID orgUnitId;
     private UUID seaportId;
     private UUID vtsSystemId;
@@ -63,9 +65,9 @@ public class RadarStationCreateRequest {
     @Max(value = 99999, message = "Số lượng tối đa 5 chữ số")
     private Integer quantity;
 
-    @Digits(integer = 16, fraction = 4, message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
+    @Decimal20_4(message = "Chiều cao tháp không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal towerHeight;
-    @Digits(integer = 16, fraction = 4, message = "Tầm radar không quá 20 chữ số (tối đa 4 số lẻ)")
+    @Decimal20_4(message = "Tầm radar không quá 20 chữ số (tối đa 4 số lẻ)")
     private BigDecimal radarRange;
 
     @Size(max = 2000, message = "Ghi chú không được vượt quá 2000 ký tự")

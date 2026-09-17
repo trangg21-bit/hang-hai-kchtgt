@@ -80,6 +80,7 @@ public class StormShelterAreaController {
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) Boolean isDeleted,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo) {
         log.info(
@@ -89,7 +90,7 @@ public class StormShelterAreaController {
                 page, size, orgUnitId,
                 search, stormShelterCode, stormShelterName, portId, navigationChannelId, buoyStationId,
                 classification, provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách khu tránh, trú bão thành công", result));
     }
 

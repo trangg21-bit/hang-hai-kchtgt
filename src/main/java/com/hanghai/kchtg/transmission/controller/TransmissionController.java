@@ -57,7 +57,7 @@ public class TransmissionController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'transmission:create')")
+  @PreAuthorize("@auth.check(authentication, 'transmission:create') or @auth.check(authentication, 'transmission:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating transmission device code");
     String code = transmissionService.generateTransmissionCode();

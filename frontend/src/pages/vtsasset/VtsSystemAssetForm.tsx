@@ -457,30 +457,6 @@ export default function VtsSystemAssetForm({
   ]);
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
-    if (drawerMode === 'edit') {
-      const isDraft =
-        !selected?.approvalStatus ||
-        ['DRAFT', 'NHAP'].includes(String(selected.approvalStatus).toUpperCase());
-      const actions: FormSidebarAction[] = [];
-      if (isDraft) {
-        actions.push({
-          key: 'draft',
-          label: 'Lưu tạm',
-          variant: 'outline',
-          loading: saving && saveAction === 'DRAFT',
-          onClick: () => void onSave('DRAFT'),
-        });
-      }
-      actions.push({
-        key: 'approve',
-        label: 'Lưu và phê duyệt',
-        variant: 'success',
-        loading: saving && saveAction === 'APPROVED',
-        onClick: () => void onSave('APPROVED'),
-      });
-      return actions;
-    }
-
     return [
       {
         key: 'draft',
@@ -504,7 +480,7 @@ export default function VtsSystemAssetForm({
         onClick: () => void onSave('APPROVED'),
       },
     ];
-  }, [drawerMode, selected, saving, saveAction, onSave]);
+  }, [onSave, saveAction, saving]);
 
   const title =
     drawerMode === 'edit'
