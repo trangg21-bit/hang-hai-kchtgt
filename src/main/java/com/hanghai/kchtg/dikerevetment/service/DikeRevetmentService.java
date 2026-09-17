@@ -77,7 +77,7 @@ public class DikeRevetmentService {
     private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
+    private String uploadDir = "uploads";
 
     private static final int MAX_ATTACHMENTS = 10;
     private static final long MAX_ATTACHMENT_SIZE = 20L * 1024 * 1024;
@@ -203,8 +203,19 @@ public class DikeRevetmentService {
                                                    LocalDateTime updatedFrom, LocalDateTime updatedTo,
                                                    String code, String location, Integer commissioningYear,
                                                    Pageable pageable) {
+        return searchPaged(orgUnitId, keyword, dikeRevetmentName, seaportId, dikeRevetmentType, conditionStatus,
+                approvalStatus, null, updatedBy, updatedFrom, updatedTo, code, location, commissioningYear, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DikeRevetmentResponse> searchPaged(UUID orgUnitId, String keyword, String dikeRevetmentName, UUID seaportId,
+                                                   DikeRevetmentType dikeRevetmentType, String conditionStatus,
+                                                   String approvalStatus, Boolean isDeletedParam, UUID updatedBy,
+                                                   LocalDateTime updatedFrom, LocalDateTime updatedTo,
+                                                   String code, String location, Integer commissioningYear,
+                                                   Pageable pageable) {
         Scope scope = resolveEffectiveScope(orgUnitId);
-        Boolean isDeleted = null;
+        Boolean isDeleted = isDeletedParam;
         ApprovalStatus statusEnum = null;
         if (approvalStatus != null && !approvalStatus.isBlank()) {
             String upper = approvalStatus.trim().toUpperCase();
@@ -216,6 +227,8 @@ public class DikeRevetmentService {
                     statusEnum = ApprovalStatus.fromString(approvalStatus);
                 } catch (Exception ignored) {}
             }
+        } else if (isDeleted == null) {
+            isDeleted = Boolean.FALSE;
         }
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
@@ -279,7 +292,9 @@ public class DikeRevetmentService {
             if (row[0] == null) continue;
             ApprovalStatus st = (ApprovalStatus) row[0];
             long count = ((Number) row[1]).longValue();
-            total += count;
+            if (st != ApprovalStatus.ARCHIVED) {
+                total += count;
+            }
             switch (st) {
                 case DRAFT, PROPOSED -> counts.put("DRAFT", counts.get("DRAFT") + count);
                 case PENDING_APPROVAL -> counts.put("PENDING_APPROVAL", counts.get("PENDING_APPROVAL") + count);
@@ -551,7 +566,26 @@ public class DikeRevetmentService {
                     paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
         }
 
-        Set<UUID> userIds = historyList.stream()
+        List<InfrastructureHistory> filteredList = historyList.stream()
+                .filter(h -> {
+                    if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
+                        return false;
+                    }
+                    String field = h.getChangedField();
+                    if (field != null) {
+                        String norm = field.trim().toLowerCase();
+                        if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+                            return false;
+                        }
+                    }
+                    if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+
+        Set<UUID> userIds = filteredList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -559,7 +593,8 @@ public class DikeRevetmentService {
                 userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        return historyList.stream().map(h -> {
+        return filteredList.stream()
+                .map(h -> {
             User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
             String userName = u != null
                     ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
@@ -805,9 +840,11 @@ public class DikeRevetmentService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
         validateAllowedOrgUnit(entity.getOrgUnitId());
         approvalService.assertEditable(entity);
-        // Chuẩn /vts-operation-center: chỉ ghi nhật ký 'Tài liệu đính kèm' khi hồ sơ ĐÃ DUYỆT
-        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        // Chuẩn /vts-operation-center: chỉ ghi nhật ký 'Tài liệu đính kèm' khi hồ sơ ĐÃ DUYỆT (bỏ qua tệp ban đầu khi vừa tạo mới)
+        boolean isNewlyCreated = entity.getCreatedAt() != null
+                && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
+        boolean wasApproved = !isNewlyCreated && (entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2);
 
         Path dir = Paths.get(uploadDir, "dike_revetment", id.toString()).toAbsolutePath().normalize();
         try {

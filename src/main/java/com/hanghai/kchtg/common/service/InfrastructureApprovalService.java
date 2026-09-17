@@ -16,7 +16,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hanghai.kchtg.security.SecurityUtils;
+import org.springframework.security.access.AccessDeniedException;
+
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -349,10 +353,8 @@ public class InfrastructureApprovalService {
         if (entity.getLevel2ApprovalContent() == null || entity.getLevel2ApprovalContent().isBlank()) {
             entity.setLevel2ApprovalContent("Lưu và phê duyệt");
         }
-
-        recordHistory(entity.getId(), refType, ApprovalLevel.LEVEL_2,
-                InfrastructureHistoryStatus.UPDATED, userId, changeDescription,
-                "approvalStatus", "Đã duyệt", "Đã duyệt");
+        // Biến động trường dữ liệu thực tế được ghi nhận bởi caller service (ChangeHistoryService).
+        // Không ghi nhận trường phê duyệt ảo "approvalStatus: Đã duyệt -> Đã duyệt" vào infrastructure_history.
     }
 
     /**
@@ -404,6 +406,30 @@ public class InfrastructureApprovalService {
         } catch (Exception e) {
             log.warn("Không thể xác định cấp đơn vị của người dùng {}: {}", userId, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Kiểm tra thẩm quyền "Lưu và phê duyệt" (phê duyệt trực tiếp cấp Cục khi tạo mới hoặc cập nhật).
+     * Chỉ người dùng cấp Cục (Department level) có quyền approvec2 (hoặc data:approvec2 / admin)
+     * mới được phép thực hiện thao tác này.
+     */
+    public void requireApproveC2Permission(UUID userId, String resourcePermission) {
+        if (SecurityUtils.isElevatedAdministrator()) {
+            return;
+        }
+        UUID effectiveUserId = userId != null ? userId : SecurityUtils.getCurrentUserId();
+        if (!isDepartmentLevelUser(effectiveUserId)) {
+            throw new AccessDeniedException(
+                    "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
+        }
+        Set<String> perms = SecurityUtils.getCurrentUserPermissions();
+        if (perms == null || (!perms.contains(resourcePermission)
+                && !perms.contains("data:approvec2")
+                && !perms.contains("kcht:approve_level2")
+                && !perms.contains("kcht:approvec2"))) {
+            throw new AccessDeniedException(
+                    "Bạn không có quyền phê duyệt — thao tác 'Lưu và phê duyệt' cần quyền duyệt cấp Cục");
         }
     }
 

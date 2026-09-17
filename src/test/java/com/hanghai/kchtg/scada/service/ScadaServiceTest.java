@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -91,7 +92,7 @@ class ScadaServiceTest {
         when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
 
         entity = Scada.builder()
                 .id(ID)
@@ -139,6 +140,20 @@ class ScadaServiceTest {
         assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         assertNotNull(result.getSubmittedDate());
         assertEquals(USER_ID, result.getSubmittedBy());
+    }
+
+    @Test
+    void createWithApproveAction_WithoutApproveC2Permission_ThrowsAccessDeniedException() {
+        when(scadaRepository.existsDeviceCodeAnyState("SCA-000001")).thenReturn(false);
+        when(scadaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        User regularUser = mock(User.class);
+        when(regularUser.getId()).thenReturn(USER_ID);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(regularUser, "pass",
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        assertThrows(AccessDeniedException.class, () -> service.create(createRequest("approve")));
     }
 
     @Test

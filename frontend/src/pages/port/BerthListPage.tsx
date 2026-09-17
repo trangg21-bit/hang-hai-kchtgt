@@ -689,7 +689,7 @@ export default function BerthList() {
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const res = await berthCRUD.search({
         ...getBaseSearchParams(),
@@ -697,9 +697,8 @@ export default function BerthList() {
         page, pageSize,
       });
       setDataSource(res.data); setTotal(res.total);
-    } catch (err: unknown) {
+    } catch {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách bến cảng'));
     } finally { setIsLoading(false); }
   }, [getBaseSearchParams, activeTab, page, pageSize]);
 

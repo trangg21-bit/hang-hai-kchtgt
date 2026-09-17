@@ -677,7 +677,6 @@ export default function DaiTtdhListPage() {
     const pageToFetch = targetPage !== undefined ? targetPage : page;
     setIsLoading(true);
     setIsError(false);
-    setError(null);
     try {
       const r = await daiTtdhCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -694,9 +693,8 @@ export default function DaiTtdhListPage() {
       });
       setDataSource(r.data);
       setTotal(r.total);
-    } catch (ex: unknown) {
+    } catch {
       setIsError(true);
-      setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách đài TTDH'));
     } finally {
       setIsLoading(false);
     }

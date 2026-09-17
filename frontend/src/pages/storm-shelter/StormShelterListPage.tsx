@@ -380,7 +380,6 @@ export default function StormShelterListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [, setError] = useState<Error | null>(null);
   const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
@@ -586,7 +585,7 @@ export default function StormShelterListPage() {
   }, []);
 
   const fetchData = useCallback(async () => {
-    setIsLoading(true); setIsError(false); setError(null);
+    setIsLoading(true); setIsError(false);
     try {
       const r = await stormShelterCRUD.search({
         orgUnitId: (orgUnit && orgUnit !== '__all__') ? orgUnit : undefined,
@@ -604,8 +603,8 @@ export default function StormShelterListPage() {
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
-    } catch (ex: unknown) {
-      setIsError(true); setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách khu tránh, trú bão'));
+    } catch {
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }

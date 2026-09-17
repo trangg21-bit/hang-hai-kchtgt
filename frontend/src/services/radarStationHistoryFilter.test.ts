@@ -1,14 +1,33 @@
 import { describe, it, expect } from 'vitest';
 import { fmtNum } from '../utils/numFmt';
+import { DEFAULT_IGNORED_FIELDS } from '../utils/changeHistoryRenderer';
 
 describe('RadarStation History Filter Logic (/radar-station)', () => {
   const isMeaningfulChange = (
-    _field: string,
+    field: string,
     rawOld: string | null | undefined,
     rawNew: string | null | undefined,
   ): boolean => {
-    const ov = rawOld != null ? String(rawOld).trim() : '';
-    const nv = rawNew != null ? String(rawNew).trim() : '';
+    const f = (field || '').trim();
+    const fLower = f.toLowerCase();
+    if (
+      DEFAULT_IGNORED_FIELDS.has(f) ||
+      DEFAULT_IGNORED_FIELDS.has(fLower) ||
+      fLower === 'approvalstatus' ||
+      fLower === 'trạng thái phê duyệt' ||
+      fLower === 'trang thai phe duyet' ||
+      fLower === 'trạng thái'
+    ) {
+      return false;
+    }
+    const normalize = (v: any) => {
+      if (v == null) return '';
+      const s = String(v).trim();
+      if (s === '(null)' || s === 'null' || s === 'Chưa có') return '';
+      return s;
+    };
+    const ov = normalize(rawOld);
+    const nv = normalize(rawNew);
     if (ov === '' && nv === '') return false;
     if (ov !== '' && nv !== '' && ov === nv) return false;
     // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25 hoặc 5,555 vs 5555)
@@ -52,5 +71,15 @@ describe('RadarStation History Filter Logic (/radar-station)', () => {
   it('keeps genuine string changes', () => {
     expect(isMeaningfulChange('Tên trạm radar', 'Trạm Cũ', 'Trạm Mới')).toBe(true);
     expect(isMeaningfulChange('Tình trạng', 'Đang bảo trì', 'Đang khai thác/vận hành')).toBe(true);
+  });
+
+  it('filters out approvalStatus and DEFAULT_IGNORED_FIELDS completely', () => {
+    expect(isMeaningfulChange('approvalStatus', 'Đã duyệt', 'Đã duyệt')).toBe(false);
+    expect(isMeaningfulChange('approvalStatus', 'Lưu tạm', 'Đã duyệt')).toBe(false);
+    expect(isMeaningfulChange('Trạng thái phê duyệt', 'Chưa có', 'Đã duyệt')).toBe(false);
+    expect(isMeaningfulChange('Trạng thái', 'Lưu tạm', 'Đã duyệt')).toBe(false);
+    expect(isMeaningfulChange('approverLevel1', null, 'uuid-user')).toBe(false);
+    expect(isMeaningfulChange('rejectionReason', null, 'Lý do từ chối')).toBe(false);
+    expect(isMeaningfulChange('Lý do từ chối', null, 'Lý do')).toBe(false);
   });
 });

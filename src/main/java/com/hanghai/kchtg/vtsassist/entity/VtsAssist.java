@@ -147,4 +147,29 @@ public class VtsAssist extends BaseEntity implements ApprovableEntity {
 
     @Column(name = "manufacturer", length = 50)
     private String manufacturer;
+
+    @Override
+    public void setLevel1ApprovalContent(String content) {
+        this.approvalContentLevel1 = content;
+    }
+
+    @Override
+    public String getLevel1ApprovalContent() {
+        return this.approvalContentLevel1;
+    }
+
+    @Override
+    public void setLevel2ApprovalContent(String content) {
+        this.approvalContentLevel2 = content;
+    }
+
+    @Override
+    public String getLevel2ApprovalContent() {
+        return this.approvalContentLevel2;
+    }
+
+    @Override
+    public void setSubmittedAt(LocalDateTime submittedAt) {
+        this.submittedDate = submittedAt;
+    }
 }

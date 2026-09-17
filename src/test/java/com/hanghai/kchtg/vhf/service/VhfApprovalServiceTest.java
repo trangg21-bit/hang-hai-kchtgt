@@ -270,6 +270,66 @@ class VhfApprovalServiceTest {
         }
 
         @Test
+        @DisplayName("Lọc bỏ approvalStatus và các bản ghi trùng giá trị cũ - mới (Đã duyệt -> Đã duyệt)")
+        void getHistory_shouldFilterOutApprovalStatusAndUnchangedValues() {
+            givenStatus(ApprovalStatus.APPROVED);
+
+            InfrastructureHistory approvalStatusHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("approvalStatus")
+                    .previousValue("Đã duyệt")
+                    .newValue("Đã duyệt")
+                    .build();
+
+            InfrastructureHistory unchangedFieldHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Tên thiết bị")
+                    .previousValue("VHF A")
+                    .newValue("VHF A")
+                    .build();
+
+            InfrastructureHistory realChangeHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Tên thiết bị")
+                    .previousValue("VHF cũ")
+                    .newValue("VHF mới")
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))
+                    .thenReturn(List.of(approvalStatusHistory, unchangedFieldHistory, realChangeHistory));
+
+            User actor = new User();
+            actor.setId(USER_ID);
+            actor.setFullName("Nguyễn Văn A");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(USER_ID))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("Tên thiết bị");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("VHF cũ");
+            assertThat(result.get(0).getNewValue()).isEqualTo("VHF mới");
+        }
+
+        @Test
         @DisplayName("Criterion 2: Unit name falls back to department or default agency")
         void getHistory_unitNameFallback() {
             givenStatus(ApprovalStatus.APPROVED);

@@ -49,10 +49,18 @@ public interface ApprovableEntity {
     default void setSubmittedAt(LocalDateTime submittedAt) {
     }
 
+    default LocalDateTime getSubmittedAt() {
+        return null;
+    }
+
     /**
      * User who submitted the record for approval (#51).
      */
     default void setSubmittedBy(UUID userId) {
+    }
+
+    default UUID getSubmittedBy() {
+        return null;
     }
 
     /**

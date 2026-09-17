@@ -105,6 +105,7 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
 
 import dayjs from "dayjs";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
+import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import { DetailTable } from "../../components/shared/DetailTable";
 import InfrastructureAttachmentTab from "../../components/shared/InfrastructureAttachmentTab";
@@ -162,8 +163,8 @@ import {
     textSecondary,
     textTertiary,
 } from "../../themetokenchk";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
+import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 
 
 // ── Trạng thái phê duyệt 2 cấp (C1 Cảng vụ → C2 Cục) — đồng bộ /vts-system ──
@@ -364,15 +365,14 @@ const ScadaListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) + Đã xóa
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || 0)
+        (counts.REJECTED_LEVEL2 || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -952,6 +952,12 @@ const ScadaListPage = () => {
       return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
     }
 
+    // Nếu có trường dữ liệu thông thường thay đổi, ưu tiên hiển thị [Cập nhật]
+    const hasFieldUpdate = changes.some((c: any) => !isAttachmentField(c.field));
+    if (hasFieldUpdate) {
+      return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
+    }
+
     if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len')) {
       return { label: 'Tải lên tệp', color: '#0284C7', bg: '#0284C718' };
     }
@@ -1047,6 +1053,43 @@ const ScadaListPage = () => {
     }
   }, [hasPerm]);
 
+  const isIgnoredHistoryItem = useCallback((r: any) => {
+    const fn = (r.changedField || r.fieldName || r.field || '').trim();
+    if (!fn) return true;
+    if (DEFAULT_IGNORED_FIELDS.has(fn) || DEFAULT_IGNORED_FIELDS.has(fn.toLowerCase())) return true;
+    const lower = fn.toLowerCase();
+    if (lower === 'trạng thái phê duyệt' || lower === 'trang thai phe duyet' || lower === 'approvalstatus') return true;
+    if (fn === 'infrastructureList' || fn === 'infrastructureList_raw' || fn === 'attachments' || fn === 'spatialId') return true;
+    const ov = r.previousValue ?? r.oldValue ?? null;
+    const nv = r.newValue ?? null;
+    if (ov !== null && ov !== undefined && ov === nv) return true;
+    return false;
+  }, []);
+
+  const filteredHistoryRecords = useMemo(() => {
+    const q = historySearch.toLowerCase().trim();
+    return (historyRecords || []).filter((r: any) => {
+      if (isIgnoredHistoryItem(r)) return false;
+      if (q) {
+        const fn = (historyField(r) || '').toLowerCase();
+        const ov = (historyOldValue(r) || '').toLowerCase();
+        const nv = (historyNewValue(r) || '').toLowerCase();
+        const lb = historyFieldName(historyField(r) || '').toLowerCase();
+        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap).toLowerCase();
+        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap).toLowerCase();
+        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) return false;
+      }
+      if (historyFrom || historyTo) {
+        const cd = (historyTimestamp(r) || '');
+        if (historyFrom && cd.substring(0, 10) < historyFrom) return false;
+        if (historyTo && cd.substring(0, 10) > historyTo) return false;
+      }
+      return true;
+    });
+  }, [historyRecords, historySearch, historyFrom, historyTo, orgMap, symbolMap, isIgnoredHistoryItem]);
+
+  const historyFieldCount = filteredHistoryRecords.length;
+
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'Đơn vị quản lý',
     'deviceCode', 'Mã thiết bị',
@@ -1062,7 +1105,6 @@ const ScadaListPage = () => {
     'unitOfMeasure', 'Đơn vị tính',
     'yearOfUse', 'Năm đưa vào sử dụng',
     'operationalStatus', 'Trạng thái hoạt động', 'Tình trạng hoạt động',
-    'approvalStatus', 'Trạng thái phê duyệt',
     'specifications', 'Thông số kỹ thuật',
     'maintenanceInformation', 'Thông tin bảo trì',
     'note', 'Ghi chú',
@@ -1139,20 +1181,7 @@ const ScadaListPage = () => {
     const q = historySearch.toLowerCase().trim();
     const groups: { tsSec: number; ts: string; actor: string; items: any[] }[] = [];
     for (const r of sorted) {
-      if (q) {
-        const fn = (historyField(r) || '').toLowerCase();
-        const ov = (historyOldValue(r) || '').toLowerCase();
-        const nv = (historyNewValue(r) || '').toLowerCase();
-        const lb = historyFieldName(historyField(r) || '').toLowerCase();
-        const od = historyFieldValue(historyField(r), historyOldValue(r), orgMap, symbolMap).toLowerCase();
-        const nd = historyFieldValue(historyField(r), historyNewValue(r), orgMap, symbolMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) continue;
-      }
-      if (historyFrom || historyTo) {
-        const cd = (historyTimestamp(r) || '');
-        if (historyFrom && cd.substring(0, 10) < historyFrom) continue;
-        if (historyTo && cd.substring(0, 10) > historyTo) continue;
-      }
+      if (isIgnoredHistoryItem(r)) continue;
       const ts = historyTimestamp(r);
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
@@ -1189,6 +1218,7 @@ const ScadaListPage = () => {
           // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
           const changes = deduplicateAttachmentHistoryChanges(
             g.items.flatMap((item: any) => {
+              if (isIgnoredHistoryItem(item)) return [];
               const fn = historyField(item);
               return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
             })
@@ -1199,14 +1229,12 @@ const ScadaListPage = () => {
           );
           const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
           const orderedChanges = [...changes]
+            .filter((c: any) => !isIgnoredHistoryItem(c))
             .sort((a: any, b: any) => {
               const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
               const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
               return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-            })
-            .filter(
-              (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
-            );
+            });
 
           const formatHistoryValue = (fn: string, raw: string | null) => {
             if (raw === null || raw === '(null)' || raw === '') return null;
@@ -3246,13 +3274,13 @@ const ScadaListPage = () => {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {historyLoading ? (
           <LoadingSkeleton rows={5} />
-        ) : historyRecords.length === 0 ? (
+        ) : filteredHistoryRecords.length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
             <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-            <div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div>
+            <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
           </div>
         ) : (
-          renderScadaHistoryTimeline(historyRecords)
+          renderScadaHistoryTimeline(filteredHistoryRecords)
         )}
         </div>
       </AppDrawer>

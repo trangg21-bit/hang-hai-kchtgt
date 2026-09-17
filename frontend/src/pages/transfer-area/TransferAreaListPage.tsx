@@ -658,7 +658,6 @@ export default function TransferAreaListPage() {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
-    setError(null);
     try {
       const provinceIdx = filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined;
       const r = await transferAreaCRUD.search({
@@ -681,9 +680,8 @@ export default function TransferAreaListPage() {
       }));
       setDataSource(mapped);
       setTotal(r.total);
-    } catch (ex: unknown) {
+    } catch {
       setIsError(true);
-      setError(ex instanceof Error ? ex : new Error('Không thể tải danh sách khu chuyển tải'));
     } finally {
       setIsLoading(false);
     }
