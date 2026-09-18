@@ -382,5 +382,150 @@ class ScadaApprovalServiceTest {
             assertThat(service.formatDisplayValue("coordinateSystem", "1")).isEqualTo("WGS 84");
             assertThat(service.formatDisplayValue("coordinateSystem", "2")).isEqualTo("VN-2000");
         }
+
+        @Test
+        @DisplayName("getHistory filters out approval workflow metadata fields")
+        void getHistory_filtersApprovalWorkflowMetadata() {
+            givenStatus(ApprovalStatus.APPROVED);
+            LocalDateTime now = LocalDateTime.now();
+
+            InfrastructureHistory meta1 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("approvalContentLevel1")
+                    .previousValue(null)
+                    .newValue("Đồng ý phê duyệt")
+                    .approvedDate(now)
+                    .approvedBy(APPROVER_A)
+                    .build();
+
+            InfrastructureHistory meta2 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("submittedDate")
+                    .previousValue(null)
+                    .newValue("2026-03-01T10:00:00")
+                    .approvedDate(now)
+                    .approvedBy(APPROVER_A)
+                    .build();
+
+            InfrastructureHistory meta3 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("rejectionReason")
+                    .previousValue(null)
+                    .newValue("Hồ sơ chưa đủ")
+                    .approvedDate(now)
+                    .approvedBy(APPROVER_A)
+                    .build();
+
+            InfrastructureHistory genuine = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("model")
+                    .previousValue("Model A")
+                    .newValue("Model B")
+                    .approvedDate(now)
+                    .approvedBy(APPROVER_A)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, ID))
+                    .thenReturn(List.of(meta1, meta2, meta3, genuine));
+
+            User actor = new User();
+            actor.setId(APPROVER_A);
+            actor.setFullName("Cán bộ kỹ thuật");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(APPROVER_A))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("model");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("Model A");
+            assertThat(result.get(0).getNewValue()).isEqualTo("Model B");
+        }
+
+        @Test
+        @DisplayName("getHistory deduplicates canonical fields in the same session")
+        void getHistory_deduplicatesCanonicalFieldsInSameSession() {
+            givenStatus(ApprovalStatus.APPROVED);
+            LocalDateTime timestamp = LocalDateTime.of(2026, 3, 1, 10, 30, 0);
+
+            InfrastructureHistory englishField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("deviceName")
+                    .previousValue("SCADA cũ")
+                    .newValue("SCADA mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(APPROVER_A)
+                    .build();
+
+            InfrastructureHistory vietnameseField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("Tên thiết bị")
+                    .previousValue("SCADA cũ")
+                    .newValue("SCADA mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(APPROVER_A)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, ID))
+                    .thenReturn(List.of(englishField, vietnameseField));
+
+            User actor = new User();
+            actor.setId(APPROVER_A);
+            actor.setFullName("Cán bộ");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(APPROVER_A))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("deviceName");
+        }
+
+        @Test
+        @DisplayName("getHistory falls back approvedBy to Hệ thống when user cannot be resolved")
+        void getHistory_fallbackUserNameToSystemWhenNull() {
+            givenStatus(ApprovalStatus.APPROVED);
+            UUID unknownUserId = UUID.randomUUID();
+
+            InfrastructureHistory hist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.SCADA)
+                    .changedField("note")
+                    .previousValue("Ghi chú cũ")
+                    .newValue("Ghi chú mới")
+                    .approvedDate(LocalDateTime.now())
+                    .approvedBy(unknownUserId)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.SCADA, ID))
+                    .thenReturn(List.of(hist));
+            when(userRepository.findAllByIdInWithOrgUnit(any())).thenReturn(List.of());
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getApprovedBy()).isEqualTo("Hệ thống");
+        }
+
+        @Test
+        @DisplayName("Criterion: getHistory returns empty list when entity is DRAFT")
+        void getHistory_whenDraft_returnsEmptyList() {
+            givenStatus(ApprovalStatus.DRAFT);
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).isEmpty();
+        }
     }
 }

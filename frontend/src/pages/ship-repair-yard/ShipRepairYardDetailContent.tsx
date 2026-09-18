@@ -64,6 +64,12 @@ export default function ShipRepairYardDetailContent({
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
+  const renderDmsText = (dd: number | null | undefined, isLat: boolean): string => {
+    if (dd == null || isNaN(Number(dd))) return '';
+    const dms = ddToDms(Number(dd));
+    return `${dms.d}° ${dms.m}' ${dms.s}" ${isLat ? 'N' : 'E'}`;
+  };
+
 
   return (
     <div className="ship-repair-yard-detail-content-wrapper">
@@ -374,7 +380,7 @@ export default function ShipRepairYardDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(r.updatedAt || (r as any).updatedDate || r.createdAt || (r as any).createdDate)}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
@@ -384,36 +390,44 @@ export default function ShipRepairYardDetailContent({
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.submittedForApprovalAt)}</span>
+                        <span className="chk-detail-value">{fmtDateTime(r.submittedForApprovalAt || (r as any).submittedDate)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ duyệt Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+
                         <span className="chk-detail-value">
                           <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.portAuthorityApprovedBy, (r as any).portAuthorityApprovedByName, userMap)}</span>
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày duyệt Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.portAuthorityApprovedAt)}</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">{fmtDateTime(r.portAuthorityApprovedAt || (r as any).approvedDateLevel1)}</span>
+
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-full-label">Nội dung duyệt Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{r.portAuthorityApprovalContent || ''}</span>
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">{r.portAuthorityApprovalContent || (r as any).approvalContentLevel1 || ''}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ duyệt cấp Cục</span>
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
                           <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.departmentApprovedBy, (r as any).departmentApprovedByName, userMap)}</span>
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.departmentApprovedAt)}</span>
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">{fmtDateTime(r.departmentApprovedAt || (r as any).approvedDateLevel2)}</span>
                       </div>
                       <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-full-label">Nội dung duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{r.departmentApprovalContent || ''}</span>
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">{r.departmentApprovalContent || (r as any).approvalContentLevel2 || ''}</span>
                       </div>
+                      {Boolean(r.rejectionReason || (r as any).rejectReason) && String(r.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                          <span className="chk-detail-value" style={{ color: statusCritical }}>{r.rejectionReason || (r as any).rejectReason}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -430,7 +444,13 @@ export default function ShipRepairYardDetailContent({
                     <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
                     <span className="chk-detail-value">
                       {(() => {
-                        const gt = (r as any).geometryType || '';
+                        let gt = (r as any).geometryType || '';
+                        if (!gt) {
+                          const pts = parseGisCoordinates(r);
+                          if (pts.length > 0) {
+                            gt = pts.length > 2 ? 'POLYGON' : pts.length === 2 ? 'LINE' : 'POINT';
+                          }
+                        }
                         const m: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
                         return m[gt] || gt || '';
                       })()}
@@ -440,9 +460,20 @@ export default function ShipRepairYardDetailContent({
                     <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
                     <span className="chk-detail-value">
                       {(() => {
-                        const symId = r.mapSymbolId || '';
-                        const symName = symbolMap.get(symId) || symId || '';
-                        const symImg = symbolImageMap.get(symId);
+                        const symId = r.mapSymbolId || (r as any).bieuTuongId || (r as any).symbolId || '';
+                        let symName = symbolMap.get(symId) || '';
+                        let symImg = symbolImageMap.get(symId);
+                        if (!symName && symId) {
+                          const lower = symId.toLowerCase();
+                          for (const [k, v] of symbolMap.entries()) {
+                            if (k.toLowerCase() === lower) {
+                              symName = v;
+                              symImg = symbolImageMap.get(k);
+                              break;
+                            }
+                          }
+                        }
+                        symName = symName || symId;
                         if (!symName && !symImg) return '';
                         return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -485,9 +516,9 @@ export default function ShipRepairYardDetailContent({
                         emptyText="Chưa có tọa độ GPS nào"
                         scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                         columns={[
-                          { title: 'STT', width: 50 },
-                          { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
-                          { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
+                          { title: 'STT', width: 50, align: 'center' as const },
+                          { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => renderDmsText(rec.lat, true) },
+                          { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => renderDmsText(rec.lng, false) },
                         ]}
                       />
                     );

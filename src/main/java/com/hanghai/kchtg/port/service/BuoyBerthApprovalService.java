@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -130,8 +131,11 @@ public class BuoyBerthApprovalService {
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize,
                                          String keyword, LocalDateTime fromDate, LocalDateTime toDate) {
-        buoyBerthRepository.findById(id)
+        com.hanghai.kchtg.port.entity.BuoyBerth entity = buoyBerthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến phao với id: " + id));
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Collections.emptyList();
+        }
 
         List<InfrastructureHistory> list;
         if (page != null && pageSize != null && pageSize > 0) {

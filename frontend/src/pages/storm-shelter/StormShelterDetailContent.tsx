@@ -577,10 +577,10 @@ export default function StormShelterDetailContent({
                                 display: 'block',
                                 cursor: 'pointer',
                               }}
-                              title={d || ''}
+                              title={d?.trim() || `Khu nước ${(rec?.key ?? 0) + 1}`}
                               onClick={() => setViewingWaterArea(rec)}
                             >
-                              {d || ''}
+                              {d?.trim() || `Khu nước ${(rec?.key ?? 0) + 1}`}
                             </a>
                           ),
                         },

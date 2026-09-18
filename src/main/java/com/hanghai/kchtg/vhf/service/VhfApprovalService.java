@@ -174,6 +174,10 @@ public class VhfApprovalService {
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống VHF với id: " + id));
     validateAllowedOrgUnit(parent.getOrgUnitId());
 
+    if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+      return Collections.emptyList();
+    }
+
     String normalizedKeyword = normalizeSearchKeyword(keyword);
     boolean paged = page != null && pageSize != null && pageSize > 0;
     List<InfrastructureHistory> list;
@@ -186,6 +190,7 @@ public class VhfApprovalService {
           paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
     }
 
+    Set<String> seenSessionKeys = new HashSet<>();
     List<InfrastructureHistory> filteredList = list.stream()
         .filter(h -> {
           if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
@@ -194,11 +199,19 @@ public class VhfApprovalService {
           String field = h.getChangedField();
           if (field != null) {
             String norm = field.trim().toLowerCase();
-            if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+            if (isExcludedHistoryField(norm)) {
               return false;
             }
           }
           if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+            return false;
+          }
+          long epochSec = h.getApprovedDate() != null
+              ? h.getApprovedDate().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+              : 0L;
+          String canonical = canonicalizeFieldName(h.getChangedField());
+          String sessionKey = epochSec + "_" + canonical;
+          if (!canonical.isEmpty() && !seenSessionKeys.add(sessionKey)) {
             return false;
           }
           return true;
@@ -215,6 +228,9 @@ public class VhfApprovalService {
         .map(h -> {
           User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
           String userName = formatUserIdentity(u);
+          if (userName == null || userName.isBlank()) {
+            userName = "Hệ thống";
+          }
           String orgUnitName = null;
           if (u != null) {
             if (u.getOrgUnit() != null) {
@@ -252,6 +268,75 @@ public class VhfApprovalService {
         })
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
+  }
+
+  private static boolean isExcludedHistoryField(String norm) {
+    if (norm == null) return false;
+    return norm.equals("approvalstatus")
+        || norm.equals("trạng thái phê duyệt")
+        || norm.equals("trang thai phe duyet")
+        || norm.equals("trạng thái")
+        || norm.equals("approvalcontentlevel1")
+        || norm.equals("approvalcontentlevel2")
+        || norm.equals("level1approvalcontent")
+        || norm.equals("level2approvalcontent")
+        || norm.equals("submitteddate")
+        || norm.equals("submittedat")
+        || norm.equals("submittedby")
+        || norm.equals("approverlevel1")
+        || norm.equals("approverlevel2")
+        || norm.equals("approveddatelevel1")
+        || norm.equals("approveddatelevel2")
+        || norm.equals("rejectionreason")
+        || norm.equals("lý do từ chối")
+        || norm.equals("ly do tu choi")
+        || norm.equals("portauthorityapprovedby")
+        || norm.equals("portauthorityapprovedat")
+        || norm.equals("portauthorityapprovalcontent")
+        || norm.equals("departmentapprovedby")
+        || norm.equals("departmentapprovedat")
+        || norm.equals("departmentapprovalcontent")
+        || norm.equals("approvedby")
+        || norm.equals("approvedat")
+        || norm.equals("approvedremarks")
+        || norm.equals("cấp 1 phê duyệt")
+        || norm.equals("cấp 2 phê duyệt")
+        || norm.equals("nội dung phê duyệt")
+        || norm.equals("ngày gửi phê duyệt")
+        || norm.equals("người gửi phê duyệt");
+  }
+
+  private static String canonicalizeFieldName(String field) {
+    if (field == null) return "";
+    String norm = field.trim().toLowerCase();
+    return switch (norm) {
+      case "devicecode", "mã thiết bị", "ma thiet bi" -> "deviceCode";
+      case "devicename", "tên thiết bị", "ten thiet bi" -> "deviceName";
+      case "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet" -> "detailedLocation";
+      case "manufacturer", "hãng sản xuất", "hang san xuat" -> "manufacturer";
+      case "model" -> "model";
+      case "quantity", "số lượng", "so luong" -> "quantity";
+      case "seaportid", "seaportname", "thuộc cảng biển", "thuoc cang bien", "cảng biển", "cang bien" -> "seaportId";
+      case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+      case "operatingunitid", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operatingUnitId";
+      case "provincename", "provinceid", "tỉnh/thành phố", "tinh/thanh pho", "địa điểm (tỉnh/tp)", "dia diem (tinh/tp)" -> "provinceName";
+      case "attachedinfrastructuretype", "loại hạ tầng", "loai ha tang", "thuộc loại hạ tầng", "thuoc loai ha tang" -> "attachedInfrastructureType";
+      case "attachedinfrastructureid", "thuộc hạ tầng", "thuoc ha tang", "hạ tầng phụ thuộc", "ha tang phu thuoc" -> "attachedInfrastructureId";
+      case "unitofmeasure", "đơn vị tính", "don vi tinh" -> "unitOfMeasure";
+      case "yearofuse", "năm đưa vào sử dụng", "nam dua vao su dung", "năm sử dụng", "nam su dung" -> "yearOfUse";
+      case "operationalstatus", "trạng thái hoạt động", "trang thai hoat dong", "tình trạng hoạt động", "tinh trang hoat dong", "tình trạng", "tinh trang" -> "operationalStatus";
+      case "specifications", "thông số kỹ thuật", "thong so ky thuat" -> "specifications";
+      case "maintenanceinformation", "thông tin bảo trì", "thong tin bao tri" -> "maintenanceInformation";
+      case "note", "ghi chú", "ghi chu" -> "note";
+      case "objecttype", "geometrytype", "loại đối tượng", "loai doi tuong", "loại đối tượng (gis)", "loai doi tuong (gis)", "loại đối tượng gis", "loai doi tuong gis" -> "geometryType";
+      case "coordinates", "tọa độ", "toa do", "tọa độ gis", "toa do gis" -> "coordinates";
+      case "mapsymbolid", "symbolid", "biểu tượng", "bieu tuong", "biểu tượng bản đồ", "bieu tuong ban do" -> "symbolId";
+      case "coordinatesystem", "hệ quy chiếu", "he quy chieu", "hệ tọa độ", "he toa do" -> "coordinateSystem";
+      case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+      case "spatialid", "không gian gis", "khong gian gis", "id không gian gis", "id khong gian gis" -> "spatialId";
+      case "attachments", "tài liệu đính kèm", "tai lieu dinh kem", "file đính kèm", "file dinh kem" -> "attachments";
+      default -> norm;
+    };
   }
 
   private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -485,14 +570,14 @@ public class VhfApprovalService {
   }
 
   private String formatUserIdentity(User user) {
-    if (user == null) return null;
+    if (user == null) return "Hệ thống";
     if (user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
       return user.getFullName().trim();
     }
     if (user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
       return user.getUsername().trim();
     }
-    return null;
+    return "Hệ thống";
   }
 
   public Map<String, Object> getAllHistory() {

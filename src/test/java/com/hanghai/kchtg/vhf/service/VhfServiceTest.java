@@ -416,4 +416,21 @@ class VhfServiceTest {
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
     }
+
+    @Test
+    void findAll_whenDeviceCodeAndDeviceNameHaveWhitespace_trimsWhitespaceBeforeCallingRepository() {
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 10, null, null, "  VHF-001  ", "  Trạm VHF Bạch Long Vĩ  ", null, null, null, null, null, null, null, null, null, "  keyword  ", null, null);
+
+        verify(vhfRepository).searchVhf(
+                eq(Boolean.FALSE),
+                anyBoolean(), any(), anyBoolean(), any(),
+                isNull(), eq("VHF-001"), eq("Trạm VHF Bạch Long Vĩ"), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq("keyword"), any());
+    }
 }

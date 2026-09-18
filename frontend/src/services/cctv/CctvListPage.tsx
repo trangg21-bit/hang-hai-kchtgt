@@ -19,8 +19,9 @@ import {
   Form,
   Typography,
   Drawer,
+  Tooltip,
 } from "antd";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
 import { organizationService } from "../organizationService";
 import {
   PlusOutlined,
@@ -110,9 +111,15 @@ const UOM_LABELS: Record<number, string> = {
   27: 'VNĐ',
 };
 
-function formatUnitOfMeasure(code: number | null | undefined): string {
-  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
-}
+const formatUnitOfMeasure = (val: unknown): string => {
+  if (val == null || val === '') return '';
+  const num = Number(val);
+  if (!Number.isNaN(num) && UOM_LABELS[num]) {
+    return UOM_LABELS[num];
+  }
+  const str = String(val).trim();
+  return str === '(null)' || str === 'null' ? '' : str;
+};
 
 import {
   colors,
@@ -212,13 +219,12 @@ const cctvDetailSectionTitleStyle: React.CSSProperties = {
 
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return null;
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  } catch { return dateStr; }
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : String(dateStr);
+  } catch { return String(dateStr); }
 }
 
 /** Badge hiển thị giống chuẩn bến cảng: span pill + semantic token */
@@ -579,19 +585,7 @@ const CctvListPage = () => {
     return m;
   }, [orgUnits]);
 
-  // Sorting
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
-  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
-    if (!order) {
-      setSortField(null);
-      setSortOrder(null);
-    } else {
-      setSortField(field);
-      setSortOrder(order === "asc" ? "ascend" : "descend");
-    }
-    setPage(0);
-  }, []);
+
 
   // Mở Drawer Xem chi tiết + nạp danh sách File đính kèm (read-only tab)
   const openViewDetail = useCallback((record: CctvResponse) => {
@@ -615,18 +609,51 @@ const CctvListPage = () => {
         if (!name && !date) return null;
         return (
           <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
-            <div
-              title={name || undefined}
-              style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-            >
-              {name || null}
-            </div>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
             <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
               {dateText || null}
             </div>
           </div>
         );
       };
+
+      const renderCellWithTooltip = (
+        text: string | null | undefined,
+        isBold?: boolean
+      ) => {
+        if (!text) return null;
+        return (
+          <Tooltip title={text} placement="topLeft">
+            <span
+              style={{
+                ...tableMetaStyle,
+                fontWeight: isBold ? fontWeightBold : undefined,
+                display: "inline-block",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                verticalAlign: "middle",
+              }}
+              title={text}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        );
+      };
+
       return [
       {
         key: "index",
@@ -647,31 +674,38 @@ const CctvListPage = () => {
         dataIndex: "deviceName",
         width: 300,
         fixed: "left" as const,
-        sortable: true,
-        sortOrder: sortField === "deviceName" ? sortOrder : null,
         ellipsis: false,
+        cellTitle: (record: CctvResponse) => record.deviceName || '',
         render: (val: string, record: CctvResponse) => (
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
             {hasPerm?.('cctv:read') ? (
-              <button
-                type="button"
-                className="kcht-cell-title"
-                onClick={() => openViewDetail(record)}
-                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-                title={val || null}
-              >
-                {val || null}
-              </button>
+              <Tooltip title={val || undefined} placement="topLeft">
+                <button
+                  type="button"
+                  className="kcht-cell-title"
+                  onClick={() => openViewDetail(record)}
+                  style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </button>
+              </Tooltip>
             ) : (
-              <span
-                className="kcht-cell-title"
-                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
-                title={val || null}
-              >
-                {val || null}
-              </span>
+              <Tooltip title={val || undefined} placement="topLeft">
+                <span
+                  className="kcht-cell-title"
+                  style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </span>
+              </Tooltip>
             )}
-            <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
+            {record.deviceCode && (
+              <Tooltip title={record.deviceCode} placement="topLeft">
+                <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -680,27 +714,24 @@ const CctvListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
-        ),
+        cellTitle: (record: CctvResponse) => record.orgUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
         label: "Thuộc TTDH VTS/Trạm Radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: CctvResponse) => record.attachedInfrastructureName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "operatingUnitName",
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: CctvResponse) => record.operatingUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "provinceName",
@@ -708,9 +739,8 @@ const CctvListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: CctvResponse) => record.provinceName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "unitOfMeasure",
@@ -718,9 +748,8 @@ const CctvListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
-        render: (val: number) => (
-          <span style={tableMetaStyle}>{val != null ? formatUnitOfMeasure(val) : null}</span>
-        ),
+        cellTitle: (record: CctvResponse) => (record.unitOfMeasure != null ? formatUnitOfMeasure(record.unitOfMeasure) : '') || '',
+        render: (val: number) => renderCellWithTooltip(val != null ? formatUnitOfMeasure(val) : null),
       },
       {
         key: "quantity",
@@ -787,8 +816,7 @@ const CctvListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
-        sortable: true,
-        sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
+        cellTitle: (record: CctvResponse) => record.updatedByName || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
@@ -796,6 +824,7 @@ const CctvListPage = () => {
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        cellTitle: (record: CctvResponse) => record.submittedByName || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
@@ -803,6 +832,7 @@ const CctvListPage = () => {
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        cellTitle: (record: CctvResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
@@ -810,11 +840,12 @@ const CctvListPage = () => {
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        cellTitle: (record: CctvResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder, openViewDetail, hasPerm]
+    [page, pageSize, openViewDetail, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -914,8 +945,8 @@ const CctvListPage = () => {
       return m[val] || val;
     }
     if (fieldKey === 'unitOfMeasure' || fieldKey === 'Đơn vị tính') {
-      const uomNum = Number(val);
-      return (!isNaN(uomNum) && formatUnitOfMeasure(uomNum)) ? formatUnitOfMeasure(uomNum) : val;
+      const formatted = formatUnitOfMeasure(val);
+      return formatted || 'Chưa có';
     }
     if (fieldKey === 'coordinateSystem' || fieldKey === 'Hệ quy chiếu' || fieldKey === 'Hệ tọa độ') {
       const m: Record<string, string> = { '1': 'WGS 84', '4326': 'WGS 84', '2': 'VN-2000' };
@@ -1010,6 +1041,13 @@ const CctvListPage = () => {
 
   useEffect(() => {
     if (!historyModalVisible || !selectedRecord) return;
+    if (selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') {
+      setHistoryRecords([]);
+      setLoadingHistory(false);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(false);
+      return;
+    }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setLoadingHistory(true);
@@ -1040,7 +1078,7 @@ const CctvListPage = () => {
   }, [historyModalVisible, selectedRecord, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
   const loadMoreHistory = async () => {
-    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory || selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
@@ -1107,7 +1145,23 @@ const CctvListPage = () => {
       DEFAULT_IGNORED_FIELDS.has(fLower) ||
       fLower === 'approvalstatus' ||
       fLower === 'trạng thái phê duyệt' ||
-      fLower === 'trang thai phe duyet'
+      fLower === 'trang thai phe duyet' ||
+      fLower === 'approvalcontentlevel1' ||
+      fLower === 'approvalcontentlevel2' ||
+      fLower === 'level1approvalcontent' ||
+      fLower === 'level2approvalcontent' ||
+      fLower === 'approverlevel1' ||
+      fLower === 'approverlevel2' ||
+      fLower === 'approveddatelevel1' ||
+      fLower === 'approveddatelevel2' ||
+      fLower === 'submitteddate' ||
+      fLower === 'submittedat' ||
+      fLower === 'submittedby' ||
+      fLower === 'cấp 1 phê duyệt' ||
+      fLower === 'cấp 2 phê duyệt' ||
+      fLower === 'nội dung phê duyệt' ||
+      fLower === 'ngày gửi phê duyệt' ||
+      fLower === 'người gửi phê duyệt'
     ) {
       return false;
     }
@@ -1159,16 +1213,27 @@ const CctvListPage = () => {
     }
 
     return groups.map((g) => {
-      const changes = deduplicateAttachmentHistoryChanges(
-        g.items.flatMap((item: any) => {
-          const fn = historyField(item);
-          if (!fn) return [];
-          const ov = historyOldValue(item);
-          const nv = historyNewValue(item);
-          if (!isMeaningfulChange(fn, ov, nv)) return [];
-          return [{ field: fn, oldValue: ov, newValue: nv }];
-        })
-      );
+      const allChanges = g.items.flatMap((item: any) => {
+        const fn = historyField(item);
+        if (!fn) return [];
+        const ov = historyOldValue(item);
+        const nv = historyNewValue(item);
+        if (!isMeaningfulChange(fn, ov, nv)) return [];
+        return [{ field: fn, oldValue: ov, newValue: nv }];
+      });
+
+      const attachmentChanges = deduplicateAttachmentHistoryChanges(allChanges.filter((c: any) => isAttachmentField(c.field)));
+      const seenDisplayFields = new Set<string>();
+      const nonAttachmentChanges: typeof allChanges = [];
+      for (const c of allChanges.filter((c: any) => !isAttachmentField(c.field))) {
+        const displayLabel = historyFieldName(c.field).trim().toLowerCase();
+        if (seenDisplayFields.has(displayLabel)) {
+          continue;
+        }
+        seenDisplayFields.add(displayLabel);
+        nonAttachmentChanges.push(c);
+      }
+      const changes = [...nonAttachmentChanges, ...attachmentChanges];
 
       const orderedChanges = [...changes]
         .sort((a: any, b: any) => {
@@ -1306,6 +1371,9 @@ const CctvListPage = () => {
                       const fn = change.field;
                       const ov = formatHistoryValue(fn, change.oldValue);
                       const nv = formatHistoryValue(fn, change.newValue);
+                      if ((!ov && !nv) || ov === nv) {
+                        return null;
+                      }
                       const renderCell = (rawVal: string | null) => {
                         if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
                           const img = symbolImageMap.get(rawVal);
@@ -1468,7 +1536,7 @@ const CctvListPage = () => {
             setHistoryRecords([]);
             setLoadingHistory(false);
             setLoadingMoreHistory(false);
-            setHasMoreHistory(true);
+            setHasMoreHistory(record.approvalStatus !== 'DRAFT' && (record as any).status !== 'DRAFT');
             setHistorySearch('');
             setHistorySearchInput('');
             setHistoryDateFrom('');
@@ -1478,9 +1546,9 @@ const CctvListPage = () => {
         });
       }
 
-      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + cctv:update → Gửi phê duyệt (submitCctv)
+      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + cctv:update / cctv:create → Gửi phê duyệt (submitCctv)
       if (
-        hasPerm?.("cctv:update") &&
+        (hasPerm?.("cctv:update") || hasPerm?.("cctv:create")) &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2")
@@ -1597,8 +1665,8 @@ const CctvListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder === "ascend" ? "asc" : "desc",
+        sortBy: "updatedAt",
+        sortOrder: "desc",
       });
       const isAllTab = !filterValues.approvalStatus || filterValues.approvalStatus === 'all';
       const content = isAllTab
@@ -1613,9 +1681,10 @@ const CctvListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
+  // ── Load đơn vị quản lý mặc định — chuẩn /beacon-stations & /dike-revetment ──
   useEffect(() => {
     const loadOrgDefault = async () => {
       setLoadingOrgs(true);
@@ -1627,27 +1696,23 @@ const CctvListPage = () => {
       setOrgUnits(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedOrgId || "" }));
       }
       setOrgUnitReady(true);
       setLoadingOrgs(false);
@@ -1657,7 +1722,7 @@ const CctvListPage = () => {
       setOrgUnitReady(true);
       setLoadingOrgs(false);
     });
-  }, []);
+  }, [currentUser]);
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -2085,23 +2150,40 @@ const CctvListPage = () => {
           { label: "Quản lý hệ thống CCTV", path: "/cctv" },
         ]}
         actions={[
-          hasPerm?.("cctv:create")
+          (hasPerm?.("cctv:create") || hasPerm?.("cctv:manage"))
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: <PlusOutlined />,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("cctv:create")) {
+                  if (!hasPerm?.("cctv:create") && !hasPerm?.("cctv:manage")) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống CCTV");
                     return;
                   }
                   createForm.resetFields();
+                  // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+                  const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+                    || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
                   createForm.setFieldsValue({
                     operationalStatus: 0,
-                    orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+                    orgUnitId: currentOrgUnitId,
                   });
                   setCreateModalOpen(true);
+
+                  if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+                    api.get('/users/me')
+                      .then((res) => {
+                        const profile = res.data?.data ?? res.data;
+                        const uOrgId = profile?.orgUnitId;
+                        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+                          createForm.setFieldsValue({ orgUnitId: uOrgId });
+                        }
+                      })
+                      .catch(() => {});
+                  }
+
                   generateCctvCode()
                     .then((code) => {
                       if (code) createForm.setFieldsValue({ deviceCode: code });
@@ -2203,6 +2285,7 @@ const CctvListPage = () => {
                           ? "Chọn Trung Tâm Điều Hành VTS"
                           : "Chọn loại hạ tầng trước"
                   } allowClear
+                    showSearch
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({
@@ -2340,7 +2423,6 @@ const CctvListPage = () => {
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}
-              onSort={handleSort}
               rowActions={rowActions}
               locale={{
                 emptyText: (
@@ -2554,7 +2636,8 @@ const CctvListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                            <span className="chk-detail-value">{selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : '')}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.updatedAt || selectedRecord.createdAt)}</span>
+
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
@@ -2566,7 +2649,7 @@ const CctvListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                            <span className="chk-detail-value">{selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : ''}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.submittedDate)}</span>
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
@@ -2578,7 +2661,7 @@ const CctvListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : ''}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel1)}</span>
                           </div>
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
@@ -2594,7 +2677,7 @@ const CctvListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : ''}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel2)}</span>
                           </div>
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>

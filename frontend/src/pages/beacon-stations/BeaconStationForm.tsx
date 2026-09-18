@@ -30,7 +30,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { beaconStationCRUD } from '../../services/beaconService';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
@@ -231,12 +231,13 @@ export interface BeaconStationFormProps {
   form?: any;
   id?: string;
   initialData?: BeaconStation | null;
+  organizations?: any[];
   onFinish?: (saved: boolean) => void;
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
 export default forwardRef(function BeaconStationForm(
-  { form: externalForm, id, initialData, onFinish, onSubmittingChange }: BeaconStationFormProps,
+  { form: externalForm, id, initialData, organizations: propOrganizations, onFinish, onSubmittingChange }: BeaconStationFormProps,
   ref,
 ) {
   const [internalForm] = Form.useForm();
@@ -249,8 +250,9 @@ export default forwardRef(function BeaconStationForm(
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
 
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [internalOrganizations, setInternalOrganizations] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const organizations = propOrganizations && propOrganizations.length > 0 ? propOrganizations : internalOrganizations;
   const [seaports, setSeaports] = useState<Array<{ id: string; portName?: string; portCode?: string }>>([]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
@@ -270,11 +272,13 @@ export default forwardRef(function BeaconStationForm(
 
   // Load catalogs
   useEffect(() => {
-    setLoadingOrgs(true);
-    organizationService.getTree()
-      .then((r) => setOrganizations(r || []))
-      .catch(() => {})
-      .finally(() => setLoadingOrgs(false));
+    if (!propOrganizations || propOrganizations.length === 0) {
+      setLoadingOrgs(true);
+      organizationService.getTree()
+        .then((r) => setInternalOrganizations(r || []))
+        .catch(() => {})
+        .finally(() => setLoadingOrgs(false));
+    }
 
     portCRUD.findAll()
       .then((r) => setSeaports((r as any)?.data || r || []))
@@ -292,7 +296,7 @@ export default forwardRef(function BeaconStationForm(
         setUserMap(map);
       })
       .catch(() => {});
-  }, []);
+  }, [propOrganizations]);
 
   // Set default code & unit for create mode
   useEffect(() => {
@@ -305,19 +309,24 @@ export default forwardRef(function BeaconStationForm(
         .catch(() => {})
         .finally(() => setCodeLoading(false));
 
-      const currentOrgUnitId = currentUser?.orgUnitId;
+      // Mặc định đơn vị quản lý theo tài khoản người dùng đang tạo bản ghi mới
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
       if (currentOrgUnitId) {
         form.setFieldsValue({ unitId: currentOrgUnitId });
-      } else {
+      } else if (!form.getFieldValue('unitId')) {
         api.get('/users/me')
           .then((r) => {
             const p = r.data?.data ?? r.data;
-            if (p?.orgUnitId) form.setFieldsValue({ unitId: p.orgUnitId });
+            if (p?.orgUnitId && p.orgUnitId !== '00000000-0000-0000-0000-000000000017' && p.orgUnitId !== 'G17') {
+              form.setFieldsValue({ unitId: p.orgUnitId });
+            }
           })
           .catch(() => {});
       }
     }
-  }, [isEdit, form, currentUser]);
+  }, [isEdit, form, currentUser, organizations]);
 
   // Load data for edit mode
   useEffect(() => {
@@ -691,7 +700,7 @@ export default forwardRef(function BeaconStationForm(
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="unitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}>
-                  <OrgUnitTreeSelect
+                  <FormOrgUnitTreeSelect
                     organizations={organizations}
                     placeholder="Chọn đơn vị quản lý..."
                     loading={loadingOrgs}

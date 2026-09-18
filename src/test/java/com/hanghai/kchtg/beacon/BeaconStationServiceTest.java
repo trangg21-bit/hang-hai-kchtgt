@@ -46,6 +46,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -924,6 +925,148 @@ class BeaconStationServiceTest {
         }
 
         @Test
+        @DisplayName("getHistory — lọc sạch các trường metadata phê duyệt và ngày gửi duyệt")
+        void getHistoryFiltersApprovalMetadataFields() {
+            UUID stationId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            LocalDateTime now = LocalDateTime.now();
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(makeEntity(stationId, "APPROVED")));
+
+            InfrastructureHistory approvalContent1 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .changedField("approvalContentLevel1")
+                    .previousValue(null)
+                    .newValue("Cấp Cục phê duyệt trực tiếp")
+                    .build();
+
+            InfrastructureHistory submittedDateRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .changedField("submittedDate")
+                    .previousValue(null)
+                    .newValue(now.toString())
+                    .build();
+
+            InfrastructureHistory rejectionRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .changedField("rejectionReason")
+                    .previousValue(null)
+                    .newValue("Hồ sơ chưa đủ điều kiện")
+                    .build();
+
+            InfrastructureHistory genuineRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .changedField("towerHeight")
+                    .previousValue("25.0")
+                    .newValue("28.0")
+                    .build();
+
+            when(infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), any(Pageable.class)))
+                    .thenReturn(List.of(approvalContent1, submittedDateRecord, rejectionRecord, genuineRecord));
+            when(userRepository.findAllByIdInWithOrgUnit(any()))
+                    .thenReturn(List.of());
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 20, null, null, null);
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getChangedField()).isEqualTo("towerHeight");
+            assertThat(entries.get(0).getNewValue()).isEqualTo("28.0");
+        }
+
+        @Test
+        @DisplayName("getHistory — khử trùng lặp bản ghi tiếng Anh và tiếng Việt trong cùng phiên cập nhật")
+        void getHistoryDeduplicatesCanonicalFieldsInSameSession() {
+            UUID stationId = UUID.randomUUID();
+            UUID userId = UUID.randomUUID();
+            LocalDateTime now = LocalDateTime.now();
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(makeEntity(stationId, "APPROVED")));
+
+            InfrastructureHistory engRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .changedField("unitId")
+                    .previousValue("Đơn vị 1")
+                    .newValue("Đơn vị 2")
+                    .build();
+
+            InfrastructureHistory viRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .changedField("Đơn vị quản lý")
+                    .previousValue("Đơn vị 1")
+                    .newValue("Đơn vị 2")
+                    .build();
+
+            when(infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), any(Pageable.class)))
+                    .thenReturn(List.of(engRecord, viRecord));
+            when(userRepository.findAllByIdInWithOrgUnit(any()))
+                    .thenReturn(List.of());
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 20, null, null, null);
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getChangedField()).isEqualTo("unitId");
+        }
+
+        @Test
+        @DisplayName("getHistory — fallback người thực hiện sang 'Hệ thống' khi không xác định được danh tính")
+        void getHistoryFallbackUserNameToSystemWhenNull() {
+            UUID stationId = UUID.randomUUID();
+            LocalDateTime now = LocalDateTime.now();
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(makeEntity(stationId, "APPROVED")));
+
+            InfrastructureHistory genuineRecord = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(stationId)
+                    .refType(InfrastructureType.LIGHTHOUSE)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(null)
+                    .approvedDate(now)
+                    .changedField("Tên đèn biển")
+                    .previousValue("Cũ")
+                    .newValue("Mới")
+                    .build();
+
+            when(infraHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(eq(InfrastructureType.LIGHTHOUSE), eq(stationId), any(Pageable.class)))
+                    .thenReturn(List.of(genuineRecord));
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 20, null, null, null);
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getApprovedBy()).isEqualTo("Hệ thống");
+        }
+
+        @Test
         @DisplayName("uploadAttachments — hồ sơ vừa tạo mới không ghi nhận lịch sử đính kèm")
         void uploadAttachmentsForNewlyCreatedRecordDoesNotLogHistory() {
             UUID stationId = UUID.randomUUID();
@@ -944,6 +1087,75 @@ class BeaconStationServiceTest {
             service.uploadAttachments(stationId, List.of(file), userId);
 
             verify(infraHistoryRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("getHistory — khi hồ sơ ở trạng thái Lưu tạm (DRAFT) thì trả về danh sách rỗng")
+        void getHistory_whenDraft_returnsEmptyList() {
+            UUID stationId = UUID.randomUUID();
+            BeaconStation draftStation = makeEntity(stationId, "DRAFT");
+            draftStation.setApprovalStatus(ApprovalStatus.DRAFT);
+
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(draftStation));
+
+            List<BeaconHistoryEntry> entries = service.getHistory(stationId, 0, 20, null, null, null);
+
+            assertThat(entries).isEmpty();
+            verify(infraHistoryRepo, never()).findByRefTypeAndRefIdOrderByApprovedDateDesc(any(), any(), any());
+            verify(infraHistoryRepo, never()).searchHistory(any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("deleteAttachment — khi hồ sơ ở trạng thái DRAFT thì không ghi nhật ký lịch sử")
+        void deleteAttachment_whenDraft_doesNotRecordHistory() {
+            UUID stationId = UUID.randomUUID();
+            UUID attachmentId = UUID.randomUUID();
+            BeaconStation draftStation = makeEntity(stationId, "DRAFT");
+            draftStation.setApprovalStatus(ApprovalStatus.DRAFT);
+
+            com.hanghai.kchtg.port.entity.Attachment attachment = new com.hanghai.kchtg.port.entity.Attachment();
+            attachment.setId(attachmentId);
+            attachment.setEntityType("BEACON_LIGHT");
+            attachment.setEntityId(stationId);
+            attachment.setFileName("test.pdf");
+            attachment.setFilePath("target/test-uploads/test.pdf");
+
+            when(attachmentRepository.findById(attachmentId)).thenReturn(Optional.of(attachment));
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(draftStation));
+
+            service.deleteAttachment(stationId, attachmentId);
+
+            verify(attachmentRepository).delete(attachment);
+            verify(infraHistoryRepo, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("deleteAttachment — khi hồ sơ ĐÃ DUYỆT thì ghi nhật ký xóa tệp đính kèm")
+        void deleteAttachment_whenApproved_recordsHistory() {
+            UUID stationId = UUID.randomUUID();
+            UUID attachmentId = UUID.randomUUID();
+            BeaconStation approvedStation = makeEntity(stationId, "APPROVED");
+            approvedStation.setApprovalStatus(ApprovalStatus.APPROVED);
+
+            com.hanghai.kchtg.port.entity.Attachment attachment = new com.hanghai.kchtg.port.entity.Attachment();
+            attachment.setId(attachmentId);
+            attachment.setEntityType("BEACON_LIGHT");
+            attachment.setEntityId(stationId);
+            attachment.setFileName("test.pdf");
+            attachment.setFilePath("target/test-uploads/test.pdf");
+
+            when(attachmentRepository.findById(attachmentId)).thenReturn(Optional.of(attachment));
+            when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(approvedStation));
+
+            service.deleteAttachment(stationId, attachmentId);
+
+            verify(attachmentRepository).delete(attachment);
+            verify(infraHistoryRepo).save(argThat(h ->
+                    h.getRefId().equals(stationId)
+                            && h.getStatus() == InfrastructureHistoryStatus.ATTACHMENT_DELETED
+                            && "Tài liệu đính kèm".equals(h.getChangedField())
+                            && "test.pdf".equals(h.getPreviousValue())
+            ));
         }
     }
 }

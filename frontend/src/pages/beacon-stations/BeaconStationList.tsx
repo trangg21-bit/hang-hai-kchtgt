@@ -20,6 +20,7 @@ import {
     Select,
     Space,
     Tabs,
+    Tooltip,
     Typography,
 } from 'antd';
 import { normalizeSafeNumber, fmtNum } from '../../utils/numFmt';
@@ -30,7 +31,7 @@ import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, normalizeSearchText } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import toast from '../../components/ToastNotification';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -56,6 +57,7 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganiz
 import type { Organization } from '../../services/organizationService';
 import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
+import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     DRAWER_TABLE_SCROLL_Y,
@@ -308,6 +310,7 @@ const tabBarStyle: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BeaconStationList() {
+  const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   // "Lưu và phê duyệt" (duyệt thẳng cấp Cục) chỉ hiện khi tài khoản có quyền duyệt C2
   const canApproveDirect =
@@ -422,9 +425,8 @@ export default function BeaconStationList() {
   const [opsMaintenanceOpen, setOpsMaintenanceOpen] = useState(true);
   const [opsIncidentOpen, setOpsIncidentOpen] = useState(true);
 
-  // ── Load organizations (for unit TreeSelect in the form) ─────────
-  // Đơn vị quản lý là bộ lọc bắt buộc (giống Bến cảng):
-  // tự chọn mặc định = đơn vị của user đang đăng nhập; nếu không khớp thì lấy đơn vị đầu tiên
+  // ── Load organizations (for unit TreeSelect in the form & filter) ──
+  // Tự chọn mặc định = đơn vị của user đang đăng nhập qua resolveDefaultOrgUnitId
   useEffect(() => {
     const loadOrgDefault = async () => {
       const isIframe = window.self !== window.top;
@@ -435,32 +437,28 @@ export default function BeaconStationList() {
       setOrganizations(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterUnitId(found.id);
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterUnitId(defaultId === '__all__' ? undefined : defaultId);
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterUnitId(orgs[0].id);
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterUnitId(resolvedOrgId);
       }
       setOrgUnitReady(true);
     };
     void loadOrgDefault();
-  }, []);
+  }, [currentUser]);
 
   // ── Load users (for "Cán bộ cập nhật" filter + detail) ──────────
   useEffect(() => {
@@ -631,12 +629,30 @@ export default function BeaconStationList() {
     setIsDetailMode(false);
     setDetailRecord(null);
     createForm.resetFields();
+
+    // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
     createForm.setFieldsValue({
       operationalStatus: 1,
-      unitId: defaultOrgUnitId.current !== '__all__' ? defaultOrgUnitId.current : undefined,
+      unitId: currentOrgUnitId,
     });
+
+    if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+      api.get('/users/me')
+        .then((res) => {
+          const profile = res.data?.data ?? res.data;
+          const uOrgId = profile?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            createForm.setFieldsValue({ unitId: uOrgId });
+          }
+        })
+        .catch(() => {});
+    }
+
     setCreateDrawerVisible(true);
-  }, [createForm, hasPerm]);
+  }, [createForm, hasPerm, currentUser, organizations]);
 
   const openEditDrawer = useCallback((record: BeaconStation) => {
     if (!canEditApprovalRecord(record.status || '', { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) {
@@ -715,6 +731,9 @@ export default function BeaconStationList() {
     setHistoryTarget(r); setHistoryOpen(true);
     setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryRecords([]); setHistoryPage(0); setHasMoreHistory(false); setLoadingMoreHistory(false);
+    if (r.status === 'DRAFT' || r.approvalStatus === 'DRAFT') {
+      setHistoryLoading(false);
+    }
   }, [hasPerm]);
 
   // ── Delete handlers (chuẩn /berth) ──────────────────────────────
@@ -859,6 +878,33 @@ export default function BeaconStationList() {
   }, [hasPerm, openDetailDrawer, openEditDrawer, openSubmitModal, openApproveModal, openRejectModal, openHistory, openDeleteConfirm]);
 
   // ── Table columns ───────────────────────────────────────────────
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
+
   const columns: any[] = useMemo(() => [
     {
       key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
@@ -866,61 +912,74 @@ export default function BeaconStationList() {
     },
     {
       key: 'name', label: 'Tên / Mã đèn biển', dataIndex: 'name', width: 300, fixed: 'left' as const, ellipsis: false,
+      cellTitle: (record: BeaconStation) => record.name || '',
       render: (name: string, record: BeaconStation) => {
         const canView = hasPerm('beaconstation:read') || hasPerm('beaconstation:view');
         return (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {canView ? (
-              <a
-                title={name}
-                onClick={() => openDetailDrawer(record)}
-                style={{
-                  ...cellTitleStyle,
-                  display: 'block',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {name || null}
-              </a>
+              <Tooltip title={name || undefined} placement="topLeft">
+                <a
+                  title={name}
+                  onClick={() => openDetailDrawer(record)}
+                  style={{
+                    ...cellTitleStyle,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {name || null}
+                </a>
+              </Tooltip>
             ) : (
-              <span
-                title={name}
-                style={{
-                  ...cellTitleStyle,
-                  display: 'block',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  cursor: 'default',
-                }}
-              >
-                {name || null}
-              </span>
+              <Tooltip title={name || undefined} placement="topLeft">
+                <span
+                  title={name}
+                  style={{
+                    ...cellTitleStyle,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    cursor: 'default',
+                  }}
+                >
+                  {name || null}
+                </span>
+              </Tooltip>
             )}
-            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {record.code || null}
-            </span>
+            {record.code && (
+              <Tooltip title={record.code} placement="topLeft">
+                <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+                  {record.code}
+                </span>
+              </Tooltip>
+            )}
           </div>
         );
       },
     },
     {
       key: 'unitName', label: 'Đơn vị quản lý', dataIndex: 'unitName', width: 300,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || null}</span>,
+      cellTitle: (record: BeaconStation) => record.unitName || '',
+      render: (v: string) => renderCellWithTooltip(v, true),
     },
     {
       key: 'seaportId', label: 'Thuộc cảng biển', dataIndex: 'seaportId', width: 220, ellipsis: true,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{seaports.find((p) => p.id === v)?.portName || null}</span>,
+      cellTitle: (record: BeaconStation) => seaports.find((p) => p.id === record.seaportId)?.portName || '',
+      render: (v: string) => renderCellWithTooltip(seaports.find((p) => p.id === v)?.portName || null),
     },
     {
       key: 'operator', label: 'Đơn vị vận hành', dataIndex: 'operator', width: 280, ellipsis: true,
-      render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
+      cellTitle: (record: BeaconStation) => record.operator || '',
+      render: (v: string) => renderCellWithTooltip(v),
     },
     {
       key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 230,
-      render: (v: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{getProvinceNameById(v != null ? Number(v) : undefined) || null}</span>,
+      cellTitle: (record: BeaconStation) => getProvinceNameById(record.provinceId != null ? Number(record.provinceId) : undefined) || '',
+      render: (v: number) => renderCellWithTooltip(getProvinceNameById(v != null ? Number(v) : undefined) || null),
     },
     {
       key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 230,
@@ -933,9 +992,13 @@ export default function BeaconStationList() {
     },
     {
       key: 'type', label: 'Cấp trạm đèn', dataIndex: 'type', width: 150,
+      cellTitle: (record: BeaconStation) => {
+        const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === record.type);
+        return opt ? opt.label : (record.type || '');
+      },
       render: (type: string) => {
         const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === type);
-        return <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{opt ? opt.label : (type || null)}</span>;
+        return renderCellWithTooltip(opt ? opt.label : (type || null));
       },
     },
     {
@@ -955,23 +1018,30 @@ export default function BeaconStationList() {
     },
     {
       key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 220,
+      cellTitle: (record: BeaconStation) => record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: textPrimary,
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
             <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
               {record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : null}
             </div>
@@ -981,24 +1051,31 @@ export default function BeaconStationList() {
     },
     {
       key: 'submittedByName', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedByName', width: 220,
+      cellTitle: (record: BeaconStation) => record.submittedByName || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.submittedByName;
         const date = record.submittedAt;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: textPrimary,
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
             <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
               {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : null}
             </div>
@@ -1008,24 +1085,31 @@ export default function BeaconStationList() {
     },
     {
       key: 'approverLevel1Name', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1Name', width: 240,
+      cellTitle: (record: BeaconStation) => record.approverLevel1Name || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.approverLevel1Name;
         const date = record.approvedDateLevel1;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: textPrimary,
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
             <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
               {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : null}
             </div>
@@ -1035,24 +1119,31 @@ export default function BeaconStationList() {
     },
     {
       key: 'approverLevel2Name', title: <span style={{ whiteSpace: 'nowrap' }}>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'approverLevel2Name', width: 300,
+      cellTitle: (record: BeaconStation) => record.approverLevel2Name || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.approverLevel2Name;
         const date = record.approvedDateLevel2;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: textPrimary,
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
             <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
               {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : null}
             </div>
@@ -1353,7 +1444,7 @@ export default function BeaconStationList() {
   const detailHandlingRows: DetailRow[] = detailRecord
     ? [
         {
-          label: 'Trạng thái phê duyệt',
+          label: 'Trạng thái',
           span: true,
           value: (() => {
             const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'ARCHIVED' || detailRecord.status === 'DELETED');
@@ -1365,7 +1456,7 @@ export default function BeaconStationList() {
           })(),
         },
         { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || null}</span> },
-        { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt) },
+        { label: 'Ngày cập nhật', value: formatDate(detailRecord.updatedAt || detailRecord.createdAt) },
         { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || null}</span> },
         { label: 'Ngày gửi phê duyệt', value: formatDate(detailRecord.submittedAt) },
         { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approverLevel1Name || null}</span> },
@@ -1863,17 +1954,32 @@ export default function BeaconStationList() {
       } catch { return null; }
     };
     // Trường hệ thống/kiểm toán — không hiển thị như thay đổi nghiệp vụ
-    const metaKeys = new Set(['id', 'spatialId', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy',
-      'deletedAt', 'deletedBy', 'approvedBy', 'approvedDate', 'approvalLevel', 'submittedBy', 'submittedAt',
+    const metaKeys = new Set([
+      'id', 'spatialId', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy',
+      'deletedAt', 'deletedBy', 'approvedBy', 'approvedDate', 'approvalLevel',
+      'submittedBy', 'submittedAt', 'submittedDate', 'submitteddate', 'submittedat', 'submittedby',
       'approverLevel1', 'approverLevel1Name', 'approverLevel2', 'approverLevel2Name',
       'approvedDateLevel1', 'approvedDateLevel2', 'approvalContentLevel1', 'approvalContentLevel2',
+      'level1ApprovalContent', 'level2ApprovalContent', 'rejectionReason', 'rejectionreason',
       'status', 'submittedByName',
-      'approvalStatus', 'approval_status', 'Trạng thái phê duyệt', 'trang thai phe duyet', 'Trạng thái']);
+      'approvalStatus', 'approval_status', 'Trạng thái phê duyệt', 'trang thai phe duyet', 'Trạng thái',
+      'cấp 1 phê duyệt', 'cấp 2 phê duyệt', 'nội dung phê duyệt', 'ngày gửi phê duyệt', 'người gửi phê duyệt',
+      'lý do từ chối', 'ly do tu choi'
+    ]);
     const oldMap = parseJson(raw?.previousValue);
     const newMap = parseJson(raw?.newValue);
     const changes: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
     const pushRow = (field: string, oldValue: string | null, newValue: string | null) => {
-      if (metaKeys.has(field)) return;
+      const fTrim = (field || '').trim();
+      const fLower = fTrim.toLowerCase();
+      if (
+        metaKeys.has(fTrim) ||
+        metaKeys.has(fLower) ||
+        DEFAULT_IGNORED_FIELDS.has(fTrim) ||
+        DEFAULT_IGNORED_FIELDS.has(fLower)
+      ) {
+        return;
+      }
       const ov = oldValue === null || oldValue === undefined ? null : String(oldValue);
       const nv = newValue === null || newValue === undefined ? null : String(newValue);
       if (ov === null && nv === null) return;
@@ -1909,9 +2015,13 @@ export default function BeaconStationList() {
       const rawText = raw?.newValue ?? raw?.previousValue;
       const isReject = String(raw?.status ?? '').toUpperCase().includes('REJECT');
       if (rawText !== null && rawText !== undefined && String(rawText).trim() !== '') {
-        pushRow(isReject ? 'rejectionReason' : '', null, String(rawText));
+        if (!isReject) {
+          pushRow('', null, String(rawText));
+        }
       }
     }
+    const isRejectAction = String(raw?.status ?? '').toUpperCase().includes('REJECT');
+    const fallbackReason = isRejectAction && (raw?.newValue ?? raw?.previousValue) ? String(raw?.newValue ?? raw?.previousValue) : null;
     return {
       id: raw?.id || '',
       action: raw?.status || 'UPDATE',
@@ -1924,13 +2034,19 @@ export default function BeaconStationList() {
       unitId: raw?.unitId,
       orgUnitId: raw?.orgUnitId,
       changes,
-      reason: raw?.reason ?? null,
+      reason: raw?.reason ?? fallbackReason,
       approvalLevel: raw?.approvalLevel,
     };
   }, []);
 
   useEffect(() => {
     if (!historyOpen || !historyTarget) return;
+    if (historyTarget.status === 'DRAFT' || historyTarget.approvalStatus === 'DRAFT') {
+      setHistoryRecords([]);
+      setHistoryLoading(false);
+      setHasMoreHistory(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setHistoryLoading(true);
@@ -1954,7 +2070,7 @@ export default function BeaconStationList() {
   }, [historyOpen, historyTarget, historySearch, historyFrom, historyTo, toHistoryItem]);
 
   const loadMoreHistory = async () => {
-    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory || historyTarget.status === 'DRAFT' || historyTarget.approvalStatus === 'DRAFT') return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
@@ -1975,13 +2091,35 @@ export default function BeaconStationList() {
   };
 
   const isMeaningfulChange = useCallback((field: string, rawOld: any, rawNew: any): boolean => {
-    const normF = (field || '').trim().toLowerCase();
+    const f = (field || '').trim();
+    const fLower = f.toLowerCase();
     if (
-      normF === 'approvalstatus' ||
-      normF === 'trạng thái phê duyệt' ||
-      normF === 'trang thai phe duyet' ||
-      normF === 'trạng thái' ||
-      normF === 'status'
+      DEFAULT_IGNORED_FIELDS.has(f) ||
+      DEFAULT_IGNORED_FIELDS.has(fLower) ||
+      fLower === 'approvalstatus' ||
+      fLower === 'trạng thái phê duyệt' ||
+      fLower === 'trang thai phe duyet' ||
+      fLower === 'trạng thái' ||
+      fLower === 'status' ||
+      fLower === 'approvalcontentlevel1' ||
+      fLower === 'approvalcontentlevel2' ||
+      fLower === 'level1approvalcontent' ||
+      fLower === 'level2approvalcontent' ||
+      fLower === 'approverlevel1' ||
+      fLower === 'approverlevel2' ||
+      fLower === 'approveddatelevel1' ||
+      fLower === 'approveddatelevel2' ||
+      fLower === 'submitteddate' ||
+      fLower === 'submittedat' ||
+      fLower === 'submittedby' ||
+      fLower === 'cấp 1 phê duyệt' ||
+      fLower === 'cấp 2 phê duyệt' ||
+      fLower === 'nội dung phê duyệt' ||
+      fLower === 'ngày gửi phê duyệt' ||
+      fLower === 'người gửi phê duyệt' ||
+      fLower === 'rejectionreason' ||
+      fLower === 'lý do từ chối' ||
+      fLower === 'ly do tu choi'
     ) {
       return false;
     }
@@ -2044,7 +2182,17 @@ export default function BeaconStationList() {
         // Gom nhóm các thay đổi đính kèm trong cùng một phiên thành 1 dòng duy nhất
         const attachmentChanges = changes.filter((c: any) => isAttachmentField(c.field));
         const nonAttachmentChanges = changes.filter((c: any) => !isAttachmentField(c.field));
-        const finalChanges: any[] = [...nonAttachmentChanges];
+        const seenDisplayFields = new Set<string>();
+        const dedupedNonAttachmentChanges: any[] = [];
+        for (const c of nonAttachmentChanges) {
+          const displayLabel = renderHistoryFieldLabel(c.field).trim().toLowerCase();
+          if (seenDisplayFields.has(displayLabel)) {
+            continue;
+          }
+          seenDisplayFields.add(displayLabel);
+          dedupedNonAttachmentChanges.push(c);
+        }
+        const finalChanges: any[] = [...dedupedNonAttachmentChanges];
         if (attachmentChanges.length > 0) {
           const allNewFiles: string[] = [];
           const allOldFiles: string[] = [];
@@ -2216,6 +2364,24 @@ export default function BeaconStationList() {
                     {orderedChanges.map((change: any, ri: number) => {
                       const fn = change.field;
                       const fname = renderHistoryFieldLabel(fn);
+                      const isValBlank = (v: any) =>
+                        v == null ||
+                        String(v).trim() === '' ||
+                        String(v).trim() === '—' ||
+                        String(v).trim() === '-' ||
+                        String(v).trim() === '–' ||
+                        String(v).trim() === '(null)' ||
+                        String(v).trim() === 'null' ||
+                        String(v).trim() === '(trống)' ||
+                        String(v).trim().toLowerCase() === 'chưa có';
+                      if (isValBlank(change.oldValue) && isValBlank(change.newValue)) return null;
+                      if (
+                        !isValBlank(change.oldValue) &&
+                        !isValBlank(change.newValue) &&
+                        String(change.oldValue).trim().toLowerCase() === String(change.newValue).trim().toLowerCase()
+                      ) {
+                        return null;
+                      }
                       const ov = renderHistoryValueNode(fn, change.oldValue);
                       const nv = renderHistoryValueNode(fn, change.newValue);
                       return isCreate ? (
@@ -2553,6 +2719,7 @@ export default function BeaconStationList() {
             <BeaconStationForm
               ref={createFormRef}
               form={createForm}
+              organizations={organizations}
               onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(); }}
               onSubmittingChange={setSubmitting}
             />
@@ -2640,6 +2807,7 @@ export default function BeaconStationList() {
                 form={updateForm}
                 id={editingRecord.id}
                 initialData={editingRecord}
+                organizations={organizations}
                 onFinish={() => { setEditingRecord(null); void fetchData(); void fetchCounts(); }}
                 onSubmittingChange={setSubmitting}
               />

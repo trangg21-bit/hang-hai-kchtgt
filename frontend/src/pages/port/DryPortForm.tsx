@@ -1,19 +1,17 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useMemo, useRef } from 'react';
 import dayjs from 'dayjs';
 import {
   Row,
   Col,
   Form,
   Input,
-  Select,
   InputNumber,
-  type InputNumberProps,
+  Select,
   Tabs,
   Button,
   Space,
   DatePicker,
   Modal,
-  Table,
   Tooltip,
 } from 'antd';
 import {
@@ -59,10 +57,12 @@ import {
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import { decimalNumberRule, parseNumber20, getValueFromEvent20, safeDecimal } from '../../utils/numberRuleHelper';
 import { organizationService, type Organization } from '../../services/organizationService';
 import api from '../../services/api';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService, type Symbol } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -101,21 +101,6 @@ const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 }
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -297,6 +282,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
   const [scaleOpen, setScaleOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const currentUser = useAuthStore((s) => s.user);
+  const isInitialLoadDoneRef = useRef(false);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
 
@@ -311,7 +297,6 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
   const effectiveGeometryType = watchedGeometryType || form.getFieldValue('geometryType') || (coordinateList.length > 0 || form.getFieldValue('mapSymbolId') ? 'POINT' : undefined);
   const hasLocation = Boolean(effectiveGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [gpsPage, setGpsPage] = useState(1);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // Attachments
@@ -373,6 +358,23 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
   }, []);
 
   useEffect(() => {
+    if (isEdit) return;
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId && !form.getFieldValue('orgUnitId')) {
+      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else if (!form.getFieldValue('orgUnitId') && !currentUser?.orgUnitId) {
+      api.get('/users/me').then((r) => {
+        const p = r.data?.data ?? r.data;
+        const uOrgId = p?.orgUnitId;
+        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17' && !form.getFieldValue('orgUnitId')) {
+          form.setFieldsValue({ orgUnitId: uOrgId });
+        }
+      }).catch(() => {});
+    }
+  }, [isEdit, currentUser, organizations, form]);
+
+  useEffect(() => {
     api.get('/common/options/operating-units').then((r) => {
       const list = r.data?.data;
       if (Array.isArray(list) && list.length) setOperatingOrgs(list);
@@ -394,8 +396,10 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
 
   // Tự động set số dòng GPS khi thay đổi loại đối tượng
   useEffect(() => {
+    if (isEdit && !isInitialLoadDoneRef.current) {
+      return;
+    }
     if (!watchedGeometryType) {
-      form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined });
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
@@ -404,20 +408,18 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
-      }
       if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
         return [...prev, ...added];
       }
       return prev;
     });
-  }, [watchedGeometryType, form]);
+  }, [watchedGeometryType, isEdit, form]);
 
   // Load dữ liệu khi chỉnh sửa
   useEffect(() => {
     if (!isEdit || !id) return;
+    isInitialLoadDoneRef.current = false;
     (async () => {
       try {
         const data: DryPort = await fetchDryPortById(id);
@@ -436,10 +438,29 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           setCoordinateList([{ latD: la.d, latM: la.m, latS: la.s, lngD: lo.d, lngM: lo.m, lngS: lo.s }]);
         }
 
+        let geomType = data.geometryType;
+        if (!geomType && data.coordinates) {
+          const wktUpper = String(data.coordinates).trim().toUpperCase();
+          if (wktUpper.startsWith('POLYGON')) geomType = 'POLYGON';
+          else if (wktUpper.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (wktUpper.startsWith('POINT')) geomType = 'POINT';
+        }
+        if (!geomType && (pts.length > 0 || (data.latitude != null && data.longitude != null) || data.mapSymbolId)) {
+          geomType = pts.length > 2 ? 'POLYGON' : pts.length === 2 ? 'LINE' : 'POINT';
+        }
+
+        const displayRuleText = data.displayRule === 1 || data.displayRule === '1' || data.displayRule === 'Độ, phút, giây (DMS)'
+          ? 'Độ, phút, giây (DMS)'
+          : (data.displayRule || (geomType || data.coordinates ? 'Độ, phút, giây (DMS)' : undefined));
+
         const resolvedOpOrgId = (data as any).operatingOrgId
           || (data.operatingUnit && isUuidString(data.operatingUnit) ? data.operatingUnit : undefined)
           || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.name === data.operatingUnit)?.id
           || data.operatingUnit;
+
+        const rawSymId = data.mapSymbolId || (data as any).bieuTuongId || (data as any).symbolId;
+        const matchedSym = rawSymId && symbols.length > 0 ? symbols.find((s) => s.id.toLowerCase() === String(rawSymId).toLowerCase()) : null;
+        const resolvedSymId = matchedSym ? matchedSym.id : rawSymId;
 
         form.setFieldsValue({
           dryPortCode: data.dryPortCode,
@@ -471,16 +492,12 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           announcementDecisionNumber: data.announcementDecisionNumber,
           announcementDecisionDate: data.announcementDecisionDate ? dayjs(data.announcementDecisionDate) : undefined,
           announcementOrg: data.announcementOrg,
-          geometryType: data.geometryType || (pts.length > 0 || (data.latitude != null && data.longitude != null) || data.mapSymbolId ? 'POINT' : undefined),
-          mapSymbolId: (() => {
-            const symId = data.mapSymbolId;
-            if (!symId) return undefined;
-            const matched = symbols.find((s) => s.id.toLowerCase() === symId.toLowerCase());
-            return matched ? matched.id : symId;
-          })(),
-          coordinateSystem: data.coordinateSystem ?? 1,
-          displayRule: data.geometryType || data.coordinates ? 'Độ, phút, giây (DMS)' : undefined,
+          geometryType: geomType || undefined,
+          mapSymbolId: resolvedSymId || undefined,
+          coordinateSystem: data.coordinateSystem ?? (geomType ? 1 : undefined),
+          displayRule: displayRuleText,
         });
+        isInitialLoadDoneRef.current = true;
 
         // Load attachments
         const atts = await fetchDryPortAttachmentList(id);
@@ -503,7 +520,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
         toast.error('Không thể tải thông tin cảng cạn');
       }
     })();
-  }, [isEdit, id, form]);
+  }, [isEdit, id, form, symbols]);
 
   const addGpsPoint = () => {
     setCoordinateList((prev) => [...(prev || []), { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
@@ -628,10 +645,10 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
           detailedLocation: values.detailedLocation || undefined,
           transportCorridor: values.transportCorridor || undefined,
-          area: toPayloadNumber(values.area),
-          teuCapacity: toPayloadNumber(values.teuCapacity),
-          warehouseArea: toPayloadNumber(values.warehouseArea),
-          yardArea: toPayloadNumber(values.yardArea),
+          area: safeDecimal(values.area),
+          teuCapacity: safeDecimal(values.teuCapacity),
+          warehouseArea: safeDecimal(values.warehouseArea),
+          yardArea: safeDecimal(values.yardArea),
           connectionMode: values.connectionMode || undefined,
           portStatus: values.portStatus !== undefined && values.portStatus !== null ? Number(values.portStatus) : undefined,
           remarks: values.remarks || undefined,
@@ -756,13 +773,14 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                   rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                   style={{ marginBottom: spaceFormField }}
                 >
-                  <OrgUnitTreeSelect
+                  <FormOrgUnitTreeSelect
                     organizations={organizations}
                     placeholder="Chọn đơn vị quản lý..."
                     loading={loadingOrgs}
                     disabled={isEdit}
                     showPath
                     treeDefaultExpandAll={false}
+                    style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
               </Col>
@@ -920,8 +938,9 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                       name="teuCapacity"
                       {...labelProps('Công suất khai thác')}
                       required
-                      rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }]}
+                      rules={[{ required: true, message: 'Công suất khai thác là bắt buộc' }, decimalNumberRule]}
                       style={{ marginBottom: spaceFormField }}
+                      getValueFromEvent={getValueFromEvent20}
                     >
                       <NumberInputWithCount
                         min={0}
@@ -929,25 +948,26 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                         maxLength={20}
                         placeholder="0"
                         style={numberInputStyle}
+                        parser={parseNumber20}
                         formatter={fmtInputNumber}
                       />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="area" {...labelProps('Tổng diện tích cảng (m²)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                    <Form.Item name="area" {...labelProps('Tổng diện tích cảng (m²)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
-                    <Form.Item name="warehouseArea" {...labelProps('Diện tích kho (m²)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                    <Form.Item name="warehouseArea" {...labelProps('Diện tích kho (m²)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="yardArea" {...labelProps('Diện tích bãi (m²)')} style={{ marginBottom: spaceFormField }}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                    <Form.Item name="yardArea" {...labelProps('Diện tích bãi (m²)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
+                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
@@ -1192,40 +1212,31 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                 <span style={{ fontSize: fontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
               </div>
             ) : (
-              <Table
+              <DetailTable
                 size="small"
-                tableLayout="fixed"
-                rowKey={(r: any, idx?: number) => r?._idx ?? String(idx)}
-                pagination={
-                  coordinateList.length > 10
-                    ? {
-                        current: gpsPage,
-                        pageSize: 10,
-                        total: coordinateList.length,
-                        onChange: (p) => setGpsPage(p),
-                        showSizeChanger: false,
-                        size: 'small',
-                      }
-                    : false
-                }
+                scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
                 dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-                locale={{ emptyText: 'Chưa có tọa độ GPS nào' }}
+                rowKey={(r: any, idx?: number) => r?._idx ?? String(idx)}
+                emptyText="Chưa có tọa độ GPS nào"
                 columns={[
                   {
                     title: 'STT',
                     width: 60,
                     align: 'center' as const,
-                    render: (_v: any, _r: any, idx?: number) => (gpsPage - 1) * 10 + (idx ?? 0) + 1,
+                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+                    render: (_v: any, _r: any, idx?: number) => (idx ?? 0) + 1,
                   },
                   {
-                    title: 'Vĩ độ (Latitude - N)',
+                    title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lat',
+                    onCell: () => ({ style: { verticalAlign: 'top' } }),
                     render: (_v: any, record: any) =>
                       renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                   },
                   {
-                    title: 'Kinh độ (Longitude - E)',
+                    title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lng',
+                    onCell: () => ({ style: { verticalAlign: 'top' } }),
                     render: (_v: any, record: any) =>
                       renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                   },
@@ -1233,8 +1244,16 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                     title: '',
                     width: 50,
                     align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 10 } }),
                     render: (_v: any, record: any) => (
-                      <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                        onClick={() => removeCoordinate(record._idx)}
+                        style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Xóa tọa độ"
+                      />
                     ),
                   },
                 ]}

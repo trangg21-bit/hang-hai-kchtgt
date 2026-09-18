@@ -7,6 +7,7 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
@@ -39,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -97,7 +99,7 @@ class VtsAssistServiceTest {
         when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
 
         entity = VtsAssist.builder()
                 .id(ID)
@@ -163,7 +165,7 @@ class VtsAssistServiceTest {
         VtsAssistResponse result = service.update(req);
 
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
-        verify(historyRepository, atLeastOnce()).save(any());
+        verify(changeHistoryService, atLeastOnce()).recordChanges(eq("VTS_ASSIST"), eq(ID.toString()), any(), any(), any());
     }
 
     @Test
@@ -253,5 +255,37 @@ class VtsAssistServiceTest {
 
         String code = service.generateVtsAssistCode();
         assertEquals("PTVTS-000007", code);
+    }
+
+    @Test
+    void deleteAttachment_whenDraft_doesNotRecordHistory() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
+        Attachment att = new Attachment();
+        att.setId(UUID.randomUUID());
+        att.setEntityId(ID);
+        att.setFileName("test.pdf");
+        att.setFilePath("test.pdf");
+        when(attachmentRepository.findById(att.getId())).thenReturn(Optional.of(att));
+
+        service.deleteAttachment(ID, att.getId(), USER_ID);
+
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteAttachment_whenApproved_recordsHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
+        Attachment att = new Attachment();
+        att.setId(UUID.randomUUID());
+        att.setEntityId(ID);
+        att.setFileName("test.pdf");
+        att.setFilePath("test.pdf");
+        when(attachmentRepository.findById(att.getId())).thenReturn(Optional.of(att));
+
+        service.deleteAttachment(ID, att.getId(), USER_ID);
+
+        verify(historyRepository, atLeastOnce()).save(any());
     }
 }

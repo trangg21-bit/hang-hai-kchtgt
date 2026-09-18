@@ -25,6 +25,7 @@ import {
   Select,
   Space,
   Tabs,
+  Tooltip,
   Typography,
 } from 'antd';
 import EmptyState from '../../components/EmptyState';
@@ -32,7 +33,8 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
-import { OrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
+import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
+
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -152,6 +154,7 @@ const FIELD_LABELS: Record<string, string> = {
   length: 'Chiều dài',
   height: 'Chiều cao',
   crestElevation: 'Cao trình đỉnh',
+  surfaceMaterial: 'Vật liệu bề mặt',
   constructionDate: 'Thời điểm xây dựng',
   commissioningDate: 'Thời điểm đưa vào khai thác',
   lastMaintenanceYear: 'Năm bảo trì gần nhất',
@@ -159,10 +162,40 @@ const FIELD_LABELS: Record<string, string> = {
   coordinates: 'Tọa độ',
   geometryType: 'Loại đối tượng',
   mapSymbolId: 'Biểu tượng bản đồ',
+  symbolId: 'Biểu tượng bản đồ',
   note: 'Ghi chú',
   'Tài liệu đính kèm': 'Tài liệu đính kèm',
   'File đính kèm': 'Tài liệu đính kèm',
   attachments: 'Tài liệu đính kèm',
+  'Mã đê kè': 'Mã đê kè',
+  'Tên đê kè': 'Tên đê kè',
+  'Loại kết cấu công trình': 'Loại kết cấu công trình',
+  'Loại đê kè': 'Loại kết cấu công trình',
+  'Đơn vị quản lý': 'Đơn vị quản lý',
+  'Cảng biển': 'Cảng biển',
+  'Địa điểm (Tỉnh/TP)': 'Địa điểm (Tỉnh/TP)',
+  'Địa điểm chi tiết': 'Địa điểm chi tiết',
+  'Đơn vị vận hành': 'Đơn vị vận hành',
+  'Đơn vị khai thác': 'Đơn vị vận hành',
+  'Chiều dài': 'Chiều dài',
+  'Chiều dài (m)': 'Chiều dài',
+  'Chiều cao': 'Chiều cao',
+  'Chiều cao (m)': 'Chiều cao',
+  'Cao trình đỉnh': 'Cao trình đỉnh',
+  'Cao trình đỉnh (m)': 'Cao trình đỉnh',
+  'Vật liệu bề mặt': 'Vật liệu bề mặt',
+  'Thời điểm xây dựng': 'Thời điểm xây dựng',
+  'Thời điểm đưa vào khai thác': 'Thời điểm đưa vào khai thác',
+  'Thời điểm đưa vào sử dụng': 'Thời điểm đưa vào khai thác',
+  'Năm bảo trì gần nhất': 'Năm bảo trì gần nhất',
+  'Tình trạng': 'Tình trạng',
+  'Tọa độ': 'Tọa độ',
+  'Tọa độ GIS': 'Tọa độ',
+  'Loại đối tượng': 'Loại đối tượng',
+  'Loại đối tượng (GIS)': 'Loại đối tượng',
+  'Biểu tượng bản đồ': 'Biểu tượng bản đồ',
+  'Biểu tượng': 'Biểu tượng bản đồ',
+  'Ghi chú': 'Ghi chú',
 };
 
 const DIKE_REVETMENT_HISTORY_FIELD_ORDER = [
@@ -177,6 +210,7 @@ const DIKE_REVETMENT_HISTORY_FIELD_ORDER = [
   'length',
   'height',
   'crestElevation',
+  'surfaceMaterial',
   'constructionDate',
   'commissioningDate',
   'lastMaintenanceYear',
@@ -184,6 +218,7 @@ const DIKE_REVETMENT_HISTORY_FIELD_ORDER = [
   'coordinates',
   'geometryType',
   'mapSymbolId',
+  'symbolId',
   'note',
   'Tài liệu đính kèm',
 ];
@@ -841,8 +876,8 @@ export default function DikeRevetmentList() {
   }, [operatingUnits]);
 
   // ── Init: organizations (DataScope + auto mặc định theo user) — chuẩn màn /berth ──
-  // Đơn vị quản lý bắt buộc: tự chọn mặc định = đơn vị user đang đăng nhập;
-  // nếu tài khoản cấp Cục/admin (không có org khớp) thì để “Tất cả”.
+  // Đơn vị quản lý bắt buộc: tự chọn mặc định = đơn vị user đang đăng nhập qua resolveDefaultOrgUnitId;
+  // nếu tài khoản cấp Cục/admin (không có org khớp hoặc cấp Bộ) thì để “Tất cả” (undefined).
   useEffect(() => {
     const isIframe = window.self !== window.top;
     const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
@@ -870,10 +905,10 @@ export default function DikeRevetmentList() {
           setOrgUnitReady(true);
         } catch (err) {
           console.error('Failed to load organizations', err);
-          setOrgUnitReady(true);
         }
       })();
     }
+
   }, [currentUser]);
 
   useEffect(() => {
@@ -1054,24 +1089,26 @@ export default function DikeRevetmentList() {
         setCodeLoading(false);
       }
     })();
-    // Mặc định đơn vị quản lý theo tài khoản (chuẩn /beacon-stations)
-    const currentOrgUnitId = currentUser?.orgUnitId;
+    // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
     if (currentOrgUnitId) {
       createForm.setFieldsValue({ orgUnitId: currentOrgUnitId });
-    } else {
+    } else if (!currentUser?.orgUnitId) {
       (async () => {
         try {
           const res = await api.get('/users/me');
           const profile = res.data?.data ?? res.data;
-          if (profile?.orgUnitId) {
-            createForm.setFieldsValue({ orgUnitId: profile.orgUnitId });
+          const uOrgId = profile?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            createForm.setFieldsValue({ orgUnitId: uOrgId });
           }
         } catch {
           // không chặn nếu không lấy được profile
         }
       })();
     }
-  }, [createForm, currentUser]);
+  }, [createForm, currentUser, organizations]);
 
   const openEditDrawer = useCallback((record: DikeRevetmentResponse) => {
     if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dikerevetment' })) {
@@ -1460,7 +1497,7 @@ export default function DikeRevetmentList() {
     setHistoryOpen(true);
     setHistoryLoading(false);
     setLoadingMoreHistory(false);
-    setHasMoreHistory(true);
+    setHasMoreHistory(record.approvalStatus !== 'DRAFT' && (record as any).status !== 'DRAFT');
     setHistoryPage(0);
   }, [hasPerm]);
 
@@ -1657,6 +1694,13 @@ export default function DikeRevetmentList() {
 
   useEffect(() => {
     if (!historyOpen || !historyTarget) return;
+    if (historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') {
+      setHistoryRecords([]);
+      setHistoryLoading(false);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(false);
+      return;
+    }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setHistoryLoading(true);
@@ -1684,7 +1728,7 @@ export default function DikeRevetmentList() {
   }, [historyOpen, historyTarget, historySearch, historyFrom, historyTo]);
 
   const loadMoreHistory = async () => {
-    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory || historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
@@ -1756,7 +1800,36 @@ export default function DikeRevetmentList() {
         DEFAULT_IGNORED_FIELDS.has(fLower) ||
         fLower === 'approvalstatus' ||
         fLower === 'trạng thái phê duyệt' ||
-        fLower === 'trang thai phe duyet'
+        fLower === 'trang thai phe duyet' ||
+        fLower === 'trạng thái' ||
+        fLower === 'approvalcontentlevel1' ||
+        fLower === 'approvalcontentlevel2' ||
+        fLower === 'level1approvalcontent' ||
+        fLower === 'level2approvalcontent' ||
+        fLower === 'submitteddate' ||
+        fLower === 'submittedat' ||
+        fLower === 'submittedby' ||
+        fLower === 'approverlevel1' ||
+        fLower === 'approverlevel2' ||
+        fLower === 'approveddatelevel1' ||
+        fLower === 'approveddatelevel2' ||
+        fLower === 'rejectionreason' ||
+        fLower === 'lý do từ chối' ||
+        fLower === 'ly do tu choi' ||
+        fLower === 'portauthorityapprovedby' ||
+        fLower === 'portauthorityapprovedat' ||
+        fLower === 'portauthorityapprovalcontent' ||
+        fLower === 'departmentapprovedby' ||
+        fLower === 'departmentapprovedat' ||
+        fLower === 'departmentapprovalcontent' ||
+        fLower === 'approvedby' ||
+        fLower === 'approvedat' ||
+        fLower === 'approvedremarks' ||
+        fLower === 'cấp 1 phê duyệt' ||
+        fLower === 'cấp 2 phê duyệt' ||
+        fLower === 'nội dung phê duyệt' ||
+        fLower === 'ngày gửi phê duyệt' ||
+        fLower === 'người gửi phê duyệt'
       ) {
         return false;
       }
@@ -1779,16 +1852,20 @@ export default function DikeRevetmentList() {
 
     return rawGroups.map((g) => {
       const attachmentItems = g.items.filter((item: any) => isAttachmentField(historyField(item)));
-      const nonAttachmentChanges = g.items
-        .filter((item: any) => !isAttachmentField(historyField(item)))
-        .flatMap((item: any) => {
-          const fn = historyField(item);
-          if (!fn) return [];
-          const ov = historyOldValue(item);
-          const nv = historyNewValue(item);
-          if (!isMeaningful(fn, ov, nv)) return [];
-          return [{ field: fn, oldValue: ov, newValue: nv }];
-        });
+      const seenLabels = new Set<string>();
+      const nonAttachmentChanges: { field: string; oldValue: any; newValue: any }[] = [];
+      for (const item of g.items) {
+        if (isAttachmentField(historyField(item))) continue;
+        const fn = historyField(item);
+        if (!fn) continue;
+        const ov = historyOldValue(item);
+        const nv = historyNewValue(item);
+        if (!isMeaningful(fn, ov, nv)) continue;
+        const displayLabel = historyFieldName(fn).trim().toLowerCase();
+        if (seenLabels.has(displayLabel)) continue;
+        seenLabels.add(displayLabel);
+        nonAttachmentChanges.push({ field: fn, oldValue: ov, newValue: nv });
+      }
 
       let attachmentChange: { field: string; oldValue: string | null; newValue: string | null } | null = null;
       if (attachmentItems.length > 0) {
@@ -1928,6 +2005,11 @@ export default function DikeRevetmentList() {
                       const ovTitle = typeof ovNode === 'string' ? ovNode : undefined;
                       const nvTitle = typeof nvNode === 'string' ? nvNode : undefined;
 
+                      const isOvEmpty = ovNode == null || ovNode === '' || ovNode === '—';
+                      const isNvEmpty = nvNode == null || nvNode === '' || nvNode === '—';
+                      if (!isCreate && isOvEmpty && isNvEmpty) return null;
+                      if (!isCreate && typeof ovNode === 'string' && typeof nvNode === 'string' && ovNode.trim() === nvNode.trim()) return null;
+
                       return isCreate ? (
                         <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                           <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
@@ -1958,6 +2040,33 @@ export default function DikeRevetmentList() {
   // Khớp 100% sheet QL đê kè — cột "Danh sách" = ✓, đúng thứ tự sheet:
   // Mã, Tên, Đơn vị QL, Cảng biển, Địa điểm, Loại kết cấu, Tình trạng,
   // Thời điểm khai thác, Ngày cập nhật, Cán bộ cập nhật, Trạng thái phê duyệt
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
+
   const columns = useMemo(() => [
     {
       key: 'sequenceNo',
@@ -1975,27 +2084,36 @@ export default function DikeRevetmentList() {
       dataIndex: 'dikeRevetmentName',
       width: 350,
       fixed: 'left' as const,
+      cellTitle: (record: DikeRevetmentResponse) => record.dikeRevetmentName || '',
       render: (_: any, record: DikeRevetmentResponse) => (
-        <div>
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {hasPerm?.('dikerevetment:read') ? (
-            <a
-              title={record.dikeRevetmentName || ''}
-              onClick={() => openDetailDrawer(record)}
-              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {record.dikeRevetmentName || null}
-            </a>
+            <Tooltip title={record.dikeRevetmentName || undefined} placement="topLeft">
+              <a
+                title={record.dikeRevetmentName || ''}
+                onClick={() => openDetailDrawer(record)}
+                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {record.dikeRevetmentName || null}
+              </a>
+            </Tooltip>
           ) : (
-            <span
-              title={record.dikeRevetmentName || ''}
-              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}
-            >
-              {record.dikeRevetmentName || null}
-            </span>
+            <Tooltip title={record.dikeRevetmentName || undefined} placement="topLeft">
+              <span
+                title={record.dikeRevetmentName || ''}
+                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}
+              >
+                {record.dikeRevetmentName || null}
+              </span>
+            </Tooltip>
           )}
-          <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {record.code || null}
-          </span>
+          {record.code && (
+            <Tooltip title={record.code} placement="topLeft">
+              <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+                {record.code}
+              </span>
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -2004,35 +2122,32 @@ export default function DikeRevetmentList() {
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
       width: 260,
-      render: (val: string | undefined) => (
-        <span
-          title={val || ''}
-          style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-        >
-          {val || null}
-        </span>
-      ),
+      cellTitle: (record: DikeRevetmentResponse) => record.orgUnitName || '',
+      render: (val: string | undefined) => renderCellWithTooltip(val, true),
     },
     {
       key: 'seaportName',
       label: 'Thuộc cảng biển',
       dataIndex: 'seaportName',
       width: 170,
-      render: (val: string | undefined) => val || '',
+      cellTitle: (record: DikeRevetmentResponse) => record.seaportName || '',
+      render: (val: string | undefined) => renderCellWithTooltip(val),
     },
     {
       key: 'location',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'location',
       width: 190,
-      render: (val: string) => val || '',
+      cellTitle: (record: DikeRevetmentResponse) => record.location || '',
+      render: (val: string) => renderCellWithTooltip(val),
     },
     {
       key: 'dikeRevetmentType',
       label: 'Loại kết cấu công trình',
       dataIndex: 'dikeRevetmentType',
       width: 220,
-      render: (val: string) => <span style={{ fontWeight: fontWeightMedium }}>{DIKE_REVETMENT_TYPE_MAP[val] || val || ''}</span>,
+      cellTitle: (record: DikeRevetmentResponse) => DIKE_REVETMENT_TYPE_MAP[record.dikeRevetmentType] || record.dikeRevetmentType || '',
+      render: (val: string) => renderCellWithTooltip(DIKE_REVETMENT_TYPE_MAP[val] || val || null),
     },
     {
       key: 'status',
@@ -2079,9 +2194,16 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
       width: 210,
+      cellTitle: (record: DikeRevetmentResponse) => record.updatedByName || '',
       render: (val: string, record: DikeRevetmentResponse) => (
-        <div>
-          <span title={val} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val || null}</span>
+        <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+          {val ? (
+            <Tooltip title={val} placement="topLeft">
+              <span title={val} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
+            </Tooltip>
+          ) : (
+            <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
+          )}
           <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(record.updatedAt)}</span>
         </div>
       ),
@@ -2091,9 +2213,16 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ gửi phê duyệt',
       dataIndex: 'submittedByName',
       width: 230,
+      cellTitle: (record: DikeRevetmentResponse) => record.submittedByName || '',
       render: (val: string, record: DikeRevetmentResponse) => (
-        <div>
-          <span title={val} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val || null}</span>
+        <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+          {val ? (
+            <Tooltip title={val} placement="topLeft">
+              <span title={val} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
+            </Tooltip>
+          ) : (
+            <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
+          )}
           <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(record.submittedAt)}</span>
         </div>
       ),
@@ -2103,9 +2232,16 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
       dataIndex: 'approvedByNameLevel1',
       width: 260,
+      cellTitle: (record: DikeRevetmentResponse) => record.approvedByNameLevel1 || '',
       render: (v: string, r: DikeRevetmentResponse) => (
-        <div>
-          <span title={v || ''} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v || null}</span>
+        <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+          {v ? (
+            <Tooltip title={v} placement="topLeft">
+              <span title={v} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+            </Tooltip>
+          ) : (
+            <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
+          )}
           <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(r.approvedDateLevel1)}</span>
         </div>
       ),
@@ -2115,9 +2251,16 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ phê duyệt cấp Cục',
       dataIndex: 'approvedByNameLevel2',
       width: 240,
+      cellTitle: (record: DikeRevetmentResponse) => record.approvedByNameLevel2 || '',
       render: (v: string, r: DikeRevetmentResponse) => (
-        <div>
-          <span title={v || ''} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v || null}</span>
+        <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+          {v ? (
+            <Tooltip title={v} placement="topLeft">
+              <span title={v} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+            </Tooltip>
+          ) : (
+            <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
+          )}
           <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatDate(r.approvedDateLevel2)}</span>
         </div>
       ),
@@ -2378,20 +2521,31 @@ export default function DikeRevetmentList() {
   // DetailRow + renderDetailRows + renderSectionHeader (chuẩn /vts-operation-center)
   type DetailRow = { label: string; value: React.ReactNode; fullWidth?: boolean };
 
-  const renderDetailRows = (rows: DetailRow[], paddingTop = spaceMd) => (
-    <div className="chk-detail-grid" style={{ paddingTop }}>
-      {rows.map((row, i) => {
-        // Trường fullWidth === true → chiếm trọn 2 cột. Các trường thường chiếm 1 cột và wrap khi nội dung dài
-        const isLong = row.fullWidth === true;
-        return (
-          <div key={row.label} className={isLong ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
-            <span className={`chk-detail-label ${isLong ? 'sec-full-label' : (i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label')}`}>{row.label}</span>
-            <span className="chk-detail-value" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal' }}>{row.value}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
+  const renderDetailRows = (rows: DetailRow[], paddingTop = spaceMd) => {
+    let colIndex = 0;
+    return (
+      <div className="chk-detail-grid" style={{ paddingTop }}>
+        {rows.map((row) => {
+          // Trường fullWidth === true → chiếm trọn 2 cột. Các trường thường chiếm 1 cột và wrap khi nội dung dài
+          const isLong = row.fullWidth === true;
+          let labelCls: string;
+          if (isLong) {
+            labelCls = 'sec-full-label';
+            colIndex = 0;
+          } else {
+            labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
+            colIndex += 1;
+          }
+          return (
+            <div key={row.label} className={isLong ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+              <span className={`chk-detail-label ${labelCls}`}>{row.label}</span>
+              <span className="chk-detail-value" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal' }}>{row.value}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   const detailBasicRows: DetailRow[] = detailRecord ? [
     { label: 'Mã đê kè', value: detailRecord.code ? <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: themeTokenChk.radiusSm === undefined ? 6 : themeTokenChk.radiusSm, border: `1px solid ${borderDefault}`, background: '#f1f5f9', color: themeTokenChk.textSecondary || '#5E6278', fontWeight: 500, whiteSpace: 'nowrap' }}>{detailRecord.code}</span> : null },
@@ -2515,12 +2669,19 @@ export default function DikeRevetmentList() {
     fontSize: 14,
   };
 
-  // Card Thông tin phê duyệt — sao y hệt chuẩn màn /beacon-stations (detailHandlingRows):
-  // badge 'Trạng thái phê duyệt' lên đầu, cán bộ in đậm, nội dung phê duyệt từng cấp bản rộng,
-  // 'Lý do từ chối' CHỈ hiện khi hồ sơ bị từ chối (REJECTED_LEVEL1/REJECTED_LEVEL2). Không còn dòng 'Ngày cập nhật'.
+  // Card Thông tin phê duyệt — đồng bộ chuẩn màn /cctv & /beacon-stations:
+  // Dòng 1: Trạng thái (fullWidth)
+  // Dòng 2: Cán bộ cập nhật + Ngày cập nhật (cột 1 & 2)
+  // Dòng 3: Cán bộ gửi phê duyệt + Ngày gửi phê duyệt
+  // Dòng 4: Cán bộ phê duyệt cấp Cảng vụ/Chi cục + Ngày phê duyệt cấp Cảng vụ/Chi cục
+  // Dòng 5: Nội dung phê duyệt cấp Cảng vụ/Chi cục (fullWidth)
+  // Dòng 6: Cán bộ phê duyệt cấp Cục + Ngày phê duyệt cấp Cục
+  // Dòng 7: Nội dung phê duyệt cấp Cục (fullWidth)
+  // Dòng 8: Lý do từ chối (fullWidth, khi bị từ chối)
   const detailApprovalRows: DetailRow[] = detailRecord ? [
     {
-      label: 'Trạng thái phê duyệt',
+      label: 'Trạng thái',
+      fullWidth: true,
       value: isDikeRevetmentDeleted(detailRecord) ? (
         <span style={{ ...themeTokenChk.statusBadgeStyle(statusCritical), fontSize: 13 }}>
           Đã xóa
@@ -2530,7 +2691,7 @@ export default function DikeRevetmentList() {
       ),
     },
     { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || detailRecord.updatedBy || '—'}</span> },
-    { label: 'Ngày cập nhật', value: (detailRecord.updatedAt || (detailRecord as any).updatedDate) ? formatDate(detailRecord.updatedAt || (detailRecord as any).updatedDate) : '—' },
+    { label: 'Ngày cập nhật', value: (detailRecord.updatedAt || (detailRecord as any).updatedDate || detailRecord.createdAt) ? formatDate(detailRecord.updatedAt || (detailRecord as any).updatedDate || detailRecord.createdAt) : '—' },
     { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || '—'}</span> },
     { label: 'Ngày gửi phê duyệt', value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : '—' },
     { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel1 || '—'}</span> },
@@ -2539,7 +2700,7 @@ export default function DikeRevetmentList() {
     { label: 'Cán bộ phê duyệt cấp Cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel2 || '—'}</span> },
     { label: 'Ngày phê duyệt cấp Cục', value: detailRecord.approvedDateLevel2 ? formatDate(detailRecord.approvedDateLevel2) : '—' },
     { label: 'Nội dung phê duyệt cấp Cục', value: detailRecord.approvalContentLevel2 || '—', fullWidth: true },
-    ...(detailRecord.rejectionReason && (detailRecord.approvalStatus === 'REJECTED_LEVEL1' || detailRecord.approvalStatus === 'REJECTED_LEVEL2')
+    ...(detailRecord.rejectionReason && (detailRecord.approvalStatus === 'REJECTED_LEVEL1' || detailRecord.approvalStatus === 'REJECTED_LEVEL2' || String(detailRecord.approvalStatus).toUpperCase().includes('REJECT'))
       ? [{ label: 'Lý do từ chối', value: detailRecord.rejectionReason, fullWidth: true } as DetailRow]
       : []),
   ] : [];
@@ -2571,6 +2732,12 @@ export default function DikeRevetmentList() {
                   width: 250px !important;
                   min-width: 250px !important;
                   max-width: 250px !important;
+                  flex-shrink: 0 !important;
+                }
+                .dike-revetment-drawer-scope .sec-full-label {
+                  width: 215px !important;
+                  min-width: 215px !important;
+                  max-width: 215px !important;
                   flex-shrink: 0 !important;
                 }
               `}</style>
@@ -3071,11 +3238,9 @@ export default function DikeRevetmentList() {
                                 style={formFieldStyle}
                                 rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                               >
-                                <OrgUnitTreeSelect
-                                  variant="form"
+                                <FormOrgUnitTreeSelect
                                   organizations={organizations}
                                   placeholder="Chọn đơn vị quản lý..."
-                                  treeDefaultExpandAll={false}
                                   disabled={!!editingRecord && !isElevatedOrg}
                                   style={selectStyle}
                                   onChange={() => createForm.setFieldsValue({ seaportId: undefined })}

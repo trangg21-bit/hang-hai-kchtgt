@@ -4,6 +4,7 @@ import {
     parseWktToCoordinates,
 } from "../../utils/gisGeometry";
 import { fmtNum } from "../../utils/numFmt";
+import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
 const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
@@ -38,12 +39,11 @@ const toAttachmentItemList = (list: RawAttachmentItem[]): InfrastructureAttachme
   }));
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return null;
+  if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  } catch { return dateStr; }
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : String(dateStr);
+  } catch { return String(dateStr); }
 }
 
 import {
@@ -67,6 +67,7 @@ import {
     Select,
     Space,
     Tabs,
+    Tooltip,
     Typography,
 } from "antd";
 import dayjs from "dayjs";
@@ -80,7 +81,7 @@ DataTable,
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { FilterOrgUnitTreeSelect } from "../../components/org-unit";
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
 import AppDrawer from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
@@ -153,7 +154,7 @@ const UOM_LABELS: Record<number, string> = {
 };
 
 function formatUnitOfMeasure(code: number | null | undefined): string {
-  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
+  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : '';
 }
 
 import {
@@ -536,7 +537,35 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
       fLower === 'approvalstatus' ||
       fLower === 'trạng thái phê duyệt' ||
       fLower === 'trang thai phe duyet' ||
-      fLower === 'trạng thái'
+      fLower === 'trạng thái' ||
+      fLower === 'approvalcontentlevel1' ||
+      fLower === 'approvalcontentlevel2' ||
+      fLower === 'level1approvalcontent' ||
+      fLower === 'level2approvalcontent' ||
+      fLower === 'submitteddate' ||
+      fLower === 'submittedat' ||
+      fLower === 'submittedby' ||
+      fLower === 'approverlevel1' ||
+      fLower === 'approverlevel2' ||
+      fLower === 'approveddatelevel1' ||
+      fLower === 'approveddatelevel2' ||
+      fLower === 'rejectionreason' ||
+      fLower === 'lý do từ chối' ||
+      fLower === 'ly do tu choi' ||
+      fLower === 'portauthorityapprovedby' ||
+      fLower === 'portauthorityapprovedat' ||
+      fLower === 'portauthorityapprovalcontent' ||
+      fLower === 'departmentapprovedby' ||
+      fLower === 'departmentapprovedat' ||
+      fLower === 'departmentapprovalcontent' ||
+      fLower === 'approvedby' ||
+      fLower === 'approvedat' ||
+      fLower === 'approvedremarks' ||
+      fLower === 'cấp 1 phê duyệt' ||
+      fLower === 'cấp 2 phê duyệt' ||
+      fLower === 'nội dung phê duyệt' ||
+      fLower === 'ngày gửi phê duyệt' ||
+      fLower === 'người gửi phê duyệt'
     ) {
       return false;
     }
@@ -601,7 +630,7 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
 
 const VhfListPage = () => {
   const [searchParams] = useSearchParams();
-  const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<VhfResponse[]>([]);
@@ -612,19 +641,7 @@ const VhfListPage = () => {
   });
   const [pageSize, setPageSize] = useState(20);
 
-  // Sorting
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
-  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
-    if (!order) {
-      setSortField(null);
-      setSortOrder(null);
-    } else {
-      setSortField(field);
-      setSortOrder(order === "asc" ? "ascend" : "descend");
-    }
-    setPage(0);
-  }, []);
+
 
   // Bộ lọc
   const [filterCollapsed, setFilterCollapsed] = useState(false);
@@ -718,7 +735,7 @@ const VhfListPage = () => {
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
 
-  // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
+  // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /beacon-stations & /dike-revetment ──
   useEffect(() => {
     const loadOrgDefault = async () => {
       setLoadingOrgs(true);
@@ -730,27 +747,23 @@ const VhfListPage = () => {
       setOrgUnits(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedOrgId || "" }));
       }
       setOrgUnitReady(true);
       setLoadingOrgs(false);
@@ -760,7 +773,7 @@ const VhfListPage = () => {
       setOrgUnitReady(true);
       setLoadingOrgs(false);
     });
-  }, []);
+  }, [currentUser]);
 
   // ── History map helpers ────────────────────────────────────────
   const symbolMap = useMemo(() => {
@@ -804,6 +817,13 @@ const VhfListPage = () => {
   // Load history khi mở Drawer hoặc thay đổi bộ lọc tìm kiếm/ngày
   useEffect(() => {
     if (!historyModalVisible || !selectedRecord) return;
+    if (selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') {
+      setHistoryRecords([]);
+      setLoadingHistory(false);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(false);
+      return;
+    }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setLoadingHistory(true);
@@ -834,7 +854,7 @@ const VhfListPage = () => {
   }, [historyModalVisible, selectedRecord, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
   const loadMoreHistory = async () => {
-    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
+    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory || selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
@@ -1010,8 +1030,8 @@ const VhfListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
       });
       setData(result.content || []);
       setTotal(result.totalElements || 0);
@@ -1021,7 +1041,7 @@ const VhfListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterValues]);
 
   const fetchTabCounts = useCallback(async () => {
     const statuses = [
@@ -1153,11 +1173,28 @@ const VhfListPage = () => {
 
   const handleOpenCreate = () => {
     createForm.resetFields();
+    // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
     createForm.setFieldsValue({
       operationalStatus: 0,
-      orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+      orgUnitId: currentOrgUnitId,
     });
     setCreateModalOpen(true);
+
+    if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+      api.get('/users/me')
+        .then((res) => {
+          const profile = res.data?.data ?? res.data;
+          const uOrgId = profile?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            createForm.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        })
+        .catch(() => {});
+    }
+
     generateVhfCode()
       .then((code) => {
         if (code) createForm.setFieldsValue({ deviceCode: code });
@@ -1298,19 +1335,38 @@ const validHistoryGroups = useMemo(() => {
       const isCreate = actionMeta.label === 'Thêm mới';
       const isUpdate = isUpdateAction(g.status, rec0.reason || rec0.note) || actionMeta.label === 'Cập nhật';
 
-      const changes = deduplicateAttachmentHistoryChanges(
-        g.items.flatMap((item: any) => {
-          const fn = historyField(item);
-          if (!fn) return [];
-          const ov = historyOldValue(item);
-          const nv = historyNewValue(item);
-          if (!isMeaningfulChange(fn, ov, nv)) return [];
-          const dispOv = historyFieldValue(fn, ov, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
-          const dispNv = historyFieldValue(fn, nv, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
-          if (!isCreate && String(dispOv).trim() === String(dispNv).trim()) return [];
-          return [{ field: fn, oldValue: ov, newValue: nv }];
-        })
+      const seenLabels = new Set<string>();
+      const nonAttachmentChanges: { field: string; oldValue: string | null; newValue: string | null }[] = [];
+      for (const item of g.items) {
+        if (isAttachmentField(historyField(item))) continue;
+        const fn = historyField(item);
+        if (!fn) continue;
+        const ov = historyOldValue(item);
+        const nv = historyNewValue(item);
+        if (!isMeaningfulChange(fn, ov, nv)) continue;
+        const dispOv = historyFieldValue(fn, ov, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+        const dispNv = historyFieldValue(fn, nv, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+        if (!isCreate && String(dispOv).trim() === String(dispNv).trim()) continue;
+        const displayLabel = historyFieldName(fn).trim().toLowerCase();
+        if (seenLabels.has(displayLabel)) continue;
+        seenLabels.add(displayLabel);
+        nonAttachmentChanges.push({ field: fn, oldValue: ov, newValue: nv });
+      }
+
+      const attachmentChanges = deduplicateAttachmentHistoryChanges(
+        g.items
+          .filter((item: any) => isAttachmentField(historyField(item)))
+          .flatMap((item: any) => {
+            const fn = historyField(item);
+            if (!fn) return [];
+            const ov = historyOldValue(item);
+            const nv = historyNewValue(item);
+            if (!isMeaningfulChange(fn, ov, nv)) return [];
+            return [{ field: fn, oldValue: ov, newValue: nv }];
+          })
       );
+
+      const changes = [...nonAttachmentChanges, ...attachmentChanges];
 
       const orderedChanges = [...changes].sort((a, b) => {
         const getIndex = (field: string) => {
@@ -1468,6 +1524,11 @@ const validHistoryGroups = useMemo(() => {
                           </div>
                         );
                       }
+                      const isOvEmpty = ov == null || ov === '' || ov === '—' || ov === 'Chưa có';
+                      const isNvEmpty = nv == null || nv === '' || nv === '—' || nv === 'Chưa có';
+                      if (!isCreate && isOvEmpty && isNvEmpty) {
+                        return null;
+                      }
                       if (!isCreate && String(ov).trim() === String(nv).trim()) {
                         return null;
                       }
@@ -1515,16 +1576,48 @@ const validHistoryGroups = useMemo(() => {
     if (!name && !date) return null;
     return (
       <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
-        <div
-          title={name || undefined}
-          style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-        >
-          {name || null}
-        </div>
+        {name ? (
+          <Tooltip title={name} placement="topLeft">
+            <div
+              title={name}
+              style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {name}
+            </div>
+          </Tooltip>
+        ) : (
+          <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+        )}
         <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
           {dateText || null}
         </div>
       </div>
+    );
+  };
+
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            ...tableMetaStyle,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: "inline-block",
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            verticalAlign: "middle",
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
     );
   };
 
@@ -1549,31 +1642,38 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "deviceName",
       width: 300,
       fixed: "left" as const,
-      sortable: true,
-      sortOrder: sortField === "deviceName" ? sortOrder : null,
       ellipsis: false,
+      cellTitle: (record: VhfResponse) => record.deviceName || '',
       render: (val: string, record: VhfResponse) => (
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
           {hasPerm?.('vhf:read') ? (
-            <button
-              type="button"
-              className="kcht-cell-title"
-              onClick={() => handleOpenView(record)}
-              style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-              title={val || null}
-            >
-              {val || null}
-            </button>
+            <Tooltip title={val || undefined} placement="topLeft">
+              <button
+                type="button"
+                className="kcht-cell-title"
+                onClick={() => handleOpenView(record)}
+                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                title={val || undefined}
+              >
+                {val || null}
+              </button>
+            </Tooltip>
           ) : (
-            <span
-              className="kcht-cell-title"
-              style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
-              title={val || null}
-            >
-              {val || null}
-            </span>
+            <Tooltip title={val || undefined} placement="topLeft">
+              <span
+                className="kcht-cell-title"
+                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                title={val || undefined}
+              >
+                {val || null}
+              </span>
+            </Tooltip>
           )}
-          <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
+          {record.deviceCode && (
+            <Tooltip title={record.deviceCode} placement="topLeft">
+              <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
+            </Tooltip>
+          )}
         </div>
       ),
     },
@@ -1583,34 +1683,32 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "seaportName",
       width: 220,
       ellipsis: true,
-      render: (val: string) => (val ? <span style={tableMetaStyle}>{val}</span> : null),
+      cellTitle: (record: VhfResponse) => record.seaportName || '',
+      render: (val: string) => renderCellWithTooltip(val),
     },
     {
       key: "orgUnitName",
       label: "Đơn vị quản lý",
       dataIndex: "orgUnitName",
       width: 260,
-      render: (val: string) => (
-        <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
-      ),
+      cellTitle: (record: VhfResponse) => record.orgUnitName || '',
+      render: (val: string) => renderCellWithTooltip(val, true),
     },
     {
       key: "vtsSystemName",
       label: "Thuộc TTDH VTS/Trạm Radar",
       dataIndex: "attachedInfrastructureName",
       width: 280,
-      render: (val: string) => (
-        <span style={tableMetaStyle}>{val || null}</span>
-      ),
+      cellTitle: (record: VhfResponse) => record.attachedInfrastructureName || '',
+      render: (val: string) => renderCellWithTooltip(val),
     },
     {
       key: "operatingUnitName",
       label: "Đơn vị khai thác",
       dataIndex: "operatingUnitName",
       width: 260,
-      render: (val: string) => (
-        <span style={tableMetaStyle}>{val || null}</span>
-      ),
+      cellTitle: (record: VhfResponse) => record.operatingUnitName || '',
+      render: (val: string) => renderCellWithTooltip(val),
     },
     {
       key: "provinceName",
@@ -1618,18 +1716,16 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "provinceName",
       width: 220,
       ellipsis: false,
-      render: (val: string) => (
-        <span style={tableMetaStyle}>{val || null}</span>
-      ),
+      cellTitle: (record: VhfResponse) => record.provinceName || '',
+      render: (val: string) => renderCellWithTooltip(val),
     },
     {
       key: "unitOfMeasure",
       label: "Đơn vị tính",
       dataIndex: "unitOfMeasure",
       width: 130,
-      render: (val: number) => (
-        <span style={tableMetaStyle}>{val != null ? formatUnitOfMeasure(val) : null}</span>
-      ),
+      cellTitle: (record: VhfResponse) => formatUnitOfMeasure(record.unitOfMeasure) || '',
+      render: (val: number) => renderCellWithTooltip(val != null ? formatUnitOfMeasure(val) : null),
     },
     {
       key: "quantity",
@@ -1656,8 +1752,8 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "operationalStatus",
       width: 270,
       type: "status" as const,
-      render: (val: number | string) => {
-        const num = typeof val === 'number' ? val : (val === 'OPERATIONAL' || val === '1' ? 1 : val === 'SUSPENDED' || val === '2' ? 2 : 0);
+      render: (val: unknown) => {
+        const num = val === undefined || val === null || val === "" ? null : Number(val);
         const badge = operationalStatusBadge(num);
         return (
           <span className="kcht-cell-badge" style={statusBadgeStyle(badge.color)}>
@@ -1679,8 +1775,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Cán bộ cập nhật",
       dataIndex: "updatedByName",
       width: 200,
-      sortable: true,
-      sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
+      cellTitle: (record: VhfResponse) => record.updatedByName || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
     },
     {
@@ -1688,6 +1783,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Cán bộ gửi phê duyệt",
       dataIndex: "submittedByName",
       width: 230,
+      cellTitle: (record: VhfResponse) => record.submittedByName || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
     },
     {
@@ -1695,6 +1791,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
       dataIndex: "approverLevel1Name",
       width: 380,
+      cellTitle: (record: VhfResponse) => record.approverLevel1Name || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
     },
     {
@@ -1702,9 +1799,10 @@ const validHistoryGroups = useMemo(() => {
       label: "Cán bộ phê duyệt cấp Cục",
       dataIndex: "approverLevel2Name",
       width: 270,
+      cellTitle: (record: VhfResponse) => record.approverLevel2Name || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
     },
-  ], [page, pageSize, sortField, sortOrder, handleOpenView]);
+  ], [page, pageSize, handleOpenView]);
 
   // ── Row Actions chuẩn /cctv ──
   const handleOpenHistory = useCallback((record: VhfResponse) => {
@@ -1718,7 +1816,7 @@ const validHistoryGroups = useMemo(() => {
     setHistoryRecords([]);
     setLoadingHistory(false);
     setLoadingMoreHistory(false);
-    setHasMoreHistory(true);
+    setHasMoreHistory(record.approvalStatus !== 'DRAFT' && (record as any).status !== 'DRAFT');
     setHistorySearch('');
     setHistorySearchInput('');
     setHistoryDateFrom('');
@@ -1767,7 +1865,7 @@ const validHistoryGroups = useMemo(() => {
     }
 
     if (
-      hasPerm?.("vhf:update") &&
+      (hasPerm?.("vhf:update") || hasPerm?.("vhf:create")) &&
       (record.approvalStatus === "DRAFT" ||
         record.approvalStatus === "REJECTED_LEVEL1" ||
         record.approvalStatus === "REJECTED_LEVEL2" ||
@@ -2075,17 +2173,17 @@ const validHistoryGroups = useMemo(() => {
             { label: "Luồng hàng hải", path: "/navigation-channel" },
             { label: "Quản lý hệ thống thông tin liên lạc VHF", path: "/vhf" },
           ]}
-          actions={[
-            hasPerm?.("vhf:create")
-              ? {
+          actions={(hasPerm?.("vhf:create")
+            ? [
+                {
                   key: "create",
                   label: "Thêm mới",
                   icon: <PlusOutlined />,
                   variant: "primary" as const,
                   onClick: handleOpenCreate,
-                }
-              : null,
-          ].filter(Boolean)}
+                },
+              ]
+            : []) as any}
         />
 
         <FilterTableLayout
@@ -2345,7 +2443,6 @@ const validHistoryGroups = useMemo(() => {
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}
-              onSort={handleSort}
               rowActions={rowActions}
             />
             <div style={{ height: 6, flexShrink: 0 }} />
@@ -2756,7 +2853,8 @@ const validHistoryGroups = useMemo(() => {
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                              <span className="chk-detail-value">{selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : '')}</span>
+                              <span className="chk-detail-value">{formatDate(selectedRecord.updatedAt || selectedRecord.createdAt)}</span>
+
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
@@ -2768,7 +2866,7 @@ const validHistoryGroups = useMemo(() => {
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                              <span className="chk-detail-value">{selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : ''}</span>
+                              <span className="chk-detail-value">{formatDate(selectedRecord.submittedDate)}</span>
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
@@ -2780,7 +2878,7 @@ const validHistoryGroups = useMemo(() => {
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                              <span className="chk-detail-value">{selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : ''}</span>
+                              <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel1)}</span>
                             </div>
                             <div className="chk-detail-row chk-detail-row--full">
                               <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
@@ -2796,7 +2894,7 @@ const validHistoryGroups = useMemo(() => {
                             </div>
                             <div className="chk-detail-row">
                               <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                              <span className="chk-detail-value">{selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : ''}</span>
+                              <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel2)}</span>
                             </div>
                             <div className="chk-detail-row chk-detail-row--full">
                               <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>

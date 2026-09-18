@@ -12,6 +12,7 @@ import {
     Modal,
     Select,
     Space,
+    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -75,6 +76,12 @@ import TransferAreaForm from './TransferAreaForm';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ──
 const fontSizeMd = 13.5;
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function isTransferAreaDeleted(record?: Partial<TransferArea> | null): boolean {
+  if (!record) return false;
+  return Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === 'DELETED' || record.approvalStatus === 'ARCHIVED');
+}
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
@@ -372,12 +379,13 @@ export default function TransferAreaListPage() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sortField, setSortField] = useState<string | null>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [dataSource, setDataSource] = useState<TransferArea[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
@@ -458,9 +466,13 @@ export default function TransferAreaListPage() {
   const openHistory = useCallback(async (r: TransferArea) => {
     setHistoryTarget(r);
     setHistoryOpen(true);
-    setHistoryLoading(true);
     setHistoryRecords([]);
     setHistoryFilters({ keyword: '' });
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/transfer-area/${r.id}/history`);
       const d = res.data?.data;
@@ -615,36 +627,43 @@ export default function TransferAreaListPage() {
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
+      const provinceIdx = filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined;
+      const orgParam = oid && oid !== '__all__' ? oid : undefined;
+      const baseFilterParams = {
+        orgUnitId: orgParam,
+        transferAreaName: nameInput.trim() || undefined,
+        transferAreaCode: codeInput.trim() || undefined,
+        portId: filterPortId || undefined,
+        provinceId: provinceIdx && provinceIdx > 0 ? provinceIdx : undefined,
+        operationalStatus: filterOperationalStatus,
+        operationalFunctions: filterOperationalFunctions || undefined,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+      };
       const rs = await Promise.allSettled(
         TAB_STATUS_LIST.map((t) =>
-          t.key === 'all'
-            ? transferAreaCRUD.search({
-                orgUnitId: oid && oid !== '__all__' ? oid : undefined,
-                page: 1,
-                pageSize: 1,
-              })
-            : transferAreaCRUD.search({
-                approvalStatus: TAB_QUERY_MAP[t.key],
-                orgUnitId: oid && oid !== '__all__' ? oid : undefined,
-                page: 1,
-                pageSize: 1,
-              }),
+          transferAreaCRUD.search({
+            ...baseFilterParams,
+            approvalStatus: TAB_QUERY_MAP[t.key],
+            page: 1,
+            pageSize: 1,
+          })
         ),
       );
       const c: Record<string, number> = {};
-      let childSum = 0;
       rs.forEach((r, i) => {
         const k = TAB_STATUS_LIST[i]?.key || 'all';
-        const count = r.status === 'fulfilled' ? r.value.total : 0;
-        c[k] = count;
-        if (k !== 'all') childSum += count;
+        c[k] = r.status === 'fulfilled' ? r.value.total : 0;
       });
-      c['all'] = childSum;
+      const allChildSum = TAB_STATUS_LIST
+        .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+        .reduce((acc, t) => acc + (c[t.key] ?? 0), 0);
+      c['all'] = allChildSum;
       setTabCounts(c);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [nameInput, codeInput, filterPortId, filterProvince, filterOperationalStatus, filterOperationalFunctions, filterUpdatedFrom, filterUpdatedTo]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -702,11 +721,13 @@ export default function TransferAreaListPage() {
   const handleFilterApply = useCallback(() => {
     setPage(1);
     void fetchData();
-  }, [fetchData]);
+    void fetchCounts(orgUnit);
+  }, [fetchData, fetchCounts, orgUnit]);
 
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current;
     setOrgUnit(oid);
+
     setNameInput('');
     setCodeInput('');
     setFilterPortId(undefined);
@@ -717,7 +738,8 @@ export default function TransferAreaListPage() {
     setFilterUpdatedTo(undefined);
     setActiveTab('all');
     setPage(1);
-  }, []);
+    void fetchCounts(oid);
+  }, [fetchCounts]);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key);
@@ -842,7 +864,7 @@ export default function TransferAreaListPage() {
   const confirmSubmitApproval = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await transferAreaCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' } as any);
+      await transferAreaCRUD.submit(submittingRecord.id);
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
@@ -855,6 +877,7 @@ export default function TransferAreaListPage() {
       toast.error(ex instanceof Error ? ex.message : 'Gửi thất bại');
     }
   }, [submittingRecord, fetchData, fetchCounts, orgUnit]);
+
 
   const openRejectModal = useCallback((record: TransferArea) => {
     setRejectingRecord(record);
@@ -888,7 +911,7 @@ export default function TransferAreaListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('transferarea:create')) {
+    if (hasPerm('transferarea:manage') || hasPerm('transferarea:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -905,9 +928,10 @@ export default function TransferAreaListPage() {
     return actions;
   }, [hasPerm, createForm]);
 
+
   const rowActions = useCallback(
     (record: TransferArea) => {
-      const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+      const isDeleted = isTransferAreaDeleted(record);
       if (isDeleted) {
         const actions: any[] = [
           { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
@@ -934,12 +958,13 @@ export default function TransferAreaListPage() {
           },
         });
       }
-      if (['DRAFT', 'NHAP'].includes(st) && hasPerm('transferarea:update')) {
+      if (['DRAFT', 'NHAP'].includes(st) && (hasPerm('transferarea:manage') || hasPerm('transferarea:update'))) {
         actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
       }
-      if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('transferarea:update')) {
+      if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('transferarea:manage') || hasPerm('transferarea:update'))) {
         actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
       }
+
       if (hasPerm('transferarea:history')) {
         actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       }
@@ -995,15 +1020,19 @@ export default function TransferAreaListPage() {
         key: 'submittedForApprovalAt',
         width: 230,
         sortable: true,
+        cellTitle: (record: TransferArea) => userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '',
         render: (v: string | null, record: TransferArea) => {
           const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
           const date = formatDate(v);
           if (!name && !date) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && date && <br />}
-              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
           );
         },
@@ -1014,15 +1043,19 @@ export default function TransferAreaListPage() {
         key: 'portAuthorityApprovedAt',
         width: 350,
         sortable: true,
+        cellTitle: (record: TransferArea) => userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '',
         render: (v: string | null, record: TransferArea) => {
           const name = userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '';
           const date = formatDate(v);
           if (!name && !date) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && date && <br />}
-              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
           );
         },
@@ -1033,15 +1066,19 @@ export default function TransferAreaListPage() {
         key: 'departmentApprovedAt',
         width: 260,
         sortable: true,
+        cellTitle: (record: TransferArea) => userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '',
         render: (v: string | null, record: TransferArea) => {
           const name = userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '';
           const date = formatDate(v);
           if (!name && !date) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && date && <br />}
-              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
           );
         },
@@ -1049,15 +1086,48 @@ export default function TransferAreaListPage() {
     ];
   }, [userMap]);
 
+
+
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
+
   const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || r.orgUnitName || '';
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
     if (field === 'transferAreaName') return r.transferAreaName ?? '';
     if (field === 'transferAreaCode') return r.transferAreaCode ?? '';
-    if (field === 'portId') return portMap.get(r.portId) ?? r.portName ?? r.portId ?? '';
-    if (field === 'province' || field === 'provinceId') return r.province || (r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || '';
+    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
+    if (field === 'province') return r.province || (r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || '';
     if (field === 'operationalFunctions') return formatOperationalFunctions(r.operationalFunctions);
     if (field === 'operationalStatus') {
       return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
+    }
+    if (field === 'approvalStatus') {
+      if (isTransferAreaDeleted(r)) return 'Đã xóa';
+      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
     }
     if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
       const t = r.updatedAt || r.createdAt;
@@ -1067,7 +1137,7 @@ export default function TransferAreaListPage() {
     if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
     if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
     return r[field] ?? '';
-  }, [portMap, organizations, orgMap, userMap]);
+  }, [organizations, orgMap, portMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1089,21 +1159,28 @@ export default function TransferAreaListPage() {
         fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
+        cellTitle: (record: TransferArea) => record.transferAreaName || '',
         render: (v: string, record: TransferArea) => (
-          <div>
-            <a
-              title={v || ''}
-              onClick={(e) => {
-                e.stopPropagation();
-                openDetailDrawer(record);
-              }}
-              style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
-            >
-              {v || ''}
-            </a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {record.transferAreaCode || ''}
-            </span>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Tooltip title={v || undefined} placement="topLeft">
+              <a
+                title={v || ''}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDetailDrawer(record);
+                }}
+                style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+              >
+                {v || ''}
+              </a>
+            </Tooltip>
+            {record.transferAreaCode && (
+              <Tooltip title={record.transferAreaCode} placement="topLeft">
+                <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.transferAreaCode}>
+                  {record.transferAreaCode}
+                </span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -1113,11 +1190,11 @@ export default function TransferAreaListPage() {
         key: 'orgUnitId',
         width: 260,
         sortable: true,
-        render: (v: string | null, r: TransferArea) => (
-          <span style={{ fontWeight: fontWeightBold }}>
-            {resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}
-          </span>
-        ),
+        cellTitle: (r: TransferArea) => resolveOrgLevel2Name(organizations, r?.orgUnitId) || orgMap.get(r?.orgUnitId || '') || '',
+        render: (v: string | null, r: TransferArea) => {
+          const name = resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || null;
+          return renderCellWithTooltip(name, true);
+        },
       },
       {
         label: 'Thuộc cảng biển',
@@ -1125,9 +1202,8 @@ export default function TransferAreaListPage() {
         key: 'portId',
         width: 200,
         sortable: true,
-        render: (v: string) => (
-          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span>
-        ),
+        cellTitle: (r: TransferArea) => r.portName || portMap.get(r.portId) || r.portId || '',
+        render: (v: string) => renderCellWithTooltip(portMap.get(v || '') || v || null),
       },
       {
         label: 'Địa điểm (Tỉnh/Thành phố)',
@@ -1135,11 +1211,11 @@ export default function TransferAreaListPage() {
         key: 'province',
         width: 250,
         sortable: true,
-        render: (v?: string, r?: any) => (
-          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
-            {v || (r?.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || ''}
-          </span>
-        ),
+        cellTitle: (r: TransferArea) => (r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || '',
+        render: (v?: string, r?: any) => {
+          const val = v || (r?.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || null;
+          return renderCellWithTooltip(val);
+        },
       },
       {
         label: 'Công năng khai thác',
@@ -1148,9 +1224,8 @@ export default function TransferAreaListPage() {
         width: 240,
         ellipsis: true,
         sortable: true,
-        render: (v?: string) => (
-          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatOperationalFunctions(v)}</span>
-        ),
+        cellTitle: (r: TransferArea) => formatOperationalFunctions(r.operationalFunctions) || '',
+        render: (v?: string) => renderCellWithTooltip(formatOperationalFunctions(v) || null),
       },
       {
         label: 'Tình trạng',
@@ -1171,8 +1246,13 @@ export default function TransferAreaListPage() {
         width: 320,
         ellipsis: false,
         sortable: true,
+        cellTitle: (record: TransferArea) => {
+          if (isTransferAreaDeleted(record)) return 'Đã xóa';
+          const s = record.approvalStatus && (APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus.toUpperCase()]);
+          return s ? s.label : (record.approvalStatus || '');
+        },
         render: (v: string, record: TransferArea) => {
-          if (record.deletedAt || record.deletedBy) {
+          if (isTransferAreaDeleted(record)) {
             return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
           }
           const s = v && (APPROVAL_STYLE_MAP[v] || APPROVAL_STYLE_MAP[v.toUpperCase()]);
@@ -1185,13 +1265,21 @@ export default function TransferAreaListPage() {
         key: 'updatedAt',
         width: 200,
         sortable: true,
-        render: (v: string, record: TransferArea) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || ''}</span>
-            <br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ),
+        cellTitle: (record: TransferArea) => userMap.get(record?.updatedBy || '') || record?.updatedBy || '',
+        render: (v: string, record: TransferArea) => {
+          const name = userMap.get(record.updatedBy || '') || record.updatedBy || '';
+          const date = formatDate(v);
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
+            </div>
+          );
+        },
       },
     ];
 
@@ -1203,14 +1291,14 @@ export default function TransferAreaListPage() {
   }, [
     page,
     pageSize,
-    sortField,
-    sortOrder,
     openDetailDrawer,
     organizations,
     orgMap,
     portMap,
     userMap,
     auditColumns,
+    sortField,
+    sortOrder,
   ]);
 
   const sortedDataSource = useMemo(() => {
@@ -1227,6 +1315,30 @@ export default function TransferAreaListPage() {
       return sortOrder === 'ascend' ? c : -c;
     });
   }, [dataSource, sortField, sortOrder, getSortValue]);
+
+  const statusTabs = useMemo(() => {
+    const allChildSum = TAB_STATUS_LIST
+      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return TAB_STATUS_LIST.map((tab) => {
+      let count = tabCounts[tab.key] ?? 0;
+      if (tab.key === 'all') {
+        count = activeTab === 'all' ? total : allChildSum;
+      } else if (tab.key === activeTab) {
+        count = total;
+      }
+      return {
+        key: tab.key,
+        label: tab.label,
+        count,
+        color: tab.color,
+        active: activeTab === tab.key,
+      };
+    });
+  }, [tabCounts, activeTab, total]);
+
+
 
   const filterContent = (
     <>
@@ -1488,13 +1600,7 @@ export default function TransferAreaListPage() {
         />
         <FilterTableLayout
           filterContent={filterContent}
-          statusTabs={TAB_STATUS_LIST.map((t) => ({
-            key: t.key,
-            label: t.label,
-            color: t.color,
-            count: tabCounts[t.key] ?? 0,
-            active: activeTab === t.key,
-          }))}
+          statusTabs={statusTabs}
           onStatusTabChange={handleTabChange}
           onFilterApply={handleFilterApply}
           onFilterReset={handleFilterReset}
@@ -1502,14 +1608,14 @@ export default function TransferAreaListPage() {
           onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
           loading={isLoading}
           error={isError}
-          onRetry={() => void fetchData()}
+          onRetry={() => { void fetchData(); void fetchCounts(orgUnit); }}
         >
           <DataTable
             columns={columns}
             dataSource={sortedDataSource}
             rowKey="id"
             rowActions={rowActions}
-            loading={false}
+            loading={isLoading}
             onSort={(k: string, o: 'asc' | 'desc' | null) => {
               if (!o) {
                 setSortField(null);

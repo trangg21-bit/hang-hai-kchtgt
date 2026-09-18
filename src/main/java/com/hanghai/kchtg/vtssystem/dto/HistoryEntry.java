@@ -18,10 +18,16 @@ public class HistoryEntry {
     private ApprovalLevel approvalLevel;
     private String status;
     private String approvedBy;
+    private String approvedByName;
+    private String changedBy;
+    private UUID orgUnitId;
     private String orgUnitName;
     private LocalDateTime approvedDate;
+    private LocalDateTime changedAt;
     private String reason;
     private String changedField;
+    private String fieldName;
     private String previousValue;
+    private String oldValue;
     private String newValue;
 }

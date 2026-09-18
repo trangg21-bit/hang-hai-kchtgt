@@ -221,7 +221,7 @@ public class DryPortService {
                     saved.getId(),
                     InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
-            saved = dryPortRepository.save(saved);
+            saved = dryPortRepository.saveAndFlush(saved);
         }
 
         // If approve action, write audit log
@@ -497,7 +497,7 @@ public class DryPortService {
                     saved.getId(),
                     InfrastructureType.DRY_PORT);
             saved.setSpatialId(spatialObj.getId());
-            saved = dryPortRepository.save(saved);
+            saved = dryPortRepository.saveAndFlush(saved);
 
             // Lịch sử vị trí theo chuẩn Cảng biển: 2 dòng riêng "Tọa độ GIS" +
             // "Loại đối tượng GIS", kèm approvedBy = user thật (chỉ khi hồ sơ đã duyệt).
@@ -516,6 +516,10 @@ public class DryPortService {
                             geometryTypeLabel(geomType), actorId);
                 }
             }
+        } else if (saved.getSpatialId() != null) {
+            gisSpatialObjectService.delete(saved.getSpatialId());
+            saved.setSpatialId(null);
+            saved = dryPortRepository.saveAndFlush(saved);
         }
 
         if (wasApproved) {
@@ -699,25 +703,74 @@ public class DryPortService {
                 .createdBy(e.getCreatedBy()).updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt());
 
-        if (e.getSpatialId() != null) {
-            builder.spatialId(e.getSpatialId());
-            gisSpatialObjectService.findById(e.getSpatialId()).ifPresent(spatialObj -> {
-                builder.geometryType(spatialObj.getGeometryType());
-                builder.coordinates(spatialObj.getCoordinates());
-                try {
-                    String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "")
-                            .trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
+        UUID spatialId = e.getSpatialId();
+        GisSpatialObject spatialObj = null;
+        if (spatialId != null) {
+            spatialObj = gisSpatialObjectService.findById(spatialId).orElse(null);
+        }
+        if (spatialObj == null && e.getId() != null) {
+            spatialObj = gisSpatialObjectService.findByRef(e.getId(), InfrastructureType.DRY_PORT).orElse(null);
+            if (spatialObj != null) {
+                e.setSpatialId(spatialObj.getId());
+                dryPortRepository.saveAndFlush(e);
+            }
+        }
+        if (spatialObj != null) {
+            builder.spatialId(spatialObj.getId());
+            builder.geometryType(spatialObj.getGeometryType());
+            builder.coordinates(spatialObj.getCoordinates());
+            parseLatLng(spatialObj.getCoordinates(), builder);
+        }
+        return builder.build();
+    }
+
+    private void parseLatLng(String coordinates, DryPortResponse.DryPortResponseBuilder builder) {
+        if (coordinates == null || coordinates.isBlank()) return;
+        try {
+            String trimmed = coordinates.trim();
+            if (trimmed.toUpperCase().startsWith("POINT")) {
+                int start = trimmed.indexOf('(') + 1;
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
                         builder.longitude(new java.math.BigDecimal(parts[0]));
                         builder.latitude(new java.math.BigDecimal(parts[1]));
                     }
-                } catch (Exception ex) {
-                    // ignore
                 }
-            });
-        }
-        return builder.build();
+            } else if (trimmed.toUpperCase().startsWith("LINESTRING")) {
+                int start = trimmed.indexOf('(') + 1;
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        builder.longitude(new java.math.BigDecimal(parts[0]));
+                        builder.latitude(new java.math.BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("POLYGON")) {
+                int start = trimmed.indexOf('(');
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        builder.longitude(new java.math.BigDecimal(parts[0]));
+                        builder.latitude(new java.math.BigDecimal(parts[1]));
+                    }
+                }
+            }
+        } catch (Exception ignored) { }
     }
 
     // ── Attachment operations (chuẩn Cảng biển / Bến cảng) ──────────────────────────

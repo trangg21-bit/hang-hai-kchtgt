@@ -129,6 +129,17 @@ public class StormShelterAreaApprovalService {
         String entityId = id.toString();
         String entityType = "StormShelterArea";
 
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Map.of(
+                    "entityId", entityId,
+                    "entityType", entityType,
+                    "currentApprovalStatus", ApprovalStatus.DRAFT.name(),
+                    "changeHistory", Collections.emptyList(),
+                    "approvalLog", Collections.emptyList(),
+                    "histories", Collections.emptyList()
+            );
+        }
+
         List<InfrastructureHistory> list =
                 historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.STORM_SHELTER_AREA, id);
 

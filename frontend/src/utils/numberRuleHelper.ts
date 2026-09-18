@@ -119,3 +119,24 @@ export const integer5Rule: Rule = {
     return Promise.resolve();
   },
 };
+
+/**
+ * Rule kiểm tra số nguyên không âm (>= 0) tối đa 5 chữ số (dành cho số lượng nhân sự, số lượng triền đà...):
+ * - Bỏ trống: hợp lệ (nếu không required)
+ * - Chỉ chấp nhận chữ số nguyên không âm (0, 1, 2...)
+ * - Tối đa 5 chữ số
+ */
+export const integer5NonNegativeRule: Rule = {
+  validator: (_: unknown, value: unknown) => {
+    if (value === null || value === undefined || value === '') return Promise.resolve();
+    const s = String(value).trim();
+    if (!/^\d+$/.test(s)) {
+      return Promise.reject(new Error('Số lượng phải là số nguyên'));
+    }
+    if (s.length > 5) {
+      return Promise.reject(new Error('Số lượng tối đa 5 chữ số'));
+    }
+    return Promise.resolve();
+  },
+};
+

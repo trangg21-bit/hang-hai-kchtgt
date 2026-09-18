@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.SubmitContentRequest;
 import com.hanghai.kchtg.vtsassist.dto.ApprovalRequest;
@@ -48,7 +49,7 @@ public class VtsAssistController {
   private final VtsAssistApprovalService vtsAssistApprovalService;
 
   @PostMapping
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:create')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> create(
     @Valid @RequestBody CreateVtsAssistRequest request) {
     log.info("Creating VTS Assist: code={}", request.getDeviceCode());
@@ -57,7 +58,7 @@ public class VtsAssistController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:create', 'vtsassist:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating VTS Assist device code");
     String code = vtsAssistService.generateVtsAssistCode();
@@ -72,7 +73,7 @@ public class VtsAssistController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:read')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> getById(@PathVariable UUID id) {
     log.info("Getting VTS Assist by id={}", id);
     VtsAssistResponse response = vtsAssistService.getById(id);
@@ -81,7 +82,7 @@ public class VtsAssistController {
 
   @GetMapping
   @DataScope
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:read')")
   public ResponseEntity<ApiResponse<Page<VtsAssistResponse>>> findAll(
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "20") int size,
@@ -117,7 +118,7 @@ public class VtsAssistController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:update', 'vtsassist:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:update', 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> update(
     @Valid @RequestBody UpdateVtsAssistRequest request) {
     log.info("Updating VTS Assist: id={}", request.getId());
@@ -126,7 +127,7 @@ public class VtsAssistController {
   }
 
   @DeleteMapping("/{id}")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:delete')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:delete')")
   public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
     log.info("Soft-deleting VTS Assist: id={}", id);
     vtsAssistService.softDelete(id);
@@ -134,7 +135,7 @@ public class VtsAssistController {
   }
 
   @PostMapping("/{id}/submit")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:update', 'vtsassist:create')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> submit(@PathVariable UUID id,
     @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting VTS Assist for approval: id={}", id);
@@ -143,8 +144,8 @@ public class VtsAssistController {
     return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c1")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:approvec1')")
+  @PostMapping(value = {"/{id}/approve/c1", "/{id}/approvec1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:approvec1')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> approveC1(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -153,8 +154,21 @@ public class VtsAssistController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c2")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:approvec2')")
+  @PostMapping(value = {"/{id}/reject/c1", "/{id}/rejectc1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:approvec1')")
+  public ResponseEntity<ApiResponse<VtsAssistResponse>> rejectC1(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Rejecting VTS Assist level 1: id={}", id);
+    if (request.getDecision() == null || request.getDecision().isBlank()) {
+      request.setDecision(ApprovalStatus.REJECTED.name());
+    }
+    VtsAssistResponse response = vtsAssistApprovalService.approveC1(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt cấp Chi cục thành công", response));
+  }
+
+  @PostMapping(value = {"/{id}/approve/c2", "/{id}/approvec2", "/{id}/approve-l2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> approveC2(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -163,8 +177,21 @@ public class VtsAssistController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
   }
 
+  @PostMapping(value = {"/{id}/reject/c2", "/{id}/rejectc2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:approvec2')")
+  public ResponseEntity<ApiResponse<VtsAssistResponse>> rejectC2(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Rejecting VTS Assist level 2: id={}", id);
+    if (request.getDecision() == null || request.getDecision().isBlank()) {
+      request.setDecision(ApprovalStatus.REJECTED.name());
+    }
+    VtsAssistResponse response = vtsAssistApprovalService.approveC2(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt cấp Cục thành công", response));
+  }
+
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:history') or @auth.check(authentication, 'vtsassist:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:history', 'vtsassist:read', 'data:read')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
     @PathVariable UUID id,
     @RequestParam(value = "page", required = false) Integer page,
@@ -182,7 +209,7 @@ public class VtsAssistController {
   }
 
   @GetMapping("/history/all")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:history') or @auth.check(authentication, 'vtsassist:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:history', 'vtsassist:read', 'data:read')")
   public ResponseEntity<ApiResponse<Object>> getAllHistory() {
     log.info("Getting all VTS Assist history");
     Object history = vtsAssistApprovalService.getAllHistory();
@@ -190,7 +217,7 @@ public class VtsAssistController {
   }
 
   @PostMapping("/{id}/restore")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:delete')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:delete')")
   public ResponseEntity<ApiResponse<VtsAssistResponse>> restore(@PathVariable UUID id) {
     log.info("Restoring VTS Assist id={}", id);
     VtsAssistResponse response = vtsAssistService.restore(id);
@@ -200,7 +227,7 @@ public class VtsAssistController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:update', 'vtsassist:create', 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -211,7 +238,7 @@ public class VtsAssistController {
   }
 
   @GetMapping("/{id}/attachments")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:read')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
     log.info("Listing VTS Assist attachments: id={}", id);
     return ResponseEntity.ok(ApiResponse.success(
@@ -220,7 +247,7 @@ public class VtsAssistController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:update') or @auth.check(authentication, 'vtsassist:create') or @auth.check(authentication, 'vtsassist:delete') or @auth.check(authentication, 'vtsassist:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:update', 'vtsassist:create', 'vtsassist:delete', 'vtsassist:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
@@ -231,7 +258,7 @@ public class VtsAssistController {
 
   // Tải xuống file đính kèm — mirror /vts-operation-center (VtsOperationCenterController.downloadAttachment)
   @GetMapping("/{id}/attachments/{attachmentId}/download")
-  @PreAuthorize("@auth.check(authentication, 'vtsassist:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vtsassist:manage', 'vtsassist:read')")
   public ResponseEntity<Resource> downloadAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

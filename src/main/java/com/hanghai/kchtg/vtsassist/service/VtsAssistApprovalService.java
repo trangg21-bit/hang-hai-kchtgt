@@ -165,11 +165,97 @@ public class VtsAssistApprovalService {
     return getHistory(id, page, pageSize, keyword, parseFromDate(fromDate), parseToDate(toDate));
   }
 
+  private static final Set<String> EXCLUDED_HISTORY_FIELDS = Set.of(
+      "approvalstatus",
+      "trạng thái phê duyệt",
+      "trang thai phe duyet",
+      "trạng thái",
+      "approvalcontentlevel1",
+      "approvalcontentlevel2",
+      "level1approvalcontent",
+      "level2approvalcontent",
+      "approvalcontent",
+      "submitteddate",
+      "submittedat",
+      "submittedby",
+      "approverlevel1",
+      "approverlevel2",
+      "approveddatelevel1",
+      "approveddatelevel2",
+      "rejectionreason",
+      "lý do từ chối",
+      "ly do tu choi",
+      "portauthorityapprovedby",
+      "portauthorityapprovedat",
+      "portauthorityapprovalcontent",
+      "departmentapprovedby",
+      "departmentapprovedat",
+      "departmentapprovalcontent",
+      "approvedby",
+      "approvedat",
+      "approvedremarks",
+      "cấp 1 phê duyệt",
+      "cấp 2 phê duyệt",
+      "nội dung phê duyệt",
+      "ngày gửi phê duyệt",
+      "người gửi phê duyệt",
+      "infrastructurelist",
+      "infrastructurelist_raw",
+      "attachments",
+      "spatialid"
+  );
+
+  private boolean isExcludedHistoryField(String field) {
+    if (field == null || field.trim().isEmpty()) {
+      return true;
+    }
+    String normalized = field.trim().toLowerCase();
+    return EXCLUDED_HISTORY_FIELDS.contains(normalized);
+  }
+
+  private String canonicalizeFieldName(String field) {
+    if (field == null) {
+      return "";
+    }
+    String lower = field.trim().toLowerCase();
+    return switch (lower) {
+      case "devicename", "tên thiết bị", "ten thiet bi" -> "deviceName";
+      case "devicecode", "mã thiết bị", "ma thiet bi" -> "deviceCode";
+      case "manufacturer", "hãng sản xuất", "hang san xuat" -> "manufacturer";
+      case "model" -> "model";
+      case "quantity", "số lượng", "so luong" -> "quantity";
+      case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+      case "operatingunitid", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operatingUnitId";
+      case "provincename", "provinceid", "tỉnh/thành phố", "tinh/thanh pho", "tỉnh / thành phố", "địa điểm (tỉnh/tp)" -> "provinceName";
+      case "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet", "địa điểm", "vị trí lắp đặt" -> "detailedLocation";
+      case "attachedinfrastructuretype", "loại hạ tầng", "thuộc loại hạ tầng", "loai ha tang" -> "attachedInfrastructureType";
+      case "attachedinfrastructureid", "thuộc hạ tầng", "hạ tầng phụ thuộc", "thuoc ha tang" -> "attachedInfrastructureId";
+      case "unitofmeasure", "đơn vị tính", "don vi tinh" -> "unitOfMeasure";
+      case "yearofuse", "năm đưa vào sử dụng", "nam dua vao su dung" -> "yearOfUse";
+      case "operationalstatus", "trạng thái hoạt động", "tình trạng hoạt động", "tinh trang hoat dong", "tình trạng" -> "operationalStatus";
+      case "specifications", "thông số kỹ thuật", "thong so ky thuat" -> "specifications";
+      case "maintenanceinformation", "thông tin bảo trì", "thong tin bao tri" -> "maintenanceInformation";
+      case "note", "ghi chú", "ghi chu" -> "note";
+      case "objecttype", "loại đối tượng", "loai doi tuong" -> "objectType";
+      case "mapsymbolid", "biểu tượng", "biểu tượng bản đồ", "bieu tuong", "symbolid" -> "mapSymbolId";
+      case "coordinatesystem", "hệ quy chiếu", "hệ tọa độ", "he quy chieu" -> "coordinateSystem";
+      case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+      case "coordinates", "tọa độ", "tọa độ gis", "toa do gis" -> "coordinates";
+      case "geometrytype", "loại đối tượng gis", "loai doi tuong gis" -> "geometryType";
+      default -> field.trim();
+    };
+  }
+
   public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
       LocalDateTime fromDate, LocalDateTime toDate) {
     VtsAssist parent = vtsAssistRepository.findById(id)
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + id));
     validateAllowedOrgUnit(parent.getOrgUnitId());
+
+    // Bản ghi Lưu tạm (DRAFT) chưa từng được phê duyệt nên không có lịch sử thay đổi
+    if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+      return Collections.emptyList();
+    }
 
     String normalizedKeyword = normalizeSearchKeyword(keyword);
     boolean paged = page != null && pageSize != null && pageSize > 0;
@@ -182,13 +268,42 @@ public class VtsAssistApprovalService {
       list = historyRepository.searchHistory(InfrastructureType.VTS_ASSIST, id, normalizedKeyword, fromDate, toDate,
           paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
     }
-    Set<UUID> userIds = list.stream()
+
+    Set<String> seenSessionKeys = new HashSet<>();
+    List<InfrastructureHistory> filteredList = list.stream()
+        .filter(h -> {
+          if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
+            return false;
+          }
+          String field = h.getChangedField();
+          if (field != null) {
+            String norm = field.trim().toLowerCase();
+            if (isExcludedHistoryField(norm)) {
+              return false;
+            }
+          }
+          if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+            return false;
+          }
+          long epochSec = h.getApprovedDate() != null
+              ? h.getApprovedDate().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+              : 0L;
+          String canonical = canonicalizeFieldName(h.getChangedField());
+          String sessionKey = epochSec + "_" + canonical;
+          if (!canonical.isEmpty() && !seenSessionKeys.add(sessionKey)) {
+            return false;
+          }
+          return true;
+        })
+        .collect(Collectors.toList());
+
+    Set<UUID> userIds = filteredList.stream()
         .map(InfrastructureHistory::getApprovedBy)
         .filter(Objects::nonNull)
         .collect(Collectors.toSet());
     Map<UUID, User> userMap = resolveUsers(userIds);
 
-    return list.stream()
+    return filteredList.stream()
         .map(h -> {
           User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
           String userName = formatUserIdentity(u);
@@ -209,6 +324,9 @@ public class VtsAssistApprovalService {
             } else if (parent.getOrgUnitId() != null && orgUnitCacheService != null) {
               orgUnitName = orgUnitCacheService.getName(parent.getOrgUnitId());
             }
+          }
+          if (orgUnitName == null || orgUnitName.isBlank()) {
+            orgUnitName = "Cục Hàng hải Việt Nam";
           }
           String prevDisp = formatDisplayValue(h.getChangedField(), h.getPreviousValue());
           String newDisp = formatDisplayValue(h.getChangedField(), h.getNewValue());

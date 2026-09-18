@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from './api';
 import type { PaginatedResponse } from '../types/common';
 import type {
@@ -418,8 +419,8 @@ export const dryPortCRUD = {
       size: params?.size,
       orgUnitId: params?.orgUnitId,
       provinceId: params?.provinceId,
-      search: params?.search,
-      code: params?.code,
+      search: typeof params?.search === 'string' ? (params.search.trim() || undefined) : undefined,
+      code: typeof params?.code === 'string' ? (params.code.trim() || undefined) : undefined,
       status: params?.status,
       approvalStatus: params?.approvalStatus,
       region: params?.region,
@@ -449,7 +450,7 @@ export const dryPortCRUD = {
     pageSize?: number;
   }): Promise<PaginatedResponse<DryPort>> {
     const sp = buildSearchParams({
-      search: params?.search,
+      search: typeof params?.search === 'string' ? (params.search.trim() || undefined) : undefined,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -818,8 +819,8 @@ export const anchorageCRUD = {
     pageSize?: number;
   }): Promise<PaginatedResponse<Anchorage>> {
     const sp = buildSearchParams({
-      anchorageName: params?.anchorageName,
-      anchorageCode: params?.anchorageCode,
+      anchorageName: typeof params?.anchorageName === 'string' ? (params.anchorageName.trim() || undefined) : undefined,
+      anchorageCode: typeof params?.anchorageCode === 'string' ? (params.anchorageCode.trim() || undefined) : undefined,
       portId: params?.portId,
       orgUnitId: params?.orgUnitId,
       navigationChannelId: params?.navigationChannelId,
@@ -862,12 +863,32 @@ export const anchorageCRUD = {
     return res.data.data;
   },
 
+  async submit(id: string, content?: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/submit`, { content });
+  },
+
   async approve(id: string, cap: string, content?: string): Promise<void> {
     await api.post(`/v1/anchorage/${id}/approve`, { cap, content });
   },
 
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/approve/c1`, { content: reason }, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/approve/c2`, { content: reason }, { params: { reason } });
+  },
+
   async reject(id: string, cap: string, lyDo: string): Promise<void> {
     await api.post(`/v1/anchorage/${id}/reject`, { cap, lyDo });
+  },
+
+  async rejectC1(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/reject/c1`, { lyDo: reason }, { params: { reason } });
+  },
+
+  async rejectC2(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/anchorage/${id}/reject/c2`, { lyDo: reason }, { params: { reason } });
   },
 
   async getHistory(id: string): Promise<AnchorageApprovalResponse> {
@@ -902,29 +923,40 @@ export const anchorageCRUD = {
 };
 
 export const anchorageApproval = {
-  async submit(id: string): Promise<void> {
-    await anchorageCRUD.update({ id, saveAction: 'SUBMIT' });
+  async submit(id: string, content?: string): Promise<void> {
+    await anchorageCRUD.submit(id, content);
   },
 
   async approveC1(id: string, content?: string): Promise<void> {
-    await anchorageCRUD.approve(id, 'CANG_VU', content?.trim() || undefined);
+    await anchorageCRUD.approveC1(id, content?.trim() || undefined);
   },
 
   async approveC2(id: string, content?: string): Promise<void> {
-    await anchorageCRUD.approve(id, 'CUC', content?.trim() || undefined);
+    await anchorageCRUD.approveC2(id, content?.trim() || undefined);
   },
 
   async approve(id: string, cap: string, content?: string): Promise<void> {
-    await anchorageCRUD.approve(id, cap, content?.trim() || undefined);
+    if (cap === 'CUC') {
+      await anchorageCRUD.approveC2(id, content?.trim() || undefined);
+    } else {
+      await anchorageCRUD.approveC1(id, content?.trim() || undefined);
+    }
   },
 
   async reject(id: string, cap: string, lyDo: string): Promise<void> {
-    await anchorageCRUD.reject(id, cap, lyDo);
+    if (cap === 'CUC') {
+      await anchorageCRUD.rejectC2(id, lyDo);
+    } else {
+      await anchorageCRUD.rejectC1(id, lyDo);
+    }
   },
 
   async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
-    const cap = currentStatus === 'APPROVED_LEVEL1' ? 'CUC' : 'CANG_VU';
-    await anchorageCRUD.reject(id, cap, reason);
+    if (currentStatus === 'APPROVED_LEVEL1') {
+      await anchorageCRUD.rejectC2(id, reason);
+    } else {
+      await anchorageCRUD.rejectC1(id, reason);
+    }
   },
 };
 
@@ -979,8 +1011,8 @@ export const transferAreaCRUD = {
     pageSize?: number;
   }): Promise<PaginatedResponse<TransferArea>> {
     const sp = buildSearchParams({
-      transferAreaName: params?.transferAreaName,
-      transferAreaCode: params?.transferAreaCode,
+      transferAreaName: typeof params?.transferAreaName === 'string' ? (params.transferAreaName.trim() || undefined) : undefined,
+      transferAreaCode: typeof params?.transferAreaCode === 'string' ? (params.transferAreaCode.trim() || undefined) : undefined,
       portId: params?.portId,
       orgUnitId: params?.orgUnitId,
       provinceId: params?.provinceId,
@@ -1019,6 +1051,12 @@ export const transferAreaCRUD = {
   async generateCode(portId: string): Promise<{ transferAreaCode: string }> {
     const res = await api.get(`/v1/transfer-area/generate-code?portId=${portId}`);
     return res.data.data;
+  },
+
+  async submit(id: string, content?: string): Promise<void> {
+    const params: Record<string, string> = {};
+    if (content?.trim()) params['content'] = content.trim();
+    await api.post(`/v1/transfer-area/${id}/submit`, null, { params });
   },
 
   async approve(id: string, cap: string, content?: string): Promise<void> {
@@ -1077,19 +1115,27 @@ export const transferAreaCRUD = {
 
 export const transferAreaApproval = {
   async submit(id: string): Promise<void> {
-    await transferAreaCRUD.update({ id, saveAction: 'SUBMIT' });
+    await transferAreaCRUD.submit(id);
   },
 
   async approveC1(id: string, content?: string): Promise<void> {
-    await transferAreaCRUD.approve(id, 'CANG_VU', content?.trim() || undefined);
+    await api.post(`/v1/transfer-area/${id}/approve/c1`, null, { params: { reason: content?.trim() || undefined } });
   },
 
   async approveC2(id: string, content?: string): Promise<void> {
-    await transferAreaCRUD.approve(id, 'CUC', content?.trim() || undefined);
+    await api.post(`/v1/transfer-area/${id}/approve/c2`, null, { params: { reason: content?.trim() || undefined } });
   },
 
   async approve(id: string, cap: string, content?: string): Promise<void> {
     await transferAreaCRUD.approve(id, cap, content?.trim() || undefined);
+  },
+
+  async rejectC1(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/transfer-area/${id}/reject/c1`, null, { params: { reason: reason?.trim() || undefined } });
+  },
+
+  async rejectC2(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/transfer-area/${id}/reject/c2`, null, { params: { reason: reason?.trim() || undefined } });
   },
 
   async reject(id: string, cap: string, lyDo: string): Promise<void> {
@@ -1097,8 +1143,11 @@ export const transferAreaApproval = {
   },
 
   async rejectStage(id: string, reason: string, currentStatus?: string): Promise<void> {
-    const cap = currentStatus === 'APPROVED_LEVEL1' || currentStatus === 'APPROVED_LEVEL2' ? 'CUC' : 'CANG_VU';
-    await transferAreaCRUD.reject(id, cap, reason);
+    if (currentStatus === 'APPROVED_LEVEL1' || currentStatus === 'APPROVED_LEVEL2') {
+      await transferAreaApproval.rejectC2(id, reason);
+    } else {
+      await transferAreaApproval.rejectC1(id, reason);
+    }
   },
 };
 
@@ -1638,8 +1687,8 @@ export const shipRepairYardCRUD = {
     pageSize?: number;
   }): Promise<PaginatedResponse<ShipRepairYard>> {
     const sp = buildSearchParams({
-      shipRepairYardName: params?.shipRepairYardName,
-      shipRepairYardCode: params?.shipRepairYardCode,
+      shipRepairYardName: typeof params?.shipRepairYardName === 'string' ? (params.shipRepairYardName.trim() || undefined) : undefined,
+      shipRepairYardCode: typeof params?.shipRepairYardCode === 'string' ? (params.shipRepairYardCode.trim() || undefined) : undefined,
       portId: params?.portId,
       pierId: params?.pierId,
       orgUnitId: params?.orgUnitId,
@@ -1680,12 +1729,32 @@ export const shipRepairYardCRUD = {
     return res.data.data;
   },
 
+  async submit(id: string, content?: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/submit`, { content });
+  },
+
   async approve(id: string, cap: string, content?: string): Promise<void> {
     await api.post(`/v1/ship-repair-yard/${id}/approve`, { cap, content });
   },
 
+  async approveC1(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/approve/c1`, { content: reason }, { params: { reason } });
+  },
+
+  async approveC2(id: string, reason?: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/approve/c2`, { content: reason }, { params: { reason } });
+  },
+
   async reject(id: string, cap: string, lyDo: string): Promise<void> {
     await api.post(`/v1/ship-repair-yard/${id}/reject`, { cap, lyDo });
+  },
+
+  async rejectC1(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/reject/c1`, { lyDo: reason }, { params: { reason } });
+  },
+
+  async rejectC2(id: string, reason: string): Promise<void> {
+    await api.post(`/v1/ship-repair-yard/${id}/reject/c2`, { lyDo: reason }, { params: { reason } });
   },
 
   async getHistory(id: string): Promise<ShipRepairYardApprovalResponse> {

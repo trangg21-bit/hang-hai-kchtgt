@@ -193,6 +193,12 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Mã hệ thống AIS đã tồn tại trong hệ thống. Vui lòng nhập mã khác."));
         }
 
+        if (detail != null && (detail.contains("ship_repair_yards_ship_repair_yard_code_key") || detail.contains("uk_ship_repair_yards_code") || detail.contains("idx_ship_repair_yards_code"))) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Mã cơ sở sửa chữa, đóng tàu đã tồn tại trong hệ thống. Vui lòng kiểm tra lại."));
+        }
+
         if (detail != null && (detail.contains("violates unique constraint") || detail.contains("duplicate key value"))) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)

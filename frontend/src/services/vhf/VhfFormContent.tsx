@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Form, Input, InputNumber, Select } from 'antd';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { createVhf, updateVhf, fetchVhfById } from '../api';
 import { VhfResponse } from '../types';
 import toast from '../../components/ToastNotification';
+import { useAuthStore } from '../../store/authStore';
 import {
   colors,
   actionPrimary,
@@ -31,6 +32,7 @@ interface VhfFormProps {
 
 const VhfFormContent = ({ initialData, onSuccess }: VhfFormProps) => {
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
   const [form] = Form.useForm();
   const [isEdit] = useState(!!initialData);
   const [submitting, setSubmitting] = useState(false);
@@ -57,20 +59,39 @@ const VhfFormContent = ({ initialData, onSuccess }: VhfFormProps) => {
   }, []);
 
   useEffect(() => {
+    loadOrgUnits();
+  }, [loadOrgUnits]);
+
+  useEffect(() => {
+    if (!initialData) return;
     const loadData = async () => {
-      if (initialData) {
-        try {
-          const data = await fetchVhfById(initialData.id);
-          form.setFieldsValue(data);
-        } catch {
-          toast.error('Không thể tải dữ liệu');
-          navigate(-1);
-        }
+      try {
+        const data = await fetchVhfById(initialData.id);
+        form.setFieldsValue(data);
+      } catch {
+        toast.error('Không thể tải dữ liệu');
+        navigate(-1);
       }
     };
     loadData();
-    loadOrgUnits();
-  }, [initialData, form, navigate, loadOrgUnits]);
+  }, [initialData, form, navigate]);
+
+  useEffect(() => {
+    if (initialData || form.getFieldValue('orgUnitId')) return;
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId) {
+      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else {
+      api.get('/users/me').then((r) => {
+        const p = r.data?.data ?? r.data;
+        const uOrgId = p?.orgUnitId;
+        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+          form.setFieldsValue({ orgUnitId: uOrgId });
+        }
+      }).catch(() => {});
+    }
+  }, [initialData, form, currentUser, orgUnits]);
 
   const handleSubmit = async (values: Record<string, unknown>) => {
     setSubmitting(true);
@@ -167,12 +188,11 @@ const VhfFormContent = ({ initialData, onSuccess }: VhfFormProps) => {
         label="Đơn vị quản lý"
         rules={[{ required: !isEdit, message: 'Vui lòng chọn đơn vị quản lý' }]}
       >
-        <OrgUnitTreeSelect
+        <FormOrgUnitTreeSelect
           organizations={orgUnits}
           placeholder="Chọn đơn vị..."
           loading={loadingOrgs}
           showPath
-          treeDefaultExpandAll={false}
           style={{ borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>

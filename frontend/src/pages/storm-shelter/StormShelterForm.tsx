@@ -119,21 +119,22 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
   const wkt = gisLocation?.coordinates;
   if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
   try {
-    if (wkt.startsWith('LINESTRING(')) {
-      const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
+    const trimmed = wkt.trim();
+    if (trimmed.toUpperCase().startsWith('LINESTRING')) {
+      const m = trimmed.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/i);
       if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
     }
-    if (wkt.startsWith('POLYGON((')) {
-      const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
+    if (trimmed.toUpperCase().startsWith('POLYGON')) {
+      const m = trimmed.match(/POLYGON\s*\(\s*\(\s*([^)]+)\s*\)\s*\)/i);
       if (m) {
         const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop();
+        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) pts.pop();
         return pts;
       }
     }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
+    const mm = trimmed.match(/MULTIPOINT\s*\(\s*((?:\([^)]*\),?)+)\s*\)/i);
     if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/);
+    const pm = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
     if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
   } catch { /* ignore */ }
   return [];
@@ -253,7 +254,10 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  // Chỉ hiện hàng thông báo lỗi khi thực sự có ít nhất 1 ô bị lỗi; khi không có lỗi thì không chiếm diện tích để ô nhập căn giữa hoàn hảo
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: 2, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -261,10 +265,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       <style>{dmsInputCss}</style>
       {inputRow}
       {messageRow}
@@ -372,6 +376,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     latD: number | null; latM: number | null; latS: number | null;
     lngD: number | null; lngM: number | null; lngS: number | null;
   }>>([]);
+  const [waterAreaGisModalOpen, setWaterAreaGisModalOpen] = useState(false);
 
   const anchorBoxRef = useRef<HTMLDivElement>(null);
   const [anchorBoxHeight, setAnchorBoxHeight] = useState<number | undefined>();
@@ -433,6 +438,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
 
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
+  const isInitialLoadDoneRef = useRef(false);
 
   // Load organizations
   useEffect(() => {
@@ -516,37 +522,74 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
 
   // Sync geometryType to coordinateList
   useEffect(() => {
-    if (!watchedGeometryType) {
-      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
-      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
-      setCoordinateList([]);
+    if (isEdit && !isInitialLoadDoneRef.current) {
       return;
     }
-    form.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
-    if (!isEdit) {
-      form.setFieldsValue({ coordinateSystem: 1 });
-      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 0;
-      setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
-    } else {
-      if (form.getFieldValue('coordinateSystem') == null) form.setFieldsValue({ coordinateSystem: 1 });
-      const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
-      setCoordinateList((prev) => {
-        if (watchedGeometryType === 'POINT' && prev.length > 1) return prev.slice(0, 1);
-        if (prev.length >= count) return prev;
+    if (!watchedGeometryType) {
+      return;
+    }
+    form.setFieldsValue({
+      displayRule: 'Độ, phút, giây (DMS)',
+      coordinateSystem: form.getFieldValue('coordinateSystem') ?? 1,
+    });
+    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    setCoordinateList((prev) => {
+      if (!prev || prev.length === 0) {
+        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      }
+      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+        return [prev[0]];
+      }
+      if (prev.length < count) {
         const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
         return [...prev, ...added];
-      });
-    }
+      }
+      return prev;
+    });
   }, [watchedGeometryType, isEdit, form]);
 
   // Load initial data for Edit mode
   useEffect(() => {
-    if (!isEdit || !id) return;
+    if (!isEdit || !id) {
+      isInitialLoadDoneRef.current = true;
+      return;
+    }
+    isInitialLoadDoneRef.current = false;
     (async () => {
       try {
         const d: any = await stormShelterCRUD.findById(id);
         editPortIdRef.current = d.portId;
         initialApprovalStatusRef.current = d.approvalStatus;
+
+        let geomType = d.geometryType;
+        if (!geomType && d.coordinates) {
+          const upperWkt = d.coordinates.trim().toUpperCase();
+          if (upperWkt.startsWith('POLYGON')) geomType = 'POLYGON';
+          else if (upperWkt.startsWith('LINESTRING')) geomType = 'LINE';
+          else geomType = 'POINT';
+        } else if (!geomType && (d.latitude != null || d.longitude != null || d.mapSymbolId)) {
+          geomType = 'POINT';
+        }
+
+        // Parse coordinates
+        const ec = d.coordinates ? parseGisCoordinates({ geometryType: geomType, coordinates: d.coordinates }) : [];
+        if (ec.length > 0) {
+          setCoordinateList(ec.map(c => {
+            const latDms = ddToDms(c.latitude);
+            const lngDms = ddToDms(c.longitude);
+            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+          }));
+        } else if (d.latitude != null && d.longitude != null) {
+          const latDms = ddToDms(Number(d.latitude));
+          const lngDms = ddToDms(Number(d.longitude));
+          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
+        } else if (geomType) {
+          const count = GEOMETRY_POINT_COUNT[geomType] ?? 1;
+          setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
+        } else {
+          setCoordinateList([]);
+        }
+
         form.setFieldsValue({
           orgUnitId: d.orgUnitId,
           portId: d.portId,
@@ -571,25 +614,13 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
           openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined,
           publicDecision: d.publicDecision,
           investmentAgreement: d.investmentAgreement,
-          geometryType: d.geometryType || undefined,
+          geometryType: geomType || undefined,
           mapSymbolId: d.mapSymbolId,
           coordinateSystem: d.coordinateSystem ?? 1,
-          displayRule: (d.displayRule != null || d.geometryType) ? 'Độ, phút, giây (DMS)' : undefined,
+          displayRule: (d.displayRule != null || geomType) ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
-        // Parse coordinates
-        const ec = d.coordinates ? parseGisCoordinates({ geometryType: d.geometryType, coordinates: d.coordinates }) : [];
-        if (ec.length > 0) {
-          setCoordinateList(ec.map(c => {
-            const latDms = ddToDms(c.latitude);
-            const lngDms = ddToDms(c.longitude);
-            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-          }));
-        } else if (d.latitude != null && d.longitude != null) {
-          const latDms = ddToDms(Number(d.latitude));
-          const lngDms = ddToDms(Number(d.longitude));
-          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
-        }
+        isInitialLoadDoneRef.current = true;
 
         // Mooring water areas
         if (Array.isArray(d.mooringWaterAreas) && d.mooringWaterAreas.length > 0) {
@@ -741,7 +772,8 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     setWaterAreaMapSymbolId(undefined);
     setWaterAreaCoordinateSystem(1);
     setWaterAreaDisplayRule('Độ, phút, giây (DMS)');
-    setWaterAreaAnchorPoints([]);
+    setWaterAreaAnchorPoints([{ name: '', latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
+    setWaterAreaGisModalOpen(false);
     setFormMapParamsOpen(true);
     setFormAnchorPointsOpen(true);
     setWaterAreaDrawerOpen(true);
@@ -751,15 +783,16 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     const item = waterAreaList[i];
     setEditingWaterAreaIndex(i);
     setWaterAreaDescription(item.description || '');
-    setWaterAreaGeometryType(item.geometryType || 'POINT');
+    setWaterAreaGeometryType('POINT');
     setWaterAreaMapSymbolId(item.mapSymbolId);
     setWaterAreaCoordinateSystem(item.coordinateSystem ?? 1);
     setWaterAreaDisplayRule(item.displayRule || 'Độ, phút, giây (DMS)');
-    setWaterAreaAnchorPoints(item.anchorPoints ? item.anchorPoints.map(p => {
+    setWaterAreaAnchorPoints(item.anchorPoints && item.anchorPoints.length > 0 ? item.anchorPoints.map(p => {
       const latDms = ddToDms(p.latitude);
       const lngDms = ddToDms(p.longitude);
       return { name: p.name || '', latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-    }) : []);
+    }) : [{ name: '', latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
+    setWaterAreaGisModalOpen(false);
     setFormMapParamsOpen(true);
     setFormAnchorPointsOpen(true);
     setWaterAreaDrawerOpen(true);
@@ -768,6 +801,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   const closeWaterAreaDrawer = () => {
     setWaterAreaDrawerOpen(false);
     setEditingWaterAreaIndex(null);
+    setWaterAreaGisModalOpen(false);
   };
 
   const removeWaterArea = (i: number) => {
@@ -775,10 +809,10 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   };
 
   const addAnchorPoint = () => {
-    if (!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1)) {
+    if (waterAreaAnchorPoints.length >= 1) {
       return;
     }
-    setWaterAreaAnchorPoints(p => [...p, { name: '', latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
+    setWaterAreaAnchorPoints([{ name: '', latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]);
   };
   const removeAnchorPoint = (i: number) => {
     setWaterAreaAnchorPoints(p => p.filter((_, idx) => idx !== i));
@@ -800,34 +834,28 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   };
 
   const saveWaterArea = () => {
-    if (waterAreaGeometryType) {
-      if (!waterAreaMapSymbolId) {
-        toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
-        return;
-      }
-
-      const validPoints = waterAreaAnchorPoints.filter(
-        (p) => p.latD != null && p.latM != null && p.latS != null && p.lngD != null && p.lngM != null && p.lngS != null
-      );
-      const minCount = GEOMETRY_POINT_COUNT[waterAreaGeometryType] ?? 1;
-
-      if (validPoints.length < minCount) {
-        const msg =
-          waterAreaGeometryType === 'POLYGON'
-            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
-            : waterAreaGeometryType === 'LINE'
-            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
-            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
-        toast.error(msg);
-        return;
-      }
-
-      if (waterAreaGeometryType === 'POINT' && validPoints.length > 1) {
-        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
-        return;
-      }
+    // 1. Biểu tượng là bắt buộc
+    if (!waterAreaMapSymbolId) {
+      toast.error('Biểu tượng là bắt buộc');
+      return;
     }
 
+    // 2. Tọa độ điểm neo: cần ít nhất 1 tọa độ hợp lệ
+    const validPoints = waterAreaAnchorPoints.filter(
+      (p) => p.latD != null && p.latM != null && p.latS != null && p.lngD != null && p.lngM != null && p.lngS != null
+    );
+
+    if (validPoints.length < 1) {
+      toast.error('Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+      return;
+    }
+
+    if (validPoints.length > 1) {
+      toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+      return;
+    }
+
+    // 3. Tọa độ điểm neo: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo
     const partial = waterAreaAnchorPoints.find((p) => {
       const latSet = p.latD != null || p.latM != null || p.latS != null;
       const lngSet = p.lngD != null || p.lngM != null || p.lngS != null;
@@ -840,6 +868,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       return;
     }
 
+    // 4. Kiểm tra dải giá trị hợp lệ của tọa độ điểm neo
     const invalidRange = waterAreaAnchorPoints.find((p) => {
       if (p.latD != null && (p.latD < 0 || p.latD > 90)) return true;
       if (p.latM != null && (p.latM < 0 || p.latM > 59)) return true;
@@ -854,6 +883,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       return;
     }
 
+    // 5. Kiểm tra điểm neo có tên nhưng chưa nhập tọa độ
     const namedWithoutCoords = waterAreaAnchorPoints.find((p) => {
       const hasName = !!p.name?.trim();
       const hasCoord = p.latD != null || p.latM != null || p.latS != null || p.lngD != null || p.lngM != null || p.lngS != null;
@@ -864,6 +894,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       return;
     }
 
+    // 6. Kiểm tra nếu có hàng điểm neo hoàn toàn trống
     const emptyRow = waterAreaAnchorPoints.find((p) => {
       const noName = !p.name?.trim();
       const noCoord = p.latD == null && p.latM == null && p.latS == null && p.lngD == null && p.lngM == null && p.lngS == null;
@@ -1005,17 +1036,17 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
 
       const mooringPayload = waterAreaList
         .map(w => ({
-          description: w.description?.trim() || undefined,
-          geometryType: w.geometryType || undefined,
-          mapSymbolId: w.mapSymbolId || undefined,
-          coordinateSystem: w.coordinateSystem != null ? Number(w.coordinateSystem) : undefined,
-          displayRule: w.displayRule || undefined,
+          description: w.description?.trim() || null,
+          geometryType: w.geometryType || null,
+          mapSymbolId: w.mapSymbolId || null,
+          coordinateSystem: w.coordinateSystem != null ? Number(w.coordinateSystem) : null,
+          displayRule: w.displayRule || null,
           anchorPoints: (w.anchorPoints || [])
             .filter(p => p.name?.trim() || (p.latitude != null && p.longitude != null))
             .map(p => ({
-              name: p.name?.trim() || undefined,
-              latitude: p.latitude != null && !isNaN(Number(p.latitude)) ? Number(p.latitude) : undefined,
-              longitude: p.longitude != null && !isNaN(Number(p.longitude)) ? Number(p.longitude) : undefined,
+              name: p.name?.trim() || null,
+              latitude: p.latitude != null && !isNaN(Number(p.latitude)) ? Number(p.latitude) : null,
+              longitude: p.longitude != null && !isNaN(Number(p.longitude)) ? Number(p.longitude) : null,
             })),
         }));
 
@@ -1050,7 +1081,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
         longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
         coordinates: wktCoordinates || undefined,
-        mooringWaterAreas: mooringPayload.length > 0 ? mooringPayload : undefined,
+        mooringWaterAreas: mooringPayload,
       };
 
       if (saveAction !== 'UPDATE') {
@@ -1646,15 +1677,19 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                     title: 'STT',
                     width: 60,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
-                    render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
+                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'center' } }),
+                    render: (_v: unknown, _r: unknown, idx: number) => (
+                      <div style={{ textAlign: 'center', width: '100%', lineHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {idx + 1}
+                      </div>
+                    ),
                   },
                   {
                     title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lat',
                     width: 240,
                     align: 'left' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lat', d, m, s)),
                   },
                   {
@@ -1662,23 +1697,25 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                     key: 'lng',
                     width: 240,
                     align: 'left' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lng', d, m, s)),
                   },
                   {
                     title: '',
                     width: 50,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'center' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => (
-                      <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                        onClick={() => removeCoordinate(record._idx ?? 0)}
-                        style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Xóa tọa độ"
-                      />
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Button
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                          onClick={() => removeCoordinate(record._idx ?? 0)}
+                          style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Xóa tọa độ"
+                        />
+                      </div>
                     ),
                   },
                 ]}
@@ -1777,16 +1814,9 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                   <Col span={12}>
                     <Form.Item {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
                       <Select
-                        placeholder="Chọn loại đối tượng"
-                        allowClear
+                        disabled
                         options={GEOMETRY_TYPE_OPTIONS}
-                        value={waterAreaGeometryType}
-                        onChange={(v) => {
-                          setWaterAreaGeometryType(v);
-                          if (!v) {
-                            setWaterAreaMapSymbolId(undefined);
-                          }
-                        }}
+                        value="POINT"
                         style={selectStyle}
                       />
                     </Form.Item>
@@ -1794,12 +1824,8 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                   <Col span={12}>
                     <Form.Item
                       {...labelProps('Biểu tượng')}
-                      required={!!waterAreaGeometryType}
-                      rules={
-                        waterAreaGeometryType
-                          ? [{ required: true, message: 'Biểu tượng là bắt buộc khi đã chọn loại đối tượng' }]
-                          : []
-                      }
+                      required
+                      rules={[{ required: true, message: 'Biểu tượng là bắt buộc' }]}
                       style={{ marginBottom: spaceFormField }}
                     >
                       <Select
@@ -1807,7 +1833,6 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                         allowClear
                         showSearch
                         optionFilterProp="label"
-                        disabled={!waterAreaGeometryType}
                         value={waterAreaMapSymbolId}
                         onChange={(v) => setWaterAreaMapSymbolId(v)}
                         style={selectStyle}
@@ -1876,36 +1901,53 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                 </span>
                 {formAnchorPointsOpen ? <DownOutlined style={{ color: actionPrimary, marginLeft: 4 }} /> : <RightOutlined style={{ color: actionPrimary, marginLeft: 4 }} />}
               </div>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={addAnchorPoint}
-                disabled={!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1)}
-                style={!waterAreaGeometryType || (waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1) ? {
-                  height: 32,
-                  fontSize: portFormFontSizeMd,
-                  padding: '0 14px',
-                  borderRadius: radiusPill,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: spaceXs,
-                  background: '#f5f5f5',
-                  borderColor: '#d9d9d9',
-                  color: 'rgba(0, 0, 0, 0.25)',
-                  cursor: 'not-allowed',
-                } : {
-                  ...primaryButtonStyle,
-                  height: 32,
-                  fontSize: portFormFontSizeMd,
-                  padding: '0 14px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: spaceXs,
-                }}
-                title={waterAreaGeometryType === 'POINT' && waterAreaAnchorPoints.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 điểm neo' : (!waterAreaGeometryType ? 'Vui lòng chọn loại đối tượng' : undefined)}
-              >
-                Thêm điểm neo
-              </Button>
+              <Space size={spaceSm}>
+                <Button
+                  icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                  onClick={() => setWaterAreaGisModalOpen(true)}
+                  style={{
+                    ...outlineButtonStyle,
+                    height: 32,
+                    fontSize: portFormFontSizeMd,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spaceXs,
+                  }}
+                >
+                  Chọn tọa độ trên bản đồ
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={addAnchorPoint}
+                  disabled={waterAreaAnchorPoints.length >= 1}
+                  style={waterAreaAnchorPoints.length >= 1 ? {
+                    height: 32,
+                    fontSize: portFormFontSizeMd,
+                    padding: '0 14px',
+                    borderRadius: radiusPill,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spaceXs,
+                    background: '#f5f5f5',
+                    borderColor: '#d9d9d9',
+                    color: 'rgba(0, 0, 0, 0.25)',
+                    cursor: 'not-allowed',
+                  } : {
+                    ...primaryButtonStyle,
+                    height: 32,
+                    fontSize: portFormFontSizeMd,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: spaceXs,
+                  }}
+                  title={waterAreaAnchorPoints.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 điểm neo' : undefined}
+                >
+                  Thêm điểm neo
+                </Button>
+              </Space>
             </div>
 
             {formAnchorPointsOpen && (
@@ -1916,7 +1958,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
               ) : (
                 <DetailTable
                   size="small"
-                  scroll={{ x: 780 }}
+                  scroll={{ x: 860 }}
                   scrollY={anchorTableScrollY}
                   pageSize={10}
                   pageSizeOptions={[5, 10, 20, 50]}
@@ -1927,16 +1969,21 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                   columns={[
                     {
                       title: 'STT',
-                      width: 50,
+                      width: 60,
                       align: 'center' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
-                      render: (_: unknown, _r: unknown, idx: number) => idx + 1,
+                      onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'center' } }),
+                      render: (_: unknown, _r: unknown, idx: number) => (
+                        <div style={{ textAlign: 'center', width: '100%', lineHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {idx + 1}
+                        </div>
+                      ),
                     },
                     {
                       title: 'Tên điểm neo',
                       key: 'name',
-                      width: 200,
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      width: 220,
+                      align: 'left' as const,
+                      onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
                       render: (_: unknown, record: AnchorPointFormItem) => (
                         <Input
                           placeholder="Nhập tên điểm neo"
@@ -1949,34 +1996,36 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                     {
                       title: <span>Vĩ độ (N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                       key: 'lat',
-                      width: 240,
+                      width: 260,
                       align: 'left' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
                       render: (_: unknown, record: AnchorPointFormItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateAnchorPointCoord(record._idx ?? 0, 'lat', d, m, s)),
                     },
                     {
                       title: <span>Kinh độ (E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                       key: 'lng',
-                      width: 240,
+                      width: 260,
                       align: 'left' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top', textAlign: 'left' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
                       render: (_: unknown, record: AnchorPointFormItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateAnchorPointCoord(record._idx ?? 0, 'lng', d, m, s)),
                     },
                     {
                       title: '',
                       key: 'actions',
-                      width: 50,
+                      width: 60,
                       align: 'center' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'center' } }),
                       render: (_: unknown, record: AnchorPointFormItem) => (
-                        <Button
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                          onClick={() => removeAnchorPoint(record._idx ?? 0)}
-                          style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Xóa điểm neo"
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                            onClick={() => removeAnchorPoint(record._idx ?? 0)}
+                            style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Xóa điểm neo"
+                          />
+                        </div>
                       ),
                     },
                   ]}
@@ -2284,6 +2333,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
+        zIndex={2500}
         footer={[
           <Button key="cancel" onClick={() => setGisModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
             Hủy
@@ -2331,6 +2381,90 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                       return rows[0];
                     });
                     merged.push(...toDmsRows(fresh.slice(fi)));
+                    return merged;
+                  });
+                }
+              }
+            }}
+          />
+        </div>
+      </Modal>
+
+      {/* GIS Location Selector Modal cho Khu nước neo buộc tàu */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <EnvironmentOutlined style={{ color: actionPrimary }} />
+            <span style={{ fontWeight: fontWeightBold, color: sidebarBg, fontSize: fontSizeLg }}>
+              Chọn vị trí & tọa độ điểm neo trên bản đồ
+            </span>
+          </div>
+        }
+        open={waterAreaGisModalOpen}
+        onCancel={() => setWaterAreaGisModalOpen(false)}
+        destroyOnClose
+        width="94vw"
+        style={{ top: 20, maxWidth: '1400px' }}
+        zIndex={2500}
+        footer={[
+          <Button key="cancel" onClick={() => setWaterAreaGisModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+            Hủy
+          </Button>,
+          <Button
+            key="ok"
+            type="primary"
+            onClick={() => setWaterAreaGisModalOpen(false)}
+            style={{ ...primaryButtonStyle, height: 36 }}
+          >
+            Xác nhận tọa độ
+          </Button>,
+        ]}
+      >
+        <div style={{ padding: '8px 0' }}>
+          <GisLocationSelector
+            inline={true}
+            defaultGeometryType={(waterAreaGeometryType as any) || 'POINT'}
+            height={520}
+            onChange={(val) => {
+              if (val?.coordinates) {
+                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
+                if (points.length > 0) {
+                  setWaterAreaAnchorPoints((prev) => {
+                    const current = Array.isArray(prev) ? prev : [];
+                    const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
+                      c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
+                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
+                    const existingKeys = new Set(current
+                      .filter(isFilled)
+                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
+                    const fresh = points.filter(p => !existingKeys.has(key(p)));
+                    const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>, startIdx: number) => ps.map((p, pIdx) => {
+                      const latDms = ddToDms(p.latitude);
+                      const lngDms = ddToDms(p.longitude);
+                      return {
+                        name: `Điểm neo ${startIdx + pIdx + 1}`,
+                        latD: latDms.d, latM: latDms.m, latS: latDms.s,
+                        lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s,
+                      };
+                    });
+                    if (waterAreaGeometryType === 'POINT') {
+                      const first = fresh[0] || points[0];
+                      if (first) {
+                        const row = toDmsRows([first], 0)[0];
+                        return [{ ...row, name: current[0]?.name || row.name }];
+                      }
+                      return current;
+                    }
+                    let fi = 0;
+                    const merged = current.map((row, rIdx) => {
+                      if (isFilled(row)) return row;
+                      if (fi >= fresh.length) return row;
+                      const p = fresh[fi];
+                      fi += 1;
+                      const rows = toDmsRows([p], rIdx);
+                      return { ...rows[0], name: row.name || rows[0].name };
+                    });
+                    merged.push(...toDmsRows(fresh.slice(fi), merged.length));
                     return merged;
                   });
                 }

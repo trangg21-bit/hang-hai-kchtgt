@@ -151,6 +151,17 @@ public class BuoyController {
                 String entityId = id.toString();
                 String entityType = "Buoy";
 
+                com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse buoy = buoyService.findById(id);
+                if ("DRAFT".equalsIgnoreCase(buoy.getApprovalStatus()) || "DRAFT".equalsIgnoreCase(buoy.getStatus())) {
+                        Map<String, Object> result = new HashMap<>();
+                        result.put("entityId", entityId);
+                        result.put("entityType", entityType);
+                        result.put("changeHistory", Collections.emptyList());
+                        result.put("approvalLog", Collections.emptyList());
+                        result.put("histories", Collections.emptyList());
+                        return ResponseEntity.ok(ApiResponse.success(result));
+                }
+
                 List<InfrastructureHistory> list = historyRepository
                                 .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.BUOY, id);
 

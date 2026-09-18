@@ -22,6 +22,9 @@ public interface ShipRepairYardRepository extends JpaRepository<ShipRepairYard, 
 
     boolean existsByShipRepairYardCode(String shipRepairYardCode);
 
+    @Query("SELECT a.shipRepairYardCode FROM ShipRepairYard a WHERE a.shipRepairYardCode LIKE CONCAT(:prefix, '%')")
+    List<String> findAllShipRepairYardCodesStartingWith(@Param("prefix") String prefix);
+
     @Query("SELECT a FROM ShipRepairYard a WHERE a.deletedAt IS NULL AND a.portId = :portId")
     List<ShipRepairYard> findByPortIdAndDeletedAtIsNull(@Param("portId") UUID portId);
 

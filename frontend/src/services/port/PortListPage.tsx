@@ -2251,6 +2251,12 @@ export default function PortListPage() {
 
   useEffect(() => {
     if (!historyModalOpen || !selectedRecord) return;
+    if (selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') {
+      setLoadingHistory(false);
+      setLoadingMoreHistory(false);
+      setHistoryRecords([]);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoadingHistory(true);

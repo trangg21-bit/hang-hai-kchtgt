@@ -37,6 +37,7 @@ import {
 import toast from '../../components/ToastNotification';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { resolveDefaultOrgUnitId } from '../../components/org-unit';
 import api from '../../services/api';
 
 import {
@@ -383,8 +384,29 @@ export default function DryPortAssetList() {
     setExploitationRows([]);
     setIncreaseRows([]);
     setDecreaseRows([]);
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId) {
+      form.setFieldsValue({
+        orgUnitId: currentOrgUnitId,
+        quantity: 1,
+      });
+    } else {
+      form.setFieldsValue({
+        quantity: 1,
+      });
+      if (!currentUser?.orgUnitId) {
+        api.get('/users/me').then((r) => {
+          const p = r.data?.data ?? r.data;
+          const uOrgId = p?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            form.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        }).catch(() => {});
+      }
+    }
     setDrawerMode('create');
-  }, [form]);
+  }, [form, currentUser, organizations]);
 
   const handleOpenEdit = useCallback(async (record: DryPortAsset) => {
     if (!isAssetRecordEditable(record.approvalStatus)) {
@@ -525,11 +547,15 @@ export default function DryPortAssetList() {
   const openHistory = useCallback(async (record: DryPortAsset) => {
     setHistoryTarget(record);
     setHistoryOpen(true);
-    setHistoryLoading(true);
     setHistoryRecords([]);
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
+    if (record.approvalStatus === 'DRAFT' || (record as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/asset/infra-assets/${record.id}/history`);
       const d = res.data?.data || res.data;

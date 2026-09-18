@@ -130,7 +130,7 @@ public class DryPortController {
     // ── Submit (from list page F-083) ──────────────────────────
 
     @PutMapping("/{id}/submit")
-    @PreAuthorize("@auth.check(authentication, 'dryport:update')")
+    @PreAuthorize("@auth.check(authentication, 'dryport:manage') or @auth.check(authentication, 'dryport:update')")
     public ResponseEntity<ApiResponse<DryPortResponse>> submit(@PathVariable UUID id) {
         log.info("Submitting DryPort for approval: id={}", id);
         DryPortResponse response = dryPortService.submit(id);
@@ -169,8 +169,9 @@ public class DryPortController {
             @PathVariable UUID id,
             Authentication authentication) {
         UUID userId = SecurityUtils.getCurrentUserId();
-        log.info("Approving DryPort: id={}, userId={}", id, userId);
-        dryPortApprovalService.approve(id, userId.toString(), null);
+        String userIdStr = userId != null ? userId.toString() : authentication.getName();
+        log.info("Approving DryPort: id={}, userId={}", id, userIdStr);
+        dryPortApprovalService.approve(id, userIdStr, null);
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt cảng cạn thành công", null));
     }
 

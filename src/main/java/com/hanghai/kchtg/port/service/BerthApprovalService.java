@@ -145,6 +145,17 @@ public class BerthApprovalService {
         String entityId = id.toString();
         String entityType = "Berth";
 
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Map.of(
+                    "entityId", entityId,
+                    "entityType", entityType,
+                    "currentApprovalStatus", ApprovalStatus.DRAFT.name(),
+                    "changeHistory", Collections.emptyList(),
+                    "approvalLog", Collections.emptyList(),
+                    "histories", Collections.emptyList()
+            );
+        }
+
         List<InfrastructureHistory> list =
                 historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.PORT_TERMINAL, id);
 

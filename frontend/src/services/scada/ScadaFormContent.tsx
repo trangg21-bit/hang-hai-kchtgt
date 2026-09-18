@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Form, Input, InputNumber, Select } from 'antd';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { createScada, updateScada, fetchScadaById } from './api';
 import type { ScadaResponse } from './types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
 import toast from '../../components/ToastNotification';
+import { useAuthStore } from '../../store/authStore';
 import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
 import { parseNumber5, getValueFromEvent5, integer5Rule } from '../../utils/numberRuleHelper';
 import {
@@ -24,34 +25,14 @@ interface ScadaFormProps {
 
 const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
   const navigate = useNavigate();
+  const currentUser = useAuthStore((s) => s.user);
   const [form] = Form.useForm();
   const [isEdit, setIsEdit] = useState(!!initialData);
   const [submitting, setSubmitting] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
-  const [, setLoadingData] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (initialData) {
-        setLoadingData(true);
-        try {
-          const data = await fetchScadaById(initialData.id);
-          form.setFieldsValue(data);
-          setIsEdit(true);
-        } catch (error) {
-          toast.error('Không thể tải dữ liệu');
-          navigate(-1);
-        } finally {
-          setLoadingData(false);
-        }
-      }
-    };
-    loadData();
-    loadOrgUnits();
-  }, [initialData]);
-
-  const loadOrgUnits = async () => {
+  const loadOrgUnits = useCallback(async () => {
     setLoadingOrgs(true);
     try {
       const res = await api.get('/common/options/org-units');
@@ -68,7 +49,43 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
     } finally {
       setLoadingOrgs(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadOrgUnits();
+  }, [loadOrgUnits]);
+
+  useEffect(() => {
+    if (!initialData) return;
+    const loadData = async () => {
+      try {
+        const data = await fetchScadaById(initialData.id);
+        form.setFieldsValue(data);
+        setIsEdit(true);
+      } catch {
+        toast.error('Không thể tải dữ liệu');
+        navigate(-1);
+      }
+    };
+    loadData();
+  }, [initialData, form, navigate]);
+
+  useEffect(() => {
+    if (initialData || form.getFieldValue('orgUnitId')) return;
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId) {
+      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else {
+      api.get('/users/me').then((r) => {
+        const p = r.data?.data ?? r.data;
+        const uOrgId = p?.orgUnitId;
+        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+          form.setFieldsValue({ orgUnitId: uOrgId });
+        }
+      }).catch(() => {});
+    }
+  }, [initialData, form, currentUser, orgUnits]);
 
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
@@ -164,12 +181,11 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
         label="Đơn vị quản lý"
         rules={[{ required: !isEdit, message: 'Vui lòng chọn đơn vị quản lý' }]}
       >
-        <OrgUnitTreeSelect
+        <FormOrgUnitTreeSelect
           organizations={orgUnits}
           placeholder="Chọn đơn vị..."
           loading={loadingOrgs}
           showPath
-          treeDefaultExpandAll={false}
           style={{ borderRadius: radiusPill, height: 40 }}
         />
       </Form.Item>
@@ -215,24 +231,20 @@ const ScadaFormContent = ({ initialData, onSuccess }: ScadaFormProps) => {
           >
             Hủy
           </button>
-          <Form.Item shouldUpdate noStyle>
-            {() => (
-              <button
-                type="submit"
-                disabled={submitting}
-                style={{
-                  borderRadius: radiusPill,
-                  height: 40,
-                  padding: '0 24px',
-                  background: actionPrimary,
-                  border: `1px solid ${actionPrimary}`,
-                  color: 'white',
-                }}
-              >
-                {submitting ? 'Đang lưu...' : isEdit ? 'Cập nhật' : 'Tạo mới'}
-              </button>
-            )}
-          </Form.Item>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              padding: '0 24px',
+              background: actionPrimary,
+              border: `1px solid ${actionPrimary}`,
+              color: 'white',
+            }}
+          >
+            {submitting ? 'Đang lưu...' : isEdit ? 'Cập nhật' : 'Tạo mới'}
+          </button>
         </Form.Item>
       </div>
     </Form>

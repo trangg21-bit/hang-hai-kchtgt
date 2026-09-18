@@ -176,6 +176,9 @@ public class BeaconStationService {
                 ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
                         : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                 : (h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
+        if (userName == null || userName.isBlank()) {
+            userName = "Hệ thống";
+        }
         String orgUnitName = null;
         if (u != null) {
             if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
@@ -211,8 +214,12 @@ public class BeaconStationService {
     @Transactional(readOnly = true)
     public List<BeaconHistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
             String fromDate, String toDate) {
-        beaconStationRepo.findById(id)
+        BeaconStation station = beaconStationRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đèn biển không tìm thấy: " + id));
+        if ("DRAFT".equalsIgnoreCase(station.getStatus())
+                || station.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Collections.emptyList();
+        }
         String normalizedKeyword = normalizeHistoryKeyword(keyword);
         boolean paged = page != null && pageSize != null && pageSize > 0;
         java.time.LocalDateTime from = parseLocalDateTime(fromDate);
@@ -240,7 +247,7 @@ public class BeaconStationService {
                     String field = h.getChangedField();
                     if (field != null) {
                         String norm = field.trim().toLowerCase();
-                        if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+                        if (isExcludedHistoryField(norm)) {
                             return false;
                         }
                     }
@@ -251,7 +258,21 @@ public class BeaconStationService {
                 })
                 .collect(java.util.stream.Collectors.toList());
 
-        Set<UUID> userIds = filteredList.stream()
+        // Khử trùng lặp giữa bản ghi lưu bằng mã tiếng Anh và nhãn tiếng Việt trong cùng phiên cập nhật
+        List<InfrastructureHistory> dedupedList = new java.util.ArrayList<>();
+        Set<String> seenKeys = new java.util.HashSet<>();
+        for (InfrastructureHistory h : filteredList) {
+            String canonicalField = canonicalizeFieldName(h.getChangedField());
+            long epochSecond = h.getApprovedDate() != null
+                    ? h.getApprovedDate().toEpochSecond(java.time.ZoneOffset.UTC)
+                    : 0L;
+            String key = epochSecond + "_" + canonicalField;
+            if (seenKeys.add(key)) {
+                dedupedList.add(h);
+            }
+        }
+
+        Set<UUID> userIds = dedupedList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(java.util.stream.Collectors.toSet());
@@ -259,9 +280,91 @@ public class BeaconStationService {
                 userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(java.util.stream.Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        return filteredList.stream()
+        return dedupedList.stream()
                 .map(h -> toHistoryEntry(h, userMap))
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    private static boolean isExcludedHistoryField(String norm) {
+        if (norm == null) return false;
+        return norm.equals("approvalstatus")
+                || norm.equals("trạng thái phê duyệt")
+                || norm.equals("trang thai phe duyet")
+                || norm.equals("trạng thái")
+                || norm.equals("status")
+                || norm.equals("approvalcontentlevel1")
+                || norm.equals("approvalcontentlevel2")
+                || norm.equals("level1approvalcontent")
+                || norm.equals("level2approvalcontent")
+                || norm.equals("submitteddate")
+                || norm.equals("submittedat")
+                || norm.equals("submittedby")
+                || norm.equals("approverlevel1")
+                || norm.equals("approverlevel2")
+                || norm.equals("approveddatelevel1")
+                || norm.equals("approveddatelevel2")
+                || norm.equals("rejectionreason")
+                || norm.equals("lý do từ chối")
+                || norm.equals("ly do tu choi")
+                || norm.equals("portauthorityapprovedby")
+                || norm.equals("portauthorityapprovedat")
+                || norm.equals("portauthorityapprovalcontent")
+                || norm.equals("departmentapprovedby")
+                || norm.equals("departmentapprovedat")
+                || norm.equals("departmentapprovalcontent")
+                || norm.equals("approvedby")
+                || norm.equals("approvedat")
+                || norm.equals("approvedremarks")
+                || norm.equals("cấp 1 phê duyệt")
+                || norm.equals("cấp 2 phê duyệt")
+                || norm.equals("nội dung phê duyệt")
+                || norm.equals("ngày gửi phê duyệt")
+                || norm.equals("người gửi phê duyệt");
+    }
+
+    private static String canonicalizeFieldName(String field) {
+        if (field == null) return "";
+        String norm = field.trim().toLowerCase();
+        return switch (norm) {
+            case "name", "tên đèn biển", "ten den bien", "tên nhà trạm", "ten nha tram", "tên trạm đèn", "ten tram den" -> "name";
+            case "code", "mã đèn biển", "ma den bien", "mã trạm đèn", "ma tram den" -> "code";
+            case "type", "loại đèn biển", "loai den bien", "phân loại", "phan loai", "loại trạm", "loai tram", "cấp trạm đèn", "cap tram den" -> "type";
+            case "lightrange", "tầm hiệu lực ánh sáng", "tam hieu luc anh sang" -> "lightRange";
+            case "towercolor", "màu sắc thân tháp", "mau sac than thap", "màu sắc bên ngoài của tháp đèn", "mau sac ben ngoai cua thap den" -> "towerColor";
+            case "primarylightmodel", "model đèn chính", "model den chinh", "đèn chính", "den chinh" -> "primaryLightModel";
+            case "backuplightmodel", "model đèn phụ", "model den phu", "đèn dự phòng", "den du phong" -> "backupLightModel";
+            case "area", "khu vực", "khu vuc", "diện tích", "dien tich" -> "area";
+            case "location", "vị trí", "vi tri", "địa điểm", "dia diem", "địa điểm đặt trạm đèn", "dia diem dat tram den" -> "location";
+            case "detailedlocation", "vị trí chi tiết", "vi tri chi tiet", "địa điểm chi tiết", "dia diem chi tiet" -> "detailedLocation";
+            case "unitid", "đơn vị quản lý", "don vi quan ly", "orgunitid" -> "unitId";
+            case "provinceid", "tỉnh/thành phố", "tinh/thanh pho", "tỉnh / thành phố" -> "provinceId";
+            case "seaportid", "cảng biển", "cang bien", "thuộc vùng biển/cảng biển", "thuoc vung bien/cang bien" -> "seaportId";
+            case "operator", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operator";
+            case "lastrepairdate", "thời gian sửa chữa gần nhất", "thoi gian sua chua gan nhat", "thời điểm sửa chữa gần nhất", "thoi diem sua chua gan nhat" -> "lastRepairDate";
+            case "commissioneddate", "thời gian đưa vào sử dụng", "thoi gian dua vao su dung", "thời điểm đưa vào sử dụng", "thoi diem dua vao su dung" -> "commissionedDate";
+            case "isactive", "kích hoạt", "kich hoat" -> "isActive";
+            case "shape", "hình dạng tháp", "hinh dang thap", "hình dáng", "hinh dang" -> "shape";
+            case "structure", "kết cấu thân tháp", "ket cau than thap", "kết cấu", "ket cau" -> "structure";
+            case "towerheight", "chiều cao tháp", "chieu cao thap", "chiều cao tháp đèn", "chieu cao thap den" -> "towerHeight";
+            case "lightheight", "chiều cao tâm sáng", "chieu cao tam sang" -> "lightHeight";
+            case "geographicrange", "tầm hiệu lực địa lý", "tam hieu luc dia ly" -> "geographicRange";
+            case "powersupply", "nguồn năng lượng", "nguon nang luong", "nguồn cung cấp", "nguon cung cap" -> "powerSupply";
+            case "staffcount", "số lượng cán bộ", "so luong can bo", "nhân sự bố trí", "nhan su bo tri" -> "staffCount";
+            case "stationarea", "diện tích khuôn viên nhà trạm", "dien tich khuon vien nha tram", "diện tích sử dụng trạm", "dien tich su dung tram" -> "stationArea";
+            case "operationalstatus", "tình trạng hoạt động", "tinh trang hoat dong", "trạng thái hoạt động", "trang thai hoat dong" -> "operationalStatus";
+            case "region", "vùng hoa tiêu/vùng biển", "vung hoa tieu/vung bien", "địa bàn", "dia ban" -> "region";
+            case "identifyingfeature", "đặc điểm nhận biết ban ngày", "dac diem nhan biet ban ngay", "đặc điểm nhận dạng", "dac diem nhan dang" -> "identifyingFeature";
+            case "note", "ghi chú", "ghi chu" -> "note";
+            case "geometrytype", "loại đối tượng gis", "loai doi tuong gis" -> "geometryType";
+            case "mapsymbolid", "biểu tượng bản đồ", "bieu tuong ban do", "biểu tượng gis", "bieu tuong gis" -> "mapSymbolId";
+            case "coordinatesystem", "hệ tọa độ", "he toa do", "hệ quy chiếu", "he quy chieu" -> "coordinateSystem";
+            case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+            case "coordinates", "tọa độ", "toa do", "tọa độ gis", "toa do gis" -> "coordinates";
+            case "latitude", "vĩ độ", "vi do" -> "latitude";
+            case "longitude", "kinh độ", "kinh do" -> "longitude";
+            case "attachments", "tài liệu đính kèm", "tai lieu dinh kem", "file đính kèm", "file dinh kem" -> "attachments";
+            default -> norm;
+        };
     }
 
     private static String normalizeHistoryKeyword(String keyword) {

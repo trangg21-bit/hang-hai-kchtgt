@@ -52,7 +52,8 @@ import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -394,8 +395,11 @@ const getProvinceLabel = (provinceId?: string | number): string => {
 };
 
 function formatDate(dateStr: string | null | undefined): string {
-  if (!dateStr) return '—';
-  try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm'); } catch { return dateStr; }
+  if (!dateStr) return '';
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : String(dateStr);
+  } catch { return String(dateStr); }
 }
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
@@ -585,7 +589,35 @@ function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boolean {
     fLower === 'approvalstatus' ||
     fLower === 'trạng thái phê duyệt' ||
     fLower === 'trang thai phe duyet' ||
-    fLower === 'trạng thái'
+    fLower === 'trạng thái' ||
+    fLower === 'approvalcontentlevel1' ||
+    fLower === 'approvalcontentlevel2' ||
+    fLower === 'level1approvalcontent' ||
+    fLower === 'level2approvalcontent' ||
+    fLower === 'submitteddate' ||
+    fLower === 'submittedat' ||
+    fLower === 'submittedby' ||
+    fLower === 'approverlevel1' ||
+    fLower === 'approverlevel2' ||
+    fLower === 'approveddatelevel1' ||
+    fLower === 'approveddatelevel2' ||
+    fLower === 'rejectionreason' ||
+    fLower === 'lý do từ chối' ||
+    fLower === 'ly do tu choi' ||
+    fLower === 'portauthorityapprovedby' ||
+    fLower === 'portauthorityapprovedat' ||
+    fLower === 'portauthorityapprovalcontent' ||
+    fLower === 'departmentapprovedby' ||
+    fLower === 'departmentapprovedat' ||
+    fLower === 'departmentapprovalcontent' ||
+    fLower === 'approvedby' ||
+    fLower === 'approvedat' ||
+    fLower === 'approvedremarks' ||
+    fLower === 'cấp 1 phê duyệt' ||
+    fLower === 'cấp 2 phê duyệt' ||
+    fLower === 'nội dung phê duyệt' ||
+    fLower === 'ngày gửi phê duyệt' ||
+    fLower === 'người gửi phê duyệt'
   ) {
     return false;
   }
@@ -1144,9 +1176,25 @@ export default function RadarStationList() {
         }
       });
 
-      const validChanges = Array.from(uniqueChangesMap.values()).filter((c) => {
-        return isMeaningfulChange(c.field, c.oldValue, c.newValue);
+      const seenLabels = new Set<string>();
+      const nonAttachmentChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+      const attachmentChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+
+      Array.from(uniqueChangesMap.values()).forEach((c) => {
+        if (!isMeaningfulChange(c.field, c.oldValue, c.newValue)) return;
+        const normField = normalizeHistoryKey(c.field || '');
+        if (normField === 'attachments' || normField === 'tailieudinhkem' || normField === 'filedinhkem') {
+          attachmentChanges.push(c);
+        } else {
+          const label = historyFieldName(c.field).trim().toLowerCase();
+          if (!seenLabels.has(label)) {
+            seenLabels.add(label);
+            nonAttachmentChanges.push(c);
+          }
+        }
       });
+
+      const validChanges = [...nonAttachmentChanges, ...attachmentChanges];
 
       const reasons = g.items.map((i) => i.reason || i.note).filter(Boolean);
 
@@ -1208,7 +1256,7 @@ export default function RadarStationList() {
       });
   }, []);
 
-  // ── Load organizations + self-chọn đơn vị mặc định theo user (giống /berth) ──
+  // ── Load organizations + self-chọn đơn vị mặc định theo user (chuẩn /beacon-stations & /dike-revetment) ──
   useEffect(() => {
     const loadOrgDefault = async () => {
       const isIframe = window.self !== window.top;
@@ -1219,27 +1267,23 @@ export default function RadarStationList() {
       setOrgOptions(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterOrgUnitId(found.id);
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterOrgUnitId(orgs[0].id);
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterOrgUnitId(resolvedOrgId);
       }
       setOrgUnitReady(true);
     };
@@ -1247,7 +1291,7 @@ export default function RadarStationList() {
       console.error('Không tải được cây đơn vị quản lý', 'Failed to load organizations');
       setOrgUnitReady(true);
     });
-  }, []);
+  }, [currentUser]);
 
   // ── Load dropdown data ───────────────────────────────────────────
   useEffect(() => {
@@ -1420,10 +1464,27 @@ export default function RadarStationList() {
     setIsDetailMode(false);
     setDetailRecord(null);
     createForm.resetFields();
+    // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgOptions)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
     createForm.setFieldsValue({
       conditionStatus: '0',
-      orgUnitId: currentUser?.orgUnitId || undefined,
+      orgUnitId: currentOrgUnitId,
     });
+
+    if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+      api.get('/users/me')
+        .then((res) => {
+          const profile = res.data?.data ?? res.data;
+          const uOrgId = profile?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            createForm.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        })
+        .catch(() => {});
+    }
+
     setGeometryTypeState('');
     setCoordinateList([]);
     setGpsError(null);
@@ -1434,7 +1495,7 @@ export default function RadarStationList() {
       .then((r) => setPreviewCode(r.code || ''))
       .catch(() => setPreviewCode(''));
     setDrawerVisible(true);
-  }, [createForm, currentUser?.orgUnitId]);
+  }, [createForm, currentUser, orgOptions]);
 
   const openEditDrawer = useCallback((record: RadarStationResponse) => {
     setEditingRecord(record);
@@ -1548,7 +1609,7 @@ export default function RadarStationList() {
     setHistoryLoading(true);
     setHistoryRecords([]);
     try {
-      if (hasPerm('radarstation:history')) {
+      if (record.approvalStatus !== 'DRAFT' && (record as any).status !== 'DRAFT' && hasPerm('radarstation:history')) {
         const hist = await radarStationApproval.getHistory(record.id);
         setHistoryRecords(hist || []);
       }
@@ -1647,7 +1708,7 @@ export default function RadarStationList() {
     setHistoryLoading(false);
     setHistoryRecords([]);
     setLoadingMoreHistory(false);
-    setHasMoreHistory(true);
+    setHasMoreHistory(r.approvalStatus !== 'DRAFT' && (r as any).status !== 'DRAFT');
     setHistoryPage(0);
   }, []);
 
@@ -1914,7 +1975,7 @@ export default function RadarStationList() {
       actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
     }
     const currentUserId = useAuthStore.getState().user?.userId;
-    if (['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('radarstation:update')) {
+    if (['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('radarstation:update') || hasPerm('radarstation:create'))) {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: themeTokenChk.icons.submit, onClick: () => openSubmitModal(record) });
     }
     // Quy tắc 8/9: chống tự duyệt (4-eyes) — người tạo không tự duyệt cấp Cảng vụ
@@ -1960,6 +2021,33 @@ export default function RadarStationList() {
   }, [vtsOperationCenterOptions]);
 
   // ── Table columns ───────────────────────────────────────────────
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
+
   const columns: any[] = useMemo(() => [
     {
       key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
@@ -1967,61 +2055,71 @@ export default function RadarStationList() {
     },
     {
       key: 'stationName', label: 'Tên / Mã trạm radar', dataIndex: 'stationName', width: 300, fixed: 'left' as const,
+      cellTitle: (record: RadarStationResponse) => record.stationName || '',
       render: (name: string | undefined, record: RadarStationResponse) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <a
-            title={name}
-            onClick={() => openDetailDrawer(record)}
-            style={{
-              ...themeTokenChk.cellTitleStyle,
-              display: 'block',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {name || null}
-          </a>
-          <span style={{ ...themeTokenChk.cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {record.code || null}
-          </span>
+          <Tooltip title={name || undefined} placement="topLeft">
+            <a
+              title={name}
+              onClick={() => openDetailDrawer(record)}
+              style={{
+                ...themeTokenChk.cellTitleStyle,
+                display: 'block',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name || null}
+            </a>
+          </Tooltip>
+          {record.code && (
+            <Tooltip title={record.code} placement="topLeft">
+              <span style={{ ...themeTokenChk.cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+                {record.code}
+              </span>
+            </Tooltip>
+          )}
         </div>
       ),
     },
     {
       key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 240,
-      render: (v: string | undefined) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v || undefined}>
-          <span style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{v || null}</span>
-        </div>
-      ),
+      cellTitle: (record: RadarStationResponse) => record.orgUnitName || '',
+      render: (v: string | undefined) => renderCellWithTooltip(v, true),
     },
     {
       key: 'seaportName', label: 'Thuộc cảng biển', dataIndex: 'seaportName', width: 220, ellipsis: true,
-      render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
+      cellTitle: (record: RadarStationResponse) => record.seaportName || '',
+      render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'vtsSystemName', label: 'Hệ thống VTS', dataIndex: 'vtsSystemName', width: 230, ellipsis: true,
-      render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
+      cellTitle: (record: RadarStationResponse) => record.vtsSystemName || '',
+      render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'vtsOperationCenterName', label: 'Trung tâm điều hành VTS', dataIndex: 'vtsOperationCenterName', width: 330, ellipsis: true,
-      render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
+      cellTitle: (record: RadarStationResponse) => record.vtsOperationCenterName || '',
+      render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'operatingUnitName', label: 'Đơn vị khai thác', dataIndex: 'operatingUnitName', width: 180, ellipsis: true,
-      render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
+      cellTitle: (record: RadarStationResponse) => record.operatingUnitName || '',
+      render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'provinceName', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceName', width: 220, ellipsis: true,
+      cellTitle: (record: RadarStationResponse) => record.provinceName || getProvinceLabel(record.provinceId) || '',
       render: (v: string | undefined, record: RadarStationResponse) => {
         const val = v || getProvinceLabel(record.provinceId);
-        return <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{val || null}</span>;
+        return renderCellWithTooltip(val);
       },
     },
     {
       key: 'unitOfMeasure', label: 'Đơn vị tính', dataIndex: 'unitOfMeasure', width: 128, align: 'center' as const,
-      render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || null}</span>,
+      cellTitle: (record: RadarStationResponse) => record.unitOfMeasure || '',
+      render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'quantity', label: 'Số lượng', dataIndex: 'quantity', width: 114, align: 'center' as const,
@@ -2050,52 +2148,72 @@ export default function RadarStationList() {
     },
     {
       key: 'updatedBy', label: 'Cán bộ cập nhật', dataIndex: 'updatedBy', width: 240, ellipsis: true,
+      cellTitle: (record: RadarStationResponse) => record.updatedByName || record.createdByName || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.updatedByName || record.createdByName || null;
         const date = record.updatedDate || record.updatedAt;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-            <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{name}</span>
-            <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{date ? formatDate(date) : ''}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
+              </Tooltip>
+            ) : null}
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
         );
       },
     },
     {
       key: 'submittedForApprovalBy', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedForApprovalBy', width: 300, ellipsis: true,
+      cellTitle: (record: RadarStationResponse) => record.submittedByName || record.createdByName || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.submittedByName || record.createdByName || null;
         const date = record.submittedForApprovalAt;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-            <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{name}</span>
-            <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{date ? formatDate(date) : ''}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
+              </Tooltip>
+            ) : null}
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
         );
       },
     },
     {
       key: 'approverLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1', width: 430, ellipsis: true,
+      cellTitle: (record: RadarStationResponse) => record.approverLevel1Name || record.approverLevel1 || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.approverLevel1Name || record.approverLevel1 || null;
         const date = record.approvedDateLevel1;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-            <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{name}</span>
-            <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{date ? formatDate(date) : ''}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
+              </Tooltip>
+            ) : null}
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
         );
       },
     },
     {
       key: 'approverLevel2', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'approverLevel2', width: 330, ellipsis: true,
+      cellTitle: (record: RadarStationResponse) => record.approverLevel2Name || record.approverLevel2 || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.approverLevel2Name || record.approverLevel2 || null;
         const date = record.approvedDateLevel2;
         return (
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4 }}>
-            <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{name}</span>
-            <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{date ? formatDate(date) : ''}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
+              </Tooltip>
+            ) : null}
+            <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
         );
       },
@@ -2344,17 +2462,18 @@ export default function RadarStationList() {
             ]
           : []),
         { label: 'Cán bộ cập nhật', value: detailRecord.updatedByName || detailRecord.createdByName || null, bold: true },
-        { label: 'Ngày cập nhật', value: safeText(formatDate(detailRecord.updatedAt || (detailRecord as any).updated_at || detailRecord.createdAt)) },
+        { label: 'Ngày cập nhật', value: safeText(formatDate(detailRecord.updatedDate || detailRecord.updatedAt || detailRecord.createdDate || detailRecord.createdAt)) },
+
         { label: 'Cán bộ gửi phê duyệt', value: detailRecord.submittedByName || null, bold: true },
-        { label: 'Ngày gửi phê duyệt', value: safeText(formatDate(detailRecord.submittedForApprovalAt)) },
+        { label: 'Ngày gửi phê duyệt', value: safeText(formatDate(detailRecord.submittedForApprovalAt || (detailRecord as any).submittedDate)) },
         { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approverLevel1Name || null, bold: true },
         { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: safeText(formatDate(detailRecord.approvedDateLevel1)) },
-        { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.level1ApprovalContent || null, fullWidth: true },
+        { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.level1ApprovalContent || (detailRecord as any).approvalContentLevel1 || null, fullWidth: true },
         { label: 'Cán bộ phê duyệt cấp Cục', value: detailRecord.approverLevel2Name || null, bold: true },
         { label: 'Ngày phê duyệt cấp Cục', value: safeText(formatDate(detailRecord.approvedDateLevel2)) },
-        { label: 'Nội dung phê duyệt cấp Cục', value: detailRecord.level2ApprovalContent || null, fullWidth: true },
-        ...(detailRecord.rejectionReason || detailRecord.status === 'REJECTED'
-          ? [{ label: 'Lý do từ chối', value: detailRecord.rejectionReason || null, fullWidth: true }]
+        { label: 'Nội dung phê duyệt cấp Cục', value: detailRecord.level2ApprovalContent || (detailRecord as any).approvalContentLevel2 || null, fullWidth: true },
+        ...(detailRecord.rejectionReason && (detailRecord.status === 'REJECTED' || String(detailRecord.approvalStatus || detailRecord.status || '').toUpperCase().includes('REJECT'))
+          ? [{ label: 'Lý do từ chối', value: <span style={{ color: statusCritical }}>{detailRecord.rejectionReason}</span>, fullWidth: true }]
           : []),
       ]
     : [];
@@ -2979,6 +3098,13 @@ export default function RadarStationList() {
 
   useEffect(() => {
     if (!historyOpen || !historyTarget) return;
+    if (historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') {
+      setHistoryRecords([]);
+      setHistoryLoading(false);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(false);
+      return;
+    }
     // historyReloadToken: nút "Tìm kiếm" làm token đổi → effect chạy lại để tải lại lịch sử theo bộ lọc
     void historyReloadToken;
     let cancelled = false;
@@ -3004,7 +3130,7 @@ export default function RadarStationList() {
   }, [historyOpen, historyTarget, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
   const loadMoreHistory = async () => {
-    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory || historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') return;
     setLoadingMoreHistory(true);
     try {
       const nextPage = historyPage + 1;
@@ -3175,8 +3301,13 @@ export default function RadarStationList() {
 
                           return (
                             <Fragment key={`${fn}-${ri}`}>
-                              {rows.map((row, rIdx) => (
-                                isCreate ? (
+                              {rows.map((row, rIdx) => {
+                                const isOvEmpty = row.oldVal == null || row.oldVal === '' || row.oldVal === '—' || row.oldVal === 'Chưa có';
+                                const isNvEmpty = row.newVal == null || row.newVal === '' || row.newVal === '—' || row.newVal === 'Chưa có';
+                                if (!isCreate && isOvEmpty && isNvEmpty) return null;
+                                if (!isCreate && typeof row.oldVal === 'string' && typeof row.newVal === 'string' && row.oldVal.trim() === row.newVal.trim()) return null;
+
+                                return isCreate ? (
                                   <div key={rIdx} style={{ ...historyCreateRowStyle, paddingTop: (ri > 0 || rIdx > 0) ? spaceXs : 0 }}>
                                     <div style={historyFieldLabelStyle}>{row.label}</div>
                                     <span style={historyNewValueStyle}>{row.newVal}</span>
@@ -3188,11 +3319,16 @@ export default function RadarStationList() {
                                     <span style={historyArrowStyle}>{row.arrow ? '→' : ''}</span>
                                     <span style={historyNewValueStyle}>{row.newVal}</span>
                                   </div>
-                                )
-                              ))}
+                                );
+                              })}
                             </Fragment>
                           );
                         }
+
+                        const isOvEmpty = ov == null || ov === '' || ov === '—' || ov === 'Chưa có';
+                        const isNvEmpty = nv == null || nv === '' || nv === '—' || nv === 'Chưa có';
+                        if (!isCreate && isOvEmpty && isNvEmpty) return null;
+                        if (!isCreate && typeof ov === 'string' && typeof nv === 'string' && ov.trim() === nv.trim()) return null;
 
                         return isCreate ? (
                           <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
@@ -3587,11 +3723,9 @@ export default function RadarStationList() {
                               style={{ marginBottom: spaceFormField }}
                               rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                             >
-                              <OrgUnitTreeSelect
-                                variant="form"
+                              <FormOrgUnitTreeSelect
                                 organizations={orgOptions}
                                 placeholder="Chọn đơn vị quản lý..."
-                                treeDefaultExpandAll={false}
                                 disabled={!!editingRecord}
                                 allowClear
                                 showSearch

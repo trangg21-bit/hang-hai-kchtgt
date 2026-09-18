@@ -28,10 +28,13 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { useAuthStore } from '../../store/authStore';
+import { resolveDefaultOrgUnitId } from '../../components/org-unit';
 import toast from '../../components/ToastNotification';
 import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
@@ -220,6 +223,7 @@ export default function RadarStationAssetList() {
   const [form] = Form.useForm<FormValues>();
   const [operationForm] = Form.useForm<OperationValues>();
   const [attachments, setAttachments] = useState<InfrastructureAttachmentItem[]>([]);
+  const currentUser = useAuthStore((s) => s.user);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<RadarStationAsset | null>(null);
   const [historyRecords, setHistoryRecords] = useState<RawHistoryRecord[]>([]);
@@ -442,9 +446,23 @@ export default function RadarStationAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({ status: 'MANAGED' });
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    form.setFieldsValue({
+      status: 'MANAGED',
+      orgUnitId: currentOrgUnitId,
+    });
+    if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+      api.get('/users/me').then((r) => {
+        const p = r.data?.data ?? r.data;
+        const uOrgId = p?.orgUnitId;
+        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+          form.setFieldsValue({ orgUnitId: uOrgId });
+        }
+      }).catch(() => {});
+    }
     setAttachments([]);
-  }, [form]);
+  }, [form, currentUser, organizations]);
 
   const openEdit = useCallback(
     (record: RadarStationAsset) => {

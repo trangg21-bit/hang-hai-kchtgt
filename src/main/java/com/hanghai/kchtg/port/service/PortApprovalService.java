@@ -177,7 +177,11 @@ public class PortApprovalService {
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate) {
-        ensureExists(id);
+        Port parent = portRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
+        if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Collections.emptyList();
+        }
         List<InfrastructureHistory> list;
         if (page != null && pageSize != null && pageSize > 0) {
             Pageable pageable = PageRequest.of(page, pageSize);

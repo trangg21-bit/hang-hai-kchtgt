@@ -19,6 +19,8 @@ export interface DetailTableProps<T = Record<string, unknown>> extends Omit<Tabl
   /** Khi true và dataSource rỗng → thân bảng co theo nội dung thay vì filler cao cố định */
   emptyHeightAuto?: boolean;
   scrollY?: number | string;
+  /** Khi true → ẩn hoàn toàn khối phân trang (dùng cho bảng con trong accordion hoặc form view) */
+  hidePagination?: boolean;
 }
 
 /** Tự động suy luận độ rộng tối ưu cho cột nếu chưa được khai báo */
@@ -122,6 +124,7 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
   scrollY,
   scroll,
   total,
+  hidePagination = false,
   ...rest
 }: DetailTableProps<T>) => {
   const [internalPageSize, setInternalPageSize] = useState<number>(propPageSize ?? 20);
@@ -283,6 +286,17 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
           white-space: nowrap !important;
           overflow: hidden !important;
           text-overflow: ellipsis !important;
+          vertical-align: middle !important;
+        }
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row):has(input) > td,
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row):has(.ant-input-number) > td,
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(input),
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-input-number) {
+          padding-top: 8px !important;
+          padding-bottom: 8px !important;
+          height: auto !important;
+          overflow: visible !important;
+          vertical-align: middle !important;
         }
         .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-tag),
         .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="999px"]),
@@ -292,6 +306,10 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
           white-space: nowrap !important;
           overflow: visible !important;
           text-overflow: clip !important;
+        }
+        .${instanceId} .ant-table-thead > tr > th.ant-table-cell-align-center,
+        .${instanceId} .ant-table-tbody > tr > td.ant-table-cell-align-center {
+          text-align: center !important;
         }
         .${instanceId} .ant-table-thead > tr > th.ant-table-cell-align-right,
         .${instanceId} .ant-table-tbody > tr > td.ant-table-cell-align-right {
@@ -327,19 +345,14 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
           padding-left: 4px !important;
           padding-right: 4px !important;
         }
-        /* Pagination fixed tại bottom-right trong Drawer */
-        .ant-drawer .${instanceId} .chk-detail-table-pagination {
-          position: fixed !important;
-          bottom: 76px !important;
-          right: 24px !important;
-          z-index: 100 !important;
-          margin: 0 !important;
+        /* Pagination chuẩn document flow, neo ngay dưới bảng theo chuẩn AGENTS.md */
+        .${instanceId} .chk-detail-table-pagination {
+          margin-top: 8px !important;
+          margin-bottom: 8px !important;
           display: flex !important;
           justify-content: flex-end !important;
           align-items: center !important;
-        }
-        .ant-drawer:has(.ant-drawer-footer) .${instanceId} .chk-detail-table-pagination {
-          bottom: 68px !important;
+          width: 100% !important;
         }
         /* ── Cỡ chữ 13.5px chuẩn toàn bộ DetailTable ── */
         .${instanceId},
@@ -386,7 +399,7 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
         }}
         {...rest}
       />
-      {effectiveTotal > 0 && (
+      {!hidePagination && effectiveTotal > 0 && (
         <div
           className="chk-detail-table-pagination"
           style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}

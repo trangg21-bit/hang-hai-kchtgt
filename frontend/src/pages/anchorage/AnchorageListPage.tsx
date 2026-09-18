@@ -10,7 +10,8 @@ import {
     Input,
     Modal,
     Select,
-    Space
+    Space,
+    Tooltip
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -83,6 +84,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -100,10 +102,10 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -118,18 +120,62 @@ function formatDate(d: string | null | undefined): string {
 }
 
 const EXCLUDED_CHANGE_FIELDS = new Set([
-  'attachments', 'spatialId', 'Vị trí không gian',
-  'id', 'createdAt', 'updatedAt', 'createdBy', 'updatedBy',
-  'submittedForApprovalAt', 'submittedForApprovalBy',
-  'portAuthorityApprovedAt', 'portAuthorityApprovedBy',
-  'departmentApprovedAt', 'departmentApprovedBy',
-  'portAuthorityApprovalContent', 'departmentApprovalContent',
-  'rejectionReason', 'activityStatus',
-  'Thời điểm gửi phê duyệt', 'Người gửi phê duyệt',
-  'Thời điểm Cảng vụ phê duyệt', 'Cán bộ Cảng vụ phê duyệt',
-  'Thời điểm Cục phê duyệt', 'Cán bộ Cục phê duyệt',
-  'Nội dung Cảng vụ phê duyệt', 'Nội dung Cục phê duyệt',
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'updatedBy',
+  'attachments',
+  'spatialId',
+  'Vị trí không gian',
+  'infrastructureList_raw',
+  'approvalStatus',
+  'approverLevel1',
+  'approvedDateLevel1',
+  'approverLevel2',
+  'approvedDateLevel2',
+  'rejectionReason',
   'Lý do từ chối',
+  'ly do tu choi',
+  'Trạng thái phê duyệt',
+  'trang thai phe duyet',
+  'Trạng thái',
+  'trạng thái',
+  'activityStatus',
+  'deletedAt',
+  'deletedBy',
+  'submittedDate',
+  'submittedAt',
+  'submittedBy',
+  'submittedForApprovalAt',
+  'submittedForApprovalBy',
+  'Thời điểm gửi phê duyệt',
+  'Người gửi phê duyệt',
+  'ngày gửi phê duyệt',
+  'người gửi phê duyệt',
+  'approvalContentLevel1',
+  'approvalContentLevel2',
+  'level1ApprovalContent',
+  'level2ApprovalContent',
+  'approvalContent',
+  'nội dung phê duyệt',
+  'cấp 1 phê duyệt',
+  'cấp 2 phê duyệt',
+  'portAuthorityApprovedBy',
+  'portAuthorityApprovedAt',
+  'portAuthorityApprovalContent',
+  'departmentApprovedBy',
+  'departmentApprovedAt',
+  'departmentApprovalContent',
+  'Thời điểm Cảng vụ phê duyệt',
+  'Thời điểm Cục phê duyệt',
+  'Nội dung Cảng vụ phê duyệt',
+  'Nội dung Cục phê duyệt',
+  'Cán bộ Cảng vụ phê duyệt',
+  'Cán bộ Cục phê duyệt',
+  'approvedBy',
+  'approvedAt',
+  'approvedRemarks',
 ]);
 
 const NUMERIC_HISTORY_FIELDS = new Set([
@@ -366,6 +412,7 @@ export default function AnchorageListPage() {
   const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
+
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
@@ -454,8 +501,13 @@ export default function AnchorageListPage() {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const openHistory = useCallback(async (r: Anchorage) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
     setHistoryFilters({ keyword: '' });
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/anchorage/${r.id}/history`);
       const d = res.data?.data;
@@ -538,14 +590,24 @@ export default function AnchorageListPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await organizationService.list({ pageSize: 1000 });
-        const data = r.data || [];
+        const isIframe = window.self !== window.top;
+        const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+        let data: Organization[] = [];
+        if (parentOrgUnits && parentOrgUnits.length > 0) {
+          data = parentOrgUnits;
+        } else {
+          const r = await organizationService.list({ pageSize: 1000 });
+          data = r.data || [];
+        }
         setOrganizations(data);
-        const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+        const currentUser = authUser || useAuthStore.getState().user;
+        const resolvedDefault = resolveDefaultOrgUnitId(currentUser, data);
         setOrgUnit(resolvedDefault);
         defaultOrgUnitRef.current = resolvedDefault;
-      } catch {}
-      finally {
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      } finally {
+
         setInitialLoadDone(true);
       }
     })();
@@ -583,7 +645,8 @@ export default function AnchorageListPage() {
         setSymbolImageMap(imgMap);
       } catch {}
     })();
-  }, []);
+  }, [authUser]);
+
 
   // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
   useEffect(() => {
@@ -649,26 +712,69 @@ export default function AnchorageListPage() {
     })();
   }, []);
 
-  const fetchCounts = useCallback(async (oid: string | undefined) => {
+  const fetchCounts = useCallback(async (unitIdOverride?: string) => {
     try {
+      const targetUnit = unitIdOverride !== undefined ? unitIdOverride : orgUnit;
+      const baseFilterParams = {
+        orgUnitId: (targetUnit && targetUnit !== '__all__') ? targetUnit : undefined,
+        anchorageName: nameInput.trim() || undefined,
+        anchorageCode: codeInput.trim() || undefined,
+        portId: filterPortId,
+        navigationChannelId: filterNavigationChannelId,
+        buoyStationId: filterBuoyStationId,
+        provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
+        operationalStatus: filterOperationalStatus,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+        page: 1,
+        pageSize: 1,
+      };
       const rs = await Promise.allSettled(
-        TAB_STATUS_LIST.map(t => {
+        TAB_STATUS_LIST.map((t) => {
           if (t.key === 'DELETED') {
-            return anchorageCRUD.search({ isDeleted: true, orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+            return anchorageCRUD.search({
+              ...baseFilterParams,
+              isDeleted: true,
+              approvalStatus: undefined,
+            });
           }
           if (t.key === 'all') {
-            return anchorageCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+            return anchorageCRUD.search({
+              ...baseFilterParams,
+              isDeleted: false,
+              approvalStatus: undefined,
+            });
           }
-          return anchorageCRUD.search({ isDeleted: false, approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+          return anchorageCRUD.search({
+            ...baseFilterParams,
+            isDeleted: false,
+            approvalStatus: TAB_QUERY_MAP[t.key],
+          });
         })
       );
       const c: Record<string, number> = {};
-      rs.forEach((r, i) => { c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0; });
-      const sumChildCounts = TAB_STATUS_LIST.filter((t) => t.key !== 'all').reduce((acc, t) => acc + (c[t.key] || 0), 0);
+      rs.forEach((r, i) => {
+        const tabKey = TAB_STATUS_LIST[i]?.key || 'all';
+        c[tabKey] = r.status === 'fulfilled' ? r.value.total : 0;
+      });
+      const sumChildCounts = TAB_STATUS_LIST
+        .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+        .reduce((acc, t) => acc + (c[t.key] || 0), 0);
       c['all'] = sumChildCounts;
       setTabCounts(c);
-    } catch {}
-  }, []);
+    } catch { /* silent */ }
+  }, [
+    orgUnit,
+    nameInput,
+    codeInput,
+    filterPortId,
+    filterNavigationChannelId,
+    filterBuoyStationId,
+    filterProvince,
+    filterOperationalStatus,
+    filterUpdatedFrom,
+    filterUpdatedTo,
+  ]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false);
@@ -683,12 +789,24 @@ export default function AnchorageListPage() {
         provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: activeTab === 'DELETED' ? undefined : TAB_QUERY_MAP[activeTab],
-        isDeleted: activeTab === 'DELETED' ? true : (activeTab === 'all' ? undefined : false),
+        isDeleted: activeTab === 'DELETED' ? true : false,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page, pageSize,
       });
-      setDataSource(r.data); setTotal(r.total);
+      let data = r.data || [];
+      if (activeTab === 'all') {
+        data = data.filter((item) => {
+          const isDel = Boolean(
+            (item as any).deletedAt ||
+            (item as any).deletedBy ||
+            item.approvalStatus === 'ARCHIVED' ||
+            item.approvalStatus === 'DELETED'
+          );
+          return !isDel;
+        });
+      }
+      setDataSource(data); setTotal(r.total);
     } catch {
       setIsError(true);
     } finally {
@@ -701,12 +819,13 @@ export default function AnchorageListPage() {
   ]);
 
   useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
-  useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
+  useEffect(() => { if (initialLoadDone) void fetchCounts(); }, [fetchCounts, initialLoadDone]);
 
   const handleFilterApply = useCallback(() => {
     setPage(1);
     void fetchData();
-  }, [fetchData]);
+    void fetchCounts();
+  }, [fetchData, fetchCounts]);
 
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current;
@@ -722,7 +841,8 @@ export default function AnchorageListPage() {
     setFilterUpdatedTo(undefined);
     setActiveTab('all');
     setPage(1);
-  }, []);
+    void fetchCounts(oid);
+  }, [fetchCounts]);
 
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
 
@@ -791,13 +911,13 @@ export default function AnchorageListPage() {
       setSortOrder('descend');
       setPage(1);
       void fetchData();
-      void fetchCounts(orgUnit);
+      void fetchCounts();
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Xóa thất bại');
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingRecord, fetchData, fetchCounts, orgUnit]);
+  }, [deletingRecord, fetchData, fetchCounts]);
 
   const handleApprove = useCallback(async (record: Anchorage, content?: string) => {
     try {
@@ -810,11 +930,11 @@ export default function AnchorageListPage() {
       setApproveModalOpen(false); setApprovingRecord(null);
       setSortField('updatedAt');
       setSortOrder('descend');
-      setPage(1); void fetchData(); void fetchCounts(orgUnit);
+      setPage(1); void fetchData(); void fetchCounts();
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Phê duyệt thất bại');
     }
-  }, [fetchData, fetchCounts, orgUnit]);
+  }, [fetchData, fetchCounts]);
 
   const handleSubmitApproval = useCallback((record: Anchorage) => {
     setSubmittingRecord(record);
@@ -824,7 +944,7 @@ export default function AnchorageListPage() {
   const confirmSubmitApproval = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await anchorageCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' } as any);
+      await anchorageCRUD.submit(submittingRecord.id);
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
@@ -832,11 +952,11 @@ export default function AnchorageListPage() {
       setSortOrder('descend');
       setPage(1);
       void fetchData();
-      void fetchCounts(orgUnit);
+      void fetchCounts();
     } catch (ex: unknown) {
       toast.error(ex instanceof Error ? ex.message : 'Gửi thất bại');
     }
-  }, [submittingRecord, fetchData, fetchCounts, orgUnit]);
+  }, [submittingRecord, fetchData, fetchCounts]);
 
   const openRejectModal = useCallback((record: Anchorage) => {
     setRejectingRecord(record);
@@ -862,11 +982,11 @@ export default function AnchorageListPage() {
       setSortOrder('descend');
       setPage(1);
       void fetchData();
-      void fetchCounts(orgUnit);
+      void fetchCounts();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
     }
-  }, [rejectingRecord, rejectReason, fetchData, fetchCounts, orgUnit]);
+  }, [rejectingRecord, rejectReason, fetchData, fetchCounts]);
 
   const filterContent = (
     <>
@@ -1000,7 +1120,7 @@ export default function AnchorageListPage() {
     // Bản ghi đã xóa: thao tác bị giới hạn CHỈ CÒN "Xem chi tiết" và "Lịch sử"
     if (isDeletedAnchorage(record)) {
       const deletedActions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
-      if (hasPerm('anchorage:history')) {
+      if (hasPerm('anchorage:history') || hasPerm('anchorage:manage')) {
         deletedActions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       }
       return deletedActions;
@@ -1015,20 +1135,20 @@ export default function AnchorageListPage() {
         onClick: () => { setEditAnchorageId(record.id); setEditBaseStatus(record.approvalStatus); setCreateDrawerVisible(true); },
       });
     }
-    if (['DRAFT', 'NHAP'].includes(st) && hasPerm('anchorage:update')) {
+    if (['DRAFT', 'NHAP'].includes(st) && (hasPerm('anchorage:update') || hasPerm('anchorage:create') || hasPerm('anchorage:manage'))) {
       actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     }
-    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('anchorage:update')) {
+    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('anchorage:update') || hasPerm('anchorage:create') || hasPerm('anchorage:manage'))) {
       actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     }
-    if (hasPerm('anchorage:history')) {
+    if (hasPerm('anchorage:history') || hasPerm('anchorage:manage')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     }
-    if (hasPerm('anchorage:approvec1') && st === 'PENDING_APPROVAL') {
+    if ((hasPerm('anchorage:approvec1') || hasPerm('anchorage:manage')) && st === 'PENDING_APPROVAL') {
       actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if (hasPerm('anchorage:approvec2') && st === 'APPROVED_LEVEL1') {
+    if ((hasPerm('anchorage:approvec2') || hasPerm('anchorage:manage')) && st === 'APPROVED_LEVEL1') {
       actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
@@ -1042,45 +1162,57 @@ export default function AnchorageListPage() {
     return [
       {
         label: 'Cán bộ gửi Phê duyệt', dataIndex: 'submittedForApprovalAt', key: 'submittedForApprovalAt', width: 230, sortable: true,
+        cellTitle: (record: Anchorage) => userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '',
         render: (v: string | null, record: Anchorage) => {
           const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
           const date = formatDate(v);
           if (!name && !date) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && date && <br />}
-              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
           );
         },
       },
       {
         label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'portAuthorityApprovedAt', key: 'portAuthorityApprovedAt', width: 350, sortable: true,
+        cellTitle: (record: Anchorage) => userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '',
         render: (v: string | null, record: Anchorage) => {
           const name = userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '';
           const date = formatDate(v);
           if (!name && !date) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && date && <br />}
-              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
           );
         },
       },
       {
         label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'departmentApprovedAt', key: 'departmentApprovedAt', width: 260, sortable: true,
+        cellTitle: (record: Anchorage) => userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '',
         render: (v: string | null, record: Anchorage) => {
           const name = userMap.get(record.departmentApprovedBy || '') || record.departmentApprovedBy || '';
           const date = formatDate(v);
           if (!name && !date) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && date && <br />}
-              {date && <span style={{ opacity: 0.85 }}>{date}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
           );
         },
@@ -1113,6 +1245,33 @@ export default function AnchorageListPage() {
     return r[field] ?? '';
   }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap]);
 
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
+
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       {
@@ -1121,32 +1280,44 @@ export default function AnchorageListPage() {
       },
       {
         label: <span>Tên/Mã khu neo đậu</span>, dataIndex: 'anchorageName', key: 'anchorageName', width: 220, fixed: 'left' as const, sortable: true, ellipsis: false,
+        cellTitle: (record: Anchorage) => record.anchorageName || '',
         render: (v: string, record: Anchorage) => (
-          <div>
-            <a title={v || ''} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || ''}</a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.anchorageCode || ''}</span>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Tooltip title={v || undefined} placement="topLeft">
+              <a title={v || ''} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || ''}</a>
+            </Tooltip>
+            {record.anchorageCode && (
+              <Tooltip title={record.anchorageCode} placement="topLeft">
+                <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.anchorageCode}>{record.anchorageCode}</span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
       {
         label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-        render: (v: string | null, r: Anchorage) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span>,
+        cellTitle: (r: Anchorage) => resolveOrgLevel2Name(organizations, r?.orgUnitId) || orgMap.get(r?.orgUnitId || '') || '',
+        render: (v: string | null, r: Anchorage) => renderCellWithTooltip(resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || null, true),
       },
       {
         label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,
-        render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span>,
+        cellTitle: (record: Anchorage) => record.portName || portMap.get(record.portId) || record.portId || '',
+        render: (v: string) => renderCellWithTooltip(portMap.get(v || '') || v || null),
       },
       {
         label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
-        render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : ''}</span>,
+        cellTitle: (record: Anchorage) => (record as any).navigationChannelName || waterwayMap.get(record.navigationChannelId) || record.navigationChannelId || '',
+        render: (v: string) => renderCellWithTooltip(v ? (waterwayMap.get(v) || v) : null),
       },
       {
         label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
-        render: (v: string, r: Anchorage) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{r.buoyStationName || (v ? buoyStationMap.get(v) || v : '')}</span>,
+        cellTitle: (record: Anchorage) => record.buoyStationName || buoyStationMap.get(record.buoyStationId) || record.buoyStationId || '',
+        render: (v: string, r: Anchorage) => renderCellWithTooltip(r.buoyStationName || (v ? buoyStationMap.get(v) || v : null)),
       },
       {
         label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
-        render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : ''}</span>,
+        cellTitle: (record: Anchorage) => record.provinceId ? (VIETNAM_PROVINCES[Number(record.provinceId) - 1] || '') : '',
+        render: (v: number) => renderCellWithTooltip(v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : null),
       },
       {
         label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
@@ -1168,12 +1339,21 @@ export default function AnchorageListPage() {
       },
       {
         label: 'Cán bộ cập nhật', dataIndex: 'updatedAt', key: 'updatedAt', width: 200, sortable: true,
-        render: (v: string, record: Anchorage) => (
-          <div>
-            <span style={{ fontWeight: fontWeightBold }}>{userMap.get(record.updatedBy || '') || record.updatedBy || ''}</span><br />
-            <span style={{ opacity: 0.85 }}>{formatDate(v)}</span>
-          </div>
-        ),
+        cellTitle: (record: Anchorage) => userMap.get(record?.updatedBy || '') || record?.updatedBy || '',
+        render: (v: string, record: Anchorage) => {
+          const name = userMap.get(record.updatedBy || '') || record.updatedBy || '';
+          const date = formatDate(v);
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
+            </div>
+          );
+        },
       },
     ];
     const tailColumns: any[] = [];
@@ -1186,7 +1366,7 @@ export default function AnchorageListPage() {
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
-    if (hasPerm('anchorage:create')) {
+    if (hasPerm('anchorage:create') || hasPerm('anchorage:manage')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -1202,6 +1382,28 @@ export default function AnchorageListPage() {
     }
     return actions;
   }, [hasPerm, createForm]);
+
+  const statusTabs = useMemo(() => {
+    const allChildSum = TAB_STATUS_LIST
+      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return TAB_STATUS_LIST.map((tab) => {
+      let count = tabCounts[tab.key] ?? 0;
+      if (tab.key === 'all') {
+        count = allChildSum;
+      } else if (tab.key === activeTab) {
+        count = total;
+      }
+      return {
+        key: tab.key,
+        label: tab.label,
+        count,
+        color: tab.color,
+        active: activeTab === tab.key,
+      };
+    });
+  }, [tabCounts, activeTab, total]);
 
   const sortedDataSource = useMemo(() => {
     if (!sortField || !sortOrder) return dataSource;
@@ -1344,7 +1546,7 @@ export default function AnchorageListPage() {
           actions={headerActions} />
         <FilterTableLayout
           filterContent={filterContent}
-          statusTabs={TAB_STATUS_LIST.map(t => ({ key: t.key, label: t.label, color: t.color, count: tabCounts[t.key] ?? 0, active: activeTab === t.key }))}
+          statusTabs={statusTabs}
           onStatusTabChange={handleTabChange}
           onFilterApply={handleFilterApply}
           onFilterReset={handleFilterReset}
@@ -1352,7 +1554,7 @@ export default function AnchorageListPage() {
           onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
           loading={isLoading}
           error={isError}
-          onRetry={() => void fetchData()}
+          onRetry={() => { void fetchData(); void fetchCounts(); }}
         >
           <DataTable
             columns={columns}
@@ -1432,7 +1634,7 @@ export default function AnchorageListPage() {
                 setSortOrder('descend');
                 setPage(1);
                 void fetchData();
-                void fetchCounts(orgUnit);
+                void fetchCounts();
                 notifyEmbeddedActionClosed();
               }}
               onSubmittingChange={setSubmitting}
