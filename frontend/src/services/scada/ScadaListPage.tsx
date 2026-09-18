@@ -18,6 +18,7 @@ import {
     Select,
     Space,
     Tabs,
+    Tooltip,
     Typography,
 } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,7 +33,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
@@ -230,13 +231,12 @@ const scadaDetailSectionTitleStyle: React.CSSProperties = {
 
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return null;
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  } catch { return dateStr; }
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : String(dateStr);
+  } catch { return String(dateStr); }
 }
 
 /** Badge hiển thị giống chuẩn bến cảng: span pill + semantic token */
@@ -585,19 +585,7 @@ const ScadaListPage = () => {
     return m;
   }, [orgUnits]);
 
-  // Sorting
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
-  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
-    if (!order) {
-      setSortField(null);
-      setSortOrder(null);
-    } else {
-      setSortField(field);
-      setSortOrder(order === "asc" ? "ascend" : "descend");
-    }
-    setPage(0);
-  }, []);
+
 
   // Mở Drawer Xem chi tiết + nạp danh sách File đính kèm (read-only tab)
   const openDetailRecord = useCallback((record: ScadaResponse) => {
@@ -618,19 +606,56 @@ const ScadaListPage = () => {
   const columns = useMemo(
     () => {
       // Cột dạng "Cán bộ/Ngày": dòng 1 = tên (đậm), dòng 2 = ngày (màu phụ)
-      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
-        <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
-          <div
-            title={name || "—"}
-            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-          >
-            {name || "—"}
+      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => {
+        const dateText = date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "";
+        if (!name && !date) return null;
+        return (
+          <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
+              {dateText || null}
+            </div>
           </div>
-          <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
-            {date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "—"}
-          </div>
-        </div>
-      );
+        );
+      };
+
+      const renderCellWithTooltip = (
+        text: string | null | undefined,
+        isBold?: boolean
+      ) => {
+        if (!text) return null;
+        return (
+          <Tooltip title={text} placement="topLeft">
+            <span
+              style={{
+                ...tableMetaStyle,
+                fontWeight: isBold ? fontWeightBold : undefined,
+                display: "inline-block",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                verticalAlign: "middle",
+              }}
+              title={text}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        );
+      };
+
       return [
       {
         key: "index",
@@ -651,31 +676,38 @@ const ScadaListPage = () => {
         dataIndex: "deviceName",
         width: 300,
         fixed: "left" as const,
-        sortable: true,
-        sortOrder: sortField === "deviceName" ? sortOrder : null,
         ellipsis: false,
+        cellTitle: (record: ScadaResponse) => record.deviceName || '',
         render: (val: string, record: ScadaResponse) => (
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
             {hasPerm?.("scada:read") ? (
-              <button
-                type="button"
-                className="kcht-cell-title"
-                onClick={() => openDetailRecord(record)}
-                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-                title={val || null}
-              >
-                {val || null}
-              </button>
+              <Tooltip title={val || undefined} placement="topLeft">
+                <button
+                  type="button"
+                  className="kcht-cell-title"
+                  onClick={() => openDetailRecord(record)}
+                  style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </button>
+              </Tooltip>
             ) : (
-              <span
-                className="kcht-cell-title"
-                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
-                title={val || null}
-              >
-                {val || null}
-              </span>
+              <Tooltip title={val || undefined} placement="topLeft">
+                <span
+                  className="kcht-cell-title"
+                  style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </span>
+              </Tooltip>
             )}
-            <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
+            {record.deviceCode && (
+              <Tooltip title={record.deviceCode} placement="topLeft">
+                <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -684,27 +716,24 @@ const ScadaListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
-        ),
+        cellTitle: (record: ScadaResponse) => record.orgUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
         label: "Thuộc TTDH VTS/Trạm Radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: ScadaResponse) => record.attachedInfrastructureName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "operatingUnitName",
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: ScadaResponse) => record.operatingUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "provinceName",
@@ -712,9 +741,8 @@ const ScadaListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: ScadaResponse) => record.provinceName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "unitOfMeasure",
@@ -722,9 +750,8 @@ const ScadaListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
-        render: (val: number) => (
-          <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
-        ),
+        cellTitle: (record: ScadaResponse) => (record.unitOfMeasure != null ? formatUnitOfMeasure(record.unitOfMeasure) : '') || '',
+        render: (val: number) => renderCellWithTooltip(formatUnitOfMeasure(val)),
       },
       {
         key: "quantity",
@@ -791,8 +818,7 @@ const ScadaListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
-        sortable: true,
-        sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
+        cellTitle: (record: ScadaResponse) => record.updatedByName || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
@@ -800,6 +826,7 @@ const ScadaListPage = () => {
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        cellTitle: (record: ScadaResponse) => record.submittedByName || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
@@ -807,6 +834,7 @@ const ScadaListPage = () => {
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        cellTitle: (record: ScadaResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
@@ -814,11 +842,12 @@ const ScadaListPage = () => {
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        cellTitle: (record: ScadaResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder, openDetailRecord, hasPerm]
+    [page, pageSize, openDetailRecord, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1043,6 +1072,11 @@ const ScadaListPage = () => {
     setHistorySearch('');
     setHistoryFrom('');
     setHistoryTo('');
+    if (r.approvalStatus === 'DRAFT') {
+      setHistoryRecords([]);
+      setHistoryLoading(false);
+      return;
+    }
     try {
       const list = await fetchScadaHistory(r.id);
       setHistoryRecords(Array.isArray(list) ? list : []);
@@ -1056,13 +1090,76 @@ const ScadaListPage = () => {
   const isIgnoredHistoryItem = useCallback((r: any) => {
     const fn = (r.changedField || r.fieldName || r.field || '').trim();
     if (!fn) return true;
-    if (DEFAULT_IGNORED_FIELDS.has(fn) || DEFAULT_IGNORED_FIELDS.has(fn.toLowerCase())) return true;
     const lower = fn.toLowerCase();
-    if (lower === 'trạng thái phê duyệt' || lower === 'trang thai phe duyet' || lower === 'approvalstatus') return true;
-    if (fn === 'infrastructureList' || fn === 'infrastructureList_raw' || fn === 'attachments' || fn === 'spatialId') return true;
-    const ov = r.previousValue ?? r.oldValue ?? null;
-    const nv = r.newValue ?? null;
-    if (ov !== null && ov !== undefined && ov === nv) return true;
+    if (
+      DEFAULT_IGNORED_FIELDS.has(fn) ||
+      DEFAULT_IGNORED_FIELDS.has(lower) ||
+      lower === 'approvalstatus' ||
+      lower === 'trạng thái phê duyệt' ||
+      lower === 'trang thai phe duyet' ||
+      lower === 'trạng thái' ||
+      lower === 'approvalcontentlevel1' ||
+      lower === 'approvalcontentlevel2' ||
+      lower === 'level1approvalcontent' ||
+      lower === 'level2approvalcontent' ||
+      lower === 'submitteddate' ||
+      lower === 'submittedat' ||
+      lower === 'submittedby' ||
+      lower === 'approverlevel1' ||
+      lower === 'approverlevel2' ||
+      lower === 'approveddatelevel1' ||
+      lower === 'approveddatelevel2' ||
+      lower === 'rejectionreason' ||
+      lower === 'lý do từ chối' ||
+      lower === 'ly do tu choi' ||
+      lower === 'portauthorityapprovedby' ||
+      lower === 'portauthorityapprovedat' ||
+      lower === 'portauthorityapprovalcontent' ||
+      lower === 'departmentapprovedby' ||
+      lower === 'departmentapprovedat' ||
+      lower === 'departmentapprovalcontent' ||
+      lower === 'approvedby' ||
+      lower === 'approvedat' ||
+      lower === 'approvedremarks' ||
+      lower === 'cấp 1 phê duyệt' ||
+      lower === 'cấp 2 phê duyệt' ||
+      lower === 'nội dung phê duyệt' ||
+      lower === 'ngày gửi phê duyệt' ||
+      lower === 'người gửi phê duyệt' ||
+      fn === 'infrastructureList' ||
+      fn === 'infrastructureList_raw' ||
+      fn === 'attachments' ||
+      fn === 'spatialId'
+    ) {
+      return true;
+    }
+    const normalize = (v: any) => {
+      if (v == null) return '';
+      const s = String(v).trim();
+      if (s === '(null)' || s === 'null' || s === 'Chưa có') return '';
+      return s;
+    };
+    const ov = normalize(r.previousValue ?? r.oldValue ?? null);
+    const nv = normalize(r.newValue ?? null);
+    if (ov === '' && nv === '') return true;
+    if (ov !== '' && nv !== '' && ov === nv) return true;
+
+    // Lọc sạch dấu phẩy nếu là chuỗi số có định dạng hàng nghìn (VD: "5,555" hoặc "5555.0000")
+    const cleanOv = ov.replace(/,/g, '');
+    const cleanNv = nv.replace(/,/g, '');
+
+    // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25, 5,555 vs 5555.0000)
+    if (cleanOv !== '' && cleanNv !== '' && !isNaN(Number(cleanOv)) && !isNaN(Number(cleanNv)) && Math.abs(Number(cleanOv) - Number(cleanNv)) < 1e-9) {
+      return true;
+    }
+
+    // Bỏ qua nếu sau khi định dạng số hiển thị cả 2 bằng nhau
+    const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
+    const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+    if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
+      return true;
+    }
+
     return false;
   }, []);
 
@@ -1152,12 +1249,28 @@ const ScadaListPage = () => {
 
     let count = 0;
     for (const g of groups) {
-      const changes = deduplicateAttachmentHistoryChanges(
-        g.items.flatMap((item: any) => {
-          const fn = historyField(item);
-          return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
-        })
+      const seenLabels = new Set<string>();
+      const nonAttachmentChanges: any[] = [];
+      for (const item of g.items) {
+        if (isAttachmentField(historyField(item))) continue;
+        if (isIgnoredHistoryItem(item)) continue;
+        const fn = historyField(item);
+        if (!fn) continue;
+        const displayLabel = historyFieldName(fn).trim().toLowerCase();
+        if (seenLabels.has(displayLabel)) continue;
+        seenLabels.add(displayLabel);
+        nonAttachmentChanges.push({ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) });
+      }
+      const attachmentChanges = deduplicateAttachmentHistoryChanges(
+        g.items
+          .filter((item: any) => isAttachmentField(historyField(item)))
+          .flatMap((item: any) => {
+            if (isIgnoredHistoryItem(item)) return [];
+            const fn = historyField(item);
+            return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+          })
       );
+      const changes = [...nonAttachmentChanges, ...attachmentChanges];
       const orderedChanges = [...changes]
         .filter(
           (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
@@ -1216,13 +1329,28 @@ const ScadaListPage = () => {
             selectedRecord?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
           // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
-          const changes = deduplicateAttachmentHistoryChanges(
-            g.items.flatMap((item: any) => {
-              if (isIgnoredHistoryItem(item)) return [];
-              const fn = historyField(item);
-              return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
-            })
+          const seenLabels = new Set<string>();
+          const nonAttachmentChanges: any[] = [];
+          for (const item of g.items) {
+            if (isAttachmentField(historyField(item))) continue;
+            if (isIgnoredHistoryItem(item)) continue;
+            const fn = historyField(item);
+            if (!fn) continue;
+            const displayLabel = historyFieldName(fn).trim().toLowerCase();
+            if (seenLabels.has(displayLabel)) continue;
+            seenLabels.add(displayLabel);
+            nonAttachmentChanges.push({ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) });
+          }
+          const attachmentChanges = deduplicateAttachmentHistoryChanges(
+            g.items
+              .filter((item: any) => isAttachmentField(historyField(item)))
+              .flatMap((item: any) => {
+                if (isIgnoredHistoryItem(item)) return [];
+                const fn = historyField(item);
+                return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
+              })
           );
+          const changes = [...nonAttachmentChanges, ...attachmentChanges];
           const barColor = actionPrimary;
           const isCreate = changes.every(
             (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
@@ -1337,6 +1465,11 @@ const ScadaListPage = () => {
                           </div>
                         );
                       }
+                      const isOvEmpty = ov == null || ov === '' || ov === '—' || ov === 'Chưa có';
+                      const isNvEmpty = nv == null || nv === '' || nv === '—' || nv === 'Chưa có';
+                      if (!isCreate && isOvEmpty && isNvEmpty) return null;
+                      if (!isCreate && typeof ov === 'string' && typeof nv === 'string' && ov.trim() === nv.trim()) return null;
+
                       return (
                         <div
                           key={`${fn}-${ri}`}
@@ -1467,9 +1600,9 @@ const ScadaListPage = () => {
         });
       }
 
-      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + scada:update → Gửi phê duyệt (submitScada)
+      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + scada:update hoặc scada:create → Gửi phê duyệt (submitScada)
       if (
-        hasPerm?.("scada:update") &&
+        (hasPerm?.("scada:update") || hasPerm?.("scada:create")) &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2" ||
@@ -1587,8 +1720,8 @@ const ScadaListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -1599,7 +1732,7 @@ const ScadaListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   useEffect(() => {
@@ -1613,27 +1746,23 @@ const ScadaListPage = () => {
       setOrgUnits(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedOrgId || "" }));
       }
       setOrgUnitReady(true);
       setLoadingOrgs(false);
@@ -1643,7 +1772,7 @@ const ScadaListPage = () => {
       setOrgUnitReady(true);
       setLoadingOrgs(false);
     });
-  }, []);
+  }, [currentUser]);
 
   const fetchSymbols = useCallback(async () => {
     setLoadingSymbols(true);
@@ -2009,23 +2138,40 @@ const ScadaListPage = () => {
           { label: "Quản lý hệ thống SCADA", path: "/scada" },
         ]}
         actions={[
-          hasPerm?.("scada:create")
+          (hasPerm?.("scada:create") || hasPerm?.("scada:manage"))
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("scada:create")) {
+                  if (!hasPerm?.("scada:create") && !hasPerm?.("scada:manage")) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống SCADA");
                     return;
                   }
                   createForm.resetFields();
+                  // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+                  const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+                    || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
                   createForm.setFieldsValue({
                     operationalStatus: 0,
-                    orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+                    orgUnitId: currentOrgUnitId,
                   });
                   setCreateModalOpen(true);
+
+                  if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+                    api.get('/users/me')
+                      .then((res) => {
+                        const profile = res.data?.data ?? res.data;
+                        const uOrgId = profile?.orgUnitId;
+                        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+                          createForm.setFieldsValue({ orgUnitId: uOrgId });
+                        }
+                      })
+                      .catch(() => {});
+                  }
+
                   generateScadaCode()
                     .then((code) => {
                       if (code) createForm.setFieldsValue({ deviceCode: code });
@@ -2126,6 +2272,7 @@ const ScadaListPage = () => {
                           ? "Chọn Trung Tâm Điều Hành VTS"
                           : "Chọn loại hạ tầng trước"
                   } allowClear
+                    showSearch
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({
@@ -2279,7 +2426,6 @@ const ScadaListPage = () => {
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}
-              onSort={handleSort}
               rowActions={rowActions}
               locale={{
                 emptyText: (
@@ -2455,40 +2601,75 @@ const ScadaListPage = () => {
                       </div>
                       {detailApprovalOpen && (
                         <div className="chk-detail-grid">
-                          {(() => {
-                            let colIndex = 0;
-                            return ([
-                              { label: 'Trạng thái', value: renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy)), fullWidth: true },
-                              { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || null}</span> },
-                              { label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : null) },
-                              { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName || null}</span> },
-                              { label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : null },
-                              { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name || null}</span> },
-                              { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : null },
-                              { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvalContentLevel1 || null, fullWidth: true },
-                              { label: 'Cán bộ phê duyệt cấp Cục', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel2Name || null}</span> },
-                              { label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : null },
-                              { label: 'Nội dung phê duyệt cấp Cục', value: selectedRecord.approvalContentLevel2 || null, fullWidth: true },
-                              ...((selectedRecord.rejectionReason && String(selectedRecord.approvalStatus).toUpperCase().indexOf('REJECT') >= 0)
-                                ? [{ label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true }]
-                                : []),
-                            ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => {
-                              let labelCls: string;
-                              if (row.fullWidth) {
-                                labelCls = 'sec-full-label';
-                                colIndex = 0;
-                              } else {
-                                labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
-                                colIndex += 1;
-                              }
-                              return (
-                                <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
-                                  <span className={`chk-detail-label ${labelCls}`}>{row.label}</span>
-                                  <span className="chk-detail-value">{row.value}</span>
-                                </div>
-                              );
-                            });
-                          })()}
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              {renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy))}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.updatedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.updatedAt || selectedRecord.createdAt)}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.submittedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.submittedDate)}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel1Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel1)}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel1 || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel2Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel2Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel2)}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel2 || ''}</span>
+                          </div>
+                          {selectedRecord.rejectionReason && String(selectedRecord.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
+                            <div className="chk-detail-row chk-detail-row--full">
+                              <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                              <span className="chk-detail-value" style={{ color: statusCritical }}>{selectedRecord.rejectionReason}</span>
+                            </div>
+                          )}
+
                         </div>
                       )}
                     </div>
@@ -3085,23 +3266,23 @@ const ScadaListPage = () => {
           },
           body: { padding: '0 24px 12px 24px' },
         }}
-        afterOpenChange={(open) => {
-          if (open) createForm.resetFields();
-        }}
+        destroyOnClose
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" preserve={true} initialValues={{}}>
-          <ScadaForm
-            ref={scadaFormRef}
-            form={createForm}
-            onFinish={() => {
-              setCreateModalOpen(false);
-              fetchData();
-              fetchTabCounts();
-            }}
-            onSubmittingChange={setSubmitting}
-          />
-        </Form>
+        {createModalOpen && (
+          <Form form={createForm} layout="vertical" initialValues={{}}>
+            <ScadaForm
+              ref={scadaFormRef}
+              form={createForm}
+              onFinish={() => {
+                setCreateModalOpen(false);
+                fetchData();
+                fetchTabCounts();
+              }}
+              onSubmittingChange={setSubmitting}
+            />
+          </Form>
+        )}
       </AppDrawer>
 
       {/* ── Edit Drawer ──────────────────────────────────────────────── */}

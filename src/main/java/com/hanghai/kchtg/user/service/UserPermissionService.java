@@ -117,6 +117,7 @@ public class UserPermissionService {
                 if (known.isEmpty()) {
                     throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại: " + unknown);
                 }
+
             }
             if (targetUser != null) {
                 assertCanGrantPermission(targetUser, known);
@@ -154,6 +155,7 @@ public class UserPermissionService {
                     throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại: " + unknown);
                 }
                 requested.retainAll(known);
+
             }
             assertCanGrantPermission(user, requested);
         }
@@ -242,6 +244,7 @@ public class UserPermissionService {
                     throw new IllegalArgumentException("Danh sách quyền chứa mã quyền không tồn tại: " + unknown);
                 }
                 requested.retainAll(known);
+
             }
         }
 

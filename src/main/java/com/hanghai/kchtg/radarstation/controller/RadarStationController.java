@@ -50,7 +50,7 @@ public class RadarStationController {
         return null;
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:create')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:create')")
     @PostMapping
     public ResponseEntity<ApiResponse<RadarStationResponse>> create(
             @Valid @RequestBody RadarStationCreateRequest request, Authentication authentication) {
@@ -65,7 +65,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:create')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:create')")
     @GetMapping("/generate-code")
     public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
         try {
@@ -168,7 +168,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:update', 'radarstation:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:update', 'radarstation:approvec2')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<RadarStationResponse>> update(@PathVariable UUID id,
             @Valid @RequestBody RadarStationUpdateRequest request,
@@ -184,7 +184,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:delete')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:delete')")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id, Authentication authentication) {
         try {
@@ -196,7 +196,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update') or @auth.check(authentication, 'radarstation:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:create', 'radarstation:update', 'radarstation:approvec2')")
     @PostMapping(value = { "/{id}/submit", "/{id}/submit-approval" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> submitForApproval(@PathVariable UUID id,
             Authentication authentication) {
@@ -209,8 +209,8 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping(value = { "/{id}/approvec1", "/{id}/approve-l1" })
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:approvec1')")
+    @PostMapping(value = { "/{id}/approvec1", "/{id}/approve-l1", "/{id}/approve/c1" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> approveLevel1(
             @PathVariable UUID id,
             @RequestParam(required = false) String note,
@@ -224,8 +224,8 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec2')")
-    @PostMapping("/{id}/approvec2")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:approvec2')")
+    @PostMapping(value = { "/{id}/approvec2", "/{id}/approve-l2", "/{id}/approve/c2" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> approveLevel2(
             @PathVariable UUID id,
             @RequestParam(required = false) String note,
@@ -239,8 +239,8 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec1')")
-    @PostMapping(value = { "/{id}/rejectc1", "/{id}/reject" })
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:approvec1')")
+    @PostMapping(value = { "/{id}/rejectc1", "/{id}/reject", "/{id}/reject/c1" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> rejectLevel1(
             @PathVariable UUID id,
             @RequestParam(required = false) String reason,
@@ -256,8 +256,8 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:approvec2')")
-    @PostMapping("/{id}/rejectc2")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:approvec2')")
+    @PostMapping(value = { "/{id}/rejectc2", "/{id}/reject/c2" })
     public ResponseEntity<ApiResponse<RadarStationResponse>> rejectLevel2(
             @PathVariable UUID id,
             @RequestParam String reason,
@@ -271,7 +271,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:history') or @auth.check(authentication, 'radarstation:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:history', 'radarstation:read', 'data:read')")
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
@@ -324,7 +324,7 @@ public class RadarStationController {
 
     // ── Attachment endpoints (InfrastructureAttachment, ref_type RADAR_STATION) ──
 
-    @PreAuthorize("@auth.check(authentication, 'radarstation:create') or @auth.check(authentication, 'radarstation:update') or @auth.check(authentication, 'radarstation:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:create', 'radarstation:update', 'radarstation:approvec2')")
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<List<RadarStationAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
@@ -355,7 +355,7 @@ public class RadarStationController {
         }
     }
 
-    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:update', 'radarstation:delete', 'radarstation:approvec2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:update', 'radarstation:delete', 'radarstation:approvec2')")
     @DeleteMapping("/{id}/attachments/{attachmentId}")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,

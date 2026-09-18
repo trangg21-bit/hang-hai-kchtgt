@@ -14,6 +14,8 @@ import {
   Modal,
 } from 'antd';
 import toast from '../../components/ToastNotification';
+import api from '../../services/api';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { shipRepairFacilityCRUD, shipRepairFacilityApproval } from '../../services/shipRepairFacilityService';
 import { organizationService } from '../../services/organizationService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -114,9 +116,22 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
       loadData();
     } else {
       form.resetFields();
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else if (!currentUser?.orgUnitId) {
+        api.get('/users/me').then((r) => {
+          const p = r.data?.data ?? r.data;
+          const uOrgId = p?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            form.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        }).catch(() => {});
+      }
       setRecord(null);
     }
-  }, [id, isEditMode, form, open]);
+  }, [id, isEditMode, form, open, currentUser, organizations]);
 
   // Fetch history
   useEffect(() => {
@@ -489,13 +504,12 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
               label="Đơn vị quản lý"
               name="orgUnitId"
             >
-              <Select
-                placeholder="Chọn đơn vị quản lý"
+              <FormOrgUnitTreeSelect
+                organizations={organizations}
+                placeholder="Chọn đơn vị quản lý..."
                 allowClear
-                options={organizations.map((org) => ({
-                  value: org.id,
-                  label: org.code ? `${org.code} - ${org.name}` : org.name,
-                }))}
+                showPath
+                treeDefaultExpandAll={false}
               />
             </Form.Item>
 
@@ -612,13 +626,12 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
             label="Đơn vị quản lý"
             name="orgUnitId"
           >
-            <Select
-              placeholder="Chọn đơn vị quản lý"
+            <FormOrgUnitTreeSelect
+              organizations={organizations}
+              placeholder="Chọn đơn vị quản lý..."
               allowClear
-              options={organizations.map((org) => ({
-                value: org.id,
-                label: org.code ? `${org.code} - ${org.name}` : org.name,
-              }))}
+              showPath
+              treeDefaultExpandAll={false}
             />
           </Form.Item>
 

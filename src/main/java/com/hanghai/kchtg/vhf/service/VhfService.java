@@ -261,19 +261,23 @@ public class VhfService {
     LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
     LocalDateTime updatedToDt = parseLocalDateTime(updatedTo);
 
+    String cleanDeviceCode = (deviceCode != null && !deviceCode.trim().isEmpty()) ? deviceCode.trim() : null;
+    String cleanDeviceName = (deviceName != null && !deviceName.trim().isEmpty()) ? deviceName.trim() : null;
+    String cleanSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
     Page<Vhf> result = vhfRepository.searchVhf(
       isDeleted,
       includeAll, orgUnitIds,
       filterEnabled, filterOrgUnitIds,
       seaportId,
-      deviceCode, deviceName,
+      cleanDeviceCode, cleanDeviceName,
       opStatus, apprStatus,
       yearOfUse,
       updatedFromDt, updatedToDt,
       province,
       attachedInfrastructureType != null ? attachedInfrastructureType : null,
       attachedInfrastructureId != null ? attachedInfrastructureId : null,
-      search, pageable);
+      cleanSearch, pageable);
 
     return result.map(this::toResponse);
   }

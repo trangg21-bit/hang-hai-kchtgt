@@ -2259,6 +2259,17 @@ textarea::placeholder,
   white-space: nowrap !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
+  vertical-align: middle !important;
+}
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row):has(input) > td,
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row):has(.ant-input-number) > td,
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(input),
+.ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-input-number) {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  height: auto !important;
+  overflow: visible !important;
+  vertical-align: middle !important;
 }
 .ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(.ant-tag),
 .ant-drawer .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(span[style*="999px"]),

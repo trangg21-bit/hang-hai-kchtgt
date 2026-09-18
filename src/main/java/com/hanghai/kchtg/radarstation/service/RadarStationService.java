@@ -618,6 +618,10 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + radarStationId));
         validateAllowedOrgUnit(parent.getOrgUnitId());
 
+        if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Collections.emptyList();
+        }
+
         String normalizedKeyword = normalizeSearchKeyword(keyword);
         boolean paged = page != null && pageSize != null && pageSize > 0;
         List<InfrastructureHistory> historyList;
@@ -633,6 +637,7 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                     paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
         }
 
+        Set<String> seenSessionKeys = new HashSet<>();
         List<InfrastructureHistory> filteredList = historyList.stream()
                 .filter(h -> {
                     if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
@@ -641,11 +646,19 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                     String field = h.getChangedField();
                     if (field != null) {
                         String norm = field.trim().toLowerCase();
-                        if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+                        if (isExcludedHistoryField(norm)) {
                             return false;
                         }
                     }
                     if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+                        return false;
+                    }
+                    long epochSec = h.getApprovedDate() != null
+                            ? h.getApprovedDate().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+                            : 0L;
+                    String canonical = canonicalizeFieldName(h.getChangedField());
+                    String sessionKey = epochSec + "_" + canonical;
+                    if (!canonical.isEmpty() && !seenSessionKeys.add(sessionKey)) {
                         return false;
                     }
                     return true;
@@ -668,6 +681,9 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                     ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
                             : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                     : null;
+            if (userName == null || userName.isBlank()) {
+                userName = "Hệ thống";
+            }
             String orgUnitName = null;
             if (u != null) {
                 if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
@@ -698,6 +714,73 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
                     .newValue(newDisp)
                     .build();
         }).filter(Objects::nonNull).toList();
+    }
+
+    private static boolean isExcludedHistoryField(String norm) {
+        if (norm == null) return false;
+        return norm.equals("approvalstatus")
+                || norm.equals("trạng thái phê duyệt")
+                || norm.equals("trang thai phe duyet")
+                || norm.equals("trạng thái")
+                || norm.equals("approvalcontentlevel1")
+                || norm.equals("approvalcontentlevel2")
+                || norm.equals("level1approvalcontent")
+                || norm.equals("level2approvalcontent")
+                || norm.equals("submitteddate")
+                || norm.equals("submittedat")
+                || norm.equals("submittedby")
+                || norm.equals("approverlevel1")
+                || norm.equals("approverlevel2")
+                || norm.equals("approveddatelevel1")
+                || norm.equals("approveddatelevel2")
+                || norm.equals("rejectionreason")
+                || norm.equals("lý do từ chối")
+                || norm.equals("ly do tu choi")
+                || norm.equals("portauthorityapprovedby")
+                || norm.equals("portauthorityapprovedat")
+                || norm.equals("portauthorityapprovalcontent")
+                || norm.equals("departmentapprovedby")
+                || norm.equals("departmentapprovedat")
+                || norm.equals("departmentapprovalcontent")
+                || norm.equals("approvedby")
+                || norm.equals("approvedat")
+                || norm.equals("approvedremarks")
+                || norm.equals("cấp 1 phê duyệt")
+                || norm.equals("cấp 2 phê duyệt")
+                || norm.equals("nội dung phê duyệt")
+                || norm.equals("ngày gửi phê duyệt")
+                || norm.equals("người gửi phê duyệt");
+    }
+
+    private static String canonicalizeFieldName(String field) {
+        if (field == null) return "";
+        String norm = field.trim().toLowerCase();
+        return switch (norm) {
+            case "stationname", "tên trạm radar", "ten tram radar" -> "stationName";
+            case "code", "mã trạm radar", "ma tram radar" -> "code";
+            case "stationtype", "loại trạm", "loai tram" -> "stationType";
+            case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+            case "seaportid", "thuộc cảng biển", "thuoc cang bien", "cảng biển", "cang bien" -> "seaportId";
+            case "vtssystemid", "hệ thống vts", "he thong vts" -> "vtsSystemId";
+            case "vtsoperationcenterid", "trung tâm điều hành vts", "trung tam dieu hanh vts" -> "vtsOperationCenterId";
+            case "operatingunitid", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operatingUnitId";
+            case "provinceid", "province", "tỉnh/thành phố", "tinh/thanh pho", "địa điểm (tỉnh/tp)", "dia diem (tinh/tp)" -> "provinceId";
+            case "location", "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet" -> "location";
+            case "unitofmeasure", "đơn vị tính", "don vi tinh" -> "unitOfMeasure";
+            case "quantity", "số lượng", "so luong" -> "quantity";
+            case "conditionstatus", "tình trạng", "tinh trang", "tình trạng hoạt động", "tinh trang hoat dong" -> "conditionStatus";
+            case "towerheight", "chiều cao tháp", "chieu cao thap", "chiều cao tháp radar (m)", "chieu cao thap radar (m)" -> "towerHeight";
+            case "radarrange", "tầm phủ radar", "tam phu radar", "tầm hiệu lực radar", "tam hieu luc radar" -> "radarRange";
+            case "coverage", "vùng phủ sóng", "vung phu song" -> "coverage";
+            case "emissionarea", "diện tích phát xạ", "dien tich phat xa" -> "emissionArea";
+            case "source", "nguồn dữ liệu", "nguon du lieu" -> "source";
+            case "note", "ghi chú", "ghi chu" -> "note";
+            case "mapicon", "symbolid", "biểu tượng", "bieu tuong", "biểu tượng bản đồ", "bieu tuong ban do" -> "symbolId";
+            case "coordinates", "tọa độ", "toa do", "tọa độ gis", "toa do gis", "tọa độ gps", "toa do gps" -> "coordinates";
+            case "geometrytype", "objecttype", "loại đối tượng", "loai doi tuong", "loại đối tượng (gis)", "loai doi tuong (gis)", "loại đối tượng gis", "loai doi tuong gis" -> "geometryType";
+            case "attachments", "tài liệu đính kèm", "tai lieu dinh kem", "file đính kèm", "file dinh kem" -> "attachments";
+            default -> norm;
+        };
     }
 
     private LocalDateTime parseFromDate(String value) {

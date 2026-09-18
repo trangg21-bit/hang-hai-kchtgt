@@ -11,6 +11,7 @@ import {
     Radio,
     Select,
     Space,
+    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -81,7 +82,7 @@ import ShipRepairYardForm from './ShipRepairYardForm';
 
 export function isShipRepairYardDeleted(record?: Partial<ShipRepairYard> | null): boolean {
   if (!record) return false;
-  return Boolean(record.deletedAt || record.deletedBy);
+  return Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === 'DELETED' || record.approvalStatus === 'ARCHIVED');
 }
 
 const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -126,40 +127,193 @@ function formatDate(dateStr: string | null | undefined): string {
 
 // ── History helpers ───────────────────────────────────────────────────
 
-const historyFieldLabels: Record<string, string> = {
-  securityLevel: 'Cấp bảo mật', shipRepairYardCode: 'Mã cơ sở sửa chữa, đóng tàu', shipRepairYardName: 'Tên cơ sở sửa chữa, đóng tàu', portId: 'Thuộc cảng biển',
+export const EXCLUDED_CHANGE_FIELDS = new Set([
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'updatedBy',
+  'attachments',
+  'spatialId',
+  'Vị trí không gian',
+  'infrastructureList_raw',
+  'approvalStatus',
+  'approverLevel1',
+  'approvedDateLevel1',
+  'approverLevel2',
+  'approvedDateLevel2',
+  'rejectionReason',
+  'Lý do từ chối',
+  'ly do tu choi',
+  'Trạng thái phê duyệt',
+  'trang thai phe duyet',
+  'Trạng thái',
+  'trạng thái',
+  'activityStatus',
+  'deletedAt',
+  'deletedBy',
+  'submittedDate',
+  'submittedAt',
+  'submittedBy',
+  'submittedForApprovalAt',
+  'submittedForApprovalBy',
+  'Thời điểm gửi phê duyệt',
+  'Người gửi phê duyệt',
+  'ngày gửi phê duyệt',
+  'người gửi phê duyệt',
+  'approvalContentLevel1',
+  'approvalContentLevel2',
+  'level1ApprovalContent',
+  'level2ApprovalContent',
+  'approvalContent',
+  'nội dung phê duyệt',
+  'cấp 1 phê duyệt',
+  'cấp 2 phê duyệt',
+  'portAuthorityApprovedBy',
+  'portAuthorityApprovedAt',
+  'portAuthorityApprovalContent',
+  'departmentApprovedBy',
+  'departmentApprovedAt',
+  'departmentApprovalContent',
+  'Thời điểm Cảng vụ phê duyệt',
+  'Thời điểm Cục phê duyệt',
+  'Nội dung Cảng vụ phê duyệt',
+  'Nội dung Cục phê duyệt',
+  'Cán bộ Cảng vụ phê duyệt',
+  'Cán bộ Cục phê duyệt',
+  'approvedBy',
+  'approvedAt',
+  'approvedRemarks',
+]);
+
+export const NUMERIC_HISTORY_FIELDS = new Set([
+  'workshopArea',
+  'slipwayCount',
+  'provinceId',
+  'Diện tích nhà xưởng, kho bãi',
+  'Diện tích nhà xưởng, kho bãi (m2)',
+  'Số lượng triền đà',
+  'Số triền đà',
+]);
+
+export const historyFieldLabels: Record<string, string> = {
+  securityLevel: 'Cấp bảo mật',
+  shipRepairYardCode: 'Mã cơ sở sửa chữa, đóng tàu',
+  shipRepairYardName: 'Tên cơ sở sửa chữa, đóng tàu',
+  portId: 'Thuộc cảng biển',
   pierId: 'Thuộc cầu cảng',
-  provinceId: 'Tỉnh/Thành phố', detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động',
-  usageFunction: 'Công năng sử dụng', workshopArea: 'Diện tích nhà xưởng, kho bãi',
-  vesselType: 'Loại tàu đóng mới, sửa chữa', vesselDwt: 'Cỡ tàu',
-  businessType: 'Loại hình doanh nghiệp', activity: 'Hoạt động',
-  slipwayCount: 'Số lượng triền đà', remarks: 'Ghi chú',
-  orgUnitId: 'Đơn vị quản lý', mapSymbolId: 'Biểu tượng', approvalStatus: 'Trạng thái',
-  submittedForApprovalAt: 'Ngày gửi phê duyệt', submittedForApprovalBy: 'Người gửi phê duyệt',
-  portAuthorityApprovedAt: 'Ngày duyệt Cảng vụ', portAuthorityApprovedBy: 'Người duyệt Cảng vụ',
-  portAuthorityApprovalContent: 'Nội dung phê duyệt Cảng vụ',
-  departmentApprovedAt: 'Ngày duyệt Cục', departmentApprovedBy: 'Người duyệt Cục',
-  departmentApprovalContent: 'Nội dung phê duyệt Cục', rejectionReason: 'Lý do từ chối',
-  'Trạng thái': 'Trạng thái', 'Tọa độ GIS': 'Tọa độ GPS', 'Loại đối tượng GIS': 'Loại đối tượng',
-  'Tài liệu đính kèm': 'File đính kèm', 'File đính kèm': 'File đính kèm', attachments: 'File đính kèm',
+  provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
+  province: 'Địa điểm (Tỉnh/Thành Phố)',
+  detailedLocation: 'Địa điểm chi tiết',
+  operationalStatus: 'Tình trạng hoạt động',
+  usageFunction: 'Công năng sử dụng',
+  workshopArea: 'Diện tích nhà xưởng, kho bãi (m2)',
+  vesselType: 'Loại tàu đóng mới, sửa chữa',
+  vesselDwt: 'Cỡ tàu (DWT)',
+  businessType: 'Loại hình doanh nghiệp',
+  activity: 'Hoạt động',
+  slipwayCount: 'Số lượng triền đà',
+  remarks: 'Ghi chú',
+  orgUnitId: 'Đơn vị quản lý',
+  mapSymbolId: 'Biểu tượng',
+  approvalStatus: 'Trạng thái',
+  geometryType: 'Loại đối tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  spatialId: 'Vị trí không gian',
+  'Trạng thái': 'Trạng thái',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  'Tài liệu đính kèm': 'File đính kèm',
+  'File đính kèm': 'File đính kèm',
+  attachments: 'File đính kèm',
+  // Backward compatibility: map legacy field labels
+  'Cảng biển': 'Thuộc cảng biển',
+  'Cầu cảng': 'Thuộc cầu cảng',
+  'Tỉnh/Thành phố': 'Địa điểm (Tỉnh/Thành Phố)',
+  'Biểu tượng bản đồ': 'Biểu tượng',
 };
 
-function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
+export function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
 
-function historyFieldValue(fn: string, val: string | null, orgMap?: Map<string, string>, symbolMap?: Map<string, string>, portMap?: Map<string, string>, pierMap?: Map<string, string>): string {
+export function historyFieldValue(
+  fn: string,
+  val: string | null,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>,
+  portMap?: Map<string, string>,
+  pierMap?: Map<string, string>
+): string {
   if (!val || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
-  if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
-  if (fn === 'mapSymbolId' && symbolMap) return symbolMap.get(val) || val;
-  if (fn === 'portId' && portMap) return portMap.get(val) || val;
-  if (fn === 'pierId' && pierMap) return pierMap.get(val) || val;
-  if (fn === 'approvalStatus') { const m: Record<string,string> = { DRAFT:'Lưu tạm', PENDING_APPROVAL:'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1:'Chờ phê duyệt cấp Cục', APPROVED:'Đã phê duyệt', REJECTED_LEVEL1:'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2:'Từ chối cấp Cục', ARCHIVED:'Đã xóa' }; return m[val.toUpperCase()] || val; }
-  if (fn === 'operationalStatus') { const m: Record<string,string> = { OPERATIONAL:'Đang khai thác/vận hành', NOT_YET_OPERATIONAL:'Chưa khai thác/vận hành', SUSPENDED:'Dừng khai thác/vận hành', DANG_KHAI_THAC:'Đang khai thác/vận hành', CHUA_KHAI_THAC:'Chưa khai thác/vận hành', DUNG_KHAI_THAC:'Dừng khai thác/vận hành' }; return m[val.toUpperCase()] || val; }
-  if (fn === 'provinceId') { const m: Record<number,string> = { 1:'Hà Nội', 2:'Hà Giang', 3:'Cao Bằng', 4:'Bắc Kạn', 5:'Lào Cai', 6:'Tuyên Quang', 7:'Lạng Sơn', 8:'Quảng Ninh', 9:'Thái Nguyên', 10:'Yên Bái', 11:'Hà Nam', 12:'Hòa Bình', 13:'Nam Định', 14:'Ninh Bình', 15:'Thanh Hóa', 16:'Nghệ An', 17:'Hà Tĩnh', 18:'Quảng Bình', 19:'Quảng Trị', 20:'Thừa Thiên Huế', 21:'Đà Nẵng', 22:'Quảng Nam', 23:'Quảng Ngãi', 24:'Bình Định', 25:'Phú Yên', 26:'Khánh Hòa', 27:'Ninh Thuận', 28:'Bình Thuận', 29:'Kon Tum', 30:'Gia Lai', 31:'Đắk Lắk', 32:'Đắk Nông', 33:'Lâm Đồng', 34:'TP. Hồ Chí Minh', 35:'Bà Rịa - Vũng Tàu', 36:'Long An', 37:'Tiền Giang', 38:'An Giang', 39:'Bến Tre', 40:'Đồng Tháp', 41:'Vĩnh Long', 42:'Trà Vinh', 43:'Hậu Giang', 44:'Sóc Trăng', 45:'Kiên Giang', 46:'Cần Thơ', 47:'Bạc Liêu', 48:'Cà Mau', 49:'Điện Biên', 50:'Lai Châu', 51:'Sơn La', 52:'Yên Bái', 53:'Hòa Bình', 54:'Thái Bình', 55:'Hải Dương', 56:'Hải Phòng', 57:' Hưng Yên' }; return m[Number(val)-1] || val; }
-  if (fn.endsWith('At')) { try { return dayjs(val).format('DD/MM/YYYY HH:mm'); } catch { return val; } }
-  return val;
+  const v = val.trim();
+  if ((fn === 'orgUnitId' || fn === 'Đơn vị quản lý') && orgMap) { const full = orgMap.get(v); return full ? full.split(' - ').pop() || full : v; }
+  if ((fn === 'mapSymbolId' || fn === 'Biểu tượng' || fn === 'Biểu tượng bản đồ') && symbolMap) return symbolMap.get(v) || v;
+  if ((fn === 'portId' || fn === 'Thuộc cảng biển' || fn === 'Cảng biển') && portMap) return portMap.get(v) || v;
+  if ((fn === 'pierId' || fn === 'Thuộc cầu cảng' || fn === 'Cầu cảng') && pierMap) return pierMap.get(v) || v;
+  if (fn === 'approvalStatus' || fn === 'Trạng thái' || fn === 'Trạng thái phê duyệt') {
+    const m: Record<string, string> = {
+      DRAFT: 'Lưu tạm',
+      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+      APPROVED: 'Đã phê duyệt',
+      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
+      ARCHIVED: 'Đã xóa',
+    };
+    return m[v.toUpperCase()] || v;
+  }
+  if (fn === 'operationalStatus' || fn === 'Tình trạng' || fn === 'Tình trạng hoạt động') {
+    const m: Record<string, string> = {
+      OPERATIONAL: 'Đang khai thác/vận hành',
+      NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+      SUSPENDED: 'Dừng khai thác/vận hành',
+      DANG_KHAI_THAC: 'Đang khai thác/vận hành',
+      CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
+      DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
+    };
+    return m[v.toUpperCase()] || v;
+  }
+  if (fn === 'provinceId' || fn === 'province' || fn === 'Địa điểm (Tỉnh/Thành Phố)' || fn === 'Tỉnh/Thành phố') {
+    const num = Number(v);
+    if (!isNaN(num) && num >= 1 && num <= VIETNAM_PROVINCES.length) {
+      return VIETNAM_PROVINCES[num - 1];
+    }
+    return v;
+  }
+  if (fn === 'geometryType' || fn === 'Loại đối tượng' || fn === 'Loại đối tượng GIS') {
+    const m: Record<string, string> = { POINT: 'Điểm', LINE: 'Đường', POLYGON: 'Vùng' };
+    return m[v.toUpperCase()] || v;
+  }
+  if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[v] || v;
+  }
+  if (fn.endsWith('At') || fn.endsWith('Date') || fn.includes('Thời điểm') || fn.includes('Ngày')) {
+    try {
+      let d = dayjs(v);
+      if (!d.isValid()) { d = dayjs(v.replace(/\.\d+$/, '')); }
+      return d.isValid() ? d.format('DD/MM/YYYY HH:mm') : v;
+    } catch { return v; }
+  }
+  return v;
 }
 
-const HISTORY_FIELD_ORDER = ['orgUnitId', 'portId', 'pierId', 'shipRepairYardCode', 'shipRepairYardName', 'provinceId', 'detailedLocation', 'operationalStatus', 'usageFunction', 'workshopArea', 'vesselType', 'vesselDwt', 'businessType', 'activity', 'slipwayCount', 'remarks', 'mapSymbolId'];
+export const HISTORY_FIELD_ORDER = [
+  'orgUnitId', 'portId', 'pierId', 'shipRepairYardCode', 'shipRepairYardName',
+  'provinceId', 'province', 'detailedLocation', 'operationalStatus', 'approvalStatus',
+  'usageFunction', 'workshopArea', 'vesselType', 'vesselDwt', 'businessType', 'activity', 'slipwayCount',
+  'remarks', 'geometryType', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Tài liệu đính kèm',
+  // Vietnamese label aliases:
+  'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Thuộc cầu cảng', 'Cầu cảng',
+  'Mã cơ sở sửa chữa, đóng tàu', 'Tên cơ sở sửa chữa, đóng tàu', 'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố',
+  'Tình trạng hoạt động', 'Tình trạng', 'Trạng thái',
+  'Công năng sử dụng', 'Diện tích nhà xưởng, kho bãi', 'Diện tích nhà xưởng, kho bãi (m2)',
+  'Loại tàu đóng mới, sửa chữa', 'Cỡ tàu', 'Cỡ tàu (DWT)', 'Loại hình doanh nghiệp', 'Hoạt động',
+  'Số lượng triền đà', 'Số triền đà', 'Ghi chú', 'Biểu tượng', 'Biểu tượng bản đồ', 'Hệ quy chiếu', 'Quy tắc hiển thị',
+];
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -193,6 +347,7 @@ export default function ShipRepairYardList() {
   const [isError, setIsError] = useState(false);
   const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -280,14 +435,23 @@ export default function ShipRepairYardList() {
     const to = historyTo ? historyTo.trim() : '';
 
     return (historyRecords || []).filter((r: any) => {
+      const fn = String(r?.fieldName || r?.changedField || '').trim();
+      if (EXCLUDED_CHANGE_FIELDS.has(fn)) return false;
+      if (r?.previousValue != null && r?.newValue != null) {
+        if (r.previousValue === r.newValue) return false;
+        if (NUMERIC_HISTORY_FIELDS.has(fn)) {
+          const oldN = Number(r.previousValue);
+          const newN = Number(r.newValue);
+          if (!isNaN(oldN) && !isNaN(newN) && oldN === newN) return false;
+        }
+      }
       if (q) {
-        const fn = (r.fieldName || r.changedField || '').toLowerCase();
         const rawOld = (r.oldValue ?? r.previousValue ?? '').toLowerCase();
         const rawNew = (r.newValue || '').toLowerCase();
-        const label = historyFieldName(r.fieldName || r.changedField || '').toLowerCase();
-        const resolvedOld = historyFieldValue(r.fieldName || r.changedField || '', r.oldValue ?? r.previousValue ?? null, orgMap, symbolMap, portMap, pierMap).toLowerCase();
-        const resolvedNew = historyFieldValue(r.fieldName || r.changedField || '', r.newValue, orgMap, symbolMap, portMap, pierMap).toLowerCase();
-        if (!fn.includes(q) && !rawOld.includes(q) && !rawNew.includes(q) && !label.includes(q) && !resolvedOld.includes(q) && !resolvedNew.includes(q)) return false;
+        const label = historyFieldName(fn).toLowerCase();
+        const resolvedOld = historyFieldValue(fn, r.oldValue ?? r.previousValue ?? null, orgMap, symbolMap, portMap, pierMap).toLowerCase();
+        const resolvedNew = historyFieldValue(fn, r.newValue, orgMap, symbolMap, portMap, pierMap).toLowerCase();
+        if (!fn.toLowerCase().includes(q) && !rawOld.includes(q) && !rawNew.includes(q) && !label.includes(q) && !resolvedOld.includes(q) && !resolvedNew.includes(q)) return false;
       }
       if (historyEntityFilter && r.entityId !== historyEntityFilter) return false;
       if (from || to) {
@@ -327,13 +491,20 @@ export default function ShipRepairYardList() {
   }, [filteredHistory, orgMap, symbolMap, portMap, pierMap, historyTarget, symbolImageMap]);
 
   const openHistory = useCallback(async (r: ShipRepairYard) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
     setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/ship-repair-yard/${r.id}/history`);
       const d = res.data?.data;
-      const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];
+      const ch = Array.isArray(d?.changeHistory)
+        ? d.changeHistory.filter((it: any) => it.fieldName !== 'CREATE' && it.changedField !== 'CREATE')
+        : [];
       setHistoryRecords(ch);
     } catch { toast.error('Không thể tải lịch sử'); }
     finally { setHistoryLoading(false); }
@@ -375,11 +546,24 @@ export default function ShipRepairYardList() {
   useEffect(() => {
     const isIframe = window.self !== window.top;
     const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+    const currentUser = authUser || useAuthStore.getState().user;
     if (parentOrgUnits && parentOrgUnits.length > 0) {
       setOrganizations(parentOrgUnits);
       if (!defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const resolvedDefault = resolveDefaultOrgUnitId(authUser, parentOrgUnits);
+        let resolvedDefault = resolveDefaultOrgUnitId(currentUser, parentOrgUnits);
+        if (!resolvedDefault && !currentUser?.orgUnitId) {
+          api.get('/users/me')
+            .then((profileRes) => {
+              const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+              if (profile?.orgUnitId) {
+                const asyncResolved = resolveDefaultOrgUnitId(profile, parentOrgUnits) || profile.orgUnitId;
+                defaultOrgUnitId.current = asyncResolved;
+                setManagingUnitId(asyncResolved);
+              }
+            })
+            .catch(() => {});
+        }
         defaultOrgUnitId.current = resolvedDefault;
         setManagingUnitId(resolvedDefault);
       }
@@ -392,7 +576,18 @@ export default function ShipRepairYardList() {
           setOrganizations(data);
           if (!defaultOrgApplied.current) {
             defaultOrgApplied.current = true;
-            const resolvedDefault = resolveDefaultOrgUnitId(authUser, data);
+            let resolvedDefault = resolveDefaultOrgUnitId(currentUser, data);
+            if (!resolvedDefault && !currentUser?.orgUnitId) {
+              try {
+                const profileRes = await api.get('/users/me');
+                const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+                if (profile?.orgUnitId) {
+                  resolvedDefault = resolveDefaultOrgUnitId(profile, data) || profile.orgUnitId;
+                }
+              } catch {
+                // ignore
+              }
+            }
             defaultOrgUnitId.current = resolvedDefault;
             setManagingUnitId(resolvedDefault);
           }
@@ -426,7 +621,7 @@ export default function ShipRepairYardList() {
         setSymbolImageMap(imgMap);
       } catch { console.error('Failed to load symbols'); }
     })();
-  }, []);
+  }, [authUser]);
 
   // ── Load port options ──────────────────────────────────────────
   useEffect(() => {
@@ -454,30 +649,44 @@ export default function ShipRepairYardList() {
   }, [filterPortId]);
 
   // ── Fetch tab counts ────────────────────────────────────────────
-  const fetchCounts = useCallback(async (orgId: string | undefined) => {
+  const fetchCounts = useCallback(async (orgIdOverride?: string) => {
     try {
+      const targetOrg = orgIdOverride !== undefined ? orgIdOverride : managingUnitId;
+      const orgParam = targetOrg && targetOrg !== '__all__' ? targetOrg : undefined;
+      const baseFilterParams = {
+        orgUnitId: orgParam,
+        shipRepairYardName: filterName.trim() || undefined,
+        shipRepairYardCode: filterCode.trim() || undefined,
+        portId: filterPortId,
+        pierId: filterPierId,
+        provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
+        operationalStatus: filterOperationalStatus,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+      };
+
       const results = await Promise.allSettled(
         TAB_STATUS_LIST.map((tab) =>
-          tab.key === 'all'
-            ? shipRepairYardCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
-            : shipRepairYardCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
+          shipRepairYardCRUD.search({
+            ...baseFilterParams,
+            approvalStatus: TAB_QUERY_MAP[tab.key],
+            page: 1,
+            pageSize: 1,
+          }),
         ),
       );
       const counts: Record<string, number> = {};
-      let childSum = 0;
       results.forEach((result, idx) => {
         const tabKey = TAB_STATUS_LIST[idx]?.key || 'all';
-        const cnt = result.status === 'fulfilled' ? result.value.total : 0;
-        counts[tabKey] = cnt;
-        if (tabKey !== 'all') childSum += cnt;
+        counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
       });
-      const sumChildCounts = TAB_STATUS_LIST.filter((t) => t.key !== 'all').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
-      if (sumChildCounts > 0 && (!counts['all'] || counts['all'] < sumChildCounts)) {
-        counts['all'] = sumChildCounts;
-      }
+      const allChildSum = TAB_STATUS_LIST
+        .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+        .reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+      counts['all'] = allChildSum;
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, []);
+  }, [managingUnitId, filterName, filterCode, filterPortId, filterPierId, filterProvince, filterOperationalStatus, filterUpdatedFrom, filterUpdatedTo]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -512,18 +721,21 @@ export default function ShipRepairYardList() {
   const handleFilterApply = useCallback(() => {
     setPage(1);
     void fetchData();
-  }, [fetchData]);
+    void fetchCounts(managingUnitId);
+  }, [fetchData, fetchCounts, managingUnitId]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
-    setManagingUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    const resetOrg = defaultOrg === '__all__' ? undefined : defaultOrg;
+    setManagingUnitId(resetOrg);
     setFilterName(''); setFilterCode(''); setFilterPortId(undefined);
     setFilterPierId(undefined);
     setFilterProvince('');
     setFilterOperationalStatus(undefined);
     setFilterUpdatedFrom(undefined); setFilterUpdatedTo(undefined);
     setActiveTab('all'); setPage(1);
-  }, []);
+    void fetchCounts(resetOrg);
+  }, [fetchCounts]);
 
   const handleTabChange = useCallback((key: string) => {
     setActiveTab(key); setPage(1);
@@ -572,8 +784,12 @@ export default function ShipRepairYardList() {
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: ShipRepairYard, content?: string) => {
     try {
-      const cap = (record.approvalStatus === 'APPROVED_LEVEL1' || record.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
-      await shipRepairYardCRUD.approve(record.id, cap, content || 'Đã phê duyệt');
+      const isC2 = record.approvalStatus === 'APPROVED_LEVEL1' || record.approvalStatus === 'APPROVED_LEVEL2';
+      if (isC2) {
+        await shipRepairYardCRUD.approveC2(record.id, content || 'Đã phê duyệt');
+      } else {
+        await shipRepairYardCRUD.approveC1(record.id, content || 'Đã phê duyệt');
+      }
       toast.success('Đã phê duyệt cơ sở sửa chữa, đóng tàu');
       setApproveModalOpen(false); setApprovingRecord(null);
       setSortField('updatedAt');
@@ -586,7 +802,7 @@ export default function ShipRepairYardList() {
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     try {
-      await shipRepairYardCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
+      await shipRepairYardCRUD.submit(submittingRecord.id);
       toast.success('Đã gửi phê duyệt cơ sở sửa chữa, đóng tàu');
       setSubmitModalOpen(false); setSubmittingRecord(null);
       setSortField('updatedAt');
@@ -607,8 +823,12 @@ export default function ShipRepairYardList() {
     if (reason.length < 10) { toast.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
     if (reason.length > 500) { toast.error('Lý do từ chối tối đa 500 ký tự'); return; }
     try {
-      const cap = (rejectingRecord.approvalStatus === 'APPROVED_LEVEL1' || rejectingRecord.approvalStatus === 'APPROVED_LEVEL2') ? 'CUC' : 'CANG_VU';
-      await shipRepairYardCRUD.reject(rejectingRecord.id, cap, reason);
+      const isC2 = rejectingRecord.approvalStatus === 'APPROVED_LEVEL1' || rejectingRecord.approvalStatus === 'APPROVED_LEVEL2';
+      if (isC2) {
+        await shipRepairYardCRUD.rejectC2(rejectingRecord.id, reason);
+      } else {
+        await shipRepairYardCRUD.rejectC1(rejectingRecord.id, reason);
+      }
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
       setSortField('updatedAt');
@@ -621,7 +841,7 @@ export default function ShipRepairYardList() {
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
-    if (hasPerm('shiprepairyard:create')) {
+    if (hasPerm('shiprepairyard:create') || hasPerm('shiprepairyard:manage')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -632,12 +852,28 @@ export default function ShipRepairYardList() {
           setEditShipRepairYardName('');
           setEditBaseStatus(undefined);
           createForm.resetFields();
+          // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+          const currentUser = authUser || useAuthStore.getState().user;
+          const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+            || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+          createForm.setFieldsValue({
+            orgUnitId: currentOrgUnitId,
+          });
+          if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+            api.get('/users/me').then((r) => {
+              const p = r.data?.data ?? r.data;
+              const uOrgId = p?.orgUnitId;
+              if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+                createForm.setFieldsValue({ orgUnitId: uOrgId });
+              }
+            }).catch(() => {});
+          }
           setCreateDrawerVisible(true);
         },
       });
     }
     return actions;
-  }, [hasPerm, createForm]);
+  }, [hasPerm, createForm, authUser, organizations]);
 
   // ── Filter panel content ────────────────────────────────────────
   const filterContent = (
@@ -686,87 +922,137 @@ export default function ShipRepairYardList() {
         />
       </div>
 
-      {/* ── Bộ lọc nâng cao: hiển thị trực tiếp theo chuẩn AGENTS.md ───────── */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cơ sở sửa chữa, đóng tàu</div>
-        <Input
-          placeholder="Tìm theo mã cơ sở sửa chữa, đóng tàu"
-          allowClear
-          prefix={<SearchOutlined style={{ color: textTertiary }} />}
-          value={filterCode}
-          onChange={(e) => setFilterCode(e.target.value)}
-          onPressEnter={handleFilterApply}
-          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
-        />
-      </div>
+      {/* ── Bộ lọc nâng cao: hiển thị khi filterCollapsed (chuẩn BuoyBerthListPage/AnchorageListPage) ───────── */}
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cơ sở sửa chữa, đóng tàu</div>
+            <Input
+              placeholder="Tìm theo mã cơ sở sửa chữa, đóng tàu"
+              allowClear
+              prefix={<SearchOutlined style={{ color: textTertiary }} />}
+              value={filterCode}
+              onChange={(e) => setFilterCode(e.target.value)}
+              onPressEnter={handleFilterApply}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+            />
+          </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
-        <Select
-          placeholder="Chọn cảng biển"
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          value={filterPortId}
-          onChange={(v) => { setFilterPortId(v); setFilterPierId(undefined); setPage(1); }}
-          options={portOptions}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
+            <Select
+              placeholder="Chọn cảng biển"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              value={filterPortId}
+              onChange={(v) => { setFilterPortId(v); setFilterPierId(undefined); setPage(1); }}
+              options={portOptions}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cầu cảng</div>
-        <Select
-          placeholder="Chọn cầu cảng"
-          allowClear
-          showSearch
-          optionFilterProp="label"
-          value={filterPierId}
-          onChange={(v) => { setFilterPierId(v); setPage(1); }}
-          options={pierOptions}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cầu cảng</div>
+            <Select
+              placeholder="Chọn cầu cảng"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              value={filterPierId}
+              onChange={(v) => { setFilterPierId(v); setPage(1); }}
+              options={pierOptions}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
-        <Select
-          placeholder="Chọn tỉnh/thành phố"
-          allowClear
-          showSearch
-          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-          value={filterProvince || undefined}
-          onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
-          options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
+            <Select
+              placeholder="Chọn tỉnh/thành phố"
+              allowClear
+              showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              value={filterProvince || undefined}
+              onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
+              options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-        <DatePicker.RangePicker
-          format="DD/MM/YYYY"
-          placeholder={['Từ ngày', 'Đến ngày']}
-          allowClear
-          popupClassName="chk-range-datepicker-popup"
-          classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
-          value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
-          onChange={(dates) => {
-            setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
-            setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
-            setPage(1);
-          }}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+            <DatePicker.RangePicker
+              format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']}
+              allowClear
+              popupClassName="chk-range-datepicker-popup"
+              classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
+              value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
+              onChange={(dates) => {
+                setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined);
+                setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined);
+                setPage(1);
+              }}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 
+  const getSortValue = useCallback((r: any, field: string): string | number => {
+    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'shipRepairYardName') return r.shipRepairYardName ?? '';
+    if (field === 'shipRepairYardCode') return r.shipRepairYardCode ?? '';
+    if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label || r.portName || r.portId || '';
+    if (field === 'pierId') return pierOptions.find(o => o.value === r.pierId)?.label || r.pierName || r.pierId || '';
+    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : '';
+    if (field === 'operationalStatus') {
+      const m: Record<string, string> = {
+        OPERATIONAL: 'Đang khai thác/vận hành',
+        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+        SUSPENDED: 'Dừng khai thác/vận hành',
+      };
+      return m[r.operationalStatus] || r.operationalStatus || '';
+    }
+    if (field === 'approvalStatus') {
+      if (isShipRepairYardDeleted(r)) return 'Đã xóa';
+      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
+    }
+    if (field === 'updatedAt' || field === 'updatedBy') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
+    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
+    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
+    return r[field] ?? '';
+  }, [organizations, orgMap, portOptions, pierOptions]);
+
   // ── Status tabs config ──────────────────────────────────────────
-  const statusTabs = TAB_STATUS_LIST.map((tab) => ({
-    key: tab.key, label: tab.label, count: tabCounts[tab.key] ?? 0,
-    color: tab.color, active: activeTab === tab.key,
-  }));
+  const statusTabs = useMemo(() => {
+    const allChildSum = TAB_STATUS_LIST
+      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return TAB_STATUS_LIST.map((tab) => {
+      let count = tabCounts[tab.key] ?? 0;
+      if (tab.key === 'all') {
+        count = allChildSum;
+      } else if (tab.key === activeTab) {
+        count = total;
+      }
+      return {
+        key: tab.key,
+        label: tab.label,
+        count,
+        color: tab.color,
+        active: activeTab === tab.key,
+      };
+    });
+  }, [tabCounts, activeTab, total]);
 
   // ── rowActions callback (Port pattern) ──────────────────────────
   // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
@@ -777,7 +1063,7 @@ export default function ShipRepairYardList() {
         const actions: any[] = [
           { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
         ];
-        if (hasPerm('shiprepairyard:history')) {
+        if (hasPerm('shiprepairyard:history') || hasPerm('shiprepairyard:manage')) {
           actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
         }
         return actions;
@@ -801,27 +1087,27 @@ export default function ShipRepairYardList() {
           },
         });
       }
-      if (['DRAFT','NHAP'].includes(st) && hasPerm('shiprepairyard:update')) {
+      if (['DRAFT','NHAP'].includes(st) && (hasPerm('shiprepairyard:update') || hasPerm('shiprepairyard:create') || hasPerm('shiprepairyard:manage'))) {
         actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       }
-      if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && hasPerm('shiprepairyard:update')) {
+      if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && (hasPerm('shiprepairyard:update') || hasPerm('shiprepairyard:create') || hasPerm('shiprepairyard:manage'))) {
         actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       }
       // Lịch sử — luôn hiển thị khi có quyền
-      if (hasPerm('shiprepairyard:history')) {
+      if (hasPerm('shiprepairyard:history') || hasPerm('shiprepairyard:manage')) {
         actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       }
       // Phê duyệt / Từ chối — theo trạng thái 2 cấp
-      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET','PROPOSED'].includes(st) && hasPerm('shiprepairyard:approvec1')) {
+      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET','PROPOSED'].includes(st) && (hasPerm('shiprepairyard:approvec1') || hasPerm('shiprepairyard:manage'))) {
         actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
         actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
       }
-      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && hasPerm('shiprepairyard:approvec2')) {
+      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && (hasPerm('shiprepairyard:approvec2') || hasPerm('shiprepairyard:manage'))) {
         actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
         actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
       }
       // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
-      if (hasPerm('shiprepairyard:delete') && ['DRAFT','NHAP'].includes(st)) {
+      if ((hasPerm('shiprepairyard:delete') || hasPerm('shiprepairyard:manage')) && ['DRAFT','NHAP'].includes(st)) {
         actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
       }
       return actions;
@@ -830,33 +1116,32 @@ export default function ShipRepairYardList() {
   );
 
   // ── Table columns (đối chiếu đúng cột CSV) ─────────────────────
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'shipRepairYardName') return r.shipRepairYardName ?? '';
-    if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
-    if (field === 'pierId') return pierOptions.find(o => o.value === r.pierId)?.label ?? r.pierName ?? r.pierId ?? '';
-    if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
-    if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus] || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      if (isShipRepairYardDeleted(r)) return 'Đã xóa';
-      return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap, portOptions, pierOptions]);
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -877,18 +1162,25 @@ export default function ShipRepairYardList() {
         fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
+        cellTitle: (record: ShipRepairYard) => record.shipRepairYardName || '',
         render: (v: string, record: ShipRepairYard) => (
-          <div>
-            <a
-              title={v}
-              onClick={() => openDetailDrawer(record)}
-              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {v}
-            </a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {record.shipRepairYardCode || ''}
-            </span>
+          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <Tooltip title={v || undefined} placement="topLeft">
+              <a
+                title={v}
+                onClick={() => openDetailDrawer(record)}
+                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {v}
+              </a>
+            </Tooltip>
+            {record.shipRepairYardCode && (
+              <Tooltip title={record.shipRepairYardCode} placement="topLeft">
+                <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.shipRepairYardCode}>
+                  {record.shipRepairYardCode}
+                </span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -898,11 +1190,11 @@ export default function ShipRepairYardList() {
         dataIndex: 'orgUnitId',
         width: 260,
         sortable: true,
-        render: (_v: string | null, record: ShipRepairYard) => (
-          <span style={{ fontWeight: fontWeightBold }}>
-            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || ''}
-          </span>
-        ),
+        cellTitle: (record: ShipRepairYard) => resolveOrgLevel2Name(organizations, record?.orgUnitId) || orgMap.get(record?.orgUnitId || '') || '',
+        render: (_v: string | null, record: ShipRepairYard) => {
+          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || null;
+          return renderCellWithTooltip(name, true);
+        },
       },
       {
         key: 'portId',
@@ -910,7 +1202,8 @@ export default function ShipRepairYardList() {
         dataIndex: 'portId',
         width: 200,
         sortable: true,
-        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '',
+        cellTitle: (record: ShipRepairYard) => portOptions.find(o => o.value === record?.portId)?.label || record?.portId || '',
+        render: (v: string | null) => renderCellWithTooltip(portOptions.find(o => o.value === v)?.label || v || null),
       },
       {
         key: 'pierId',
@@ -918,7 +1211,8 @@ export default function ShipRepairYardList() {
         dataIndex: 'pierId',
         width: 200,
         sortable: true,
-        render: (v: string | null, record: ShipRepairYard) => pierOptions.find(o => o.value === v)?.label || record.pierName || v || '',
+        cellTitle: (record: ShipRepairYard) => pierOptions.find(o => o.value === record?.pierId)?.label || record?.pierName || record?.pierId || '',
+        render: (v: string | null, record: ShipRepairYard) => renderCellWithTooltip(pierOptions.find(o => o.value === v)?.label || record.pierName || v || null),
       },
       {
         key: 'provinceId',
@@ -926,7 +1220,8 @@ export default function ShipRepairYardList() {
         dataIndex: 'provinceId',
         width: 250,
         sortable: true,
-        render: (v: number | null) => (v ? VIETNAM_PROVINCES[v - 1] : ''),
+        cellTitle: (record: ShipRepairYard) => (record?.provinceId ? VIETNAM_PROVINCES[record.provinceId - 1] : '') || '',
+        render: (v: number | null) => renderCellWithTooltip(v ? VIETNAM_PROVINCES[v - 1] : null),
       },
       {
         key: 'operationalStatus',
@@ -950,6 +1245,10 @@ export default function ShipRepairYardList() {
     // Audit columns
     const auditColumns: any[] = [
       { key: 'updatedAt', label: <span>Cán bộ cập nhật</span>, dataIndex: 'updatedAt', width: 200, sortable: true,
+        cellTitle: (record: ShipRepairYard) => {
+          const rawName = formatUserDisplayName(record?.updatedBy, (record as any)?.updatedByName, userMap, record?.createdBy, (record as any)?.createdByName);
+          return (rawName === '—' || rawName === '-') ? '' : rawName;
+        },
         render: (v: string | null, record: ShipRepairYard) => {
           const rawName = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
           const name = (rawName === '—' || rawName === '-') ? '' : rawName;
@@ -957,14 +1256,21 @@ export default function ShipRepairYardList() {
           const cleanDate = (date === '—' || date === '-') ? '' : date;
           if (!name && !cleanDate) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && cleanDate && <br />}
-              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
           );
         } },
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true,
+        cellTitle: (record: ShipRepairYard) => {
+          const rawName = formatUserDisplayName(record?.submittedForApprovalBy, (record as any)?.submittedForApprovalByName, userMap);
+          return (rawName === '—' || rawName === '-') ? '' : rawName;
+        },
         render: (v: string | null, record: ShipRepairYard) => {
           const rawName = formatUserDisplayName(record.submittedForApprovalBy, (record as any).submittedForApprovalByName, userMap);
           const name = (rawName === '—' || rawName === '-') ? '' : rawName;
@@ -972,14 +1278,21 @@ export default function ShipRepairYardList() {
           const cleanDate = (date === '—' || date === '-') ? '' : date;
           if (!name && !cleanDate) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && cleanDate && <br />}
-              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
           );
         } },
       { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true,
+        cellTitle: (record: ShipRepairYard) => {
+          const rawName = formatUserDisplayName(record?.portAuthorityApprovedBy, (record as any)?.portAuthorityApprovedByName, userMap);
+          return (rawName === '—' || rawName === '-') ? '' : rawName;
+        },
         render: (v: string | null, record: ShipRepairYard) => {
           const rawName = formatUserDisplayName(record.portAuthorityApprovedBy, (record as any).portAuthorityApprovedByName, userMap);
           const name = (rawName === '—' || rawName === '-') ? '' : rawName;
@@ -987,14 +1300,21 @@ export default function ShipRepairYardList() {
           const cleanDate = (date === '—' || date === '-') ? '' : date;
           if (!name && !cleanDate) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && cleanDate && <br />}
-              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
           );
         } },
       { key: 'departmentApprovedAt', label: <span>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'departmentApprovedAt', width: 240, sortable: true,
+        cellTitle: (record: ShipRepairYard) => {
+          const rawName = formatUserDisplayName(record?.departmentApprovedBy, (record as any)?.departmentApprovedByName, userMap);
+          return (rawName === '—' || rawName === '-') ? '' : rawName;
+        },
         render: (v: string | null, record: ShipRepairYard) => {
           const rawName = formatUserDisplayName(record.departmentApprovedBy, (record as any).departmentApprovedByName, userMap);
           const name = (rawName === '—' || rawName === '-') ? '' : rawName;
@@ -1002,10 +1322,13 @@ export default function ShipRepairYardList() {
           const cleanDate = (date === '—' || date === '-') ? '' : date;
           if (!name && !cleanDate) return '';
           return (
-            <div>
-              {name && <span style={{ fontWeight: fontWeightBold }}>{name}</span>}
-              {name && cleanDate && <br />}
-              {cleanDate && <span style={{ opacity: 0.85 }}>{cleanDate}</span>}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name && (
+                <Tooltip title={name} placement="topLeft">
+                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                </Tooltip>
+              )}
+              {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
           );
         } },
@@ -1024,7 +1347,7 @@ export default function ShipRepairYardList() {
     ];
 
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
-    return allColumns.map(col => ({
+    return allColumns.map((col) => ({
       ...col,
       sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
@@ -1040,6 +1363,21 @@ export default function ShipRepairYardList() {
     sortField,
     sortOrder,
   ]);
+
+  const sortedDataSource = useMemo(() => {
+    if (!sortField || !sortOrder) return dataSource;
+    if (sortField === 'sequenceNo' || sortField === 'stt') {
+      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
+    }
+    return [...dataSource].sort((a, b) => {
+      const av = getSortValue(a, sortField);
+      const bv = getSortValue(b, sortField);
+      const c = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
+      return sortOrder === 'ascend' ? c : -c;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
 
   // ── Detail drawer content ────────────────────────────────────────
   const ddToDms = (dd: number): { d: number; m: number; s: number } => {
@@ -1159,25 +1497,27 @@ export default function ShipRepairYardList() {
         onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed}
         onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
-        hideFilterToggle={true}
         loading={isLoading}
         error={isError}
         onRetry={() => void fetchData()}
       >
-        <DataTable columns={columns}
-          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField || !sortOrder) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
-          rowKey="id" rowActions={rowActions} loading={false}
-          onSort={(key: string, order: 'asc' | 'desc' | null) => {
-            if (!order) {
+        <DataTable
+          columns={columns}
+          dataSource={sortedDataSource}
+          rowKey="id"
+          rowActions={rowActions}
+          loading={false}
+          onSort={(k: string, o: 'asc' | 'desc' | null) => {
+            if (!o) {
               setSortField(null);
               setSortOrder(null);
             } else {
-              setSortField(key);
-              setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+              setSortField(k);
+              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
             }
             setPage(1);
           }}
-            scroll={{ x: 'max-content' }}
+          scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}
           onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
@@ -1407,7 +1747,7 @@ export default function ShipRepairYardList() {
         {!historyLoading && (
           <div style={{ display: 'none' }}>
             <Radio.Group value={historyMode} size="middle" style={{ display: 'flex', width: '100%', borderBottom: `1px solid ${borderDefault}` }}
-              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/ship-repair-yard/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { try { const res = await api.get(`/v1/ship-repair-yard/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
+              onChange={async e => { const mode = e.target.value; setHistoryMode(mode); setHistoryLoading(true); setHistoryRecords([]); if (mode === 'all') { try { const res = await api.get('/v1/ship-repair-yard/history/all'); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); setHistoryEntityNames(d?.entityNames || {}); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } else { if (historyTarget?.approvalStatus === 'DRAFT' || (historyTarget as any)?.status === 'DRAFT') { setHistoryRecords([]); setHistoryLoading(false); return; } try { const res = await api.get(`/v1/ship-repair-yard/${historyTarget?.id}/history`); const d = res.data?.data; setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : []); } catch { toast.error('Không thể tải lịch sử'); } finally { setHistoryLoading(false); } } }}>
               <Radio.Button value="current" style={{ fontWeight: fontWeightBold, color: historyMode !== 'current' ? textSecondary : actionPrimary }}>Bản ghi hiện tại</Radio.Button>
               <Radio.Button value="all" style={{ fontWeight: fontWeightBold, color: historyMode !== 'all' ? textSecondary : actionPrimary }}>Tất cả bản ghi</Radio.Button>
             </Radio.Group>

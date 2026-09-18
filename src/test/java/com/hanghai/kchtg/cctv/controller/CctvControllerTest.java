@@ -104,4 +104,22 @@ class CctvControllerTest {
         assertNotNull(result.getBody());
         verify(cctvService).generateCctvCode();
     }
+
+    @Test
+    void testRejectC1() {
+        when(cctvApprovalService.approveC1(eq(TEST_ID), any(), any())).thenReturn(response);
+        ResponseEntity<?> result = controller.rejectC1(TEST_ID, "Thiếu tài liệu", null);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        verify(cctvApprovalService).approveC1(eq(TEST_ID), any(), any());
+    }
+
+    @Test
+    void testRejectC2() {
+        when(cctvApprovalService.approveC2(eq(TEST_ID), any(), any())).thenReturn(response);
+        ResponseEntity<?> result = controller.rejectC2(TEST_ID, "Sai thông số", null);
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        verify(cctvApprovalService).approveC2(eq(TEST_ID), any(), any());
+    }
 }

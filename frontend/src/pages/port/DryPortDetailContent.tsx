@@ -10,7 +10,7 @@ import { colors } from '../../themetokenchk';
 import {
   surfaceCard,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold, spaceSm, spaceMd, spaceFormField,
-  actionPrimary, statusBadgeStyle,
+  actionPrimary, statusBadgeStyle, statusCritical,
   outlineButtonStyle, primaryButtonStyle,
   formatUserDisplayName, isUuidString,
   DRAWER_TABLE_SCROLL_Y,
@@ -103,6 +103,13 @@ export default function DryPortDetailContent({
   const [approvalOpen, setApprovalOpen] = useState(true);
   const [planOpen, setPlanOpen] = useState(true);
 
+  const renderDmsText = (dd: number | null | undefined, isLat: boolean): string => {
+    if (dd == null || isNaN(Number(dd))) return '';
+    const dms = ddToDms(Number(dd));
+    if (!dms || dms.d == null) return '';
+    return `${dms.d}° ${dms.m ?? 0}' ${dms.s ?? 0}" ${isLat ? 'N' : 'E'}`;
+  };
+
   // Bản đồ orgUnitId → tên đơn vị
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -175,9 +182,9 @@ export default function DryPortDetailContent({
 
         .dry-port-drawer-scope .dry-port-detail-content-wrapper .chk-detail-row .sec-col1-label,
         .dry-port-detail-content-wrapper .sec-col1-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
+          width: 235px !important;
+          min-width: 235px !important;
+          max-width: 235px !important;
           flex-shrink: 0 !important;
         }
 
@@ -191,9 +198,10 @@ export default function DryPortDetailContent({
 
         .dry-port-drawer-scope .dry-port-detail-content-wrapper .chk-detail-row .sec-full-label,
         .dry-port-detail-content-wrapper .sec-full-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
+          width: auto !important;
+          min-width: 235px !important;
+          max-width: 320px !important;
+          white-space: nowrap !important;
           flex-shrink: 0 !important;
         }
 
@@ -393,39 +401,95 @@ export default function DryPortDetailContent({
                   </div>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
-                      {[
-                        {
-                          label: 'Trạng thái',
-                          value: (() => {
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                        <span className="chk-detail-value">
+                          {(() => {
+                            const isDeleted = Boolean(r.deletedAt || r.deletedBy);
+                            if (isDeleted) {
+                              return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+                            }
                             const badge = trangThaiPheDuyetBadge(r.approvalStatus);
                             return badge.label ? <span style={badge.style}>{badge.label}</span> : '';
-                          })(),
-                          fullWidth: true,
-                        },
-                        {
-                          label: 'Cán bộ cập nhật',
-                          value: formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName),
-                          isCol1: true,
-                          bold: true,
-                        },
-                        {
-                          label: 'Ngày cập nhật',
-                          value: r.updatedAt ? dayjs(r.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '',
-                          isCol1: false,
-                        },
-                      ].map((row, i) => (
-                        <div
-                          key={i}
-                          className={`chk-detail-row${row.fullWidth ? ' chk-detail-row--full' : ''}`}
-                        >
-                          <span className={`chk-detail-label ${row.fullWidth ? 'sec-full-label' : (row.isCol1 ? 'sec-col1-label' : 'sec-col2-label')}`}>
-                            {row.label}
+                          })()}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
+                        <span className="chk-detail-value">
+                          <span style={{ fontWeight: fontWeightBold }}>
+                            {formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName)}
                           </span>
-                          <span className="chk-detail-value" style={row.bold ? { fontWeight: fontWeightBold } : undefined}>
-                            {row.value}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-value">
+                          {r.updatedAt || (r as any).updatedDate || r.createdAt || (r as any).createdDate ? dayjs(r.updatedAt || (r as any).updatedDate || r.createdAt || (r as any).createdDate).format('DD/MM/YYYY HH:mm:ss') : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
+                        <span className="chk-detail-value">
+                          <span style={{ fontWeight: fontWeightBold }}>
+                            {formatUserDisplayName((r as any).submittedForApprovalBy || (r as any).submittedBy, (r as any).submittedForApprovalByName || (r as any).submittedByName, userMap)}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
+                        <span className="chk-detail-value">
+                          {(r as any).submittedForApprovalAt || (r as any).submittedAt || (r as any).submittedDate ? dayjs((r as any).submittedForApprovalAt || (r as any).submittedAt || (r as any).submittedDate).format('DD/MM/YYYY HH:mm:ss') : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">
+                          <span style={{ fontWeight: fontWeightBold }}>
+                            {formatUserDisplayName((r as any).portAuthorityApprovedBy || r.approverLevel1, (r as any).portAuthorityApprovedByName || (r as any).approverLevel1Name, userMap)}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">
+                          {(r as any).portAuthorityApprovedAt || r.approvedDateLevel1 ? dayjs((r as any).portAuthorityApprovedAt || r.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {(r as any).portAuthorityApprovalContent || (r as any).approvalContentLevel1 || ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">
+                          <span style={{ fontWeight: fontWeightBold }}>
+                            {formatUserDisplayName((r as any).departmentApprovedBy || r.approverLevel2, (r as any).departmentApprovedByName || (r as any).approverLevel2Name, userMap)}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">
+                          {(r as any).departmentApprovedAt || r.approvedDateLevel2 ? dayjs((r as any).departmentApprovedAt || r.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : ''}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {(r as any).departmentApprovalContent || (r as any).approvalContentLevel2 || ''}
+                        </span>
+                      </div>
+                      {Boolean(r.rejectionReason || (r as any).rejectReason) && String(r.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
+                        <div className="chk-detail-row chk-detail-row--full">
+                          <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                          <span className="chk-detail-value" style={{ color: statusCritical }}>
+                            {r.rejectionReason || (r as any).rejectReason}
                           </span>
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
@@ -441,16 +505,36 @@ export default function DryPortDetailContent({
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
                     <span className="chk-detail-value">
-                      {r.geometryType === 'POINT' ? 'Đối tượng điểm' : r.geometryType === 'LINE' ? 'Đối tượng đường' : r.geometryType === 'POLYGON' ? 'Đối tượng vùng' : ''}
+                      {(() => {
+                        let gt = r.geometryType || '';
+                        if (!gt) {
+                          const pts = parseGisCoordinates(r);
+                          if (pts.length > 0) {
+                            gt = pts.length > 2 ? 'POLYGON' : pts.length === 2 ? 'LINE' : 'POINT';
+                          }
+                        }
+                        return gt === 'POINT' ? 'Đối tượng điểm' : gt === 'LINE' ? 'Đối tượng đường' : gt === 'POLYGON' ? 'Đối tượng vùng' : gt;
+                      })()}
                     </span>
                   </div>
                   <div className="chk-detail-row">
                     <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
                     <span className="chk-detail-value">
                       {(() => {
-                        const symId = r.mapSymbolId || '';
-                        const symName = symbolMap.get(symId) || symId || '';
-                        const symImg = symbolImageMap.get(symId);
+                        const symId = r.mapSymbolId || (r as any).bieuTuongId || (r as any).symbolId || '';
+                        let symName = symbolMap.get(symId) || '';
+                        let symImg = symbolImageMap.get(symId);
+                        if (!symName && symId) {
+                          const lower = symId.toLowerCase();
+                          for (const [k, v] of symbolMap.entries()) {
+                            if (k.toLowerCase() === lower) {
+                              symName = v;
+                              symImg = symbolImageMap.get(k);
+                              break;
+                            }
+                          }
+                        }
+                        symName = symName || symId;
                         if (!symName && !symImg) return '';
                         return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -494,9 +578,9 @@ export default function DryPortDetailContent({
                         showTotal={(total) => `Tổng cộng ${total}`}
                         scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                         columns={[
-                          { title: 'STT', width: 50 },
-                          { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lat); return `${dms.d}° ${dms.m}' ${dms.s}" N`; } },
-                          { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => { const dms = ddToDms(rec.lng); return `${dms.d}° ${dms.m}' ${dms.s}" E`; } },
+                          { title: 'STT', width: 50, align: 'center' as const },
+                          { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => renderDmsText(rec.lat, true) },
+                          { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => renderDmsText(rec.lng, false) },
                         ]}
                       />
                     );

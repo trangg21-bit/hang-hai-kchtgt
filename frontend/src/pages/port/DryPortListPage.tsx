@@ -11,6 +11,7 @@ import {
     Modal,
     Select,
     Space,
+    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,7 +19,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import AppDrawer from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -30,6 +31,7 @@ import type { Organization } from '../../services/organizationService';
 import { organizationService } from '../../services/organizationService';
 import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
@@ -86,6 +88,11 @@ import {
 import DryPortDetailContent from './DryPortDetailContent';
 import DryPortForm, { type DryPortFormHandle } from './DryPortForm';
 
+export function isDryPortDeleted(record?: Partial<DryPort> | null): boolean {
+  if (!record) return false;
+  return Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === 'DELETED' || record.approvalStatus === 'ARCHIVED');
+}
+
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
@@ -116,23 +123,106 @@ function formatDate(dateStr: string | null | undefined): string {
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return dateStr; }
 }
 
-const HISTORY_FIELD_LABELS: Record<string, string> = {
+export const EXCLUDED_CHANGE_FIELDS = new Set([
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'updatedBy',
+  'attachments',
+  'spatialId',
+  'Vị trí không gian',
+  'infrastructureList_raw',
+  'approvalStatus',
+  'approverLevel1',
+  'approvedDateLevel1',
+  'approverLevel2',
+  'approvedDateLevel2',
+  'rejectionReason',
+  'Lý do từ chối',
+  'ly do tu choi',
+  'Trạng thái phê duyệt',
+  'trang thai phe duyet',
+  'Trạng thái',
+  'trạng thái',
+  'activityStatus',
+  'deletedAt',
+  'deletedBy',
+  'submittedDate',
+  'submittedAt',
+  'submittedBy',
+  'submittedForApprovalAt',
+  'submittedForApprovalBy',
+  'Thời điểm gửi phê duyệt',
+  'Người gửi phê duyệt',
+  'ngày gửi phê duyệt',
+  'người gửi phê duyệt',
+  'approvalContentLevel1',
+  'approvalContentLevel2',
+  'level1ApprovalContent',
+  'level2ApprovalContent',
+  'approvalContent',
+  'nội dung phê duyệt',
+  'cấp 1 phê duyệt',
+  'cấp 2 phê duyệt',
+  'portAuthorityApprovedBy',
+  'portAuthorityApprovedAt',
+  'portAuthorityApprovalContent',
+  'departmentApprovedBy',
+  'departmentApprovedAt',
+  'departmentApprovalContent',
+  'Thời điểm Cảng vụ phê duyệt',
+  'Thời điểm Cục phê duyệt',
+  'Nội dung Cảng vụ phê duyệt',
+  'Nội dung Cục phê duyệt',
+  'Cán bộ Cảng vụ phê duyệt',
+  'Cán bộ Cục phê duyệt',
+  'approvedBy',
+  'approvedAt',
+  'approvedRemarks',
+]);
+
+export const NUMERIC_HISTORY_FIELDS = new Set([
+  'area',
+  'warehouseArea',
+  'yardArea',
+  'teuCapacity',
+  'provinceId',
+  'portStatus',
+  'displayRule',
+  'coordinateSystem',
+  'Tổng diện tích cảng (m2)',
+  'Diện tích kho (m2)',
+  'Diện tích bãi (m2)',
+  'Công suất khai thác',
+]);
+
+export const HISTORY_FIELD_LABELS: Record<string, string> = {
   orgUnitId: 'Đơn vị quản lý',
   dryPortCode: 'Mã cảng cạn',
   dryPortName: 'Tên cảng cạn',
   provinceId: 'Địa điểm (Tỉnh/Thành Phố)',
+  province: 'Địa điểm (Tỉnh/Thành Phố)',
+  'Tỉnh/Thành phố': 'Địa điểm (Tỉnh/Thành Phố)',
   operatingOrgId: 'Đơn vị khai thác',
   operatingUnit: 'Đơn vị khai thác',
+  operating_unit: 'Đơn vị khai thác',
   region: 'Khu vực',
   detailedLocation: 'Địa điểm chi tiết',
   transportCorridor: 'Hành lang vận tải',
   area: 'Tổng diện tích cảng (m2)',
+  'Tổng diện tích cảng (m2)': 'Tổng diện tích cảng (m2)',
   warehouseArea: 'Diện tích kho (m2)',
+  'Diện tích kho (m2)': 'Diện tích kho (m2)',
   yardArea: 'Diện tích bãi (m2)',
+  'Diện tích bãi (m2)': 'Diện tích bãi (m2)',
   teuCapacity: 'Công suất khai thác',
+  'Công suất khai thác': 'Công suất khai thác',
   connectionMode: 'Phương thức kết nối giao thông',
   portStatus: 'Tình trạng',
+  'Tình trạng': 'Tình trạng',
   operationalStatus: 'Trạng thái hoạt động',
+  'Trạng thái hoạt động': 'Trạng thái hoạt động',
   announcementTime: 'Thời điểm công bố mở',
   announcementDecisionNumber: 'Quyết định công bố số',
   announcementDecisionDate: 'Ngày ra quyết định công bố',
@@ -143,47 +233,105 @@ const HISTORY_FIELD_LABELS: Record<string, string> = {
   investmentAgreementDoc: 'Văn bản thỏa thuận đầu tư xây dựng',
   remarks: 'Ghi chú',
   mapSymbolId: 'Biểu tượng',
+  'Biểu tượng': 'Biểu tượng',
+  'Biểu tượng bản đồ': 'Biểu tượng',
   coordinateSystem: 'Hệ quy chiếu',
+  'Hệ quy chiếu': 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
-  approvalStatus: 'Trạng thái phê duyệt',
+  'Quy tắc hiển thị': 'Quy tắc hiển thị',
+  geometryType: 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  'Loại đối tượng GIS': 'Loại đối tượng',
+  spatialId: 'Vị trí không gian',
+  'Vị trí không gian': 'Vị trí không gian',
+  coordinates: 'Tọa độ GPS',
+  'Tọa độ GIS': 'Tọa độ GPS',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  attachments: 'File đính kèm',
+  'Tài liệu đính kèm': 'File đính kèm',
+  'File đính kèm': 'File đính kèm',
+  approvalStatus: 'Trạng thái',
+  'Trạng thái': 'Trạng thái',
+  'Trạng thái phê duyệt': 'Trạng thái',
 };
 
-const HISTORY_FIELD_ORDER = [
+export const HISTORY_FIELD_ORDER = [
   'orgUnitId', 'dryPortCode', 'dryPortName', 'provinceId', 'operatingOrgId', 'operatingUnit',
   'region', 'detailedLocation', 'transportCorridor', 'area', 'warehouseArea',
   'yardArea', 'teuCapacity', 'connectionMode', 'portStatus', 'operationalStatus',
   'announcementTime', 'announcementDecisionNumber', 'announcementDecisionDate',
-  'announcementOrg', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'remarks', 'mapSymbolId', 'coordinateSystem', 'displayRule',
+  'announcementOrg', 'openingAnnouncementDate', 'openingDecision', 'investmentAgreementDoc', 'remarks', 'mapSymbolId', 'coordinateSystem', 'displayRule', 'geometryType', 'coordinates',
   'approvalStatus',
 ];
 
-function historyFieldName(field: string): string {
+export function historyFieldName(field: string): string {
   return HISTORY_FIELD_LABELS[field] || field;
 }
 
-function historyFieldValue(field: string, val: string | null | undefined, orgMap: Map<string, string>, symbolMap: Map<string, string>): string {
-  if (val === null || val === undefined || val === '' || val === 'null') return '';
-  if (field === 'orgUnitId') return orgMap.get(val) || val;
-  if (field === 'mapSymbolId') return symbolMap.get(val) || val;
+export function historyFieldValue(
+  field: string,
+  val: string | null | undefined,
+  orgMap?: Map<string, string>,
+  symbolMap?: Map<string, string>
+): string {
+  if (val === null || val === undefined || val === '' || val === '(null)' || val === 'null' || val === '-' || val === '—' || val === '–') return '';
+  const v = String(val).trim();
+  if ((field === 'orgUnitId' || field === 'Đơn vị quản lý') && orgMap) {
+    const full = orgMap.get(v);
+    return full ? full.split(' - ').pop() || full : v;
+  }
+  if ((field === 'mapSymbolId' || field === 'Biểu tượng' || field === 'Biểu tượng bản đồ') && symbolMap) {
+    return symbolMap.get(v) || v;
+  }
   if (field === 'openingAnnouncementDate' || field === 'announcementDecisionDate' || field === 'announcementTime') {
-    return formatDate(val).split(' ')[0] || val;
+    return formatDate(v).split(' ')[0] || v;
   }
-  if (field === 'provinceId') {
-    const pIdx = parseInt(val, 10);
+  if (field === 'provinceId' || field === 'province' || field === 'Địa điểm (Tỉnh/Thành Phố)' || field === 'Tỉnh/Thành phố') {
+    const pIdx = parseInt(v, 10);
     if (!isNaN(pIdx) && pIdx >= 1 && pIdx <= VIETNAM_PROVINCES.length) return VIETNAM_PROVINCES[pIdx - 1];
-    return val;
+    return v;
   }
-  if (field === 'portStatus') {
-    const s = parseInt(val, 10);
-    return s === 1 ? 'Đang khai thác/vận hành' : s === 0 ? 'Chưa khai thác/vận hành' : s === 2 ? 'Dừng khai thác/vận hành' : val;
+  if (field === 'portStatus' || field === 'Tình trạng') {
+    const s = parseInt(v, 10);
+    return s === 1 ? 'Đang khai thác/vận hành' : s === 0 ? 'Chưa khai thác/vận hành' : s === 2 ? 'Dừng khai thác/vận hành' : v;
+  }
+  if (field === 'operationalStatus' || field === 'Trạng thái hoạt động') {
+    const m: Record<string, string> = {
+      OPERATIONAL: 'Đang khai thác/vận hành',
+      NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+      SUSPENDED: 'Dừng khai thác/vận hành',
+      DANG_KHAI_THAC: 'Đang khai thác/vận hành',
+      CHUA_KHAI_THAC: 'Chưa khai thác/vận hành',
+      DUNG_KHAI_THAC: 'Dừng khai thác/vận hành',
+    };
+    return m[v.toUpperCase()] || v;
+  }
+  if (field === 'geometryType' || field === 'Loại đối tượng' || field === 'Loại đối tượng GIS') {
+    const m: Record<string, string> = { POINT: 'Điểm', LINE: 'Đường', POLYGON: 'Vùng' };
+    return m[v.toUpperCase()] || v;
+  }
+  if (field === 'coordinateSystem' || field === 'Hệ quy chiếu') {
+    const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
+    return m[v] || v;
   }
   if (field === 'operatingUnit' || field === 'operatingOrgId' || field === 'operating_unit') {
-    const org = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === val);
+    const org = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === v);
     if (org) return org.name;
-    return val;
+    return v;
   }
-  if (field === 'approvalStatus') return trangThaiPheDuyetBadge(val).label;
-  return val;
+  if (field === 'approvalStatus' || field === 'Trạng thái' || field === 'Trạng thái phê duyệt') {
+    const m: Record<string, string> = {
+      DRAFT: 'Lưu tạm',
+      PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+      APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+      APPROVED: 'Đã phê duyệt',
+      REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+      REJECTED_LEVEL2: 'Từ chối cấp Cục',
+      ARCHIVED: 'Đã xóa',
+    };
+    return m[v.toUpperCase()] || trangThaiPheDuyetBadge(v).label;
+  }
+  return v;
 }
 
 /* ───────────────────────────────────────────────
@@ -197,14 +345,13 @@ export default function DryPortListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const { user: authUser } = useAuthStore();
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [activeTab, setActiveTab] = useState('all');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [debouncedCode, setDebouncedCode] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>(undefined);
   const [filterProvince, setFilterProvince] = useState<number | undefined>();
@@ -214,7 +361,6 @@ export default function DryPortListPage() {
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [filterCode, setFilterCode] = useState<string | undefined>();
   const [filterTransportCorridor, setFilterTransportCorridor] = useState<string | undefined>();
-
   const [sortField, setSortField] = useState<string | undefined>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | undefined>('descend');
 
@@ -265,12 +411,18 @@ export default function DryPortListPage() {
   const openHistory = useCallback(async (r: DryPort) => {
     setHistoryTarget(r);
     setHistoryOpen(true);
-    setHistoryLoading(true);
     setHistoryRecords([]);
     setHistoryFilters({ keyword: '' });
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const d = await fetchDryPortHistory(r.id, { page: 0, size: 200 });
-      setHistoryRecords(Array.isArray(d?.changeHistory) ? d.changeHistory : Array.isArray(d) ? d : []);
+      const raw = Array.isArray(d?.changeHistory) ? d.changeHistory : Array.isArray(d) ? d : [];
+      const ch = raw.filter((it: any) => it.fieldName !== 'CREATE' && it.changedField !== 'CREATE');
+      setHistoryRecords(ch);
     } catch {
       toast.error('Không thể tải lịch sử thay đổi');
     } finally {
@@ -283,17 +435,28 @@ export default function DryPortListPage() {
     const from = historyFilters.fromDate || '';
     const to = historyFilters.toDate || '';
     return (Array.isArray(historyRecords) ? historyRecords : []).filter((r: any) => {
+      const fn = String(r?.fieldName || r?.changedField || '').trim();
+      if (EXCLUDED_CHANGE_FIELDS.has(fn)) return false;
+      const prevVal = r?.previousValue ?? r?.oldValue;
+      const newVal = r?.newValue ?? r?.value;
+      if (prevVal != null && newVal != null) {
+        if (prevVal === newVal) return false;
+        if (NUMERIC_HISTORY_FIELDS.has(fn)) {
+          const oldN = Number(prevVal);
+          const newN = Number(newVal);
+          if (!isNaN(oldN) && !isNaN(newN) && oldN === newN) return false;
+        }
+      }
       if (q) {
-        const fn = (r.fieldName || r.changedField || '').toLowerCase();
-        const ov = (r.oldValue || r.previousValue || '').toLowerCase();
-        const nv = (r.newValue || r.value || '').toLowerCase();
-        const lb = historyFieldName(r.fieldName || r.changedField || '').toLowerCase();
-        const od = historyFieldValue(r.fieldName || r.changedField, r.oldValue || r.previousValue, orgMap, symbolMap).toLowerCase();
-        const nd = historyFieldValue(r.fieldName || r.changedField, r.newValue || r.value, orgMap, symbolMap).toLowerCase();
-        if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) return false;
+        const ov = String(prevVal ?? '').toLowerCase();
+        const nv = String(newVal ?? '').toLowerCase();
+        const lb = historyFieldName(fn).toLowerCase();
+        const od = historyFieldValue(fn, prevVal, orgMap, symbolMap).toLowerCase();
+        const nd = historyFieldValue(fn, newVal, orgMap, symbolMap).toLowerCase();
+        if (!fn.toLowerCase().includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) return false;
       }
       if (from || to) {
-        const cd = (r.changedAt || r.createdAt || r.approvedDate || '').substring(0, 10);
+        const cd = String(r?.changedAt ?? r?.createdAt ?? r?.approvedDate ?? '').substring(0, 10);
         if (from && cd < from) return false;
         if (to && cd > to) return false;
       }
@@ -373,22 +536,33 @@ export default function DryPortListPage() {
   useEffect(() => {
     (async () => {
       try {
-        const r = await organizationService.list({ pageSize: 1000 });
-        const orgs = r.data || [];
+        const isIframe = window.self !== window.top;
+        const parentOrgUnits = isIframe ? (window.parent as any)?.kchtOrgUnits : undefined;
+        let orgs: Organization[] = [];
+        if (parentOrgUnits && parentOrgUnits.length > 0) {
+          orgs = parentOrgUnits;
+        } else {
+          const r = await organizationService.list({ pageSize: 1000 });
+          orgs = r.data || [];
+        }
         setOrganizations(orgs);
         if (orgs.length > 0 && !defaultOrgApplied.current) {
           defaultOrgApplied.current = true;
-          try {
-            const profileRes = await api.get('/users/me');
-            const profile = profileRes.data?.data ?? profileRes.data;
-            const userOrgId = profile?.orgUnitId;
-            const defaultId = userOrgId ? (orgs.find((o: any) => o.id === userOrgId) ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterOrgUnitId(defaultId === '__all__' ? undefined : defaultId);
-          } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterOrgUnitId(orgs[0].id);
+          const currentUser = authUser || useAuthStore.getState().user;
+          let resolvedDefault = resolveDefaultOrgUnitId(currentUser, orgs);
+          if (!resolvedDefault && !currentUser?.orgUnitId) {
+            try {
+              const profileRes = await api.get('/users/me');
+              const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
+              if (profile?.orgUnitId) {
+                resolvedDefault = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+              }
+            } catch {
+              // ignore
+            }
           }
+          defaultOrgUnitId.current = resolvedDefault;
+          setFilterOrgUnitId(resolvedDefault);
         }
       } catch { /* ignore */ }
       finally { setOrgUnitReady(true); }
@@ -410,39 +584,45 @@ export default function DryPortListPage() {
       });
       setUserMap(umap);
     }).catch(() => { });
-  }, []);
+  }, [authUser]);
 
-  const fetchCounts = useCallback(async (orgId: string | undefined) => {
+  const fetchCounts = useCallback(async (orgIdOverride?: string) => {
     try {
-      const orgParam = orgId && orgId !== '__all__' ? orgId : undefined;
+      const targetOrg = orgIdOverride !== undefined ? orgIdOverride : filterOrgUnitId;
+      const orgParam = targetOrg && targetOrg !== '__all__' ? targetOrg : undefined;
+      const baseFilterParams = {
+        orgUnitId: orgParam,
+        search: search.trim() || undefined,
+        code: (filterCode || '').trim() || undefined,
+        provinceId: filterProvince,
+        region: filterRegion,
+        portStatus: filterStatus,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+        transportCorridor: filterTransportCorridor ? filterTransportCorridor.trim() : undefined,
+      };
       const rs = await Promise.allSettled(
         TAB_STATUS_LIST.map((t) =>
-          t.key === 'all'
-            ? fetchDryPortList({ page: 1, size: 1, orgUnitId: orgParam })
-            : fetchDryPortList({ page: 1, size: 1, approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: orgParam })
+          fetchDryPortList({
+            page: 1,
+            size: 1,
+            ...baseFilterParams,
+            approvalStatus: TAB_QUERY_MAP[t.key],
+          })
         )
       );
       const c: Record<string, number> = {};
-      let childSum = 0;
       rs.forEach((r, i) => {
         const k = TAB_STATUS_LIST[i]?.key || 'all';
-        const count = r.status === 'fulfilled' ? r.value.total : 0;
-        c[k] = count;
-        if (k !== 'all') childSum += count;
+        c[k] = r.status === 'fulfilled' ? r.value.total : 0;
       });
-      c['all'] = childSum;
+      const allChildSum = TAB_STATUS_LIST
+        .filter((t) => t.key !== 'all' && t.key !== 'ARCHIVED')
+        .reduce((acc, t) => acc + (c[t.key] ?? 0), 0);
+      c['all'] = allChildSum;
       setTabCounts(c);
     } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(search.trim());
-      setDebouncedCode((filterCode || '').trim());
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [search, filterCode]);
+  }, [filterOrgUnitId, search, filterCode, filterProvince, filterRegion, filterStatus, filterTransportCorridor, filterUpdatedFrom, filterUpdatedTo]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -451,9 +631,8 @@ export default function DryPortListPage() {
       const res = await fetchDryPortList({
         page,
         size: pageSize,
-        search: debouncedSearch || undefined,
-        name: debouncedSearch || undefined,
-        code: debouncedCode || undefined,
+        search: search.trim() || undefined,
+        code: (filterCode || '').trim() || undefined,
         orgUnitId: filterOrgUnitId === '__all__' ? undefined : filterOrgUnitId,
         provinceId: filterProvince,
         region: filterRegion,
@@ -470,34 +649,33 @@ export default function DryPortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, debouncedCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab]);
+  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(filterOrgUnitId); }, [filterOrgUnitId, fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   const handleFilterApply = useCallback(() => {
-    setDebouncedSearch(search.trim());
-    setDebouncedCode((filterCode || '').trim());
-    setActiveTab('all');
     setPage(1);
-  }, [search, filterCode]);
+    void fetchData();
+    void fetchCounts(filterOrgUnitId);
+  }, [fetchData, fetchCounts, filterOrgUnitId]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
+    const resetOrg = defaultOrg === '__all__' ? undefined : defaultOrg;
     setSearch('');
-    setDebouncedSearch('');
     setFilterCode(undefined);
-    setDebouncedCode('');
     setFilterProvince(undefined);
     setFilterRegion(undefined);
     setFilterStatus(undefined);
     setFilterUpdatedFrom(undefined);
     setFilterUpdatedTo(undefined);
     setFilterTransportCorridor(undefined);
-    setFilterOrgUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
+    setFilterOrgUnitId(resetOrg);
     setActiveTab('all');
     setPage(1);
-  }, []);
+    void fetchCounts(resetOrg);
+  }, [fetchCounts]);
 
   const openDetailModal = useCallback(async (record: DryPort) => {
     setDetailRecord(record);
@@ -509,7 +687,12 @@ export default function DryPortListPage() {
       setDetailFiles(atts);
     } catch {
       setDetailFiles([]);
-    } finally {
+    }
+    try {
+      const fresh = await fetchDryPortById(record.id);
+      setDetailRecord(fresh);
+    } catch { /* keep initial data */ }
+    finally {
       setDetailLoading(false);
     }
   }, []);
@@ -637,7 +820,8 @@ export default function DryPortListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('dryport:create')) {
+    if (hasPerm('dryport:manage') || hasPerm('dryport:create')) {
+
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -646,22 +830,83 @@ export default function DryPortListPage() {
         onClick: () => {
           setFormEditId(undefined);
           setEditingRecord(null);
+          createForm.resetFields();
+          // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+          const currentUser = authUser || useAuthStore.getState().user;
+          const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+            || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+          createForm.setFieldsValue({
+            orgUnitId: currentOrgUnitId,
+          });
+          if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+            api.get('/users/me').then((r) => {
+              const p = r.data?.data ?? r.data;
+              const uOrgId = p?.orgUnitId;
+              if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+                createForm.setFieldsValue({ orgUnitId: uOrgId });
+              }
+            }).catch(() => {});
+          }
           setCreateDrawerOpen(true);
         },
       });
     }
     return actions;
-  }, [hasPerm]);
+  }, [hasPerm, createForm, authUser, organizations]);
+
+
 
   const getSortValue = useCallback((r: any, field: string): string | number => {
     if (field === 'approvalStatus') {
-      const rank: Record<string, number> = { DRAFT: 1, PROPOSED: 1, PENDING: 2, PENDING_APPROVAL: 2, APPROVED_LEVEL1: 3, APPROVED: 4, REJECTED: 5, REJECTED_LEVEL1: 5, REJECTED_LEVEL2: 5 };
-      return rank[String(r.approvalStatus || '').toUpperCase()] ?? 99;
+      if (isDryPortDeleted(r)) return 'Đã xóa';
+      return trangThaiPheDuyetBadge(r.approvalStatus).label || r.approvalStatus || '';
     }
     if (field === 'portStatus') return r.portStatus ?? 0;
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') return new Date(r.updatedAt || r.createdAt || 0).getTime();
+    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
+      const t = r.updatedAt || r.createdAt;
+      return t ? new Date(t).getTime() : 0;
+    }
+    if (field === 'dryPortName') return r.dryPortName ?? '';
+    if (field === 'dryPortCode') return r.dryPortCode ?? '';
+    if (field === 'orgUnitName' || field === 'orgUnitId') return r.orgUnitName || orgMap.get(r.orgUnitId) || '';
+    if (field === 'operatingUnit') {
+      return r?.operatingOrgName
+        || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === r.operatingUnit || o.id === (r as any)?.operatingOrgId)?.name
+        || r.operatingUnit
+        || '';
+    }
+    if (field === 'region') return r.region ?? '';
+    if (field === 'transportCorridor') return r.transportCorridor ?? '';
+    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : '';
     return r[field] ?? '';
-  }, []);
+  }, [orgMap]);
+
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
+    return (
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
+    );
+  };
 
   const columns = useMemo(() => {
     const base: any[] = [
@@ -682,22 +927,28 @@ export default function DryPortListPage() {
         width: 280,
         fixed: 'left' as const,
         sortable: true,
-        sortOrder: sortField === 'dryPortName' ? sortOrder : undefined,
+        cellTitle: (record: DryPort) => record.dryPortName || '',
         render: (_: unknown, record: DryPort) => (
           <div style={{ minWidth: 0, overflow: 'hidden' }}>
-            <a
-              title={record.dryPortName}
-              onClick={() => openDetailModal(record)}
-              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {record.dryPortName || ''}
-            </a>
-            <span
-              title={record.dryPortCode}
-              style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {record.dryPortCode || ''}
-            </span>
+            <Tooltip title={record.dryPortName || undefined} placement="topLeft">
+              <a
+                title={record.dryPortName}
+                onClick={() => openDetailModal(record)}
+                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {record.dryPortName || ''}
+              </a>
+            </Tooltip>
+            {record.dryPortCode && (
+              <Tooltip title={record.dryPortCode} placement="topLeft">
+                <span
+                  title={record.dryPortCode}
+                  style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                >
+                  {record.dryPortCode}
+                </span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -707,12 +958,8 @@ export default function DryPortListPage() {
         dataIndex: 'orgUnitName',
         width: 260,
         sortable: true,
-        sortOrder: sortField === 'orgUnitName' ? sortOrder : undefined,
-        render: (v: string | null | undefined) => (
-          <span title={v || ''} style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {v || ''}
-          </span>
-        ),
+        cellTitle: (record: DryPort) => record.orgUnitName || '',
+        render: (v: string | null | undefined) => renderCellWithTooltip(v, true),
       },
       {
         key: 'operatingUnit',
@@ -720,16 +967,18 @@ export default function DryPortListPage() {
         dataIndex: 'operatingUnit',
         width: 220,
         sortable: true,
+        cellTitle: (record: DryPort) => {
+          return record?.operatingOrgName
+            || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === record.operatingUnit || o.id === (record as any)?.operatingOrgId)?.name
+            || record.operatingUnit
+            || '';
+        },
         render: (v: string | null | undefined, record: DryPort) => {
           const name = record?.operatingOrgName
             || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === v || o.id === (record as any)?.operatingOrgId)?.name
             || v
             || '';
-          return (
-            <span title={name} style={{ fontSize: fontSizeMd, color: textPrimary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {name}
-            </span>
-          );
+          return renderCellWithTooltip(name || null);
         },
       },
       {
@@ -738,9 +987,8 @@ export default function DryPortListPage() {
         dataIndex: 'region',
         width: 170,
         sortable: true,
-        render: (v: string | null | undefined) => (
-          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span>
-        ),
+        cellTitle: (record: DryPort) => record.region || '',
+        render: (v: string | null | undefined) => renderCellWithTooltip(v),
       },
       {
         key: 'transportCorridor',
@@ -748,11 +996,8 @@ export default function DryPortListPage() {
         dataIndex: 'transportCorridor',
         width: 200,
         sortable: true,
-        render: (v: string | null | undefined) => (
-          <span title={v || ''} style={{ fontSize: fontSizeMd, color: textPrimary, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {v || ''}
-          </span>
-        ),
+        cellTitle: (record: DryPort) => record.transportCorridor || '',
+        render: (v: string | null | undefined) => renderCellWithTooltip(v),
       },
       {
         key: 'portStatus',
@@ -777,16 +1022,15 @@ export default function DryPortListPage() {
         width: 260,
         ellipsis: false,
         sortable: true,
-        sortOrder: sortField === 'approvalStatus' ? sortOrder : undefined,
         cellTitle: (record: DryPort) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || record.approvalStatus === 'ARCHIVED';
+          const isArchived = isDryPortDeleted(record);
           const badge = trangThaiPheDuyetBadge(isArchived ? 'ARCHIVED' : record.approvalStatus);
-          return badge?.label || record.approvalStatus || '';
+          return badge.label;
         },
-        render: (status: string, record: DryPort) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || status === 'ARCHIVED' || status === 'DELETED';
-          const badge = trangThaiPheDuyetBadge(isArchived ? 'ARCHIVED' : status);
-          return badge?.label ? <span style={badge.style}>{badge.label}</span> : null;
+        render: (_: unknown, record: DryPort) => {
+          const isArchived = isDryPortDeleted(record);
+          const badge = trangThaiPheDuyetBadge(isArchived ? 'ARCHIVED' : record.approvalStatus);
+          return <span style={badge.style}>{badge.label}</span>;
         },
       },
       {
@@ -795,7 +1039,10 @@ export default function DryPortListPage() {
         label: 'Cán bộ cập nhật',
         width: 190,
         sortable: true,
-        sortOrder: (sortField === 'updatedAt' || sortField === 'updatedBy') ? sortOrder : undefined,
+        cellTitle: (record: DryPort) => {
+          const rawName = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
+          return (rawName === '—' || rawName === '-') ? '' : rawName;
+        },
         render: (_: unknown, record: DryPort) => {
           const rawName = formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
           const name = (rawName === '—' || rawName === '-') ? '' : rawName;
@@ -803,9 +1050,13 @@ export default function DryPortListPage() {
           const cleanDate = date ? formatDate(date) : '';
           return (
             <div style={{ lineHeight: '1.35', minWidth: 0, overflow: 'hidden' }}>
-              <div title={name} style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {name}
-              </div>
+              {name ? (
+                <Tooltip title={name} placement="topLeft">
+                  <div title={name} style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {name}
+                  </div>
+                </Tooltip>
+              ) : null}
               <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
                 {cleanDate}
               </div>
@@ -814,10 +1065,39 @@ export default function DryPortListPage() {
         },
       },
     ];
-    return base;
-  }, [page, pageSize, sortField, sortOrder, userMap, openDetailModal]);
+    return base.map((col) => ({
+      ...col,
+      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+    }));
+  }, [page, pageSize, userMap, openDetailModal, activeTab, sortField, sortOrder]);
+
+  const sortedDataSource = useMemo(() => {
+    if (!sortField || !sortOrder) return dataSource;
+    if (sortField === 'sequenceNo' || sortField === 'stt') {
+      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
+    }
+    return [...dataSource].sort((a, b) => {
+      const av = getSortValue(a, sortField);
+      const bv = getSortValue(b, sortField);
+      const c = typeof av === 'number' && typeof bv === 'number'
+        ? av - bv
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
+      return sortOrder === 'ascend' ? c : -c;
+    });
+  }, [dataSource, sortField, sortOrder, getSortValue]);
 
   const rowActions = useCallback((record: DryPort) => {
+    const isArchived = isDryPortDeleted(record);
+    if (isArchived) {
+      const deletedActions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void }[] = [
+        { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailModal(record) },
+      ];
+      if (hasPerm('dryport:history')) {
+        deletedActions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      }
+      return deletedActions;
+    }
+
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
     const status = record.approvalStatus || '';
     const isDraft = status === 'DRAFT' || status === 'NHAP';
@@ -893,6 +1173,159 @@ export default function DryPortListPage() {
     notifyEmbeddedActionClosed();
   }, [fetchData, fetchCounts, filterOrgUnitId, notifyEmbeddedActionClosed]);
 
+  const statusTabs = useMemo(() => {
+    const allChildSum = TAB_STATUS_LIST
+      .filter((t) => t.key !== 'all' && t.key !== 'ARCHIVED')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return TAB_STATUS_LIST.map((tab) => {
+      let count = tabCounts[tab.key] ?? 0;
+      if (tab.key === 'all') {
+        count = activeTab === 'all' ? total : allChildSum;
+      } else if (tab.key === activeTab) {
+        count = total;
+      }
+      return {
+        key: tab.key,
+        label: tab.label,
+        count,
+        color: tab.color,
+        active: (activeTab || 'all') === tab.key,
+      };
+    });
+  }, [tabCounts, activeTab, total]);
+
+
+
+  const filterContent = (
+    <>
+      {/* ── Cơ bản: ĐVQL + Tên + Tình trạng ──────────────────── */}
+      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Đơn vị quản lý
+        </div>
+        <FilterOrgUnitTreeSelect
+          organizations={organizations}
+          placeholder="Tất cả"
+          allowClear
+          value={filterOrgUnitId}
+          onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Tên cảng cạn
+        </div>
+        <Input
+          placeholder="Tìm theo mã, tên, địa chỉ..."
+          allowClear
+          prefix={<SearchOutlined style={{ color: textTertiary }} />}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Tình trạng
+        </div>
+        <Select
+          placeholder="Chọn tình trạng"
+          allowClear
+          value={filterStatus}
+          onChange={(val) => { setFilterStatus(val); setPage(1); }}
+          options={PORT_STATUS_OPTIONS}
+          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+        />
+      </div>
+
+      {/* ── Bộ lọc nâng cao: hiển thị khi filterCollapsed (chuẩn BuoyBerthListPage/AnchorageListPage) ───────── */}
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Mã cảng cạn
+            </div>
+            <Input
+              placeholder="Tìm theo mã cảng cạn"
+              allowClear
+              prefix={<SearchOutlined style={{ color: textTertiary }} />}
+              value={filterCode}
+              onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+              onPressEnter={handleFilterApply}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Khu vực
+            </div>
+            <Select
+              placeholder="Chọn khu vực"
+              allowClear
+              value={filterRegion}
+              onChange={(val) => { setFilterRegion(val); setPage(1); }}
+              options={REGION_OPTIONS}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Hành lang vận tải
+            </div>
+            <Input
+              placeholder="Tìm theo hành lang vận tải"
+              allowClear
+              value={filterTransportCorridor}
+              onChange={(e) => { setFilterTransportCorridor(e.target.value); setPage(1); }}
+              onPressEnter={handleFilterApply}
+              style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Địa điểm (Tỉnh/Thành Phố)
+            </div>
+            <Select
+              placeholder="Chọn tỉnh/thành phố"
+              allowClear
+              showSearch
+              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              value={filterProvince}
+              onChange={(val) => { setFilterProvince(val); setPage(1); }}
+              options={VIETNAM_PROVINCES.map((p, i) => ({ value: i + 1, label: p }))}
+              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+            />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+              Ngày cập nhật
+            </div>
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: (filterUpdatedFrom && filterUpdatedTo)
+                  ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)]
+                  : (filterUpdatedFrom ? [dayjs(filterUpdatedFrom), null] : (filterUpdatedTo ? [null, dayjs(filterUpdatedTo)] : null)),
+                onChange: (dates: any) => {
+                  if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
+                    setFilterUpdatedFrom(undefined);
+                    setFilterUpdatedTo(undefined);
+                  } else {
+                    setFilterUpdatedFrom(dates[0] ? dates[0].startOf('day').format('YYYY-MM-DD 00:00:00') : undefined);
+                    setFilterUpdatedTo(dates[1] ? dates[1].endOf('day').format('YYYY-MM-DD 23:59:59') : undefined);
+                  }
+                  setPage(1);
+                },
+                style: { width: '100%', borderRadius: radiusPill, height: 40 },
+              })}
+            />
+          </div>
+        </>
+      )}
+    </>
+  );
+
   return (
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
       <div className="dry-port-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -967,160 +1400,33 @@ export default function DryPortListPage() {
           actions={headerActions}
         />
         <FilterTableLayout
-          hideFilterToggle={true}
-          statusTabs={TAB_STATUS_LIST.map((t) => ({
-            key: t.key,
-            label: t.label,
-            count: tabCounts[t.key] ?? 0,
-            color: t.color,
-            active: (activeTab || 'all') === t.key,
-          }))}
+          filterContent={filterContent}
+          statusTabs={statusTabs}
           onStatusTabChange={(key) => {
             setActiveTab(key);
             setPage(1);
           }}
           onFilterApply={handleFilterApply}
           onFilterReset={handleFilterReset}
+          filterCollapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
           loading={isLoading}
           error={isError}
           onRetry={fetchData}
-          filterContent={
-            <>
-              <div style={{ marginBottom: 12, marginTop: spaceMd }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Đơn vị quản lý
-                </div>
-                <FilterOrgUnitTreeSelect
-                organizations={organizations}
-                value={filterOrgUnitId}
-                onChange={(val) => { setFilterOrgUnitId(val); setPage(1); }}
-              />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Tên cảng cạn
-                </div>
-                <Input
-                  placeholder="Tìm theo mã, tên, địa chỉ..."
-                  allowClear
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onPressEnter={handleFilterApply}
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Tình trạng
-                </div>
-                <Select
-                  placeholder="Chọn tình trạng"
-                  allowClear
-                  value={filterStatus}
-                  onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                  options={PORT_STATUS_OPTIONS}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Mã cảng cạn
-                </div>
-                <Input
-                  placeholder="Tìm theo mã cảng cạn"
-                  allowClear
-                  value={filterCode}
-                  onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
-                  onPressEnter={handleFilterApply}
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Khu vực
-                </div>
-                <Select
-                  placeholder="Chọn khu vực"
-                  allowClear
-                  value={filterRegion}
-                  onChange={(val) => { setFilterRegion(val); setPage(1); }}
-                  options={REGION_OPTIONS}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Hành lang vận tải
-                </div>
-                <Input
-                  placeholder="Tìm theo hành lang vận tải"
-                  allowClear
-                  value={filterTransportCorridor}
-                  onChange={(e) => { setFilterTransportCorridor(e.target.value); setPage(1); }}
-                  onPressEnter={handleFilterApply}
-                  style={{ borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Địa điểm (Tỉnh/Thành Phố)
-                </div>
-                <Select
-                  placeholder="Chọn tỉnh/thành phố"
-                  allowClear
-                  showSearch
-                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                  value={filterProvince}
-                  onChange={(val) => { setFilterProvince(val); setPage(1); }}
-                  options={VIETNAM_PROVINCES.map((p, i) => ({ value: i + 1, label: p }))}
-                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                />
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Ngày cập nhật
-                </div>
-                <DatePicker.RangePicker
-                  {...getRangePickerProps({
-                    value: (filterUpdatedFrom && filterUpdatedTo)
-                      ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)]
-                      : (filterUpdatedFrom ? [dayjs(filterUpdatedFrom), null] : (filterUpdatedTo ? [null, dayjs(filterUpdatedTo)] : null)),
-                    onChange: (dates: any) => {
-                      if (!dates || dates.length === 0 || (!dates[0] && !dates[1])) {
-                        setFilterUpdatedFrom(undefined);
-                        setFilterUpdatedTo(undefined);
-                      } else {
-                        setFilterUpdatedFrom(dates[0] ? dates[0].startOf('day').toISOString() : undefined);
-                        setFilterUpdatedTo(dates[1] ? dates[1].endOf('day').toISOString() : undefined);
-                      }
-                      setPage(1);
-                    },
-                    style: { width: '100%', borderRadius: radiusPill, height: 40 },
-                  })}
-                />
-              </div>
-            </>
-          }
         >
           <DataTable
             columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField || !sortOrder) return 0;
-              const aVal = getSortValue(a, sortField);
-              const bVal = getSortValue(b, sortField);
-              const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
-              return sortOrder === 'ascend' ? cmp : -cmp;
-            })}
+            dataSource={sortedDataSource}
             loading={isLoading}
             rowKey="id"
             rowActions={rowActions}
-            onSort={(key: string, order: 'asc' | 'desc' | null) => {
-              if (!order) {
+            onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              if (!o) {
                 setSortField(undefined);
                 setSortOrder(undefined);
               } else {
-                setSortField(key);
-                setSortOrder(order === 'asc' ? 'ascend' : 'descend');
+                setSortField(k);
+                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
               }
               setPage(1);
             }}

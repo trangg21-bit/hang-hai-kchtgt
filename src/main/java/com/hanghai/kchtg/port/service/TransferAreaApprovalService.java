@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,9 +47,31 @@ public class TransferAreaApprovalService {
     private final UserRepository userRepository;
 
     @Transactional
+    public void submit(UUID id, String content, UUID userId) {
+        TransferArea entity = transferAreaRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu chuyển tải với id: " + id));
+
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể gửi phê duyệt khu chuyển tải đã bị xóa");
+        }
+
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setSubmittedForApprovalAt(LocalDateTime.now());
+        entity.setSubmittedForApprovalBy(userId != null ? userId.toString() : null);
+        entity.setRejectionReason(null);
+        entity.setUpdatedAt(LocalDateTime.now());
+        transferAreaRepository.save(entity);
+        log.info("TransferArea [{}] submitted for approval by {}", id, userId);
+    }
+
+    @Transactional
     public void approve(UUID id, String userId, String cap, String content) {
         TransferArea entity = transferAreaRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu chuyển tải với id: " + id));
+
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể phê duyệt khu chuyển tải đã bị xóa");
+        }
 
         if ("CANG_VU".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
@@ -127,6 +150,17 @@ public class TransferAreaApprovalService {
 
         String entityId = id.toString();
         String entityType = "TransferArea";
+
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("entityId", entityId);
+            result.put("entityType", entityType);
+            result.put("currentApprovalStatus", entity.getApprovalStatus());
+            result.put("changeHistory", java.util.Collections.emptyList());
+            result.put("approvalLog", java.util.Collections.emptyList());
+            result.put("histories", java.util.Collections.emptyList());
+            return result;
+        }
 
         // Đọc từ infrastructure_history (refType = TRANSSHIPMENT_AREA) — chuẩn WaterZoneApprovalService
         List<InfrastructureHistory> list =
@@ -217,6 +251,44 @@ public class TransferAreaApprovalService {
         return userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString());
     }
 
+    private String canonicalizeFieldName(String field) {
+        if (field == null) {
+            return "";
+        }
+        String lower = field.trim().toLowerCase();
+        return switch (lower) {
+            case "transferareacode", "mã khu chuyển tải", "ma khu chuyen tai", "mã khu" -> "transferAreaCode";
+            case "transferareaname", "tên khu chuyển tải", "ten khu chuyen tai", "tên khu" -> "transferAreaName";
+            case "portid", "thuộc cảng biển", "cảng biển", "thuoc cang bien", "cang bien" -> "portId";
+            case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+            case "provinceid", "province", "địa điểm (tỉnh/thành phố)", "tỉnh/thành phố", "tinh/thanh pho", "địa điểm (tỉnh/tp)" -> "provinceId";
+            case "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet", "địa điểm" -> "detailedLocation";
+            case "operationalfunctions", "công năng khai thác", "cong nang khai thac", "công năng", "cong nang" -> "operationalFunctions";
+            case "operationalstatus", "tình trạng", "tình trạng hoạt động", "tinh trang", "tinh trang hoat dong" -> "operationalStatus";
+            case "shapedescription", "hình dạng", "hinh dang" -> "shapeDescription";
+            case "area", "diện tích (ha)", "diện tích", "dien tich" -> "area";
+            case "designwaterdepth", "độ sâu khu nước theo thiết kế (m)", "độ sâu theo thiết kế (m)", "do sau theo thiet ke" -> "designWaterDepth";
+            case "currentwaterdepth", "độ sâu khu nước hiện tại (theo tbhh gần nhất) (m)", "độ sâu hiện tại (m)", "do sau hien tai" -> "currentWaterDepth";
+            case "bottomelevationdesign", "cao độ đáy bến thiết kế", "cao do day ben thiet ke" -> "bottomElevationDesign";
+            case "maxvesseldwt", "cỡ tàu khai thác theo công bố (dwt)", "cỡ tàu khai thác (dwt)", "co tau khai thac" -> "maxVesselDWT";
+            case "activetransfercount", "số lượng điểm chuyển tải đang khai thác", "số điểm chuyển tải đang khai thác", "so luong diem chuyen tai dang khai thac" -> "activeTransferCount";
+            case "publishedtransfercount", "số lượng điểm chuyển tải đã công bố", "số điểm chuyển tải đã công bố", "so luong diem chuyen tai da cong bo" -> "publishedTransferCount";
+            case "underinvestmenttransfercount", "số lượng điểm chuyển tải đang được thỏa thuận đầu tư xây dựng", "số điểm thỏa thuận đtxd", "so luong diem thoa thuan dtxd" -> "underInvestmentTransferCount";
+            case "remarks", "ghi chú", "ghi chu", "note" -> "remarks";
+            case "openingannouncementdate", "thời điểm công bố mở, đưa ra sử dụng", "ngày công bố mở", "ngay cong bo mo" -> "openingAnnouncementDate";
+            case "publicdecision", "quyết định công bố/ văn bản cho phép khai thác", "quyết định mở", "quyet dinh mo" -> "publicDecision";
+            case "investmentagreement", "văn bản thỏa thuận đầu tư xây dựng", "thỏa thuận đầu tư", "thoa thuan dau tu" -> "investmentAgreement";
+            case "activitystartdate", "thời gian hoạt động từ", "thoi gian hoat dong tu", "ngày bắt đầu" -> "activityStartDate";
+            case "activityenddate", "thời gian hoạt động đến", "thoi gian hoat dong den", "ngày kết thúc" -> "activityEndDate";
+            case "geometrytype", "loại đối tượng", "loại đối tượng gis", "loai doi tuong" -> "geometryType";
+            case "mapsymbolid", "biểu tượng", "biểu tượng bản đồ", "bieu tuong", "symbolid" -> "mapSymbolId";
+            case "coordinatesystem", "hệ quy chiếu", "hệ tọa độ", "he quy chieu" -> "coordinateSystem";
+            case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+            case "coordinates", "tọa độ gps", "tọa độ gis", "tọa độ", "toa do" -> "coordinates";
+            default -> field.trim();
+        };
+    }
+
     /**
      * Map một dòng infrastructure_history sang dạng drawer đọc được: mang đồng thời cặp alias
      * cũ/mới (changedField+fieldName, previousValue+oldValue, approvedDate+changedAt) và actor
@@ -224,7 +296,7 @@ public class TransferAreaApprovalService {
      */
     private Map<String, Object> toChangeHistoryMap(InfrastructureHistory h, String entityType, String entityId,
                                                    Map<UUID, String> userNameMap) {
-        String field = h.getChangedField() != null ? h.getChangedField() : "";
+        String field = canonicalizeFieldName(h.getChangedField());
         String oldValue = h.getPreviousValue() != null ? h.getPreviousValue() : "";
         String newValue = h.getNewValue() != null ? h.getNewValue() : "";
         String resolvedName = resolveActorName(h, userNameMap);

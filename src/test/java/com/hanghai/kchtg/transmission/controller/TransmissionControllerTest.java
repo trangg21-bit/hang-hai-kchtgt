@@ -91,6 +91,36 @@ class TransmissionControllerTest {
     }
 
     @Test
+    void testRejectC1() {
+        ApprovalRequest request = ApprovalRequest.builder()
+                .reason("Cần bổ sung tài liệu kỹ thuật")
+                .build();
+        when(transmissionApprovalService.approveC1(eq(TEST_ID), any(), any())).thenReturn(response);
+
+        ResponseEntity<?> result = controller.rejectC1(TEST_ID, request);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        assertEquals("REJECTED", request.getDecision());
+        verify(transmissionApprovalService).approveC1(eq(TEST_ID), eq(request), any());
+    }
+
+    @Test
+    void testRejectC2() {
+        ApprovalRequest request = ApprovalRequest.builder()
+                .reason("Chưa đạt chuẩn kiểm định")
+                .build();
+        when(transmissionApprovalService.approveC2(eq(TEST_ID), any(), any())).thenReturn(response);
+
+        ResponseEntity<?> result = controller.rejectC2(TEST_ID, request);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertNotNull(result.getBody());
+        assertEquals("REJECTED", request.getDecision());
+        verify(transmissionApprovalService).approveC2(eq(TEST_ID), eq(request), any());
+    }
+
+    @Test
     void testGetHistory() {
         when(transmissionApprovalService.getHistory(eq(TEST_ID), any(), any(), any(), any(String.class), any(String.class)))
                 .thenReturn(List.of());

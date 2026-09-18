@@ -228,6 +228,14 @@ class VhfApprovalServiceTest {
         private final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000005");
 
         @Test
+        @DisplayName("getHistory: Trả về danh sách rỗng khi bản ghi ở trạng thái Lưu tạm (DRAFT)")
+        void getHistory_whenDraft_returnsEmptyList() {
+            givenStatus(ApprovalStatus.DRAFT);
+            List<HistoryEntry> result = service.getHistory(ID);
+            assertThat(result).isEmpty();
+        }
+
+        @Test
         @DisplayName("Criterion 1 & 2: Resolve actor name and unit name from user's orgUnit")
         void getHistory_shouldResolveActorNameAndOrgUnit() {
             givenStatus(ApprovalStatus.APPROVED);
@@ -327,6 +335,141 @@ class VhfApprovalServiceTest {
             assertThat(result.get(0).getChangedField()).isEqualTo("Tên thiết bị");
             assertThat(result.get(0).getPreviousValue()).isEqualTo("VHF cũ");
             assertThat(result.get(0).getNewValue()).isEqualTo("VHF mới");
+        }
+
+        @Test
+        @DisplayName("getHistory filters out approval workflow metadata fields")
+        void getHistory_filtersApprovalWorkflowMetadata() {
+            givenStatus(ApprovalStatus.APPROVED);
+            LocalDateTime now = LocalDateTime.now();
+
+            InfrastructureHistory meta1 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("approvalContentLevel1")
+                    .previousValue(null)
+                    .newValue("Đồng ý phê duyệt")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory meta2 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("submittedDate")
+                    .previousValue(null)
+                    .newValue("2026-03-01T10:00:00")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory meta3 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("rejectionReason")
+                    .previousValue(null)
+                    .newValue("Hồ sơ chưa đủ")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory genuine = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("model")
+                    .previousValue("Model A")
+                    .newValue("Model B")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))
+                    .thenReturn(List.of(meta1, meta2, meta3, genuine));
+
+            User actor = new User();
+            actor.setId(USER_ID);
+            actor.setFullName("Cán bộ kỹ thuật");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(USER_ID))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("model");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("Model A");
+            assertThat(result.get(0).getNewValue()).isEqualTo("Model B");
+        }
+
+        @Test
+        @DisplayName("getHistory deduplicates canonical fields in the same session")
+        void getHistory_deduplicatesCanonicalFieldsInSameSession() {
+            givenStatus(ApprovalStatus.APPROVED);
+            LocalDateTime timestamp = LocalDateTime.of(2026, 3, 1, 10, 30, 0);
+
+            InfrastructureHistory englishField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("deviceName")
+                    .previousValue("VHF cũ")
+                    .newValue("VHF mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory vietnameseField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("Tên thiết bị")
+                    .previousValue("VHF cũ")
+                    .newValue("VHF mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))
+                    .thenReturn(List.of(englishField, vietnameseField));
+
+            User actor = new User();
+            actor.setId(USER_ID);
+            actor.setFullName("Cán bộ");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(USER_ID))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("deviceName");
+        }
+
+        @Test
+        @DisplayName("getHistory falls back approvedBy to Hệ thống when user cannot be resolved")
+        void getHistory_fallbackUserNameToSystemWhenNull() {
+            givenStatus(ApprovalStatus.APPROVED);
+            UUID unknownUserId = UUID.randomUUID();
+
+            InfrastructureHistory hist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.VHF)
+                    .changedField("note")
+                    .previousValue("Ghi chú cũ")
+                    .newValue("Ghi chú mới")
+                    .approvedDate(LocalDateTime.now())
+                    .approvedBy(unknownUserId)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))
+                    .thenReturn(List.of(hist));
+            when(userRepository.findAllByIdInWithOrgUnit(any())).thenReturn(List.of());
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getApprovedBy()).isEqualTo("Hệ thống");
         }
 
         @Test

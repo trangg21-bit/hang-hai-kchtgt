@@ -445,39 +445,18 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
     // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
     if (approvedEdit && !previousValues.isEmpty()) {
-      changeHistoryService.recordChanges("CCTV", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
-      LocalDateTime now = LocalDateTime.now();
-      for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-          String field = entry.getKey();
-          String fieldName = getFieldDisplayName(field);
-          String oldVal = entry.getValue();
-          Object rawNew;
-          if ("coordinates".equals(field)) {
-            rawNew = request.getCoordinates();
-          } else if ("geometryType".equals(field)) {
-            rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
-          } else {
-            rawNew = getEntityFieldValue(saved, field);
-          }
-          String newVal = rawNew != null ? String.valueOf(rawNew) : null;
-          String oldDisp = formatDisplayValue(field, oldVal);
-          String newDisp = formatDisplayValue(field, newVal);
-          if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
-            continue;
-          }
-          historyRepository.save(InfrastructureHistory.builder()
-              .refId(saved.getId())
-              .refType(InfrastructureType.CCTV)
-              .approvalLevel(ApprovalLevel.LEVEL_2)
-              .status(InfrastructureHistoryStatus.UPDATED)
-              .approvedBy(currentUserId)
-              .approvedDate(now)
-              .changedField(fieldName)
-              .previousValue(oldDisp)
-              .newValue(newDisp)
-              .build());
-        }
+      if (previousValues.containsKey("coordinates")) {
+        changeHistoryService.insertChangeRecord("CCTV", saved.getId(), "coordinates",
+            oldCoordinates != null ? oldCoordinates : "Chưa có",
+            request.getCoordinates(), currentUserId.toString());
       }
+      if (previousValues.containsKey("geometryType")) {
+        changeHistoryService.insertChangeRecord("CCTV", saved.getId(), "geometryType",
+            oldGeometryType != null ? oldGeometryType : "Chưa có",
+            request.getGeometryType() != null ? request.getGeometryType().name() : null, currentUserId.toString());
+      }
+      changeHistoryService.recordChanges("CCTV", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
+    }
 
     return toResponse(saved);
   }
@@ -633,57 +612,6 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     setter.accept(newVal);
   }
 
-  private String getFieldDisplayName(String field) {
-    if ("deviceName".equals(field)) return "Tên thiết bị";
-    if ("detailedLocation".equals(field)) return "Địa điểm chi tiết";
-    if ("manufacturer".equals(field)) return "Hãng sản xuất";
-    if ("model".equals(field)) return "Model";
-    if ("quantity".equals(field)) return "Số lượng";
-    if ("orgUnitId".equals(field)) return "Đơn vị quản lý";
-    if ("operatingUnitId".equals(field)) return "Đơn vị khai thác";
-    if ("provinceName".equals(field)) return "Tỉnh/Thành phố";
-    if ("attachedInfrastructureType".equals(field)) return "Loại hạ tầng";
-    if ("attachedInfrastructureId".equals(field)) return "Thuộc hạ tầng";
-    if ("unitOfMeasure".equals(field)) return "Đơn vị tính";
-    if ("yearOfUse".equals(field)) return "Năm đưa vào sử dụng";
-    if ("operationalStatus".equals(field)) return "Trạng thái hoạt động";
-    if ("specifications".equals(field)) return "Thông số kỹ thuật";
-    if ("maintenanceInformation".equals(field)) return "Thông tin bảo trì";
-    if ("note".equals(field)) return "Ghi chú";
-    if ("objectType".equals(field)) return "Loại đối tượng (GIS)";
-    if ("mapSymbolId".equals(field)) return "Biểu tượng";
-    if ("coordinateSystem".equals(field)) return "Hệ quy chiếu";
-    if ("displayRule".equals(field)) return "Quy tắc hiển thị";
-    if ("coordinates".equals(field)) return "Tọa độ GIS";
-    if ("geometryType".equals(field)) return "Loại đối tượng GIS";
-    return field;
-  }
-
-  private Object getEntityFieldValue(Cctv entity, String field) {
-    return switch (field) {
-      case "deviceName" -> entity.getDeviceName();
-      case "detailedLocation" -> entity.getDetailedLocation();
-      case "manufacturer" -> entity.getManufacturer();
-      case "model" -> entity.getModel();
-      case "quantity" -> entity.getQuantity();
-      case "orgUnitId" -> entity.getOrgUnitId();
-      case "operatingUnitId" -> entity.getOperatingUnitId();
-      case "provinceName" -> entity.getProvinceName();
-      case "attachedInfrastructureType" -> entity.getAttachedInfrastructureType();
-      case "attachedInfrastructureId" -> entity.getAttachedInfrastructureId();
-      case "unitOfMeasure" -> entity.getUnitOfMeasure();
-      case "yearOfUse" -> entity.getYearOfUse();
-      case "operationalStatus" -> entity.getOperationalStatus();
-      case "specifications" -> entity.getSpecifications();
-      case "maintenanceInformation" -> entity.getMaintenanceInformation();
-      case "note" -> entity.getNote();
-      case "objectType" -> entity.getObjectType();
-      case "mapSymbolId" -> entity.getMapSymbolId();
-      case "coordinateSystem" -> entity.getCoordinateSystem();
-      case "displayRule" -> entity.getDisplayRule();
-      default -> null;
-    };
-  }
 
   public String formatDisplayValue(String field, String rawValue) {
     if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {

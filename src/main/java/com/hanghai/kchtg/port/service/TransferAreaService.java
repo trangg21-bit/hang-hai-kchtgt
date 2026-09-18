@@ -304,10 +304,12 @@ public class TransferAreaService {
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả khu chuyển tải của toàn bộ đơn vị con (hậu duệ), giống logic BerthService
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        String searchTrim = search != null ? search.trim() : null;
+        String searchTrim = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String codeTrim = (transferAreaCode != null && !transferAreaCode.trim().isEmpty()) ? transferAreaCode.trim() : null;
+        String nameTrim = (transferAreaName != null && !transferAreaName.trim().isEmpty()) ? transferAreaName.trim() : null;
         Page<TransferArea> result = transferAreaRepository.searchTransferAreas(
                 includeAll, orgUnitIds,
-                searchTrim, transferAreaCode, transferAreaName, portId,
+                searchTrim, codeTrim, nameTrim, portId,
                 provinceId, operationalFunctions, approvalEnum, statusEnum, false,
                 updatedFromDt, updatedToDt,
                 pageable);
@@ -583,15 +585,25 @@ public class TransferAreaService {
                 .deletedBy(entity.getDeletedBy())
                 .build();
 
-        if (entity.getSpatialId() != null) {
-            response.setSpatialId(entity.getSpatialId());
-            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
-                if (spatialObj.getGeometryType() != null) {
-                    response.setGeometryType(spatialObj.getGeometryType());
-                }
-                response.setCoordinates(spatialObj.getCoordinates());
-                parseLatLng(spatialObj.getCoordinates(), response);
-            });
+        UUID spatialId = entity.getSpatialId();
+        GisSpatialObject spatialObj = null;
+        if (spatialId != null) {
+            spatialObj = gisSpatialObjectService.findById(spatialId).orElse(null);
+        }
+        if (spatialObj == null && entity.getId() != null) {
+            spatialObj = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.TRANSSHIPMENT_AREA).orElse(null);
+            if (spatialObj != null) {
+                entity.setSpatialId(spatialObj.getId());
+                transferAreaRepository.save(entity);
+            }
+        }
+        if (spatialObj != null) {
+            response.setSpatialId(spatialObj.getId());
+            if (spatialObj.getGeometryType() != null) {
+                response.setGeometryType(spatialObj.getGeometryType());
+            }
+            response.setCoordinates(spatialObj.getCoordinates());
+            parseLatLng(spatialObj.getCoordinates(), response);
         }
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
@@ -599,13 +611,44 @@ public class TransferAreaService {
     }
 
     private void parseLatLng(String coordinates, TransferAreaResponse response) {
-        if (coordinates == null || !coordinates.startsWith("POINT(")) return;
+        if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String inner = coordinates.substring(6, coordinates.length() - 1).trim();
-            String[] parts = inner.split("\\s+");
-            if (parts.length == 2) {
-                response.setLongitude(new BigDecimal(parts[0]));
-                response.setLatitude(new BigDecimal(parts[1]));
+            String trimmed = coordinates.trim();
+            if (trimmed.toUpperCase().startsWith("POINT")) {
+                int start = trimmed.indexOf('(') + 1;
+                int end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("LINESTRING")) {
+                int start = trimmed.indexOf('(') + 1;
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("POLYGON")) {
+                int start = trimmed.indexOf("((") >= 0 ? trimmed.indexOf("((") + 2 : trimmed.indexOf('(') + 1;
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
             }
         } catch (Exception ignored) { }
     }
@@ -640,19 +683,36 @@ public class TransferAreaService {
                     geomType, GisSpatialObjectType.POLYGON_TRANSSHIPMENT, wkt, saved.getId(),
                     InfrastructureType.TRANSSHIPMENT_AREA);
             saved.setSpatialId(spatialObj.getId());
-            transferAreaRepository.save(saved);
+            transferAreaRepository.saveAndFlush(saved);
+        } else if (saved.getSpatialId() != null) {
+            gisSpatialObjectService.delete(saved.getSpatialId());
+            saved.setSpatialId(null);
+            transferAreaRepository.saveAndFlush(saved);
         }
         replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
     }
 
     private void replaceMooringWaterAreas(UUID transferAreaId, List<TransferAreaMooringWaterAreaRequest> requests) {
-        transferAreaMooringWaterAreaRepository.deleteAll(transferAreaMooringWaterAreaRepository.findByTransferAreaId(transferAreaId));
-        if (requests == null || requests.isEmpty()) return;
+        if (requests == null) return;
+        List<TransferAreaMooringWaterArea> existing = transferAreaMooringWaterAreaRepository.findByTransferAreaId(transferAreaId);
+        for (TransferAreaMooringWaterArea wa : existing) {
+            transferAreaMooringWaterAreaAnchorPointRepository.deleteAll(transferAreaMooringWaterAreaAnchorPointRepository.findByTransferAreaMooringWaterAreaId(wa.getId()));
+        }
+        transferAreaMooringWaterAreaRepository.deleteAll(existing);
+        if (requests.isEmpty()) return;
+
         for (TransferAreaMooringWaterAreaRequest r : requests) {
-            if (r.getDescription() == null || r.getDescription().isBlank()) continue;
+            if (r == null) continue;
+            String desc = (r.getDescription() != null && !r.getDescription().isBlank())
+                    ? r.getDescription().trim() : null;
+            boolean hasPoints = r.getAnchorPoints() != null && r.getAnchorPoints().stream()
+                    .anyMatch(p -> p != null && p.getLatitude() != null && p.getLongitude() != null);
+            if (desc == null && r.getGeometryType() == null && r.getMapSymbolId() == null && !hasPoints) {
+                continue;
+            }
             TransferAreaMooringWaterArea wa = TransferAreaMooringWaterArea.builder()
                     .transferAreaId(transferAreaId)
-                    .description(r.getDescription().trim())
+                    .description(desc)
                     .geometryType(r.getGeometryType())
                     .mapSymbolId(r.getMapSymbolId())
                     .coordinateSystem(r.getCoordinateSystem())
@@ -662,7 +722,7 @@ public class TransferAreaService {
             List<TransferAreaMooringWaterAreaAnchorPoint> points = new ArrayList<>();
             if (r.getAnchorPoints() != null) {
                 for (TransferAreaMooringWaterAreaAnchorPointRequest p : r.getAnchorPoints()) {
-                    if (p.getLatitude() == null || p.getLongitude() == null) continue;
+                    if (p == null || p.getLatitude() == null || p.getLongitude() == null) continue;
                     points.add(TransferAreaMooringWaterAreaAnchorPoint.builder()
                             .transferAreaMooringWaterAreaId(saved.getId())
                             .name(p.getName() != null ? p.getName().trim() : null)
@@ -671,7 +731,9 @@ public class TransferAreaService {
                             .build());
                 }
             }
-            transferAreaMooringWaterAreaAnchorPointRepository.saveAll(points);
+            if (!points.isEmpty()) {
+                transferAreaMooringWaterAreaAnchorPointRepository.saveAll(points);
+            }
         }
     }
 

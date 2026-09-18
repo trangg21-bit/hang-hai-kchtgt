@@ -24,6 +24,7 @@ import {
     Select,
     Space,
     Tabs,
+    Tooltip,
     Typography,
 } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -40,7 +41,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { FormOrgUnitTreeSelect, OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -117,6 +118,7 @@ import {
     serializeCoordinatesToWkt,
     validateDmsCoordinates,
 } from "../../utils/gisGeometry";
+import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtInputNumber, fmtNum } from "../../utils/numFmt";
@@ -248,13 +250,12 @@ const pillStyle: React.CSSProperties = {
 
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  } catch { return dateStr; }
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : String(dateStr);
+  } catch { return String(dateStr); }
 }
 
 /** Badge hiển thị giống chuẩn bến cảng: span pill + semantic token */
@@ -698,9 +699,61 @@ export function historyFieldName(fn: string): string {
 }
 
 export function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boolean {
-  void field;
-  const ov = rawOld != null ? String(rawOld).trim() : '';
-  const nv = rawNew != null ? String(rawNew).trim() : '';
+  const fn = String(field || '').trim();
+  if (!fn) return false;
+  const lower = fn.toLowerCase();
+  if (
+    DEFAULT_IGNORED_FIELDS.has(fn) ||
+    DEFAULT_IGNORED_FIELDS.has(lower) ||
+    lower === 'approvalstatus' ||
+    lower === 'trạng thái phê duyệt' ||
+    lower === 'trang thai phe duyet' ||
+    lower === 'trạng thái' ||
+    lower === 'approvalcontentlevel1' ||
+    lower === 'approvalcontentlevel2' ||
+    lower === 'level1approvalcontent' ||
+    lower === 'level2approvalcontent' ||
+    lower === 'approvalcontent' ||
+    lower === 'submitteddate' ||
+    lower === 'submittedat' ||
+    lower === 'submittedby' ||
+    lower === 'approverlevel1' ||
+    lower === 'approverlevel2' ||
+    lower === 'approveddatelevel1' ||
+    lower === 'approveddatelevel2' ||
+    lower === 'rejectionreason' ||
+    lower === 'lý do từ chối' ||
+    lower === 'ly do tu choi' ||
+    lower === 'portauthorityapprovedby' ||
+    lower === 'portauthorityapprovedat' ||
+    lower === 'portauthorityapprovalcontent' ||
+    lower === 'departmentapprovedby' ||
+    lower === 'departmentapprovedat' ||
+    lower === 'departmentapprovalcontent' ||
+    lower === 'approvedby' ||
+    lower === 'approvedat' ||
+    lower === 'approvedremarks' ||
+    lower === 'cấp 1 phê duyệt' ||
+    lower === 'cấp 2 phê duyệt' ||
+    lower === 'nội dung phê duyệt' ||
+    lower === 'ngày gửi phê duyệt' ||
+    lower === 'người gửi phê duyệt' ||
+    fn === 'infrastructureList' ||
+    fn === 'infrastructureList_raw' ||
+    fn === 'attachments' ||
+    fn === 'spatialId'
+  ) {
+    return false;
+  }
+
+  const normalize = (v: any) => {
+    if (v == null) return '';
+    const s = String(v).trim();
+    if (s === '(null)' || s === 'null' || s === 'Chưa có' || s === '(trống)') return '';
+    return s;
+  };
+  const ov = normalize(rawOld);
+  const nv = normalize(rawNew);
   if (ov === '' && nv === '') return false;
   if (ov !== '' && nv !== '' && ov === nv) return false;
   // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25 hoặc 5,555 vs 5555)
@@ -1100,7 +1153,7 @@ const VtsAssistListPage = () => {
   const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("vtsassist:approvec2");
+  const canSaveAndApprove = !!(hasPerm?.("vtsassist:approvec2") || hasPerm?.("vtsassist:manage"));
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
@@ -1481,36 +1534,61 @@ const VtsAssistListPage = () => {
     return m;
   }, [operatingOrganizationOptions]);
 
-  // Sorting
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
-  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
-    if (!order) {
-      setSortField(null);
-      setSortOrder(null);
-    } else {
-      setSortField(field);
-      setSortOrder(order === "asc" ? "ascend" : "descend");
-    }
-    setPage(0);
-  }, []);
+
 
   const columns = useMemo(
     () => {
       // Cột dạng "Cán bộ/Ngày": dòng 1 = tên (đậm), dòng 2 = ngày (màu phụ)
-      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
-        <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
-          <div
-            title={name || undefined}
-            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-          >
-            {name || null}
+      const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => {
+        const dateText = date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "";
+        if (!name && !date) return null;
+        return (
+          <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
+            {name ? (
+              <Tooltip title={name} placement="topLeft">
+                <div
+                  title={name}
+                  style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+                >
+                  {name}
+                </div>
+              </Tooltip>
+            ) : (
+              <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+            )}
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
+              {dateText || null}
+            </div>
           </div>
-          <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
-            {date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "—"}
-          </div>
-        </div>
-      );
+        );
+      };
+
+      const renderCellWithTooltip = (
+        text: string | null | undefined,
+        isBold?: boolean
+      ) => {
+        if (!text) return null;
+        return (
+          <Tooltip title={text} placement="topLeft">
+            <span
+              style={{
+                ...tableMetaStyle,
+                fontWeight: isBold ? fontWeightBold : undefined,
+                display: "inline-block",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                verticalAlign: "middle",
+              }}
+              title={text}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        );
+      };
+
       return [
       {
         key: "index",
@@ -1531,34 +1609,41 @@ const VtsAssistListPage = () => {
         dataIndex: "deviceName",
         width: 300,
         fixed: "left" as const,
-        sortable: true,
-        sortOrder: sortField === "deviceName" ? sortOrder : null,
         ellipsis: false,
+        cellTitle: (record: VtsAssistResponse) => record.deviceName || '',
         render: (val: string, record: VtsAssistResponse) => (
-          <div style={{ minWidth: 0 }}>
-            {hasPerm?.("vtsassist:read") ? (
-              <button
-                type="button"
-                className="kcht-cell-title"
-                onClick={() => {
-                  setSelectedRecord(record);
-                  setDetailDrawerOpen(true);
-                }}
-                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-                title={val || undefined}
-              >
-                {val || null}
-              </button>
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
+            {(hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage")) ? (
+              <Tooltip title={val || undefined} placement="topLeft">
+                <button
+                  type="button"
+                  className="kcht-cell-title"
+                  onClick={() => {
+                    setSelectedRecord(record);
+                    setDetailDrawerOpen(true);
+                  }}
+                  style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </button>
+              </Tooltip>
             ) : (
-              <span
-                className="kcht-cell-title"
-                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
-                title={val || undefined}
-              >
-                {val || null}
-              </span>
+              <Tooltip title={val || undefined} placement="topLeft">
+                <span
+                  className="kcht-cell-title"
+                  style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </span>
+              </Tooltip>
             )}
-            <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
+            {record.deviceCode && (
+              <Tooltip title={record.deviceCode} placement="topLeft">
+                <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -1567,27 +1652,24 @@ const VtsAssistListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
-        ),
+        cellTitle: (record: VtsAssistResponse) => record.orgUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
         label: "Thuộc TTDH VTS/Trạm Radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: VtsAssistResponse) => record.attachedInfrastructureName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "operatingUnitName",
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: VtsAssistResponse) => record.operatingUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "provinceName",
@@ -1595,9 +1677,8 @@ const VtsAssistListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: VtsAssistResponse) => record.provinceName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "unitOfMeasure",
@@ -1605,9 +1686,8 @@ const VtsAssistListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
-        render: (val: number) => (
-          <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
-        ),
+        cellTitle: (record: VtsAssistResponse) => (record.unitOfMeasure != null ? formatUnitOfMeasure(record.unitOfMeasure) : '') || '',
+        render: (val: number) => renderCellWithTooltip(formatUnitOfMeasure(val)),
       },
       {
         key: "quantity",
@@ -1673,8 +1753,7 @@ const VtsAssistListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
-        sortable: true,
-        sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
+        cellTitle: (record: VtsAssistResponse) => record.updatedByName || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
@@ -1682,6 +1761,7 @@ const VtsAssistListPage = () => {
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        cellTitle: (record: VtsAssistResponse) => record.submittedByName || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
@@ -1689,6 +1769,7 @@ const VtsAssistListPage = () => {
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        cellTitle: (record: VtsAssistResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
@@ -1696,11 +1777,12 @@ const VtsAssistListPage = () => {
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        cellTitle: (record: VtsAssistResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder, hasPerm]
+    [page, pageSize, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1805,7 +1887,7 @@ const VtsAssistListPage = () => {
   };
 
   const openHistory = useCallback((r: VtsAssistResponse) => {
-    if (!hasPerm?.("vtsassist:history") && !hasPerm?.("vtsassist:read") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("vtsassist:history") && !hasPerm?.("vtsassist:read") && !hasPerm?.("vtsassist:manage") && !hasPerm?.("data:read")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống phụ trợ VTS");
       return;
     }
@@ -1824,6 +1906,11 @@ const VtsAssistListPage = () => {
   // Load history khi mở Drawer hoặc thay đổi bộ lọc tìm kiếm/ngày
   useEffect(() => {
     if (!historyOpen || !historyTarget) return;
+    if (historyTarget.approvalStatus === 'DRAFT') {
+      setHistoryRecords([]);
+      setHistoryLoading(false);
+      return;
+    }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setHistoryLoading(true);
@@ -1898,11 +1985,28 @@ const VtsAssistListPage = () => {
           return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
         })
       );
+      const isCreate = changes.length > 0 && changes.every(
+        (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
+      );
+      const seenLabels = new Set<string>();
       const orderedChanges = [...changes]
         .filter(
           (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
-        );
-      if (orderedChanges.length > 0) count++;
+        )
+        .filter((c: any) => isCreate || isMeaningfulChange(c.field, c.oldValue, c.newValue))
+        .filter((c: any) => {
+          const isAttach = c.field === 'attachment' || c.field === 'attachments' || c.field === 'tệp đính kèm' || c.field === 'taiLieuDinhKem';
+          if (isAttach) return true;
+          const displayLabel = historyFieldName(c.field).trim().toLowerCase();
+          if (seenLabels.has(displayLabel)) return false;
+          seenLabels.add(displayLabel);
+          return true;
+        });
+      const isAttachmentAction = g.items.some((item: any) => {
+        const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
+        return rawStatus === 'ATTACHMENT_UPLOADED' || rawStatus === 'ATTACHMENT_DELETED';
+      });
+      if (orderedChanges.length > 0 || isAttachmentAction) count++;
     }
     return count;
   };
@@ -1977,6 +2081,7 @@ const VtsAssistListPage = () => {
       const isCreate = changes.length > 0 && changes.every(
         (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
       );
+      const seenLabels = new Set<string>();
       const orderedChanges = [...changes]
         .sort((a: any, b: any) => {
           const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
@@ -1987,6 +2092,14 @@ const VtsAssistListPage = () => {
           (c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId'
         )
         .filter((c: any) => isCreate || isMeaningfulChange(c.field, c.oldValue, c.newValue))
+        .filter((c: any) => {
+          const isAttach = c.field === 'attachment' || c.field === 'attachments' || c.field === 'tệp đính kèm' || c.field === 'taiLieuDinhKem';
+          if (isAttach) return true;
+          const displayLabel = historyFieldName(c.field).trim().toLowerCase();
+          if (seenLabels.has(displayLabel)) return false;
+          seenLabels.add(displayLabel);
+          return true;
+        })
         .filter((c: any) => {
           if (isCreate) return true;
           const ov = formatHistoryValue(c.field, c.oldValue);
@@ -2129,6 +2242,14 @@ const VtsAssistListPage = () => {
                           </div>
                         );
                       }
+                      const isOvEmpty = !ov || ov === '—' || ov === 'Chưa có' || ov === '(trống)' || ov === 'null';
+                      const isNvEmpty = !nv || nv === '—' || nv === 'Chưa có' || nv === '(trống)' || nv === 'null';
+                      if (!isCreate && isOvEmpty && isNvEmpty) {
+                        return null;
+                      }
+                      if (!isCreate && ov === nv) {
+                        return null;
+                      }
                       return (
                         <div
                           key={`${fn}-${ri}`}
@@ -2235,7 +2356,7 @@ const VtsAssistListPage = () => {
         if (linkedAction === "edit") {
           openUpdateDrawer(record);
         } else {
-          if (!hasPerm?.("vtsassist:read")) {
+          if (!hasPerm?.("vtsassist:read") && !hasPerm?.("vtsassist:manage")) {
             toast.warning("Bạn không có quyền xem chi tiết hệ thống phụ trợ VTS");
             return;
           }
@@ -2260,7 +2381,7 @@ const VtsAssistListPage = () => {
       const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === "DELETED" || record.approvalStatus === "ARCHIVED");
       if (isDeleted) {
         const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
-        if (hasPerm?.("vtsassist:read")) {
+        if (hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage")) {
           actions.push({
             key: "view",
             label: "Xem chi tiết",
@@ -2274,7 +2395,7 @@ const VtsAssistListPage = () => {
             },
           });
         }
-        if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("data:read")) {
+        if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage") || hasPerm?.("data:read")) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -2287,7 +2408,7 @@ const VtsAssistListPage = () => {
 
       const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
 
-      if (hasPerm?.("vtsassist:read")) {
+      if (hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage")) {
         actions.push({
           key: "view",
           label: "Xem chi tiết",
@@ -2313,7 +2434,7 @@ const VtsAssistListPage = () => {
       }
 
       // Lịch sử thay đổi (mở từ menu dòng, không nằm trong drawer chi tiết)
-      if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("data:read")) {
+      if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage") || hasPerm?.("data:read")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -2324,7 +2445,7 @@ const VtsAssistListPage = () => {
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
       if (
-        hasPerm?.("vtsassist:update") &&
+        (hasPerm?.("vtsassist:update") || hasPerm?.("vtsassist:create") || hasPerm?.("vtsassist:manage")) &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2" ||
@@ -2343,7 +2464,7 @@ const VtsAssistListPage = () => {
 
       // PENDING_APPROVAL + vtsassist:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
       // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
-      if (hasPerm?.("vtsassist:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
+      if ((hasPerm?.("vtsassist:approvec1") || hasPerm?.("vtsassist:manage")) && record.approvalStatus === "PENDING_APPROVAL") {
         const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
         actions.push({
           key: "approveC1",
@@ -2373,7 +2494,7 @@ const VtsAssistListPage = () => {
 
       // APPROVED_LEVEL1 + vtsassist:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
       // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
-      if (hasPerm?.("vtsassist:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
+      if ((hasPerm?.("vtsassist:approvec2") || hasPerm?.("vtsassist:manage")) && record.approvalStatus === "APPROVED_LEVEL1") {
         const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
         actions.push({
           key: "approveC2",
@@ -2442,8 +2563,8 @@ const VtsAssistListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -2454,7 +2575,7 @@ const VtsAssistListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   useEffect(() => {
@@ -2468,27 +2589,23 @@ const VtsAssistListPage = () => {
       setOrgUnits(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedOrgId || "" }));
       }
       setOrgUnitReady(true);
       setLoadingOrgs(false);
@@ -2498,7 +2615,7 @@ const VtsAssistListPage = () => {
       setOrgUnitReady(true);
       setLoadingOrgs(false);
     });
-  }, []);
+  }, [currentUser]);
 
   const fetchSymbols = useCallback(async () => {
     setLoadingSymbols(true);
@@ -3052,17 +3169,17 @@ const VtsAssistListPage = () => {
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
-          { label: "Quản lý hệ thống phụ trợ VTS", path: "/vtsassist" },
+          { label: "Quản lý hệ thống phụ trợ VTS", path: "/vts-assist" },
         ]}
         actions={[
-          hasPerm?.("vtsassist:create")
+          (hasPerm?.("vtsassist:create") || hasPerm?.("vtsassist:manage"))
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("vtsassist:create")) {
+                  if (!hasPerm?.("vtsassist:create") && !hasPerm?.("vtsassist:manage")) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống phụ trợ VTS");
                     return;
                   }
@@ -3072,11 +3189,24 @@ const VtsAssistListPage = () => {
                   setCreateActiveTabKey('general');
                   setUploadFileList([]);
                   setCreateModalOpen(true);
-                  // Mặc định Tình trạng = 'Chưa khai thác/vận hành' (0) khi mở drawer Tạo mới — người dùng có thể đổi sau đó
+                  // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+                  const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+                    || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
                   createForm.setFieldsValue({
                     operationalStatus: 0,
-                    orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+                    orgUnitId: currentOrgUnitId,
                   });
+                  if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+                    api.get('/users/me')
+                      .then((res) => {
+                        const profile = res.data?.data ?? res.data;
+                        const uOrgId = profile?.orgUnitId;
+                        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+                          createForm.setFieldsValue({ orgUnitId: uOrgId });
+                        }
+                      })
+                      .catch(() => {});
+                  }
                   // Sinh trước mã thiết bị để hiển thị preview (giống Mã cảng biển /port)
                   setDeviceCodeLoading(true);
                   generateVtsAssistCode()
@@ -3179,6 +3309,7 @@ const VtsAssistListPage = () => {
                           ? "Chọn Trung Tâm Điều Hành VTS"
                           : "Chọn loại hạ tầng trước"
                   } allowClear
+                    showSearch
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({
@@ -3332,7 +3463,6 @@ const VtsAssistListPage = () => {
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}
-              onSort={handleSort}
               rowActions={rowActions}
               locale={{
                 emptyText: (
@@ -3487,49 +3617,80 @@ const VtsAssistListPage = () => {
                         <span style={{ color: actionPrimary, fontSize: 12, display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>{detailApprovalOpen ? <DownOutlined /> : <RightOutlined />}</span>
                       </button>
                       {detailApprovalOpen && (
-                      <div className="chk-detail-grid">
-                        {(() => {
-                          let colIndex = 0;
-                          return ([
-                            {
-                              label: 'Trạng thái',
-                              value: (() => {
+                        <div className="chk-detail-grid">
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                            <span className="chk-detail-value">
+                              {(() => {
                                 const isDeleted = Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy || selectedRecord.approvalStatus === 'DELETED' || selectedRecord.approvalStatus === 'ARCHIVED');
                                 return renderApprovalBadge(isDeleted ? 'ARCHIVED' : selectedRecord.approvalStatus);
-                              })(),
-                              fullWidth: true,
-                            },
-                            { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || null}</span> },
-                            { label: 'Ngày cập nhật', value: selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : null) },
-                            { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName || null}</span> },
-                            { label: 'Ngày gửi phê duyệt', value: selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : null },
-                            { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name || null}</span> },
-                            { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : null },
-                            { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: selectedRecord.approvalContentLevel1 || null, fullWidth: true },
-                            { label: 'Cán bộ phê duyệt cấp Cục', value: <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel2Name || null}</span> },
-                            { label: 'Ngày phê duyệt cấp Cục', value: selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : null },
-                            { label: 'Nội dung phê duyệt cấp Cục', value: selectedRecord.approvalContentLevel2 || null, fullWidth: true },
-                            ...((selectedRecord.rejectionReason && String(selectedRecord.approvalStatus).toUpperCase().indexOf('REJECT') >= 0)
-                              ? [{ label: 'Lý do từ chối', value: selectedRecord.rejectionReason, fullWidth: true }]
-                              : []),
-                          ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => {
-                            let labelCls = 'sec-col1-label';
-                            if (row.fullWidth) {
-                              labelCls = 'sec-full-label';
-                              colIndex = 0;
-                            } else {
-                              labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
-                              colIndex += 1;
-                            }
-                            return (
-                              <div key={row.label} className={row.fullWidth ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
-                                <span className={`chk-detail-label ${labelCls}`}>{row.label}</span>
-                                <span className="chk-detail-value">{row.value}</span>
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
+                              })()}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.updatedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.updatedAt || selectedRecord.createdAt)}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.submittedByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.submittedByName}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.submittedDate)}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel1Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel1Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel1)}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel1 || ''}</span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">
+                              {selectedRecord.approverLevel2Name ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.approverLevel2Name}</span>
+                              ) : ''}
+                            </span>
+                          </div>
+                          <div className="chk-detail-row">
+                            <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel2)}</span>
+                          </div>
+                          <div className="chk-detail-row chk-detail-row--full">
+                            <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                            <span className="chk-detail-value">{selectedRecord.approvalContentLevel2 || ''}</span>
+                          </div>
+                          {selectedRecord.rejectionReason && String(selectedRecord.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
+                            <div className="chk-detail-row chk-detail-row--full">
+                              <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                              <span className="chk-detail-value" style={{ color: statusCritical }}>{selectedRecord.rejectionReason}</span>
+                            </div>
+                          )}
+                        </div>
+
                       )}
                     </div>
                   </div>
@@ -4064,8 +4225,7 @@ const VtsAssistListPage = () => {
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <OrgUnitTreeSelect
-                              variant="form"
+                            <FormOrgUnitTreeSelect
                               organizations={orgUnitOptions}
                               placeholder="Chọn đơn vị quản lý..."
                               loading={loadingOrgs}
@@ -4077,21 +4237,22 @@ const VtsAssistListPage = () => {
                         </Col>
                         <Col xs={24} sm={12}>
                           <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
+                            name="operatingUnitId"
+                            {...labelProps('Đơn vị khai thác')}
                             rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                              { required: true, message: "Vui lòng chọn đơn vị khai thác" },
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
+                              showSearch
+                              placeholder="Chọn đơn vị khai thác"
+                              loading={loadingOperatingOrgs}
                               style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                createForm.setFieldValue("attachedInfrastructureType", val);
-                                createForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
+                              options={operatingOrganizationOptions}
+                              filterOption={(input: string, option: any) =>
+                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                              }
                             />
                           </Form.Item>
                         </Col>
@@ -4160,22 +4321,21 @@ const VtsAssistListPage = () => {
                         </Col>
                         <Col xs={24} sm={12}>
                           <Form.Item
-                            name="operatingUnitId"
-                            {...labelProps('Đơn vị khai thác')}
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
                             rules={[
-                              { required: true, message: "Vui lòng chọn đơn vị khai thác" },
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              showSearch
-                              placeholder="Chọn đơn vị khai thác"
-                              loading={loadingOperatingOrgs}
                               style={{ width: "100%", ...pillStyle }}
-                              options={operatingOrganizationOptions}
-                              filterOption={(input: string, option: any) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                              }
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                createForm.setFieldValue("attachedInfrastructureType", val);
+                                createForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -4574,8 +4734,7 @@ const VtsAssistListPage = () => {
                             {...labelProps('Đơn vị quản lý')}
                             style={{ marginBottom: spaceFormField }}
                           >
-                            <OrgUnitTreeSelect
-                              variant="form"
+                            <FormOrgUnitTreeSelect
                               organizations={orgUnitOptions}
                               placeholder="Chọn đơn vị quản lý..."
                               loading={loadingOrgs}
@@ -4588,21 +4747,22 @@ const VtsAssistListPage = () => {
                         </Col>
                         <Col xs={24} sm={12}>
                           <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
+                            name="operatingUnitId"
+                            {...labelProps('Đơn vị khai thác')}
                             rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                              { required: true, message: "Vui lòng chọn đơn vị khai thác" },
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
+                              showSearch
+                              placeholder="Chọn đơn vị khai thác"
+                              loading={loadingOperatingOrgs}
                               style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                updateForm.setFieldValue("attachedInfrastructureType", val);
-                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
+                              options={operatingOrganizationOptions}
+                              filterOption={(input: string, option: any) =>
+                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                              }
                             />
                           </Form.Item>
                         </Col>
@@ -4670,22 +4830,21 @@ const VtsAssistListPage = () => {
                         </Col>
                         <Col xs={24} sm={12}>
                           <Form.Item
-                            name="operatingUnitId"
-                            {...labelProps('Đơn vị khai thác')}
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
                             rules={[
-                              { required: true, message: "Vui lòng chọn đơn vị khai thác" },
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
                             ]}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select
-                              showSearch
-                              placeholder="Chọn đơn vị khai thác"
-                              loading={loadingOperatingOrgs}
                               style={{ width: "100%", ...pillStyle }}
-                              options={operatingOrganizationOptions}
-                              filterOption={(input: string, option: any) =>
-                                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                              }
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                updateForm.setFieldValue("attachedInfrastructureType", val);
+                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
                             />
                           </Form.Item>
                         </Col>

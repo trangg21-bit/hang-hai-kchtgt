@@ -46,7 +46,11 @@ public class PermissionController {
 
     private static final Set<String> DEPRECATED_PERMISSIONS = Set.of(
             "cctv:approve", "vhf:approve", "scada:approve", "transmission:approve", "vtsassist:approve",
-            "beaconstation:approve", "dikerevetment:approve", "radarstation:approve"
+            "beaconstation:approve", "dikerevetment:approve", "radarstation:approve",
+            "anchorage:approve", "anchoragearea:approve", "port:approve", "berth:approve",
+            "buoyberth:approve", "pier:approve", "dryport:approve", "transferarea:approve",
+            "stormshelter:approve", "shiprepairyard:approve", "waterzone:approve", "data:approve",
+            "approve:action"
     );
 
     /**
@@ -60,8 +64,8 @@ public class PermissionController {
             + "@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<Permission>>> list() {
         List<Permission> permissions = permissionRepository.findAll().stream()
-                .filter(p -> !"vhf".equalsIgnoreCase(p.getResource())
-                        && (p.getCode() == null || !p.getCode().toLowerCase().startsWith("vhf:")))
+                .filter(p -> !"anchoragearea".equalsIgnoreCase(p.getResource())
+                        && (p.getCode() == null || !p.getCode().toLowerCase().startsWith("anchoragearea:")))
                 .filter(p -> p.getCode() == null || !DEPRECATED_PERMISSIONS.contains(p.getCode().toLowerCase()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(permissions));

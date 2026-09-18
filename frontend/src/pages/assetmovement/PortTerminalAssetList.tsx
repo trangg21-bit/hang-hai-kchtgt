@@ -282,11 +282,15 @@ function PortTerminalAssetList({
   const openHistory = useCallback(async (r: PortTerminalAsset) => {
     setHistoryTarget(r);
     setHistoryOpen(true);
-    setHistoryLoading(true);
     setHistoryRecords([]);
     setHistorySearch("");
     setHistoryFrom("");
     setHistoryTo("");
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const d = await fetchInfraAssetHistory(r.id);
       const ch = Array.isArray(d?.changeHistory) ? d.changeHistory : [];

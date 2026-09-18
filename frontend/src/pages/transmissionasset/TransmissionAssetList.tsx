@@ -32,7 +32,9 @@ import {
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { useAssetPermissions } from '../../hooks/useAssetPermissions';
+
 import api from '../../services/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { fetchTransmissionOptions } from '../../services/transmission/api';
@@ -190,11 +192,29 @@ export default function TransmissionAssetList() {
     setSelected(undefined);
     setDrawerMode('create');
     form.resetFields();
-    form.setFieldsValue({
-      quantity: 1,
-    });
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId) {
+      form.setFieldsValue({
+        orgUnitId: currentOrgUnitId,
+        quantity: 1,
+      });
+    } else {
+      form.setFieldsValue({
+        quantity: 1,
+      });
+      if (!currentUser?.orgUnitId) {
+        api.get('/users/me').then((r) => {
+          const p = r.data?.data ?? r.data;
+          const uOrgId = p?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            form.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        }).catch(() => {});
+      }
+    }
     setAttachments([]);
-  }, [form]);
+  }, [form, currentUser, organizations]);
 
   const openEdit = useCallback(
     (record: TransmissionAsset) => {

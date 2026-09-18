@@ -442,38 +442,17 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
     // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
     if (approvedEdit && !previousValues.isEmpty()) {
-      changeHistoryService.recordChanges("TRANSMISSION", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
-      LocalDateTime now = LocalDateTime.now();
-      for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-        String field = entry.getKey();
-        String fieldName = getFieldDisplayName(field);
-        String oldVal = entry.getValue();
-        Object rawNew;
-        if ("coordinates".equals(field)) {
-          rawNew = request.getCoordinates();
-        } else if ("geometryType".equals(field)) {
-          rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
-        } else {
-          rawNew = getEntityFieldValue(saved, field);
-        }
-        String newVal = rawNew != null ? String.valueOf(rawNew) : null;
-        String oldDisp = formatDisplayValue(field, oldVal);
-        String newDisp = formatDisplayValue(field, newVal);
-        if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
-          continue;
-        }
-        historyRepository.save(InfrastructureHistory.builder()
-            .refId(saved.getId())
-            .refType(InfrastructureType.TRANSMISSION)
-            .approvalLevel(ApprovalLevel.LEVEL_2)
-            .status(InfrastructureHistoryStatus.UPDATED)
-            .approvedBy(currentUserId)
-            .approvedDate(now)
-            .changedField(fieldName)
-            .previousValue(oldDisp)
-            .newValue(newDisp)
-            .build());
+      if (previousValues.containsKey("coordinates")) {
+        changeHistoryService.insertChangeRecord("TRANSMISSION", saved.getId(), "coordinates",
+            oldCoordinates != null ? oldCoordinates : "Chưa có",
+            request.getCoordinates(), currentUserId.toString());
       }
+      if (previousValues.containsKey("geometryType")) {
+        changeHistoryService.insertChangeRecord("TRANSMISSION", saved.getId(), "geometryType",
+            oldGeometryType != null ? oldGeometryType : "Chưa có",
+            request.getGeometryType() != null ? request.getGeometryType().name() : null, currentUserId.toString());
+      }
+      changeHistoryService.recordChanges("TRANSMISSION", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
     }
 
     return toResponse(saved);

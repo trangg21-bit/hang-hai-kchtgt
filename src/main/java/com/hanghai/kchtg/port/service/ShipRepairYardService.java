@@ -81,7 +81,9 @@ public class ShipRepairYardService {
         // RecordSecurityLevel.validateAssignment(secLevel, "shiprepairyard", SecurityUtils.getCurrentUserPermissions(),
         //         SecurityUtils.isElevatedAdministrator());
 
-        String code = generateShipRepairYardCode(request.getPortId());
+        String code = (request.getShipRepairYardCode() != null && !request.getShipRepairYardCode().trim().isEmpty() && !shipRepairYardRepository.existsByShipRepairYardCode(request.getShipRepairYardCode().trim()))
+                ? request.getShipRepairYardCode().trim()
+                : generateShipRepairYardCode(request.getPortId());
 
         ShipRepairYard entity = ShipRepairYard.builder()
         // .securityLevel(secLevel)
@@ -201,7 +203,7 @@ public class ShipRepairYardService {
             applySaveAction(entity, request.getSaveAction());
         }
 
-        ShipRepairYard saved = shipRepairYardRepository.save(entity);
+        ShipRepairYard saved = shipRepairYardRepository.saveAndFlush(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
                 request.getLongitude(), request.getLatitude());
 
@@ -312,17 +314,23 @@ public class ShipRepairYardService {
 
         String portCode = port.getPortCode();
         String prefix = portCode + "-SCDT-";
-        List<ShipRepairYard> existing = shipRepairYardRepository.findByPortIdAndDeletedAtIsNull(portId);
+        List<String> existingCodes = shipRepairYardRepository.findAllShipRepairYardCodesStartingWith(prefix);
         int maxNum = 0;
-        for (ShipRepairYard a : existing) {
-            if (a.getShipRepairYardCode() != null && a.getShipRepairYardCode().startsWith(prefix)) {
+        for (String c : existingCodes) {
+            if (c != null && c.startsWith(prefix)) {
                 try {
-                    int n = Integer.parseInt(a.getShipRepairYardCode().substring(prefix.length()));
+                    int n = Integer.parseInt(c.substring(prefix.length()));
                     if (n > maxNum) maxNum = n;
                 } catch (NumberFormatException ignored) {}
             }
         }
-        return prefix + String.format("%03d", maxNum + 1);
+        int nextNum = maxNum + 1;
+        String candidate = prefix + String.format("%03d", nextNum);
+        while (shipRepairYardRepository.existsByShipRepairYardCode(candidate)) {
+            nextNum++;
+            candidate = prefix + String.format("%03d", nextNum);
+        }
+        return candidate;
     }
 
     // ── Attachment methods ──────────────────────────────────────────────
@@ -522,28 +530,77 @@ public class ShipRepairYardService {
                 .deletedBy(entity.getDeletedBy())
                 .build();
 
-        if (entity.getSpatialId() != null) {
-            response.setSpatialId(entity.getSpatialId());
-            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
-                if (spatialObj.getGeometryType() != null) {
-                    response.setGeometryType(spatialObj.getGeometryType());
-                }
-                response.setCoordinates(spatialObj.getCoordinates());
-                parseLatLng(spatialObj.getCoordinates(), response);
-            });
+        UUID spatialId = entity.getSpatialId();
+        GisSpatialObject spatialObj = null;
+        if (spatialId != null) {
+            spatialObj = gisSpatialObjectService.findById(spatialId).orElse(null);
+        }
+        if (spatialObj == null && entity.getId() != null) {
+            spatialObj = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.SHIP_REPAIR_YARD)
+                    .or(() -> gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.SHIP_REPAIR_FACILITY))
+                    .orElse(null);
+            if (spatialObj != null) {
+                entity.setSpatialId(spatialObj.getId());
+                shipRepairYardRepository.saveAndFlush(entity);
+            }
+        }
+        if (spatialObj != null) {
+            response.setSpatialId(spatialObj.getId());
+            if (spatialObj.getGeometryType() != null) {
+                response.setGeometryType(spatialObj.getGeometryType());
+            }
+            response.setCoordinates(spatialObj.getCoordinates());
+            parseLatLng(spatialObj.getCoordinates(), response);
         }
 
         return response;
     }
 
     private void parseLatLng(String coordinates, ShipRepairYardResponse response) {
-        if (coordinates == null || !coordinates.startsWith("POINT(")) return;
+        if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String inner = coordinates.substring(6, coordinates.length() - 1).trim();
-            String[] parts = inner.split("\\s+");
-            if (parts.length == 2) {
-                response.setLongitude(new BigDecimal(parts[0]));
-                response.setLatitude(new BigDecimal(parts[1]));
+            String trimmed = coordinates.trim();
+            if (trimmed.toUpperCase().startsWith("POINT")) {
+                int start = trimmed.indexOf('(') + 1;
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("LINESTRING")) {
+                int start = trimmed.indexOf('(') + 1;
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("POLYGON")) {
+                int start = trimmed.indexOf('(');
+                while (start < trimmed.length() && (trimmed.charAt(start) == '(' || Character.isWhitespace(trimmed.charAt(start)))) {
+                    start++;
+                }
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
             }
         } catch (Exception ignored) { }
     }
@@ -748,7 +805,11 @@ public class ShipRepairYardService {
                     geomType, GisSpatialObjectType.POLYGON_SHIP_REPAIR_YARD, wkt, saved.getId(),
                     InfrastructureType.SHIP_REPAIR_YARD);
             saved.setSpatialId(spatialObj.getId());
-            shipRepairYardRepository.save(saved);
+            shipRepairYardRepository.saveAndFlush(saved);
+        } else if (saved.getSpatialId() != null) {
+            gisSpatialObjectService.delete(saved.getSpatialId());
+            saved.setSpatialId(null);
+            shipRepairYardRepository.saveAndFlush(saved);
         }
     }
 

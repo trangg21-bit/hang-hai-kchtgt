@@ -157,6 +157,7 @@ class TransmissionApprovalServiceTest {
     @Test
     @DisplayName("Lịch sử: Người cập nhật lấy đúng tên cán bộ và Đơn vị lấy đúng đơn vị")
     void testGetHistory_UserAndOrgUnitResolution() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         UUID userId = UUID.randomUUID();
         User mockUser = new User();
         mockUser.setId(userId);
@@ -196,6 +197,7 @@ class TransmissionApprovalServiceTest {
     @Test
     @DisplayName("Lịch sử: Fallback người cập nhật sang 'Hệ thống' và đơn vị sang 'Cục Hàng hải Việt Nam'")
     void testGetHistory_FallbackUserAndOrgUnit() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         UUID userId = UUID.randomUUID();
         InfrastructureHistory hist = InfrastructureHistory.builder()
                 .id(UUID.randomUUID())
@@ -224,6 +226,7 @@ class TransmissionApprovalServiceTest {
     @Test
     @DisplayName("Lịch sử: Hỗ trợ tìm kiếm từ khóa và khoảng ngày dạng chuỗi YYYY-MM-DD")
     void testGetHistory_SearchKeywordAndDateRange() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         InfrastructureHistory hist = InfrastructureHistory.builder()
                 .id(UUID.randomUUID())
                 .refId(ID)
@@ -288,5 +291,17 @@ class TransmissionApprovalServiceTest {
 
         assertThrows(AccessDeniedException.class, () -> service.submit(ID, "Trình duyệt", CREATOR));
         assertThrows(AccessDeniedException.class, () -> service.getHistory(ID));
+    }
+
+    @Test
+    @DisplayName("getHistory: Trả về danh sách rỗng khi bản ghi ở trạng thái Lưu tạm (DRAFT)")
+    void testGetHistory_WhenDraft_ReturnsEmptyList() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(transmissionRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+        List<HistoryEntry> history = service.getHistory(ID);
+
+        assertNotNull(history);
+        assertThat(history).isEmpty();
     }
 }

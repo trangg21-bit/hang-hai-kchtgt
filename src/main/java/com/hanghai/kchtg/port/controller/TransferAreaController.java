@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +40,7 @@ public class TransferAreaController {
     private final TransferAreaMooringWaterAreaRepository transferAreaMooringWaterAreaRepository;
 
     @PostMapping
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:create')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:create')")
     public ResponseEntity<ApiResponse<TransferAreaResponse>> create(
             @Valid @RequestBody CreateTransferAreaRequest request) {
         log.info("Creating TransferArea: name={}", request.getTransferAreaName());
@@ -48,7 +49,7 @@ public class TransferAreaController {
     }
 
     @GetMapping("/generate-code")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:create'")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:create')")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode(
             @RequestParam UUID portId) {
         log.info("Generating transfer area code for portId={}", portId);
@@ -57,7 +58,7 @@ public class TransferAreaController {
     }
 
     @GetMapping("/{id}")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:read')")
     public ResponseEntity<ApiResponse<TransferAreaResponse>> getById(@PathVariable UUID id) {
         log.info("Getting TransferArea by id={}", id);
         TransferAreaResponse response = transferAreaService.getById(id);
@@ -65,7 +66,7 @@ public class TransferAreaController {
     }
 
     @GetMapping
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:read')")
     public ResponseEntity<ApiResponse<Page<TransferAreaResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -91,7 +92,7 @@ public class TransferAreaController {
     }
 
     @PutMapping
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:update')")
     public ResponseEntity<ApiResponse<TransferAreaResponse>> update(
             @Valid @RequestBody UpdateTransferAreaRequest request) {
         log.info("Updating TransferArea: id={}", request.getId());
@@ -100,14 +101,27 @@ public class TransferAreaController {
     }
 
     @DeleteMapping("/{id}")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:delete')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
         log.info("Soft-deleting TransferArea: id={}", id);
         transferAreaService.softDelete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa khu chuyển tải thành công", null));
     }
 
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("@auth.check(authentication, 'transferarea:manage') or @auth.check(authentication, 'transferarea:update')")
+    public ResponseEntity<ApiResponse<Void>> submit(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String content,
+            Authentication authentication) {
+        log.info("Submitting TransferArea for approval: id={}, user={}", id, authentication.getName());
+        UUID userId = SecurityUtils.getCurrentUserId();
+        transferAreaApprovalService.submit(id, content, userId);
+        return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt khu chuyển tải thành công", null));
+    }
+
     @PostMapping("/{id}/approve/c1")
+    @PreAuthorize("@auth.check(authentication, 'transferarea:approvec1')")
     public ResponseEntity<ApiResponse<Void>> approveC1(
             @PathVariable UUID id,
             @RequestParam(required = false) String reason,
@@ -118,6 +132,7 @@ public class TransferAreaController {
     }
 
     @PostMapping("/{id}/approve/c2")
+    @PreAuthorize("@auth.check(authentication, 'transferarea:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approveC2(
             @PathVariable UUID id,
             @RequestParam(required = false) String reason,
@@ -128,7 +143,7 @@ public class TransferAreaController {
     }
 
     @PostMapping("/{id}/approve")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'transferarea:approvec1', 'transferarea:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             @Valid @RequestBody ApproveRequest request,
@@ -138,8 +153,30 @@ public class TransferAreaController {
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt khu chuyển tải thành công", null));
     }
 
+    @PostMapping("/{id}/reject/c1")
+    @PreAuthorize("@auth.check(authentication, 'transferarea:approvec1')")
+    public ResponseEntity<ApiResponse<Void>> rejectC1(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Rejecting TransferArea C1: id={}, reason={}", id, reason);
+        transferAreaApprovalService.reject(id, authentication.getName(), "CANG_VU", reason);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối cấp Cảng vụ/Chi cục thành công", null));
+    }
+
+    @PostMapping("/{id}/reject/c2")
+    @PreAuthorize("@auth.check(authentication, 'transferarea:approvec2')")
+    public ResponseEntity<ApiResponse<Void>> rejectC2(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+        log.info("Rejecting TransferArea C2: id={}, reason={}", id, reason);
+        transferAreaApprovalService.reject(id, authentication.getName(), "CUC", reason);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối cấp Cục thành công", null));
+    }
+
     @PostMapping("/{id}/reject")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'transferarea:approvec1', 'transferarea:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) RejectRequest request,
@@ -153,7 +190,7 @@ public class TransferAreaController {
     }
 
     @GetMapping("/history/all")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:history')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:history')")
     public ResponseEntity<ApiResponse<Object>> getAllHistory() {
         log.info("Getting all TransferArea history");
         Object history = transferAreaApprovalService.getAllHistory();
@@ -161,7 +198,7 @@ public class TransferAreaController {
     }
 
     @GetMapping("/{id}/history")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:history')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         log.info("Getting TransferArea history: id={}", id);
         Object history = transferAreaApprovalService.getHistory(id);
@@ -169,7 +206,7 @@ public class TransferAreaController {
     }
 
     @GetMapping("/{id}/children")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:read')")
     public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getChildren(@PathVariable UUID id) {
         long mooringWaterAreaCount = transferAreaMooringWaterAreaRepository.countByTransferAreaIdAndDeletedAtIsNull(id);
         return ResponseEntity.ok(ApiResponse.success("Thành công",
@@ -179,7 +216,7 @@ public class TransferAreaController {
     // ── Attachment endpoints ─────────────────────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:update')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
@@ -195,14 +232,14 @@ public class TransferAreaController {
     }
 
     @GetMapping("/{id}/attachments")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:read')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
         List<AttachmentDto> result = transferAreaService.listAttachments("TRANSFER_AREA", id);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:update')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
@@ -214,7 +251,7 @@ public class TransferAreaController {
     }
 
     @GetMapping("/{id}/attachments/{attId}/download")
-    // @PreAuthorize("@auth.check(authentication, 'transferarea:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'transferarea:read')")
     public ResponseEntity<org.springframework.core.io.Resource> downloadAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

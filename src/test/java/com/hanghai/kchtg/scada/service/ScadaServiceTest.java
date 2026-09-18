@@ -5,6 +5,7 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
@@ -185,7 +186,7 @@ class ScadaServiceTest {
         ScadaResponse result = service.update(req);
 
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
-        verify(historyRepository, atLeastOnce()).save(any());
+        verify(changeHistoryService, atLeastOnce()).recordChanges(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -262,5 +263,37 @@ class ScadaServiceTest {
 
         String code = service.generateScadaCode();
         assertEquals("SCA-000007", code);
+    }
+
+    @Test
+    void deleteAttachment_whenDraft_doesNotRecordHistory() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        when(scadaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        Attachment att = new Attachment();
+        att.setId(UUID.randomUUID());
+        att.setEntityId(ID);
+        att.setFileName("test.pdf");
+        att.setFilePath("test.pdf");
+        when(attachmentRepository.findById(att.getId())).thenReturn(Optional.of(att));
+
+        service.deleteAttachment(ID, att.getId(), USER_ID);
+
+        verify(historyRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteAttachment_whenApproved_recordsHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(scadaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        Attachment att = new Attachment();
+        att.setId(UUID.randomUUID());
+        att.setEntityId(ID);
+        att.setFileName("test.pdf");
+        att.setFilePath("test.pdf");
+        when(attachmentRepository.findById(att.getId())).thenReturn(Optional.of(att));
+
+        service.deleteAttachment(ID, att.getId(), USER_ID);
+
+        verify(historyRepository, atLeastOnce()).save(any());
     }
 }

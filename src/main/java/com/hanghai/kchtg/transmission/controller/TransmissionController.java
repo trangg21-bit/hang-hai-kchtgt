@@ -7,6 +7,7 @@ import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.SubmitContentRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.transmission.dto.ApprovalRequest;
 import com.hanghai.kchtg.transmission.dto.TransmissionResponse;
 import com.hanghai.kchtg.transmission.dto.TransmissionOptionResponse;
@@ -48,7 +49,7 @@ public class TransmissionController {
   private final TransmissionApprovalService transmissionApprovalService;
 
   @PostMapping
-  @PreAuthorize("@auth.check(authentication, 'transmission:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:create', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> create(
     @Valid @RequestBody CreateTransmissionRequest request) {
     log.info("Creating transmission: code={}", request.getDeviceCode());
@@ -57,7 +58,7 @@ public class TransmissionController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'transmission:create') or @auth.check(authentication, 'transmission:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:create', 'transmission:read', 'transmission:manage')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating transmission device code");
     String code = transmissionService.generateTransmissionCode();
@@ -72,7 +73,7 @@ public class TransmissionController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@auth.check(authentication, 'transmission:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:read', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> getById(@PathVariable UUID id) {
     log.info("Getting transmission by id={}", id);
     TransmissionResponse response = transmissionService.getById(id);
@@ -81,7 +82,7 @@ public class TransmissionController {
 
   @GetMapping
   @DataScope
-  @PreAuthorize("@auth.check(authentication, 'transmission:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:read', 'transmission:manage')")
   public ResponseEntity<ApiResponse<Page<TransmissionResponse>>> findAll(
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "20") int size,
@@ -117,7 +118,7 @@ public class TransmissionController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.checkAny(authentication, 'transmission:update', 'transmission:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:update', 'transmission:approvec2', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> update(
     @Valid @RequestBody UpdateTransmissionRequest request) {
     log.info("Updating transmission: id={}", request.getId());
@@ -126,7 +127,7 @@ public class TransmissionController {
   }
 
   @DeleteMapping("/{id}")
-  @PreAuthorize("@auth.check(authentication, 'transmission:delete')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:delete', 'transmission:manage')")
   public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
     log.info("Soft-deleting transmission: id={}", id);
     transmissionService.softDelete(id);
@@ -134,7 +135,7 @@ public class TransmissionController {
   }
 
   @PostMapping("/{id}/submit")
-  @PreAuthorize("@auth.check(authentication, 'transmission:update') or @auth.check(authentication, 'transmission:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:update', 'transmission:create', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> submit(@PathVariable UUID id,
     @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting transmission for approval: id={}", id);
@@ -143,8 +144,8 @@ public class TransmissionController {
     return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c1")
-  @PreAuthorize("@auth.check(authentication, 'transmission:approvec1')")
+  @PostMapping(value = {"/{id}/approve/c1", "/{id}/approvec1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:approvec1', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> approveC1(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -153,8 +154,21 @@ public class TransmissionController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c2")
-  @PreAuthorize("@auth.check(authentication, 'transmission:approvec2')")
+  @PostMapping(value = {"/{id}/reject/c1", "/{id}/rejectc1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:approvec1', 'transmission:manage')")
+  public ResponseEntity<ApiResponse<TransmissionResponse>> rejectC1(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Rejecting transmission level 1: id={}", id);
+    if (request.getDecision() == null || request.getDecision().isBlank()) {
+      request.setDecision(ApprovalStatus.REJECTED.name());
+    }
+    TransmissionResponse response = transmissionApprovalService.approveC1(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt cấp Chi cục thành công", response));
+  }
+
+  @PostMapping(value = {"/{id}/approve/c2", "/{id}/approvec2", "/{id}/approve-l2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:approvec2', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> approveC2(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -163,8 +177,21 @@ public class TransmissionController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
   }
 
+  @PostMapping(value = {"/{id}/reject/c2", "/{id}/rejectc2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:approvec2', 'transmission:manage')")
+  public ResponseEntity<ApiResponse<TransmissionResponse>> rejectC2(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Rejecting transmission level 2: id={}", id);
+    if (request.getDecision() == null || request.getDecision().isBlank()) {
+      request.setDecision(ApprovalStatus.REJECTED.name());
+    }
+    TransmissionResponse response = transmissionApprovalService.approveC2(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt cấp Cục thành công", response));
+  }
+
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.check(authentication, 'transmission:history') or @auth.check(authentication, 'transmission:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:history', 'transmission:read', 'transmission:manage', 'data:read')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
     @PathVariable UUID id,
     @RequestParam(value = "page", required = false) Integer page,
@@ -182,7 +209,7 @@ public class TransmissionController {
   }
 
   @GetMapping("/history/all")
-  @PreAuthorize("@auth.check(authentication, 'transmission:history') or @auth.check(authentication, 'transmission:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:history', 'transmission:read', 'transmission:manage', 'data:read')")
   public ResponseEntity<ApiResponse<Object>> getAllHistory() {
     log.info("Getting all transmission history");
     Object history = transmissionApprovalService.getAllHistory();
@@ -190,7 +217,7 @@ public class TransmissionController {
   }
 
   @PostMapping("/{id}/restore")
-  @PreAuthorize("@auth.check(authentication, 'transmission:delete')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:delete', 'transmission:manage')")
   public ResponseEntity<ApiResponse<TransmissionResponse>> restore(@PathVariable UUID id) {
     log.info("Restoring transmission id={}", id);
     TransmissionResponse response = transmissionService.restore(id);
@@ -200,7 +227,7 @@ public class TransmissionController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'transmission:update') or @auth.check(authentication, 'transmission:create') or @auth.check(authentication, 'transmission:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:update', 'transmission:create', 'transmission:approvec2', 'transmission:manage')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -211,7 +238,7 @@ public class TransmissionController {
   }
 
   @GetMapping("/{id}/attachments")
-  @PreAuthorize("@auth.check(authentication, 'transmission:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:read', 'transmission:manage')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
     log.info("Listing transmission attachments: id={}", id);
     return ResponseEntity.ok(ApiResponse.success(
@@ -220,7 +247,7 @@ public class TransmissionController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'transmission:update') or @auth.check(authentication, 'transmission:create') or @auth.check(authentication, 'transmission:delete') or @auth.check(authentication, 'transmission:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:update', 'transmission:create', 'transmission:delete', 'transmission:approvec2', 'transmission:manage')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
@@ -231,7 +258,7 @@ public class TransmissionController {
 
   // Tải xuống file đính kèm — mirror /vts-operation-center (VtsOperationCenterController.downloadAttachment)
   @GetMapping("/{id}/attachments/{attachmentId}/download")
-  @PreAuthorize("@auth.check(authentication, 'transmission:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'transmission:read', 'transmission:manage')")
   public ResponseEntity<Resource> downloadAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

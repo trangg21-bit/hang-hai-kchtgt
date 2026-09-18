@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, type InputNumberProps, Tabs,
+  Row, Col, Form, Input, InputNumber, Select, Tabs,
   Button, Space, Modal,
 } from 'antd';
 import type { UploadFile } from 'antd';
@@ -21,9 +21,19 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+  safeDecimal,
+  parseNumber5,
+  getValueFromEvent5,
+  integer5NonNegativeRule,
+} from './shipRepairYardRules';
 import { organizationService } from '../../services/organizationService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
@@ -39,21 +49,6 @@ const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 }
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với BerthForm / BuoyForm
 const sectionBoxStyle: React.CSSProperties = {
@@ -128,10 +123,23 @@ const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?:
   const wkt = gisLocation?.coordinates;
   if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
   try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
+    const trimmed = wkt.trim();
+    if (trimmed.toUpperCase().startsWith('LINESTRING')) {
+      const m = trimmed.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/i);
+      if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    }
+    if (trimmed.toUpperCase().startsWith('POLYGON')) {
+      const m = trimmed.match(/POLYGON\s*\(\s*\(\s*([^)]+)\s*\)\s*\)/i);
+      if (m) {
+        const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) pts.pop();
+        return pts;
+      }
+    }
+    const mm = trimmed.match(/MULTIPOINT\s*\(\s*((?:\([^)]*\),?)+)\s*\)/i);
+    if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
+    const pm = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
+    if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
   } catch { /* ignore */ }
   return [];
 };
@@ -245,12 +253,12 @@ export interface ShipRepairYardFormFields {
   detailedLocation?: string;
   operationalStatus?: string;
   usageFunction?: string;
-  workshopArea?: number;
+  workshopArea?: number | string;
   vesselType?: string;
   vesselDwt?: string;
   businessType?: string;
   activity?: string;
-  slipwayCount?: number;
+  slipwayCount?: number | string;
   remarks?: string;
   coordinates?: Array<{ latitude: number; longitude: number }>;
   geometryType?: string;
@@ -275,6 +283,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const currentUser = useAuthStore((s) => s.user);
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
+  const isInitialLoadDoneRef = useRef(false);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
@@ -290,10 +299,8 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const [loadingSymbols, setLoadingSymbols] = useState(false);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [existingFiles, setExistingFiles] = useState<any[]>([]);
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
@@ -305,7 +312,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
         const map = new Map<string, string>();
-        users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
+        users.forEach((u: any) => { map.set(u.id, u.fullName || u.username || u.id); });
         setUserMap(map);
       } catch { /* ignore */ }
     })();
@@ -314,11 +321,38 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   useEffect(() => {
     setLoadingSymbols(true);
     symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
-      .then(r => setSymbols(r.data || []))
+      .then(r => {
+        const symList = r.data || [];
+        setSymbols(symList);
+        const currSymId = form.getFieldValue('mapSymbolId');
+        if (currSymId && symList.length > 0) {
+          const matched = symList.find((s: any) => s.id.toLowerCase() === String(currSymId).toLowerCase());
+          if (matched && matched.id !== currSymId) {
+            form.setFieldsValue({ mapSymbolId: matched.id });
+          }
+        }
+      })
       .catch(() => {})
       .finally(() => setLoadingSymbols(false));
-  }, []);
+  }, [form]);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
+
+  useEffect(() => {
+    if (isEdit) return;
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId && !form.getFieldValue('orgUnitId')) {
+      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+    } else if (!form.getFieldValue('orgUnitId') && !currentUser?.orgUnitId) {
+      api.get('/users/me').then((r) => {
+        const p = r.data?.data ?? r.data;
+        const uOrgId = p?.orgUnitId;
+        if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17' && !form.getFieldValue('orgUnitId')) {
+          form.setFieldsValue({ orgUnitId: uOrgId });
+        }
+      }).catch(() => {});
+    }
+  }, [isEdit, currentUser, orgUnits, form]);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -372,10 +406,10 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   useEffect(() => {
+    if (isEdit && !isInitialLoadDoneRef.current) {
+      return;
+    }
     if (!watchedGeometryType) {
-      if (!isEdit) {
-        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
-      }
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
@@ -391,16 +425,38 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   // Edit mode: load existing
   useEffect(() => {
     if (!isEdit || !id) return;
+    isInitialLoadDoneRef.current = false;
     (async () => {
       try {
         const data: any = await shipRepairYardCRUD.findById(id);
         initialApprovalStatusRef.current = data?.approvalStatus;
         const ec = data.coordinates ? parseGisCoordinates({ geometryType: data.geometryType, coordinates: data.coordinates }) : [];
-        setCoordinateList(ec.length > 0 ? ec.map(c => {
+        const loadedCoords = ec.length > 0 ? ec.map(c => {
           const latDms = ddToDms(c.latitude);
           const lngDms = ddToDms(c.longitude);
           return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-        }) : data.latitude != null ? (() => { const latDms = ddToDms(Number(data.latitude)); const lngDms = ddToDms(Number(data.longitude)); return [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]; })() : []);
+        }) : data.latitude != null ? (() => { const latDms = ddToDms(Number(data.latitude)); const lngDms = ddToDms(Number(data.longitude)); return [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]; })() : [];
+        setCoordinateList(loadedCoords);
+
+        let geomType = data.geometryType;
+        if (!geomType && data.coordinates) {
+          const wktUpper = String(data.coordinates).trim().toUpperCase();
+          if (wktUpper.startsWith('POLYGON')) geomType = 'POLYGON';
+          else if (wktUpper.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (wktUpper.startsWith('POINT')) geomType = 'POINT';
+        }
+        if (!geomType && (data.latitude != null || data.longitude != null || loadedCoords.length > 0)) {
+          geomType = loadedCoords.length > 2 ? 'POLYGON' : loadedCoords.length === 2 ? 'LINE' : 'POINT';
+        }
+
+        const rawSymId = data.mapSymbolId || (data as any).bieuTuongId || (data as any).symbolId;
+        const matchedSym = symbols.find((s: any) => s.id.toLowerCase() === String(rawSymId || '').toLowerCase());
+        const resolvedSymId = matchedSym ? matchedSym.id : rawSymId;
+
+        const displayRuleText = data.displayRule === 1 || data.displayRule === '1' || data.displayRule === 'Độ, phút, giây (DMS)'
+          ? 'Độ, phút, giây (DMS)'
+          : (data.displayRule || (geomType ? 'Độ, phút, giây (DMS)' : undefined));
+
         if (data.orgUnitId) await loadPortOptions(data.orgUnitId);
         if (data.portId) await loadPierOptions(data.portId);
         try {
@@ -420,12 +476,16 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
           usageFunction: data.usageFunction, workshopArea: normalizeSafeNumber(data.workshopArea),
           vesselType: data.vesselType, vesselDwt: data.vesselDwt,
           businessType: data.businessType, activity: data.activity,
-          slipwayCount: normalizeSafeNumber(data.slipwayCount), remarks: data.remarks,
-          geometryType: data.geometryType || undefined, mapSymbolId: data.mapSymbolId || (data as any).bieuTuongId || (data as any).symbolId, coordinateSystem: data.coordinateSystem, displayRule: data.displayRule,
+          slipwayCount: data.slipwayCount != null ? data.slipwayCount : undefined, remarks: data.remarks,
+          geometryType: geomType || undefined,
+          mapSymbolId: resolvedSymId || undefined,
+          coordinateSystem: data.coordinateSystem ?? (geomType ? 1 : undefined),
+          displayRule: displayRuleText,
         });
+        isInitialLoadDoneRef.current = true;
       } catch { toast.error('Không thể tải thông tin cơ sở sửa chữa, đóng tàu'); }
     })();
-  }, [isEdit, id]);
+  }, [isEdit, id, symbols]);
 
   const triggerBlobDownload = (data: BlobPart | undefined, downloadName: string) => {
     if (!data) return false;
@@ -561,13 +621,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
-      const toPayloadNumber = (v: unknown): number | undefined => {
-        if (v == null) return undefined;
-        const s = String(v).trim().replace(/,/g, '');
-        if (s === '') return undefined;
-        const num = Number(s);
-        return isNaN(num) ? undefined : num;
-      };
       const payload: Record<string, unknown> = {
         orgUnitId: vals.orgUnitId, portId: vals.portId,
         shipRepairYardCode: String(vals.shipRepairYardCode || '').trim() || undefined, shipRepairYardName: String(vals.shipRepairYardName || '').trim(),
@@ -576,12 +629,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         detailedLocation: vals.detailedLocation || undefined,
         operationalStatus: vals.operationalStatus || undefined,
         usageFunction: vals.usageFunction || undefined,
-        workshopArea: toPayloadNumber(vals.workshopArea),
+        workshopArea: safeDecimal(vals.workshopArea),
         vesselType: vals.vesselType || undefined,
         vesselDwt: vals.vesselDwt || undefined,
         businessType: vals.businessType || undefined,
         activity: vals.activity || undefined,
-        slipwayCount: toPayloadNumber(vals.slipwayCount),
+        slipwayCount: vals.slipwayCount != null && vals.slipwayCount !== '' ? Number(vals.slipwayCount) : undefined,
         remarks: vals.remarks || undefined,
         latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
         longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
@@ -607,7 +660,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         const newFiles = uploadedFiles.filter((fi: any) => !!fi.originFileObj);
         if (newFiles.length > 0) {
           const fd = new FormData();
-          newFiles.forEach((fi: any) => fd.append('files', fi.originFileObj as File));
+          newFiles.forEach((fi: any) => { fd.append('files', fi.originFileObj as File); });
           try {
             await api.post(`/v1/ship-repair-yard/${createdId}/attachments`, fd, {
               headers: { 'Content-Type': 'multipart/form-data' },
@@ -645,7 +698,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         <Row gutter={[24, 0]}>
           <Col span={12}>
             <Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý không được để trống' }]}>
-              <OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} />
+              <FormOrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý..." loading={loadingOrgs} disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Col>
           <Col span={12}>
@@ -713,8 +766,22 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             </Form.Item>
           </Col>
           <Col span={12}>
-            <Form.Item name="workshopArea" {...labelProps('Diện tích nhà xưởng, kho bãi')} style={{ marginBottom: spaceFormField }}>
-              <NumberInputWithCount min={0} step={0.01} placeholder="0" maxLength={20} style={numberInputStyle} formatter={fmtInputNumber} />
+            <Form.Item
+              name="workshopArea"
+              {...labelProps('Diện tích nhà xưởng, kho bãi (m²)')}
+              style={{ marginBottom: spaceFormField }}
+              rules={[decimalNumberRule]}
+              getValueFromEvent={getValueFromEvent20}
+            >
+              <NumberInputWithCount
+                min={0}
+                step={0.01}
+                placeholder="0"
+                maxLength={20}
+                style={numberInputStyle}
+                parser={parseNumber20}
+                formatter={fmtInputNumber}
+              />
             </Form.Item>
           </Col>
         </Row>
@@ -744,8 +811,21 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="slipwayCount" {...labelProps('Số lượng triền đà')} style={{ marginBottom: spaceFormField }}>
-              <NumberInputWithCount min={0} step={1} precision={0} placeholder="0" maxLength={5} style={numberInputStyle} />
+            <Form.Item
+              name="slipwayCount"
+              {...labelProps('Số lượng triền đà')}
+              style={{ marginBottom: spaceFormField }}
+              getValueFromEvent={getValueFromEvent5}
+            >
+              <NumberInputWithCount
+                min={0}
+                step={1}
+                precision={0}
+                placeholder="0"
+                maxLength={5}
+                style={numberInputStyle}
+                parser={parseNumber5}
+              />
             </Form.Item>
           </Col>
         </Row>
@@ -769,7 +849,18 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
             rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
             style={{ marginBottom: spaceFormField }}
           >
-            <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+            <Select
+              placeholder="Chọn loại đối tượng"
+              allowClear
+              options={GEOMETRY_TYPE_OPTIONS}
+              style={selectStyle}
+              onChange={(val) => {
+                if (!val) {
+                  form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
+                  setCoordinateList([]);
+                }
+              }}
+            />
           </Form.Item>
         </Col>
         <Col span={12}>
@@ -894,24 +985,35 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
               title: 'STT',
               width: 60,
               align: 'center' as const,
-              render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
+              onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+              render: (_v: any, _r: any, idx: number) => idx + 1,
             },
             {
-              title: 'Vĩ độ (Latitude - N)',
+              title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
               key: 'lat',
+              onCell: () => ({ style: { verticalAlign: 'top' } }),
               render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
             },
             {
-              title: 'Kinh độ (Longitude - E)',
+              title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
               key: 'lng',
+              onCell: () => ({ style: { verticalAlign: 'top' } }),
               render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
             },
             {
               title: '',
               width: 50,
               align: 'center' as const,
+              onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 10 } }),
               render: (_v: any, record: any) => (
-                <Button type="text" danger icon={<DeleteOutlined />} onClick={() => removeCoordinate(record._idx)} />
+                <Button
+                  type="text"
+                  danger
+                  icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                  onClick={() => removeCoordinate(record._idx)}
+                  style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Xóa tọa độ"
+                />
               ),
             },
           ]}

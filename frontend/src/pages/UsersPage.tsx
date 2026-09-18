@@ -362,6 +362,7 @@ export default function UsersPage() {
         if (k === '*' || k.startsWith('group_')) return false;
         return validCodes.size === 0 || validCodes.has(k.toLowerCase());
       });
+
       await userService.replaceDirectPermissions(permissionUser.id, keysToSave);
       toast.success('Đã cập nhật quyền trực tiếp cho người dùng');
       setPermissionUser(null);
@@ -377,6 +378,7 @@ export default function UsersPage() {
       setPermissionSaving(false);
     }
   }, [permissionUser, selectedPermissionKeys, refetch, apiPermissions, validCodesSet]);
+
 
   const indexedPermissionTree = useMemo(() => {
     const attachMeta = (nodes: typeof rawPermissionTree): any[] => nodes.map((node) => ({
@@ -881,6 +883,7 @@ export default function UsersPage() {
                           permissionTreeData,
                           validCodesSet,
                         ).filter((key) => !key.startsWith('group_'));
+
                         setSelectedPermissionKeys(nextMerged.filter((k) => k !== '*'));
                       }}
                     />

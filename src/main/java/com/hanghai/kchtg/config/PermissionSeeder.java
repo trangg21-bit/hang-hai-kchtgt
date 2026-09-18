@@ -206,6 +206,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi bến cảng");
 
                 // 8.2.1 Khu neo đậu (Anchorage)
+                seedPermission(definitions, "anchorage", "manage", "Quản lý khu neo đậu",
+                                "Toàn quyền quản lý khu neo đậu");
                 seedPermission(definitions, "anchorage", "read", "Xem khu neo đậu",
                                 "Tra cứu thông tin khu neo đậu");
                 seedPermission(definitions, "anchorage", "read:restricted", "Xem bản ghi hạn chế khu neo đậu",
@@ -225,6 +227,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi khu neo đậu");
 
                 // 8.2.2 Khu chuyển tải (Transfer Area)
+                seedPermission(definitions, "transferarea", "manage", "Quản lý khu chuyển tải",
+                                "Toàn quyền quản lý khu chuyển tải");
                 seedPermission(definitions, "transferarea", "read", "Xem khu chuyển tải",
                                 "Tra cứu thông tin khu chuyển tải");
                 seedPermission(definitions, "transferarea", "read:restricted", "Xem bản ghi hạn chế khu chuyển tải",
@@ -301,6 +305,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi đài TTDH");
 
                 // 8.2.5 Cơ sở sửa chữa, đóng tàu (Ship Repair Yard)
+                seedPermission(definitions, "shiprepairyard", "manage", "Quản lý cơ sở sửa chữa, đóng tàu",
+                                "Toàn quyền quản lý cơ sở sửa chữa, đóng tàu");
                 seedPermission(definitions, "shiprepairyard", "read", "Xem cơ sở sửa chữa, đóng tàu",
                                 "Tra cứu thông tin cơ sở sửa chữa, đóng tàu");
                 seedPermission(definitions, "shiprepairyard", "read:restricted", "Xem bản ghi hạn chế cơ sở sửa chữa, đóng tàu",
@@ -334,6 +340,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi cầu cảng");
 
                 // 8.4 Cảng cạn (Dry Port / ICD)
+                seedPermission(definitions, "dryport", "manage", "Quản lý cảng cạn", "Toàn quyền quản lý cảng cạn");
                 seedPermission(definitions, "dryport", "read", "Xem cảng cạn", "Tra cứu thông tin cảng cạn");
                 seedPermission(definitions, "dryport", "read:restricted", "Xem bản ghi hạn chế cảng cạn",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của cảng cạn");
@@ -363,6 +370,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi vùng nước");
 
                 // 8.7 Hệ thống CCTV (CCTV System)
+                seedPermission(definitions, "cctv", "manage", "Quản lý hệ thống CCTV", "Toàn quyền quản lý hệ thống CCTV");
                 seedPermission(definitions, "cctv", "read", "Xem hệ thống CCTV", "Tra cứu thông tin hệ thống CCTV");
                 seedPermission(definitions, "cctv", "read:restricted", "Xem bản ghi hạn chế CCTV",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống CCTV");
@@ -379,6 +387,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống CCTV");
 
                 // 8.7.1 Hệ thống thông tin liên lạc VHF (VHF System)
+                seedPermission(definitions, "vhf", "manage", "Quản lý hệ thống thông tin liên lạc VHF",
+                                "Toàn quyền quản lý hệ thống thông tin liên lạc VHF");
                 seedPermission(definitions, "vhf", "read", "Xem hệ thống thông tin liên lạc VHF", "Tra cứu thông tin hệ thống VHF");
                 seedPermission(definitions, "vhf", "read:restricted", "Xem bản ghi hạn chế VHF",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống VHF");
@@ -395,6 +405,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống VHF");
 
                 // 8.8 Hệ thống SCADA (SCADA System)
+                seedPermission(definitions, "scada", "manage", "Quản lý hệ thống SCADA",
+                                "Toàn quyền quản lý hệ thống SCADA");
                 seedPermission(definitions, "scada", "read", "Xem hệ thống SCADA", "Tra cứu thông tin hệ thống SCADA");
                 seedPermission(definitions, "scada", "read:restricted", "Xem bản ghi hạn chế SCADA",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống SCADA");
@@ -411,6 +423,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống SCADA");
 
                 // 8.9 Hệ thống truyền dẫn (Transmission System)
+                seedPermission(definitions, "transmission", "manage", "Quản lý hệ thống truyền dẫn",
+                                "Toàn quyền quản lý hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "read", "Xem hệ thống truyền dẫn", "Tra cứu thông tin hệ thống truyền dẫn");
                 seedPermission(definitions, "transmission", "read:restricted", "Xem bản ghi hạn chế truyền dẫn",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống truyền dẫn");
@@ -427,6 +441,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi và phê duyệt hệ thống truyền dẫn");
 
                 // 8.10 Hệ thống phụ trợ VTS (VTS Assist System)
+                seedPermission(definitions, "vtsassist", "manage", "Quản lý hệ thống phụ trợ VTS",
+                                "Toàn quyền quản lý hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "read", "Xem hệ thống phụ trợ VTS", "Tra cứu thông tin hệ thống phụ trợ VTS");
                 seedPermission(definitions, "vtsassist", "read:restricted", "Xem bản ghi hạn chế phụ trợ VTS",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống phụ trợ VTS");
@@ -496,6 +512,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi luồng hàng hải");
 
                 // 9.2 Đê kè hàng hải (Dike & Revetment)
+                seedPermission(definitions, "dikerevetment", "manage", "Quản lý đê kè",
+                                "Toàn quyền quản lý đê kè");
                 seedPermission(definitions, "dikerevetment", "read", "Xem đê kè", "Tra cứu thông tin đê kè");
                 seedPermission(definitions, "dikerevetment", "read:restricted", "Xem bản ghi hạn chế đê kè",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của đê kè");
@@ -512,6 +530,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi đê kè");
 
                 // 9.3 Cơ sở sửa chữa đóng tàu (Ship Repair Facility)
+                seedPermission(definitions, "shiprepair", "manage", "Quản lý cơ sở sửa chữa tàu",
+                                "Toàn quyền quản lý cơ sở sửa chữa tàu");
                 seedPermission(definitions, "shiprepair", "read", "Xem cơ sở sửa chữa tàu",
                                 "Tra cứu thông tin cơ sở sửa chữa tàu");
                 seedPermission(definitions, "shiprepair", "read:restricted", "Xem bản ghi hạn chế cơ sở sửa chữa tàu",
@@ -530,6 +550,8 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "shiprepair", "history", "Lịch sử phê duyệt cơ sở sửa chữa tàu",
                                 "Xem lịch sử thay đổi cơ sở sửa chữa tàu");
 
+                seedPermission(definitions, "shiprepairfacility", "manage", "Quản lý cơ sở đóng sửa tàu",
+                                "Toàn quyền quản lý cơ sở đóng sửa tàu");
                 seedPermission(definitions, "shiprepairfacility", "read", "Xem cơ sở đóng sửa tàu",
                                 "Tra cứu cơ sở đóng sửa tàu");
                 seedPermission(definitions, "shiprepairfacility", "read:restricted",
@@ -552,6 +574,8 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi cơ sở đóng sửa tàu");
 
                 // 9.4 Trạm Radar hàng hải (Radar Station)
+                seedPermission(definitions, "radarstation", "manage", "Quản lý trạm radar",
+                                "Toàn quyền quản lý trạm radar");
                 seedPermission(definitions, "radarstation", "read", "Xem trạm radar", "Tra cứu thông tin trạm radar");
                 seedPermission(definitions, "radarstation", "read:restricted", "Xem bản ghi hạn chế trạm radar",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của trạm radar");
@@ -640,6 +664,8 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "station", "approvec2", "Phê duyệt C2 nhà trạm",
                                 "Phê duyệt cấp 2 (Cục Hàng hải) hồ sơ nhà trạm");
 
+                seedPermission(definitions, "beaconstation", "manage", "Quản lý đèn biển và nhà trạm",
+                                "Toàn quyền quản lý đèn biển và nhà trạm gắn liền đèn biển");
                 seedPermission(definitions, "beaconstation", "read", "Xem đèn biển và nhà trạm", "Tra cứu thông tin đèn biển và nhà trạm");
                 seedPermission(definitions, "beaconstation", "read:restricted", "Xem bản ghi hạn chế đèn biển và nhà trạm",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của đèn biển và nhà trạm");
@@ -963,7 +989,7 @@ public class PermissionSeeder implements CommandLineRunner {
                                             deprecated_codes text[] := ARRAY[
                                                 'user:edit', 'group:edit', 'user:delete', 'group:delete',
                                                 'group:manage', 'orgunit:manage', 'orgunit:approve',
-                                                'cctv:approve', 'vhf:approve', 'scada:approve', 'transmission:approve', 'vtsassist:approve',
+                                                'cctv:approve', 'cctvasset:approve', 'vhf:approve', 'scada:approve', 'scadaasset:approve', 'transmission:approve', 'transmissionasset:approve', 'vtsassist:approve', 'vtsassistasset:approve',
                                                 'coastalstationcospassarsat:approve', 'coastalstationcospassarsat:reject',
                                                 'coastalstationlrit:approve', 'coastalstationlrit:reject',
                                                 'coastalstationinmarsat:approve', 'coastalstationinmarsat:reject',
@@ -973,19 +999,24 @@ public class PermissionSeeder implements CommandLineRunner {
                                                 'specialstation:approve', 'specialstation:reject',
                                                 'station:approve', 'station:reject',
                                                 'port:approve', 'berth:approve', 'buoyberth:approve', 'pier:approve',
-                                                'dryport:approve', 'anchorage:approve', 'anchoragearea:approve',
+                                                'dryport:approve', 'anchorage:approve', 'anchoragearea:approve', 'anchorageasset:approve',
                                                 'transferarea:approve', 'stormshelter:approve', 'shiprepairyard:approve',
+                                                'shiprepair:approve', 'shiprepairfacility:approve',
+                                                'beaconstation:approve', 'dikerevetment:approve',
+                                                'radarstation:approve', 'tramradar:approve',
                                                 'waterzone:approve', 'data:approve', 'approve:action'
                                             ];
                                         BEGIN
                                             IF to_regclass('public.user_permission_override') IS NOT NULL THEN
                                                 DELETE FROM user_permission_override
-WHERE permission_code = ANY(deprecated_codes);
+                                                WHERE permission_code = ANY(deprecated_codes)
+                                                   OR permission_code LIKE 'anchoragearea:%';
                                             END IF;
 
                                             IF to_regclass('public.user_group_permissions') IS NOT NULL THEN
                                                 DELETE FROM user_group_permissions
-WHERE permission = ANY(deprecated_codes);
+                                                WHERE permission = ANY(deprecated_codes)
+                                                   OR permission LIKE 'anchoragearea:%';
                                             END IF;
 
                                             IF to_regclass('public.role_permissions') IS NOT NULL AND to_regclass('public.permissions') IS NOT NULL THEN
@@ -993,13 +1024,16 @@ WHERE permission = ANY(deprecated_codes);
                                                 WHERE permission_id IN (
                                                     SELECT id
                                                     FROM permissions
-WHERE code = ANY(deprecated_codes)
+                                                    WHERE code = ANY(deprecated_codes)
+                                                       OR code LIKE 'anchoragearea:%'
                                                 );
                                             END IF;
 
                                             IF to_regclass('public.permissions') IS NOT NULL THEN
                                                 DELETE FROM permissions
-WHERE code = ANY(deprecated_codes);
+                                                WHERE code = ANY(deprecated_codes)
+                                                   OR code LIKE 'anchoragearea:%'
+                                                   OR resource = 'anchoragearea';
                                             END IF;
                                         END $$;
                                         """);

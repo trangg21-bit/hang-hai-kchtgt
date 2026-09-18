@@ -179,7 +179,7 @@ class TransmissionServiceTest {
         TransmissionResponse result = service.update(req);
 
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
-        verify(historyRepository, atLeastOnce()).save(any());
+        verify(changeHistoryService, atLeastOnce()).recordChanges(any(), any(), any(), any(), any());
     }
 
     @Test

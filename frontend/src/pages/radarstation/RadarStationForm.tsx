@@ -43,7 +43,8 @@ import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { OrgUnitTreeSelect, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+
 import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
@@ -132,6 +133,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const currentUser = useAuthStore((s) => s.user);
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -291,17 +293,32 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       form.resetFields();
       setRecord(null);
       setHistory([]);
-      const currentOrgUnitId = useAuthStore.getState().user?.orgUnitId;
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgOptions)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
       form.setFieldsValue({
         conditionStatus: '1',
-        orgUnitId: currentOrgUnitId || undefined,
+        orgUnitId: currentOrgUnitId,
       });
+
+      if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+        api.get('/users/me')
+          .then((res) => {
+            const profile = res.data?.data ?? res.data;
+            const uOrgId = profile?.orgUnitId;
+            if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+              form.setFieldsValue({ orgUnitId: uOrgId });
+            }
+          })
+          .catch(() => {});
+      }
+
       radarStationCRUD
         .generateCode()
         .then((res) => form.setFieldsValue({ code: res?.code || '' }))
         .catch((err) => console.error('Không sinh được mã trạm radar', err));
     }
-  }, [open, isCreateMode, id, isDetailMode, isModalMode, form, loadHistory, refreshAttachments]);
+  }, [open, isCreateMode, id, isDetailMode, isModalMode, form, loadHistory, refreshAttachments, currentUser, orgOptions]);
 
   const handleSubmit = useCallback(async (submitMode: 'save' | 'submit' | 'approve' = 'save') => {
     try {
@@ -763,11 +780,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             required
             rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
           >
-            <OrgUnitTreeSelect
-              variant="form"
+            <FormOrgUnitTreeSelect
               organizations={orgOptions}
               placeholder="Chọn đơn vị quản lý..."
-              treeDefaultExpandAll={false}
               disabled={isEdit}
               allowClear
               showSearch

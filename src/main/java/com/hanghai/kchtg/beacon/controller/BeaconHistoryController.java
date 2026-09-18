@@ -30,7 +30,7 @@ public class BeaconHistoryController {
     private final BeaconHistoryService historyService;
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'beaconstation:history') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'beaconstation:history', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouseasset:history', 'lighthouse:manage', 'lighthouse:read', 'lighthouse:history', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<BeaconHistoryResponse>>> getHistory(
             @RequestParam BeaconType type,
             @RequestParam(required = false) String entityId,

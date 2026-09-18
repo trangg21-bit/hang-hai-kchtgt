@@ -10,6 +10,7 @@ import {
   Select,
   Form,
   Input,
+  InputNumber,
   Tag,
   List,
   Drawer,

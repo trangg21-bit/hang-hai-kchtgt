@@ -346,11 +346,13 @@ public class AnchorageService {
         // Mở rộng cây đơn vị: chọn đơn vị cha → gồm cả khu neo đậu của toàn bộ đơn vị con (hậu duệ), giống logic BerthService
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
-        String searchTrim = search != null ? search.trim() : null;
+        String searchTrim = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        String codeTrim = (anchorageCode != null && !anchorageCode.trim().isEmpty()) ? anchorageCode.trim() : null;
+        String nameTrim = (anchorageName != null && !anchorageName.trim().isEmpty()) ? anchorageName.trim() : null;
         Page<Anchorage> result = anchorageRepository.searchAnchorages(
                 isDeletedFilter,
                 includeAll, orgUnitIds,
-                searchTrim, anchorageCode, anchorageName, portId, navigationChannelId, buoyStationId,
+                searchTrim, codeTrim, nameTrim, portId, navigationChannelId, buoyStationId,
                 provinceId, approvalEnum, statusEnum, false,
                 updatedFromDt, updatedToDt,
                 pageable);
@@ -670,15 +672,25 @@ public class AnchorageService {
                 .deletedBy(entity.getDeletedBy())
                 .build();
 
-        if (entity.getSpatialId() != null) {
-            response.setSpatialId(entity.getSpatialId());
-            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
-                if (spatialObj.getGeometryType() != null) {
-                    response.setGeometryType(spatialObj.getGeometryType());
-                }
-                response.setCoordinates(spatialObj.getCoordinates());
-                parseLatLng(spatialObj.getCoordinates(), response);
-            });
+        UUID spatialId = entity.getSpatialId();
+        GisSpatialObject spatialObj = null;
+        if (spatialId != null) {
+            spatialObj = gisSpatialObjectService.findById(spatialId).orElse(null);
+        }
+        if (spatialObj == null && entity.getId() != null) {
+            spatialObj = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.ANCHORAGE_AREA).orElse(null);
+            if (spatialObj != null) {
+                entity.setSpatialId(spatialObj.getId());
+                anchorageRepository.save(entity);
+            }
+        }
+        if (spatialObj != null) {
+            response.setSpatialId(spatialObj.getId());
+            if (spatialObj.getGeometryType() != null) {
+                response.setGeometryType(spatialObj.getGeometryType());
+            }
+            response.setCoordinates(spatialObj.getCoordinates());
+            parseLatLng(spatialObj.getCoordinates(), response);
         }
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
@@ -764,23 +776,36 @@ public class AnchorageService {
                     geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
                     InfrastructureType.ANCHORAGE_AREA);
             saved.setSpatialId(spatialObj.getId());
-            anchorageRepository.save(saved);
+            anchorageRepository.saveAndFlush(saved);
         } else if (saved.getSpatialId() != null) {
             gisSpatialObjectService.delete(saved.getSpatialId());
             saved.setSpatialId(null);
-            anchorageRepository.save(saved);
+            anchorageRepository.saveAndFlush(saved);
         }
         replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
     }
 
     private void replaceMooringWaterAreas(UUID anchorageId, List<MooringWaterAreaRequest> requests) {
-        mooringWaterAreaRepository.deleteAll(mooringWaterAreaRepository.findByAnchorageId(anchorageId));
-        if (requests == null || requests.isEmpty()) return;
+        if (requests == null) return;
+        List<MooringWaterArea> existing = mooringWaterAreaRepository.findByAnchorageId(anchorageId);
+        for (MooringWaterArea wa : existing) {
+            mooringWaterAreaAnchorPointRepository.deleteAll(mooringWaterAreaAnchorPointRepository.findByMooringWaterAreaId(wa.getId()));
+        }
+        mooringWaterAreaRepository.deleteAll(existing);
+        if (requests.isEmpty()) return;
+
         for (MooringWaterAreaRequest r : requests) {
-            if (r.getDescription() == null || r.getDescription().isBlank()) continue;
+            if (r == null) continue;
+            String desc = (r.getDescription() != null && !r.getDescription().isBlank())
+                    ? r.getDescription().trim() : null;
+            boolean hasPoints = r.getAnchorPoints() != null && r.getAnchorPoints().stream()
+                    .anyMatch(p -> p != null && p.getLatitude() != null && p.getLongitude() != null);
+            if (desc == null && r.getGeometryType() == null && r.getMapSymbolId() == null && !hasPoints) {
+                continue;
+            }
             MooringWaterArea wa = MooringWaterArea.builder()
                     .anchorageId(anchorageId)
-                    .description(r.getDescription().trim())
+                    .description(desc)
                     .geometryType(r.getGeometryType())
                     .mapSymbolId(r.getMapSymbolId())
                     .coordinateSystem(r.getCoordinateSystem())
@@ -790,7 +815,7 @@ public class AnchorageService {
             List<MooringWaterAreaAnchorPoint> points = new ArrayList<>();
             if (r.getAnchorPoints() != null) {
                 for (MooringWaterAreaAnchorPointRequest p : r.getAnchorPoints()) {
-                    if (p.getLatitude() == null || p.getLongitude() == null) continue;
+                    if (p == null || p.getLatitude() == null || p.getLongitude() == null) continue;
                     points.add(MooringWaterAreaAnchorPoint.builder()
                             .mooringWaterAreaId(saved.getId())
                             .name(p.getName() != null ? p.getName().trim() : null)
@@ -799,7 +824,9 @@ public class AnchorageService {
                             .build());
                 }
             }
-            mooringWaterAreaAnchorPointRepository.saveAll(points);
+            if (!points.isEmpty()) {
+                mooringWaterAreaAnchorPointRepository.saveAll(points);
+            }
         }
     }
 

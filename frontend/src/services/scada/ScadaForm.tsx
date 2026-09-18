@@ -30,7 +30,7 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
 import { userService } from '../userService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol as MapSymbolType } from '../symbolService';
@@ -343,9 +343,6 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
     note: useMaxReached('note', 2000),
   };
 
-  const handleOrgUnitChange = () => {
-    // Giữ hoặc cập nhật dữ liệu liên quan khi đổi đơn vị
-  };
 
   // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
   const applyMapSelection = (val: any) => {
@@ -475,30 +472,38 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
     loadRadarStations();
   }, [loadOrgUnits, loadSymbols, loadOperatingOrgs, loadVtsCenters, loadRadarStations]);
 
-  // Create mode: auto-generate deviceCode
+  // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
   useEffect(() => {
-    if (isEdit) return;
-    if (form.getFieldValue('deviceCode')) return;
-    setDeviceCodeLoading(true);
-    generateScadaCode()
-      .then((code) => {
-        if (code) form.setFieldsValue({ deviceCode: code });
-      })
-      .catch(() => {})
-      .finally(() => setDeviceCodeLoading(false));
+    if (!isEdit) {
+      if (!form.getFieldValue('deviceCode')) {
+        setDeviceCodeLoading(true);
+        generateScadaCode()
+          .then((code) => {
+            if (code) form.setFieldsValue({ deviceCode: code });
+          })
+          .catch(() => {})
+          .finally(() => setDeviceCodeLoading(false));
+      }
 
-    const currentOrgUnitId = currentUser?.orgUnitId;
-    if (currentOrgUnitId) {
-      form.setFieldsValue({ orgUnitId: currentOrgUnitId });
-    } else {
-      api.get('/users/me')
-        .then((r) => {
-          const p = r.data?.data ?? r.data;
-          if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
-        })
-        .catch(() => {});
+      // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else if (!form.getFieldValue('orgUnitId')) {
+        api.get('/users/me')
+          .then((r) => {
+            const p = r.data?.data ?? r.data;
+            const uOrgId = p?.orgUnitId;
+            if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+              form.setFieldsValue({ orgUnitId: uOrgId });
+            }
+          })
+          .catch(() => {});
+      }
     }
-  }, [isEdit, currentUser, form]);
+  }, [isEdit, currentUser, orgUnits, form]);
 
   // GIS Geometry Type changes: adjust coordinateList
   useEffect(() => {
@@ -908,15 +913,14 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         style={{ marginBottom: spaceFormField }}
                         rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                       >
-                        <OrgUnitTreeSelect
-                          variant="form"
+                        <FormOrgUnitTreeSelect
                           organizations={orgUnits}
                           placeholder="Chọn đơn vị quản lý..."
                           loading={loadingOrgs}
-                          disabled={isEdit && !isSystemAdmin}
+                          allowClear
                           showPath
-                          treeDefaultExpandAll={false}
-                          onChange={handleOrgUnitChange}
+                          disabled={isEdit && !isSystemAdmin}
+                          style={{ borderRadius: radiusPill, height: 40 }}
                         />
                       </Form.Item>
                     </Col>

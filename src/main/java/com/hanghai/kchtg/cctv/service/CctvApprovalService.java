@@ -32,8 +32,10 @@ import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -183,6 +185,10 @@ public class CctvApprovalService {
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống CCTV với id: " + id));
     validateAllowedOrgUnit(parent.getOrgUnitId());
 
+    if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+      return Collections.emptyList();
+    }
+
     // Nhật ký: copy đúng /vts-operation-center (VtsOperationCenterService.getHistory) — trả về mọi
     // dòng nhật ký (mặc định) hoặc lọc từ khóa/khoảng ngày; KHÔNG lọc theo mốc/status.
     String normalizedKeyword = normalizeSearchKeyword(keyword);
@@ -205,7 +211,7 @@ public class CctvApprovalService {
           String field = h.getChangedField();
           if (field != null) {
             String norm = field.trim().toLowerCase();
-            if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+            if (isExcludedHistoryField(norm)) {
               return false;
             }
           }
@@ -216,16 +222,33 @@ public class CctvApprovalService {
         })
         .collect(Collectors.toList());
 
-    Set<UUID> userIds = filteredList.stream()
+    // Khử trùng lặp giữa bản ghi lưu bằng mã tiếng Anh và nhãn tiếng Việt trong cùng phiên cập nhật
+    List<InfrastructureHistory> dedupedList = new ArrayList<>();
+    Set<String> seenKeys = new HashSet<>();
+    for (InfrastructureHistory h : filteredList) {
+      String canonicalField = canonicalizeFieldName(h.getChangedField());
+      long epochSecond = h.getApprovedDate() != null
+          ? h.getApprovedDate().toEpochSecond(java.time.ZoneOffset.UTC)
+          : 0L;
+      String key = epochSecond + "_" + canonicalField;
+      if (seenKeys.add(key)) {
+        dedupedList.add(h);
+      }
+    }
+
+    Set<UUID> userIds = dedupedList.stream()
         .map(InfrastructureHistory::getApprovedBy)
         .filter(Objects::nonNull)
         .collect(Collectors.toSet());
     Map<UUID, User> userMap = resolveUsers(userIds);
 
-    return filteredList.stream()
+    return dedupedList.stream()
         .map(h -> {
           User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
           String userName = formatUserIdentity(u);
+          if (userName == null || userName.isBlank()) {
+            userName = "Hệ thống";
+          }
           String orgUnitName = null;
           if (u != null) {
             if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
@@ -252,6 +275,70 @@ public class CctvApprovalService {
               .build();
         })
         .collect(Collectors.toList());
+  }
+
+  private static boolean isExcludedHistoryField(String norm) {
+    if (norm == null) return false;
+    return norm.equals("approvalstatus")
+        || norm.equals("trạng thái phê duyệt")
+        || norm.equals("trang thai phe duyet")
+        || norm.equals("trạng thái")
+        || norm.equals("status")
+        || norm.equals("approvalcontentlevel1")
+        || norm.equals("approvalcontentlevel2")
+        || norm.equals("level1approvalcontent")
+        || norm.equals("level2approvalcontent")
+        || norm.equals("submitteddate")
+        || norm.equals("submittedat")
+        || norm.equals("submittedby")
+        || norm.equals("approverlevel1")
+        || norm.equals("approverlevel2")
+        || norm.equals("approveddatelevel1")
+        || norm.equals("approveddatelevel2")
+        || norm.equals("rejectionreason")
+        || norm.equals("lý do từ chối")
+        || norm.equals("ly do tu choi")
+        || norm.equals("portauthorityapprovedby")
+        || norm.equals("portauthorityapprovedat")
+        || norm.equals("portauthorityapprovalcontent")
+        || norm.equals("departmentapprovedby")
+        || norm.equals("departmentapprovedat")
+        || norm.equals("departmentapprovalcontent")
+        || norm.equals("approvedby")
+        || norm.equals("approvedat")
+        || norm.equals("approvedremarks");
+  }
+
+  private static String canonicalizeFieldName(String field) {
+    if (field == null) return "";
+    String norm = field.trim().toLowerCase();
+    return switch (norm) {
+      case "devicename", "tên thiết bị", "ten thiet bi" -> "deviceName";
+      case "devicecode", "mã thiết bị", "ma thiet bi" -> "deviceCode";
+      case "detaillocation", "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet" -> "detailedLocation";
+      case "manufacturer", "hãng sản xuất", "hang san xuat" -> "manufacturer";
+      case "model" -> "model";
+      case "quantity", "số lượng", "so luong" -> "quantity";
+      case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+      case "operatingunitid", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operatingUnitId";
+      case "provincename", "tỉnh/thành phố", "tinh/thanh pho", "province" -> "provinceName";
+      case "attachedinfrastructuretype", "loại hạ tầng", "loai ha tang", "thuộc loại hạ tầng" -> "attachedInfrastructureType";
+      case "attachedinfrastructureid", "thuộc hạ tầng", "thuoc ha tang", "hạ tầng phụ thuộc" -> "attachedInfrastructureId";
+      case "unitofmeasure", "đơn vị tính", "don vi tinh" -> "unitOfMeasure";
+      case "yearofuse", "năm đưa vào sử dụng", "nam dua vao su dung" -> "yearOfUse";
+      case "operationalstatus", "trạng thái hoạt động", "trang thai hoat dong", "tình trạng hoạt động" -> "operationalStatus";
+      case "specifications", "thông số kỹ thuật", "thong so ky thuat" -> "specifications";
+      case "maintenanceinformation", "thông tin bảo trì", "thong tin bao tri" -> "maintenanceInformation";
+      case "note", "ghi chú", "ghi chu" -> "note";
+      case "objecttype", "loại đối tượng", "loai doi tuong", "loại đối tượng (gis)" -> "objectType";
+      case "mapsymbolid", "biểu tượng", "biểu tượng bản đồ", "bieu tuong" -> "mapSymbolId";
+      case "coordinatesystem", "hệ quy chiếu", "he quy chieu", "hệ tọa độ" -> "coordinateSystem";
+      case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+      case "coordinates", "tọa độ", "tọa độ gis", "toa do" -> "coordinates";
+      case "geometrytype", "loại đối tượng gis", "loai doi tuong gis" -> "geometryType";
+      case "tài liệu đính kèm", "tai lieu dinh kem", "attachments" -> "attachments";
+      default -> norm;
+    };
   }
 
   private void validateAllowedOrgUnit(UUID orgUnitId) {

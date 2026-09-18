@@ -56,6 +56,7 @@ public class ChangeHistoryService {
             case "BEACONSTATION", "BEACON_STATION", "DEN_BIEN" -> InfrastructureType.LIGHTHOUSE;
             case "DAITTDH", "DAI_TTDH" -> InfrastructureType.DAI_TTDH;
             case "SHIPREPAIRFACILITY", "SHIP_REPAIR_FACILITY" -> InfrastructureType.SHIP_REPAIR_FACILITY;
+            case "SHIPREPAIRYARD", "SHIP_REPAIR_YARD", "CO_SO_SUA_CHUA_DONG_TAU" -> InfrastructureType.SHIP_REPAIR_YARD;
             case "TRANSFERAREA", "TRANSFER_AREA", "TRANSSHIPMENT_AREA", "KHU_CHUYEN_TAI" -> InfrastructureType.TRANSSHIPMENT_AREA;
             case "ANCHORAGE", "KHU_NEO_DAU", "ANCHORAGE_AREA" -> InfrastructureType.ANCHORAGE_AREA;
             case "BUOYBERTH", "BUOY_BERTH", "BEN_PHAO" -> InfrastructureType.BUOY_BERTH;
@@ -176,8 +177,14 @@ public class ChangeHistoryService {
                 || name.equals("rejectionReason")
                 || name.equals("level1ApprovalContent")
                 || name.equals("level2ApprovalContent")
+                || name.equals("approvalContentLevel1")
+                || name.equals("approvalContentLevel2")
+                || name.equals("submittedDate")
                 || name.equals("submittedAt")
                 || name.equals("submittedBy")
+                || name.equals("submittedForApprovalAt")
+                || name.equals("submittedForApprovalBy")
+                || name.equals("activityStatus")
                 || name.equals("portAuthorityApprovedBy")
                 || name.equals("portAuthorityApprovedAt")
                 || name.equals("portAuthorityApprovalContent")

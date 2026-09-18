@@ -157,6 +157,7 @@ class VtsAssistApprovalServiceTest {
     @Test
     @DisplayName("Lịch sử: Người cập nhật lấy đúng tên cán bộ và Đơn vị lấy đúng đơn vị")
     void testGetHistory_UserAndOrgUnitResolution() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         UUID userId = UUID.randomUUID();
         User mockUser = new User();
         mockUser.setId(userId);
@@ -196,6 +197,7 @@ class VtsAssistApprovalServiceTest {
     @Test
     @DisplayName("Lịch sử: Fallback người cập nhật sang 'Hệ thống' và đơn vị sang 'Cục Hàng hải Việt Nam'")
     void testGetHistory_FallbackUserAndOrgUnit() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         UUID userId = UUID.randomUUID();
         InfrastructureHistory hist = InfrastructureHistory.builder()
                 .id(UUID.randomUUID())
@@ -224,6 +226,7 @@ class VtsAssistApprovalServiceTest {
     @Test
     @DisplayName("Lịch sử: Hỗ trợ tìm kiếm từ khóa và khoảng ngày dạng chuỗi YYYY-MM-DD")
     void testGetHistory_SearchKeywordAndDateRange() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         InfrastructureHistory hist = InfrastructureHistory.builder()
                 .id(UUID.randomUUID())
                 .refId(ID)
@@ -288,5 +291,153 @@ class VtsAssistApprovalServiceTest {
 
         assertThrows(AccessDeniedException.class, () -> service.submit(ID, "Trình duyệt", CREATOR));
         assertThrows(AccessDeniedException.class, () -> service.getHistory(ID));
+    }
+
+    @Test
+    @DisplayName("Lịch sử: Lọc sạch toàn bộ trường metadata của quy trình phê duyệt")
+    void getHistory_filtersApprovalWorkflowMetadata() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        InfrastructureHistory h1 = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("approvalContentLevel1")
+                .previousValue("Cũ")
+                .newValue("Nội dung duyệt cấp 1")
+                .approvedDate(LocalDateTime.now())
+                .approvedBy(APPROVER_A)
+                .build();
+        InfrastructureHistory h2 = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("submittedDate")
+                .previousValue(null)
+                .newValue("2026-06-15T10:00:00")
+                .approvedDate(LocalDateTime.now())
+                .approvedBy(CREATOR)
+                .build();
+        InfrastructureHistory h3 = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("rejectionReason")
+                .previousValue(null)
+                .newValue("Từ chối duyệt")
+                .approvedDate(LocalDateTime.now())
+                .approvedBy(APPROVER_B)
+                .build();
+        InfrastructureHistory hValid = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("deviceName")
+                .previousValue("Thiết bị cũ")
+                .newValue("Thiết bị mới")
+                .approvedDate(LocalDateTime.now())
+                .approvedBy(APPROVER_B)
+                .build();
+
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_ASSIST, ID))
+                .thenReturn(List.of(h1, h2, h3, hValid));
+
+        User actor = new User();
+        actor.setId(APPROVER_B);
+        actor.setFullName("Cán bộ Cục");
+        when(userRepository.findAllByIdInWithOrgUnit(any())).thenReturn(List.of(actor));
+
+        List<HistoryEntry> result = service.getHistory(ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getChangedField()).isEqualTo("deviceName");
+    }
+
+    @Test
+    @DisplayName("Lịch sử: Khử trùng lặp trường dữ liệu cùng phiên giữa key tiếng Anh và nhãn tiếng Việt")
+    void getHistory_deduplicatesCanonicalFieldsInSameSession() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        LocalDateTime timestamp = LocalDateTime.of(2026, 6, 15, 10, 0, 0);
+
+        InfrastructureHistory englishField = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("deviceName")
+                .previousValue("Thiết bị cũ")
+                .newValue("Thiết bị mới")
+                .approvedDate(timestamp)
+                .approvedBy(APPROVER_A)
+                .build();
+        InfrastructureHistory vietnameseField = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("Tên thiết bị")
+                .previousValue("Thiết bị cũ")
+                .newValue("Thiết bị mới")
+                .approvedDate(timestamp)
+                .approvedBy(APPROVER_A)
+                .build();
+
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_ASSIST, ID))
+                .thenReturn(List.of(englishField, vietnameseField));
+
+        User actor = new User();
+        actor.setId(APPROVER_A);
+        actor.setFullName("Cán bộ");
+        when(userRepository.findAllByIdInWithOrgUnit(Set.of(APPROVER_A))).thenReturn(List.of(actor));
+
+        List<HistoryEntry> result = service.getHistory(ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getChangedField()).isEqualTo("deviceName");
+    }
+
+    @Test
+    @DisplayName("Lịch sử: Fallback approvedBy sang 'Hệ thống' khi không tìm thấy thông tin user")
+    void getHistory_fallbackUserNameToSystemWhenNull() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        UUID unknownUserId = UUID.randomUUID();
+
+        InfrastructureHistory hist = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("note")
+                .previousValue("Ghi chú cũ")
+                .newValue("Ghi chú mới")
+                .approvedDate(LocalDateTime.now())
+                .approvedBy(unknownUserId)
+                .build();
+
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_ASSIST, ID))
+                .thenReturn(List.of(hist));
+        when(userRepository.findAllByIdInWithOrgUnit(any())).thenReturn(List.of());
+
+        List<HistoryEntry> result = service.getHistory(ID);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getApprovedBy()).isEqualTo("Hệ thống");
+    }
+
+    @Test
+    @DisplayName("Lịch sử: Bản ghi Lưu tạm (DRAFT) chưa duyệt trả về danh sách rỗng")
+    void getHistory_whenDraft_returnsEmptyList() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        InfrastructureHistory hist = InfrastructureHistory.builder()
+                .id(UUID.randomUUID())
+                .refId(ID)
+                .refType(InfrastructureType.VTS_ASSIST)
+                .changedField("deviceName")
+                .previousValue("Thiết bị cũ")
+                .newValue("Thiết bị mới")
+                .approvedDate(LocalDateTime.now())
+                .approvedBy(APPROVER_B)
+                .build();
+        when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VTS_ASSIST, ID))
+                .thenReturn(List.of(hist));
+
+        List<HistoryEntry> result = service.getHistory(ID);
+        assertThat(result).isEmpty();
     }
 }

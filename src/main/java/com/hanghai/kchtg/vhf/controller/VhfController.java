@@ -125,7 +125,7 @@ public class VhfController {
   }
 
   @PostMapping("/{id}/submit")
-  @PreAuthorize("@auth.check(authentication, 'vhf:update')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:update', 'vhf:create')")
   public ResponseEntity<ApiResponse<VhfResponse>> submit(@PathVariable UUID id,
       @RequestBody(required = false) SubmitContentRequest request) {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
@@ -135,8 +135,8 @@ public class VhfController {
     return ResponseEntity.ok(ApiResponse.success("Trình duyệt hệ thống VHF thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c1")
-  @PreAuthorize("@auth.check(authentication, 'vhf:approvec1')")
+  @PostMapping(value = {"/{id}/approve/c1", "/{id}/approvec1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:approvec1')")
   public ResponseEntity<ApiResponse<VhfResponse>> approveC1(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -146,8 +146,8 @@ public class VhfController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c2")
-  @PreAuthorize("@auth.check(authentication, 'vhf:approvec2')")
+  @PostMapping(value = {"/{id}/approve/c2", "/{id}/approvec2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:approvec2')")
   public ResponseEntity<ApiResponse<VhfResponse>> approveC2(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -157,8 +157,34 @@ public class VhfController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
   }
 
+  @PostMapping(value = {"/{id}/reject/c1", "/{id}/rejectc1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:approvec1')")
+  public ResponseEntity<ApiResponse<VhfResponse>> rejectC1(
+    @PathVariable UUID id,
+    @RequestBody(required = false) ApprovalRequest request,
+    @RequestParam(required = false) String reason) {
+    UUID currentUserId = SecurityUtils.getCurrentUserId();
+    String r = reason != null ? reason : (request != null && request.getReason() != null ? request.getReason() : "Từ chối cấp 1");
+    ApprovalRequest req = ApprovalRequest.builder().decision("REJECTED").reason(r).build();
+    VhfResponse response = approvalService.approveC1(id, req, currentUserId);
+    return ResponseEntity.ok(ApiResponse.success("Từ chối cấp 1 thành công", response));
+  }
+
+  @PostMapping(value = {"/{id}/reject/c2", "/{id}/rejectc2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:approvec2')")
+  public ResponseEntity<ApiResponse<VhfResponse>> rejectC2(
+    @PathVariable UUID id,
+    @RequestBody(required = false) ApprovalRequest request,
+    @RequestParam(required = false) String reason) {
+    UUID currentUserId = SecurityUtils.getCurrentUserId();
+    String r = reason != null ? reason : (request != null && request.getReason() != null ? request.getReason() : "Từ chối cấp 2");
+    ApprovalRequest req = ApprovalRequest.builder().decision("REJECTED").reason(r).build();
+    VhfResponse response = approvalService.approveC2(id, req, currentUserId);
+    return ResponseEntity.ok(ApiResponse.success("Từ chối cấp 2 thành công", response));
+  }
+
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.check(authentication, 'vhf:history') or @auth.check(authentication, 'vhf:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:history', 'vhf:read', 'data:read')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
       @PathVariable UUID id,
       @RequestParam(required = false) Integer page,
@@ -204,7 +230,7 @@ public class VhfController {
   // ── ATTACHMENTS (File đính kèm) ───────────────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.checkAny(authentication, 'vhf:update', 'vhf:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:update', 'vhf:create', 'vhf:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -214,14 +240,14 @@ public class VhfController {
   }
 
   @GetMapping("/{id}/attachments")
-  @PreAuthorize("@auth.check(authentication, 'vhf:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:read', 'data:read')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> getAttachments(@PathVariable UUID id) {
     List<AttachmentDto> result = vhfService.getAttachments(id);
     return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.checkAny(authentication, 'vhf:update', 'vhf:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:update', 'vhf:delete', 'vhf:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
@@ -231,7 +257,7 @@ public class VhfController {
   }
 
   @GetMapping("/{id}/attachments/{attachmentId}/download")
-  @PreAuthorize("@auth.check(authentication, 'vhf:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'vhf:manage', 'vhf:read', 'data:read')")
   public ResponseEntity<Resource> downloadAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
