@@ -153,6 +153,9 @@ public class AisSystemService {
         ApprovalStatus initialStatus = request.getApprovalStatus() != null
                 ? request.getApprovalStatus()
                 : ApprovalStatus.DRAFT;
+        if (request.isSubmitForApproval() && initialStatus == ApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Không thể vừa gửi phê duyệt vừa phê duyệt trực tiếp");
+        }
         // Tạo thẳng ở trạng thái "Đã duyệt" là bỏ qua cả 2 vòng duyệt — chỉ dành
         // cho tài khoản cấp Cục (bảng chuyển trạng thái không có đường này cho
         // người dùng thường).
@@ -245,6 +248,13 @@ public class AisSystemService {
                 .build();
 
         AisSystem saved = repository.save(entity);
+
+        // Không tách POST tạo mới và POST gửi duyệt thành hai request độc lập.
+        // Nếu bước gửi duyệt bị từ chối, transaction sẽ rollback cả bản ghi mới.
+        if (request.isSubmitForApproval()) {
+            approvalService.submit(saved, InfrastructureType.AIS_SYSTEM, userId);
+            saved = repository.save(saved);
+        }
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(

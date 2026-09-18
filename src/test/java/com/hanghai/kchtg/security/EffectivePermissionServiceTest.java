@@ -34,24 +34,24 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Super admin bypass: '*' grants all permissions")
-    void superAdminBypass() {
+    @DisplayName("Legacy admin wildcard is stripped and grants no business permission")
+    void legacyAdminWildcardDoesNotBypass() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("*"));
 
-        assertTrue(service.checkPermission(userId, "vts", "create"));
-        assertTrue(service.checkPermission(userId, "vts", "delete"));
-        assertTrue(service.checkPermission(userId, "unknown", "unknown"));
+        assertFalse(service.checkPermission(userId, "vts", "create"));
+        assertFalse(service.checkPermission(userId, "vts", "delete"));
+        assertFalse(service.checkPermission(userId, "unknown", "unknown"));
     }
 
     @Test
-    @DisplayName("Super admin authorities on Authentication grant bypass")
-    void superAdminAuthoritiesOnAuthentication() {
+    @DisplayName("System-admin role on Authentication does not grant business permissions")
+    void systemAdminAuthoritiesDoNotBypass() {
         Authentication auth = mock(Authentication.class);
         when(auth.isAuthenticated()).thenReturn(true);
         doReturn(List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))).when(auth).getAuthorities();
 
-        assertTrue(service.checkPermission(auth, "vts:create"));
-        assertTrue(service.checkPermission(auth, "anything:special"));
+        assertFalse(service.checkPermission(auth, "vts:create"));
+        assertFalse(service.checkPermission(auth, "anything:special"));
     }
 
     @Test
@@ -211,15 +211,15 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Document domain fallback grants access to portplanning, planningadjustment, operationplan, maintenanceplan")
-    void documentDomainFallback() {
+    @DisplayName("Parent document permission does not grant a specialized resource")
+    void documentDomainDoesNotGrantSpecializedResource() {
         when(permissionCacheService.getPermissionsFromCache(userId))
                 .thenReturn(Set.of("document:create", "document:read"));
 
-        assertTrue(service.checkPermission(userId, "portplanning", "create"));
-        assertTrue(service.checkPermission(userId, "planningadjustment", "read"));
-        assertTrue(service.checkPermission(userId, "operationplan", "create"));
-        assertTrue(service.checkPermission(userId, "maintenanceplan", "read"));
+        assertFalse(service.checkPermission(userId, "portplanning", "create"));
+        assertFalse(service.checkPermission(userId, "planningadjustment", "read"));
+        assertFalse(service.checkPermission(userId, "operationplan", "create"));
+        assertFalse(service.checkPermission(userId, "maintenanceplan", "read"));
     }
 
     @Test
@@ -287,26 +287,26 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Implicit Read: Operational permissions implicitly grant read/view/search")
-    void implicitRead_grantedFromOperationalPermissions() {
+    @DisplayName("Operational permission does not implicitly grant read/view/search")
+    void implicitReadIsNotGrantedFromOperationalPermissions() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vts:approvec1"));
 
-        assertTrue(service.checkPermission(userId, "vts:read"));
-        assertTrue(service.checkPermission(userId, "vts:view"));
-        assertTrue(service.checkPermission(userId, "vts:search"));
+        assertFalse(service.checkPermission(userId, "vts:read"));
+        assertFalse(service.checkPermission(userId, "vts:view"));
+        assertFalse(service.checkPermission(userId, "vts:search"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
         assertFalse(service.checkPermission(userId, "vts:create"));
     }
 
     @Test
-    @DisplayName("Parent Domain Coverage: specialstation grants access to specialized coastal stations")
-    void parentDomainCoverage_specialstationGrantsChildStations() {
+    @DisplayName("Parent station permission does not grant specialized coastal stations")
+    void parentDomainDoesNotGrantChildStations() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("specialstation:read"));
 
-        assertTrue(service.checkPermission(userId, "coastalstationlrit:read"));
-        assertTrue(service.checkPermission(userId, "coastalstationinmarsat:read"));
-        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:read"));
-        assertTrue(service.checkPermission(userId, "coastalstationcospassarsat:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationlrit:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationinmarsat:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationcospassarsat:read"));
         assertFalse(service.checkPermission(userId, "port:read"));
     }
 
@@ -317,8 +317,7 @@ class EffectivePermissionServiceTest {
 
         // Has update on vtssystem -> matches vts:update
         assertTrue(service.checkPermission(userId, "vts:update"));
-        // Implicit read works across canonical resource
-        assertTrue(service.checkPermission(userId, "vts:read"));
+        assertFalse(service.checkPermission(userId, "vts:read"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
     }
 
@@ -359,23 +358,23 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Port: stormshelterasset, berthasset, and infraasset permissions grant port read access")
-    void portEquivalenceAndParentDomains() {
+    @DisplayName("A child or umbrella asset permission does not grant port read access")
+    void portDoesNotInheritChildOrUmbrellaPermissions() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("stormshelterasset:read"));
 
-        assertTrue(service.checkPermission(userId, "port:read"));
-        assertTrue(service.checkPermission(userId, "seaport:read"));
+        assertFalse(service.checkPermission(userId, "port:read"));
+        assertFalse(service.checkPermission(userId, "seaport:read"));
         assertFalse(service.checkPermission(userId, "port:delete"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("stormshelterasset:manage"));
-        assertTrue(service.checkPermission(userId, "port:read"));
+        assertFalse(service.checkPermission(userId, "port:read"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("berthasset:read"));
-        assertTrue(service.checkPermission(userId, "port:read"));
+        assertFalse(service.checkPermission(userId, "port:read"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("infraasset:manage"));
-        assertTrue(service.checkPermission(userId, "port:read"));
-        assertTrue(service.checkPermission(userId, "port:create"));
+        assertFalse(service.checkPermission(userId, "port:read"));
+        assertFalse(service.checkPermission(userId, "port:create"));
     }
 
     @Test
@@ -383,19 +382,19 @@ class EffectivePermissionServiceTest {
     void coastalStationEquivalenceAndParentDomains() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("ttxlttasset:read"));
 
-        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:read"));
-        assertTrue(service.checkPermission(userId, "ttxltt:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:read"));
+        assertFalse(service.checkPermission(userId, "ttxltt:read"));
         assertFalse(service.checkPermission(userId, "coastalstationhaiphong:delete"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("ttxlttasset:manage"));
-        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:read"));
-        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:create"));
-        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:update"));
-        assertTrue(service.checkPermission(userId, "coastalstationhaiphong:delete"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:read"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:create"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:update"));
+        assertFalse(service.checkPermission(userId, "coastalstationhaiphong:delete"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("coastalstationhaiphong:manage"));
-        assertTrue(service.checkPermission(userId, "ttxlttasset:read"));
-        assertTrue(service.checkPermission(userId, "ttxltt:read"));
+        assertFalse(service.checkPermission(userId, "ttxlttasset:read"));
+        assertFalse(service.checkPermission(userId, "ttxltt:read"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("lritasset:read"));
         assertTrue(service.checkPermission(userId, "coastalstationlrit:read"));
@@ -408,16 +407,15 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("User: infraasset, data, and admin permissions grant user read access")
-    void userEquivalenceAndParentDomains() {
+    @DisplayName("Umbrella permissions do not grant user read access")
+    void userDoesNotInheritUmbrellaPermissions() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("infraasset:read"));
-        assertTrue(service.checkPermission(userId, "user:read"));
+        assertFalse(service.checkPermission(userId, "user:read"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("data:read"));
-        assertTrue(service.checkPermission(userId, "user:read"));
+        assertFalse(service.checkPermission(userId, "user:read"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("admin:view"));
-        assertTrue(service.checkPermission(userId, "user:read"));
+        assertFalse(service.checkPermission(userId, "user:read"));
     }
 }
-

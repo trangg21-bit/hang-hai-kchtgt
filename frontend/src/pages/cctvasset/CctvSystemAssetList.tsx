@@ -87,7 +87,6 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,

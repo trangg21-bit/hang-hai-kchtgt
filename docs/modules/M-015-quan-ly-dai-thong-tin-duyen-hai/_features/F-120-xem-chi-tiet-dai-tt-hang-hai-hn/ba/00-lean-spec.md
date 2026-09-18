@@ -2,7 +2,7 @@
 feature-id: F-120
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-28
+last-updated: 2026-09-17
 ---
 # Xem chi tiết Đài TTXLTT Hà Nội (CoastalStationHaiphong)
 
@@ -27,6 +27,10 @@ Tính năng xem chi tiết hồ sơ Đài TTXLTT Hà Nội. **ĐÃ XÁC MINH:** 
 ## Field Coverage Matrix
 
 Sheet "Đài TTXLTT Hà Nội" cột CT (như F-116): TAB1 9 trường, GIS 5 trường, File, TAB4 VH&BT read-only, TAB5 11 trường. Trường đặc thù hiển thị thêm ở CT (SA chốt vị trí).
+
+## Ma trận chốt 17/09/2026
+
+Chi tiết chỉ hiển thị các trường có cột CT = T trong ma trận F-116: 9 trường TAB 1, GIS, file, TAB 4 vận hành/bảo trì/sự cố read-only và TAB 5 xử lý/theo dõi. Không hiển thị các cột legacy ngoài ma trận: vùng phủ sóng, tần số/thiết bị, giấy phép, kiểm định, liên hệ, `portName`, `district` hoặc `ward`. Nội dung này thay thế mọi ghi chú trước đó cho phép hiển thị “trường đặc thù” ngoài ma trận.
 
 ## Business Rules
 

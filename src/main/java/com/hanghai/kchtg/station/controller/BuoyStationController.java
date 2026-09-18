@@ -108,7 +108,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/approve-l1")
-        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:approvec1', 'buoystation:approvel1', 'buoyasset:manage', 'buoyasset:approvec1', 'buoyasset:approvel1', 'buoy:manage', 'buoy:approvec1', 'buoy:approvel1', 'data:approvec1', 'data:approvel1')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:approvec1', 'buoystation:approvel1', 'buoyasset:approvec1', 'buoyasset:approvel1', 'buoy:approvec1', 'buoy:approvel1', 'data:approvec1', 'data:approvel1')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL1(
                         @PathVariable UUID id,
                         @RequestParam UUID approverId,
@@ -119,7 +119,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/approve-l2")
-        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:approvec2', 'buoystation:approvel2', 'buoyasset:manage', 'buoyasset:approvec2', 'buoyasset:approvel2', 'buoy:manage', 'buoy:approvec2', 'buoy:approvel2', 'data:approvec2', 'data:approvel2')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:approvec2', 'buoystation:approvel2', 'buoyasset:approvec2', 'buoyasset:approvel2', 'buoy:approvec2', 'buoy:approvel2', 'data:approvec2', 'data:approvel2')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL2(
                         @PathVariable UUID id,
                         @RequestParam UUID approverId,
@@ -130,7 +130,7 @@ public class BuoyStationController {
         }
 
         @PostMapping("/{id}/reject")
-        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:manage', 'buoystation:approvec1', 'buoystation:approvec2', 'buoystation:approvel1', 'buoystation:approvel2', 'buoyasset:manage', 'buoyasset:approvec1', 'buoyasset:approvec2', 'buoyasset:approvel1', 'buoyasset:approvel2', 'buoy:manage', 'buoy:approvec1', 'buoy:approvec2', 'data:approvec1', 'data:approvel2')")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoystation:approvec1', 'buoystation:approvec2', 'buoystation:approvel1', 'buoystation:approvel2', 'buoyasset:approvec1', 'buoyasset:approvec2', 'buoyasset:approvel1', 'buoyasset:approvel2', 'buoy:approvec1', 'buoy:approvec2', 'data:approvec1', 'data:approvel2')")
         public ResponseEntity<ApiResponse<BuoyStationResponse>> reject(
                         @PathVariable UUID id,
                         @RequestParam String rejectReason,

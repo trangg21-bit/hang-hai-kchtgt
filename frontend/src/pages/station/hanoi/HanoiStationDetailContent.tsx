@@ -32,8 +32,8 @@ import {
   primaryButtonStyle,
   surfaceCard,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
 } from '../../../themetokenchk';
 import { getProvinceNameById } from '../../../types/common';
 import DetailTable from '../../../components/shared/DetailTable';
@@ -129,8 +129,8 @@ const parseWktToPoints = (record?: HanoiStationItem | null): { lat: number; lng:
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return null;
-  const label = getConditionStatusLabel(status as any);
-  const color = getConditionStatusColor(status as any);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return (
     <span
       style={{
@@ -446,7 +446,7 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
                       </span>
                     </div>
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Tình trạng hoạt động</span>
+                      <span className="chk-detail-label sec-col2-label">Tình trạng</span>
                       <span className="chk-detail-value">
                         {renderConditionStatusBadge(record.conditionStatus)}
                       </span>
@@ -460,58 +460,6 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-col1-label">Dịch vụ cung cấp</span>
                       <span className="chk-detail-value">{renderServicesBadges(record.services || record.servicesProvided)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Section 2: Phạm vi phủ sóng & Thông số kỹ thuật */}
-                <div style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <div style={sectionTitleStyle}>
-                      <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Phạm vi phủ sóng & Thông số kỹ thuật</span>
-                    </div>
-                  </div>
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label sec-col1-label">Vùng phủ sóng</span>
-                      <span className="chk-detail-value">{record.coverageArea || '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Tần số liên lạc</span>
-                      <span className="chk-detail-value">{record.communicationFrequency || '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Loại thiết bị</span>
-                      <span className="chk-detail-value">{record.equipmentType || '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Giấy phép hoạt động</span>
-                      <span className="chk-detail-value">{record.operationalLicense || '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Thời hạn giấy phép</span>
-                      <span className="chk-detail-value">{record.licenseExpiry ? dayjs(record.licenseExpiry).format('DD/MM/YYYY') : '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Ngày kiểm định gần nhất</span>
-                      <span className="chk-detail-value">{record.lastInspectionDate ? dayjs(record.lastInspectionDate).format('DD/MM/YYYY') : '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Ngày kiểm định tiếp theo</span>
-                      <span className="chk-detail-value">{record.nextInspectionDate ? dayjs(record.nextInspectionDate).format('DD/MM/YYYY') : '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Cán bộ kiểm định</span>
-                      <span className="chk-detail-value">{record.inspectorName ? `${record.inspectorName}${record.inspectorPhone ? ` (${record.inspectorPhone})` : ''}` : '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Người liên hệ</span>
-                      <span className="chk-detail-value">{record.contactPerson ? `${record.contactPerson}${record.contactPhone ? ` (${record.contactPhone})` : ''}` : '—'}</span>
                     </div>
 
                     <div className="chk-detail-row chk-detail-row--full">
@@ -546,71 +494,73 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
                   {approvalOpen && (
                     <div className="chk-detail-grid">
                       <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái</span>
+                        <span className="chk-detail-label sec-col1-label">Trạng thái phê duyệt</span>
                         <span className="chk-detail-value">
                           <ApprovalStatusBadge status={record.approvalStatus} />
                         </span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
-                        <span className="chk-detail-value">
-                          {formatPersonDisplayName(record.updatedByName, record.updatedBy) || '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                        <span className="chk-detail-label sec-col1-label">Ngày cập nhật</span>
                         <span className="chk-detail-value">
                           {record.updatedAt ? dayjs(record.updatedAt).format('DD/MM/YYYY HH:mm:ss') : (record.createdAt ? dayjs(record.createdAt).format('DD/MM/YYYY HH:mm:ss') : '—')}
                         </span>
                       </div>
-
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
+                        <span className="chk-detail-label sec-col2-label">Cán bộ cập nhật</span>
                         <span className="chk-detail-value">
-                          {formatPersonDisplayName(record.submittedByName, record.submittedBy) || '—'}
+                          {formatPersonDisplayName(record.updatedByName, record.updatedBy) || '—'}
                         </span>
                       </div>
+
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
+                        <span className="chk-detail-label sec-col1-label">Ngày gửi phê duyệt</span>
                         <span className="chk-detail-value">
                           {record.submittedAt ? dayjs(record.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}
                         </span>
                       </div>
-
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-label sec-col2-label">Cán bộ gửi phê duyệt</span>
                         <span className="chk-detail-value">
-                          {formatPersonDisplayName(record.approverLevel1Name, record.approverLevel1) || '—'}
+                          {formatPersonDisplayName(record.submittedByName, record.submittedBy) || '—'}
                         </span>
                       </div>
+
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-label sec-col1-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
                           {record.approvedDateLevel1 ? dayjs(record.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '—'}
                         </span>
                       </div>
-
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
+                        <span className="chk-detail-label sec-col2-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                         <span className="chk-detail-value">
-                          {formatPersonDisplayName(record.approverLevel2Name, record.approverLevel2) || '—'}
+                          {formatPersonDisplayName(record.approverLevel1Name, record.approverLevel1) || '—'}
                         </span>
                       </div>
+
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
+                        <span className="chk-detail-label sec-col1-label">Ngày phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
                           {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
                         </span>
                       </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Cán bộ phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">
+                          {formatPersonDisplayName(record.approverLevel2Name, record.approverLevel2) || '—'}
+                        </span>
+                      </div>
 
-                      {record.rejectionReason && (
-                        <div className="chk-detail-row chk-detail-row--full">
-                          <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
-                          <span className="chk-detail-value" style={{ color: statusCritical, fontWeight: fontWeightMedium }}>
-                            {record.rejectionReason}
-                          </span>
-                        </div>
-                      )}
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">{record.approvalContentLevel1 || '—'}</span>
+                      </div>
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value" style={record.rejectionReason ? { color: statusCritical, fontWeight: fontWeightMedium } : undefined}>
+                          {record.approvalContentLevel2 || record.rejectionReason || '—'}
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -648,7 +598,7 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
                         label: 'Biểu tượng',
                         value: (() => {
                           const sym = symbolItem;
-                          const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : 'Đài TTXLTT Hàng hải');
+                          const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : 'Đài TTXLTT Hà Nội');
                           const symImg = sym?.iconUrl || sym?.image;
                           return (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

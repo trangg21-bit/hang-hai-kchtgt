@@ -26,6 +26,12 @@ public class VtsSystemCreateRequest {
 
     private ApprovalStatus approvalStatus;
 
+    /**
+     * Gộp thao tác tạo mới và gửi duyệt vào cùng một transaction. Trường này chỉ
+     * có ý nghĩa ở API tạo mới; không cho client tự gán trạng thái chờ duyệt.
+     */
+    private boolean submitForApproval;
+
     @NotNull(message = "Tình trạng không được để trống")
     private ConditionStatus conditionStatus;
 

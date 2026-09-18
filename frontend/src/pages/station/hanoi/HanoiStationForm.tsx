@@ -11,14 +11,12 @@ import {
   Col,
   Spin,
   Modal,
-  DatePicker,
 } from 'antd';
 import {
   EnvironmentOutlined,
   PlusOutlined,
   DeleteOutlined,
   BankOutlined,
-  FileTextOutlined,
 } from '@ant-design/icons';
 import toast from '../../../components/ToastNotification';
 import { focusErrorTab } from '../../../utils/formValidationHelper';
@@ -41,7 +39,6 @@ import {
   textTertiary, borderDefault,
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, inputStyle, selectStyle, spaceSm,
-  getDatePickerProps,
   spaceXs,
   textAreaStyle,
 } from '../../../themetokenchk';
@@ -67,7 +64,6 @@ import {
 } from '../../../utils/gisGeometry';
 import { resolveStationGeometryType } from '../../../utils/stationGeometryType';
 import HanoiStationDetailContent, { getOperatingOrgName, renderServicesBadges } from './HanoiStationDetailContent';
-import dayjs from 'dayjs';
 
 export { getOperatingOrgName, renderServicesBadges };
 
@@ -162,9 +158,9 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-  const canApproveL2 = (hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
-  const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
+  const canApproveL2 = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
+  const canCreate = hasPerm('coastalstationhaiphong:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationhaiphong',
@@ -288,7 +284,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
       // Default values
       form.setFieldsValue({
-        conditionStatus: 'OPERATIONAL',
+        conditionStatus: 'NOT_YET_OPERATIONAL',
         geometryType: undefined,
         coordinateSystem: undefined,
         displayRule: undefined,
@@ -353,19 +349,8 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       operatingOrgId: data.operatingOrgId,
       provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
       locationAddress: data.locationAddress,
-      conditionStatus: data.conditionStatus || 'OPERATIONAL',
+      conditionStatus: data.conditionStatus || 'NOT_YET_OPERATIONAL',
       services: serviceList,
-      coverageArea: data.coverageArea,
-      communicationFrequency: data.communicationFrequency,
-      equipmentType: data.equipmentType,
-      operationalLicense: data.operationalLicense,
-      licenseExpiry: data.licenseExpiry ? dayjs(data.licenseExpiry) : undefined,
-      lastInspectionDate: data.lastInspectionDate ? dayjs(data.lastInspectionDate) : undefined,
-      nextInspectionDate: data.nextInspectionDate ? dayjs(data.nextInspectionDate) : undefined,
-      inspectorName: data.inspectorName,
-      inspectorPhone: data.inspectorPhone,
-      contactPerson: data.contactPerson,
-      contactPhone: data.contactPhone,
       description: data.description,
       geometryType,
       symbolId: data.symbolId || data.symbol || undefined,
@@ -658,17 +643,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         conditionStatus: values.conditionStatus,
         services: values.services,
         servicesProvided: Array.isArray(values.services) ? values.services.join(', ') : values.services,
-        coverageArea: values.coverageArea?.trim(),
-        communicationFrequency: values.communicationFrequency?.trim(),
-        equipmentType: values.equipmentType?.trim(),
-        operationalLicense: values.operationalLicense?.trim(),
-        licenseExpiry: values.licenseExpiry ? dayjs(values.licenseExpiry).format('YYYY-MM-DD') : undefined,
-        lastInspectionDate: values.lastInspectionDate ? dayjs(values.lastInspectionDate).format('YYYY-MM-DD') : undefined,
-        nextInspectionDate: values.nextInspectionDate ? dayjs(values.nextInspectionDate).format('YYYY-MM-DD') : undefined,
-        inspectorName: values.inspectorName?.trim(),
-        inspectorPhone: values.inspectorPhone?.trim(),
-        contactPerson: values.contactPerson?.trim(),
-        contactPhone: values.contactPhone?.trim(),
         description: values.description?.trim(),
         geometryType: values.geometryType || undefined,
         symbolId: values.symbolId || undefined,
@@ -819,8 +793,8 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   };
 
   const getDrawerTitle = () => {
-    if (isDetailMode) return record?.name ? `Chi tiết Đài TTXLTT Hàng hải - ${record.name}` : 'Chi tiết Đài TTXLTT Hàng hải';
-    if (isCreateMode) return 'Thêm mới Đài TTXLTT Hàng hải';
+    if (isDetailMode) return record?.name ? `Chi tiết Đài TTXLTT Hà Nội - ${record.name}` : 'Chi tiết Đài TTXLTT Hà Nội';
+    if (isCreateMode) return 'Thêm mới Đài TTXLTT Hà Nội';
     return record?.name ? `Chỉnh sửa thông tin — ${record.name}` : 'Chỉnh sửa thông tin';
   };
 
@@ -945,6 +919,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                             <Form.Item
                               name="provinceId"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/TP)' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
@@ -962,7 +937,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                           <Col span={12}>
                             <Form.Item
                               name="conditionStatus"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng hoạt động</span>}
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tình trạng</span>}
                               rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
@@ -978,7 +953,10 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                             <Form.Item
                               name="locationAddress"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                              rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
+                              rules={[
+                                { required: true, whitespace: true, message: 'Vui lòng nhập địa điểm chi tiết' },
+                                { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
+                              ]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input
@@ -1000,152 +978,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                                 placeholder="Chọn các dịch vụ cung cấp"
                                 options={HANOI_SERVICE_OPTIONS}
                               />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                      </div>
-
-                      {/* Section 2: Phạm vi phủ sóng & Thông số kỹ thuật */}
-                      <div style={sectionBoxStyle}>
-                        <div style={sectionHeaderStyle}>
-                          <div style={sectionTitleStyle}>
-                            <FileTextOutlined style={{ color: actionPrimary }} />
-                            <span>Phạm vi phủ sóng & Thông số kỹ thuật</span>
-                          </div>
-                        </div>
-
-                        <Row gutter={[24, 0]}>
-                          <Col span={24}>
-                            <Form.Item
-                              name="coverageArea"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
-                              rules={[{ max: 4000, message: 'Vùng phủ sóng tối đa 4000 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input.TextArea
-                                placeholder="Nhập vùng phủ sóng"
-                                rows={3}
-                                maxLength={4000}
-                                showCount
-                                style={textAreaStyle}
-                              />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="communicationFrequency"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tần số liên lạc</span>}
-                              rules={[{ max: 255, message: 'Tần số tối đa 255 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập tần số liên lạc" maxLength={255} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="equipmentType"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại thiết bị</span>}
-                              rules={[{ max: 255, message: 'Loại thiết bị tối đa 255 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập loại thiết bị" maxLength={255} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="operationalLicense"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Giấy phép hoạt động</span>}
-                              rules={[{ max: 255, message: 'Giấy phép tối đa 255 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập giấy phép hoạt động" maxLength={255} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="licenseExpiry"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thời hạn giấy phép</span>}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <DatePicker
-                                {...getDatePickerProps()}
-                                format="DD/MM/YYYY"
-                                placeholder="Chọn thời hạn giấy phép"
-                                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                              />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="lastInspectionDate"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ngày kiểm định gần nhất</span>}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <DatePicker
-                                {...getDatePickerProps()}
-                                format="DD/MM/YYYY"
-                                placeholder="Chọn ngày kiểm định gần nhất"
-                                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="nextInspectionDate"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Ngày kiểm định tiếp theo</span>}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <DatePicker
-                                {...getDatePickerProps()}
-                                format="DD/MM/YYYY"
-                                placeholder="Chọn ngày kiểm định tiếp theo"
-                                style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                              />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="inspectorName"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Cán bộ kiểm định</span>}
-                              rules={[{ max: 255, message: 'Cán bộ kiểm định tối đa 255 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập cán bộ kiểm định" maxLength={255} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="inspectorPhone"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>SĐT cán bộ kiểm định</span>}
-                              rules={[{ max: 50, message: 'SĐT tối đa 50 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập SĐT cán bộ kiểm định" maxLength={50} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="contactPerson"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Người liên hệ</span>}
-                              rules={[{ max: 255, message: 'Người liên hệ tối đa 255 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập người liên hệ" maxLength={255} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="contactPhone"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số điện thoại liên hệ</span>}
-                              rules={[{ max: 50, message: 'SĐT tối đa 50 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập số điện thoại liên hệ" maxLength={50} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
                             </Form.Item>
                           </Col>
 

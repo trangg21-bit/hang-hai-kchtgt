@@ -132,8 +132,8 @@ mà lại dễ hơn. Hồ sơ hết giá trị sử dụng thì đổi **tình t
 ### 3.7. Phân quyền + Admin Cục
 
 - Phân quyền dạng `<resource>:<action>`, gán động qua nhóm/tài khoản (xem `AGENTS.md`); quyền mới phải đăng ký trong `PermissionSeeder.java`.
-- **Admin Cục**: full quyền + xem thêm metadata (người tạo, người sửa cuối, thời gian tạo/cập nhật).
-- Granularity resource: **đã chốt (M-1006 design DP-10)** — 1 resource dùng chung `kcht` + 9 action: `kcht:create`, `kcht:update`, `kcht:delete`, `kcht:submit`, `kcht:approve_level1`, `kcht:approve_level2`, `kcht:reject`, `kcht:view`, `kcht:view_sensitive`. Quyền theo chức vụ, không theo loại (28× permissions là quá mức). Các permission cũ (`port:approve`, `buoystation:approve*`, ...) giữ seed để không phá gán quyền nhóm hiện có — endpoint mới dùng `kcht:*`.
+- **Admin Cục / Admin đơn vị gốc**: có toàn quyền quản trị và xem thêm metadata (người tạo, người sửa cuối, thời gian tạo/cập nhật), nhưng **không tự có quyền phê duyệt C1/C2**. Mỗi hành động ký duyệt phải được gán tường minh bằng `<resource>:approvec1` / `<resource>:approvec2` của **đúng màn/tài sản**. C1/C2 của resource khác (ví dụ `vtsoperationcenter:approvec2`) không được dùng để duyệt Hệ thống VTS (`vts:approvec2`).
+- Granularity resource: quyền phê duyệt được quản lý theo từng resource. Các khóa `data:approvec*`, `kcht:approvec*`, `kcht:approve_level*` là legacy và không được dùng để cấp hoặc kiểm tra quyền phê duyệt. Alias chỉ được chấp nhận khi là mã cũ/mới của cùng một resource.
 
 ### 3.8. Data scope theo đơn vị
 

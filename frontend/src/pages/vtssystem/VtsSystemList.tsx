@@ -3,8 +3,6 @@ import { Input, DatePicker, Select } from 'antd';
 import { vtsSystemCRUD, vtsSystemApproval } from '../../services/vtsSystemService';
 import type { VtsSystemResponse, ListParams, ApprovalRequest } from '../../types/vtsSystem';
 import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
-import { useAuthStore, type AuthState } from '../../store/authStore';
-import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
@@ -16,11 +14,11 @@ import { useKchtPermissions } from '../../hooks/useKchtPermissions';
 import { useKchtRowActions } from '../../hooks/useKchtRowActions';
 import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
-  actionPrimary, textSecondary, textTertiary,
+  textSecondary, textTertiary,
   fontWeightBold,
-  spaceSm, spaceMd, spaceFormField,
+  spaceSm, spaceMd,
   statusOperational, statusCritical, statusAttention,
-  statusBadgeStyle, icons, textAreaStyle, cellTitleStyle, cellSubtitleStyle,
+  statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   colors, radiusPill, getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -28,7 +26,6 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 
 const fontSizeMd = 13.5;
@@ -54,6 +51,18 @@ const CONDITION_STYLE_MAP: Record<string, { color: string; label: string }> = {
 };
 
 const HISTORY_PAGE_SIZE = 20;
+
+type VtsListFilterValues = {
+  orgUnitId?: string;
+  portId?: string;
+  systemName?: string;
+  code?: string;
+  conditionStatus?: ConditionStatus;
+  approvalStatus?: ApprovalStatus;
+  provinceId?: number;
+  operationDateRange?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null;
+  updateDateRange?: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null;
+};
 
 const VtsSystemGlobalStyles = React.memo(() => (
   <style>{`
@@ -184,8 +193,6 @@ const VtsSystemGlobalStyles = React.memo(() => (
 ));
 
 export default function VtsSystemList() {
-  const currentUser = useAuthStore((s: AuthState) => s.user);
-  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const kchtPerms = useKchtPermissions('vts');
 
   const customVtsTokens = useMemo(() => ({
@@ -210,7 +217,7 @@ export default function VtsSystemList() {
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [portOptions, setPortOptions] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
-  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
+  const [filterValues, setFilterValues] = useState<VtsListFilterValues>({});
   // Sắp xếp chạy ở server để áp dụng cho toàn bộ kết quả; nếu để antd tự sắp thì
   // chỉ 20 dòng của trang hiện tại được sắp, gây hiểu nhầm là đã sắp cả danh sách.
   const [sortField, setSortField] = useState<string | undefined>();
@@ -379,12 +386,22 @@ export default function VtsSystemList() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const openDeleteModal = useCallback((record: VtsSystemResponse) => {
+    if (!kchtPerms.canDelete(record)) {
+      toast.warning('Bạn không có quyền xóa hệ thống VTS này');
+      return;
+    }
     setDeletingRecord(record);
     setDeleteModalOpen(true);
-  }, []);
+  }, [kchtPerms]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
+    if (!kchtPerms.canDelete(deletingRecord)) {
+      toast.warning('Bạn không có quyền xóa hệ thống VTS này');
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
+      return;
+    }
     setDeleteLoading(true);
     try {
       await vtsSystemCRUD.delete(deletingRecord.id);
@@ -398,7 +415,7 @@ export default function VtsSystemList() {
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingRecord, refreshList]);
+  }, [deletingRecord, kchtPerms, refreshList]);
 
   const openApproveModal = (id: string, level: 'c1' | 'c2') => {
     setApproveTargetId(id);
@@ -410,7 +427,7 @@ export default function VtsSystemList() {
     if (!approveTargetId) return;
     try {
       const payload: ApprovalRequest = { decision: 'APPROVED', reason: content };
-      let res: any;
+      let res: { message?: string } | undefined;
       if (approveLevel === 'c1') {
         res = await vtsSystemApproval.approveC1(approveTargetId, payload);
         toast.success(res?.message || 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
@@ -438,7 +455,7 @@ export default function VtsSystemList() {
     if (!rejectTargetId) return;
     try {
       const payload: ApprovalRequest = { decision: 'REJECTED', reason: finalReason };
-      let res: any;
+      let res: { message?: string } | undefined;
       if (rejectLevel === 'c1') res = await vtsSystemApproval.approveC1(rejectTargetId, payload);
       else res = await vtsSystemApproval.approveC2(rejectTargetId, payload);
       invalidateVtsDetailCache(rejectTargetId);
@@ -914,7 +931,7 @@ export default function VtsSystemList() {
               />
             </div>
 
-            {/* ── BỘ LỌC NÂNG CAO (ẨN / HIỆN THEO NÚT BỘ LỌC NÂNG CAO) ── */}
+            {/* Bộ lọc nâng cao của VTS chỉ mở khi bấm nút filter ở footer. */}
             {filterCollapsed && (
               <>
                 <div style={{ marginBottom: 12 }}>

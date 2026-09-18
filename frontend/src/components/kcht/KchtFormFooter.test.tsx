@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore, type User } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { KchtFormFooter } from './KchtFormFooter';
 
@@ -14,7 +14,7 @@ describe('KchtFormFooter Component Tests', () => {
         username: 'test_user',
         unitType: 'CVHH',
         permissions: [],
-      } as any,
+      } as User,
     });
     usePermissionStore.setState({ permissions: [] });
   });
@@ -48,8 +48,17 @@ describe('KchtFormFooter Component Tests', () => {
       expect(html).not.toContain('Lưu và phê duyệt');
     });
 
-    it('renders all 3 buttons when user has create AND approve permissions', () => {
-      usePermissionStore.setState({ permissions: ['vts:create', 'vts:approve'] });
+    it('renders all 3 buttons for a Cục user with create AND approvec2 permissions', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'u-cuc',
+          userId: 'u-cuc',
+          username: 'cuc_approver',
+          unitType: 'CUC',
+          permissions: ['vts:create', 'vts:approvec2'],
+        } as User,
+      });
+      usePermissionStore.setState({ permissions: ['vts:create', 'vts:approvec2'] });
 
       const html = renderToStaticMarkup(
         <KchtFormFooter
@@ -61,6 +70,91 @@ describe('KchtFormFooter Component Tests', () => {
 
       expect(html).toContain('Lưu tạm');
       expect(html).toContain('Lưu và gửi phê duyệt');
+      expect(html).toContain('Lưu và phê duyệt');
+    });
+
+    it('does not render direct approval with only approvec1 permission', () => {
+      usePermissionStore.setState({ permissions: ['vts:create', 'vts:approvec1'] });
+
+      const html = renderToStaticMarkup(
+        <KchtFormFooter
+          mode="create"
+          resource="vts"
+          onSubmit={vi.fn()}
+        />
+      );
+
+      expect(html).not.toContain('Lưu và phê duyệt');
+    });
+
+    it('does not render VTS direct approval from an Operation Center VTS C2 permission', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'operation-center-c2',
+          userId: 'operation-center-c2',
+          username: 'operation_center_c2',
+          unitType: 'MINISTRY',
+          orgUnitId: '00000000-0000-0000-0000-000000000017',
+          orgUnitCode: 'G17',
+          permissions: ['vts:create', 'vtsoperationcenter:approvec2'],
+        } as User,
+      });
+      usePermissionStore.setState({ permissions: ['vts:create', 'vtsoperationcenter:approvec2'] });
+
+      const html = renderToStaticMarkup(
+        <KchtFormFooter mode="create" resource="vts" onSubmit={vi.fn()} />,
+      );
+
+      expect(html).not.toContain('Lưu và phê duyệt');
+    });
+
+    it('does not render direct approval for central Admin without explicit C2', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'admin-cuc',
+          userId: 'admin-cuc',
+          username: 'admin_trung_uong',
+          unitType: 'MINISTRY',
+          orgUnitId: '00000000-0000-0000-0000-000000000017',
+          orgUnitCode: 'G17',
+          permissions: ['vts:create', 'admin:all'],
+        } as User,
+      });
+      usePermissionStore.setState({ permissions: ['vts:create', 'admin:all'] });
+
+      const html = renderToStaticMarkup(
+        <KchtFormFooter
+          mode="create"
+          resource="vts"
+          onSubmit={vi.fn()}
+        />
+      );
+
+      expect(html).not.toContain('Lưu và phê duyệt');
+    });
+
+    it('renders direct approval for central Admin with explicit C2', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'admin-root',
+          userId: 'admin-root',
+          username: 'admin_trung_uong',
+          unitType: 'MINISTRY',
+          orgUnitId: '00000000-0000-0000-0000-000000000017',
+          orgUnitCode: 'G17',
+          permissions: ['vts:create', 'vts:approvec2', 'admin:all'],
+        } as User,
+      });
+      usePermissionStore.setState({ permissions: ['vts:create', 'vts:approvec2', 'admin:all'] });
+
+      const html = renderToStaticMarkup(
+        <KchtFormFooter
+          mode="create"
+          resource="vts"
+          onSubmit={vi.fn()}
+        />
+      );
+
       expect(html).toContain('Lưu và phê duyệt');
     });
 
@@ -103,6 +197,16 @@ describe('KchtFormFooter Component Tests', () => {
     });
 
     it('renders "Lưu và phê duyệt" for APPROVED record when user has approvec2 permission', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'u-cuc',
+          userId: 'u-cuc',
+          username: 'cuc_approver',
+          unitType: 'CUC',
+          orgUnitId: 'cuc-root',
+          permissions: ['vts:approvec2'],
+        } as User,
+      });
       usePermissionStore.setState({ permissions: ['vts:approvec2'] });
 
       const approvedRecord = { id: 'vts-2', approvalStatus: 'APPROVED' };

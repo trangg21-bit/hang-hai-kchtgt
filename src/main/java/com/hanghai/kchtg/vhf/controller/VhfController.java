@@ -220,7 +220,7 @@ public class VhfController {
   }
 
   @GetMapping({"/history", "/history/all"})
-  @PreAuthorize("@auth.check(authentication, 'vhf:history') or @auth.check(authentication, 'vhf:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.check(authentication, 'vhf:history')")
   public ResponseEntity<ApiResponse<Map<String, Object>>> getAllHistory() {
     log.info("Getting all history for VHF");
     Map<String, Object> history = approvalService.getAllHistory();

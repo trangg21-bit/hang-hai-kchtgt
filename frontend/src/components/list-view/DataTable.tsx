@@ -7,7 +7,7 @@ import type { MenuProps } from 'antd';
 import { layout } from '../../theme';
 import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../context/ThemeTokenContext';
 import EmptyState from '../EmptyState';
-import { getNextSortOrder } from './sortUtils';
+import { getNextSortOrder, resolveSortField, type TableSortOrder } from './sortUtils';
 
 const ACTION_COLUMN_WIDTH = 60;
 
@@ -159,6 +159,14 @@ const DataTable: React.FC<DataTableProps> = ({
   const actionColumnHeaderCellStyle = actionColumnHeaderCellStyleFor(t);
 
   const tableShellRef = useRef<HTMLDivElement>(null);
+  // AntD does not reliably emit `null` as the third value when supplied in
+  // sortDirections. Keep the last server-side state so the three-click cycle
+  // remains deterministic even when its internal sorter loops back to ascend.
+  const lastServerSortRef = useRef<{ field?: string; order: TableSortOrder }>({ order: null });
+  // Pages without an `onSort` callback use AntD's local comparator. Keep its
+  // order controlled as well; otherwise AntD only cycles between two states
+  // and never gives us a reliable third "clear sort" action.
+  const [localSort, setLocalSort] = useState<{ field?: string; order: TableSortOrder }>({ order: null });
   const [measuredTableWidth, setMeasuredTableWidth] = useState<number>();
   const resolvedScroll = scroll;
 
@@ -172,20 +180,10 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   useEffect(() => {
-    // A number of list pages mount before their first request sets `loading`.
-    // Resetting only once can therefore happen before AntD creates the actual
-    // scroll container, leaving a stale horizontal offset that puts fixed
-    // columns over the beginning of the following columns.
-    resetHorizontalScroll();
-    const frameId = window.requestAnimationFrame(resetHorizontalScroll);
-    const timer = setTimeout(resetHorizontalScroll, 100);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      clearTimeout(timer);
-    };
-  }, [loading]);
-
-  useEffect(() => {
+    // Horizontal position belongs to the user's current table context.  A
+    // server-side sort also toggles `loading`; resetting on that transition
+    // made a click on a right-hand header jump visually back to Name/Code.
+    // Only an explicit filter/reset context change may request this reset.
     if (resetScrollKey !== undefined) {
       resetHorizontalScroll();
       const frameId = window.requestAnimationFrame(resetHorizontalScroll);
@@ -219,6 +217,25 @@ const DataTable: React.FC<DataTableProps> = ({
   const columns = (rawColumns as any[] | undefined)
     ?.filter((column) => !column?.hidden)
     .map(withHeaderSafeWidth) as typeof rawColumns;
+
+  useEffect(() => {
+    // `columnKey` is the stable identity supplied by the list page. AntD's
+    // `sorter.field` may instead be a derived dataIndex (and can be stale
+    // while a controlled table is re-rendering). Keep the last state keyed by
+    // that stable identity so a click on "Cán bộ cập nhật" cannot be applied
+    // to the preceding Name/Code column.
+    const activeColumn = (columns as DataTableColumn[] | undefined)?.find(
+      (column) => column.sortOrder === 'ascend' || column.sortOrder === 'descend',
+    );
+    if (activeColumn) {
+      lastServerSortRef.current = {
+        field: activeColumn.key ?? activeColumn.dataIndex,
+        order: activeColumn.sortOrder,
+      };
+    } else if (onSort) {
+      lastServerSortRef.current = { order: null };
+    }
+  }, [columns, onSort]);
 
   const hasFixedColumns = Boolean(columns?.some((c: any) => c.fixed));
   const hasGeneratedActionColumn = Boolean(
@@ -317,19 +334,22 @@ const DataTable: React.FC<DataTableProps> = ({
     // Theme quyết định có bật sắp xếp sẵn hay không. Chỉ áp cho cột có
     // `dataIndex` — STT và cột thao tác không có nên luôn nằm ngoài, đúng như chk.
     const isSortable = col.sortable ?? Boolean(col.sorter || (tableSortableByDefault && col.dataIndex));
-    const sorterFn = typeof col.sorter === 'function'
-      ? col.sorter
-      : isSortable
-        ? (onSort
-            ? true
+    // Khi màn hình truyền `onSort`, mọi thứ tự phải do API quyết định. Không dùng
+    // comparator tại client vì AntD sẽ vừa đổi thứ tự cục bộ vừa phát event sort,
+    // làm một lần click bị xử lý hai lần và trạng thái icon nhảy sang cột khác.
+    const sorterFn = isSortable
+      ? (onSort
+          ? true
+          : typeof col.sorter === 'function'
+            ? col.sorter
             : (a: any, b: any) => {
                 const aVal = a[dataKey] ?? '';
                 const bVal = b[dataKey] ?? '';
                 if (typeof aVal === 'number' && typeof bVal === 'number') return aVal - bVal;
                 return String(aVal).localeCompare(String(bVal), 'vi');
               }
-          )
-        : undefined;
+        )
+      : undefined;
 
     const colObj: any = {
       key: col.key,
@@ -338,9 +358,10 @@ const DataTable: React.FC<DataTableProps> = ({
         ? widthlessStretchColumnWidth
         : (col.key === explicitStretchColumn?.key ? explicitStretchColumnWidth : col.width),
       sorter: sorterFn,
-      // Keep the server-side sort cycle consistent with getNextSortOrder:
-      // ascending -> descending -> no sort (the list's default ordering).
-      sortDirections: ['ascend', 'descend', null],
+      // AntD supplies the standard sorter affordance. Server-side columns
+      // intercept the click below, because AntD itself has only two concrete
+      // directions and cannot reliably represent the third cleared state.
+      sortDirections: ['ascend', 'descend'],
       ...(tableSortIcon ? { sortIcon: tableSortIcon } : null),
       showSorterTooltip: false,
       align: col.align,
@@ -379,11 +400,25 @@ const DataTable: React.FC<DataTableProps> = ({
           textAlign: col.align || 'left',
           userSelect: 'none',
         },
-        onClick: isSortable ? () => {
-          if (onSort && dataKey) {
-            const nextOrder = getNextSortOrder(col.sortOrder);
-            onSort(dataKey, nextOrder);
-          }
+        // Own the server-side cycle instead of deriving it from AntD's
+        // two-state event. Capture runs before AntD's header click handler,
+        // so the third click always clears sorting and cannot be reinterpreted
+        // as a fresh ascending click.
+        onClickCapture: isSortable && onSort && dataKey ? (event: React.MouseEvent<HTMLElement>) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const field = col.key ?? dataKey;
+          const currentOrder = col.sortOrder !== undefined
+            ? col.sortOrder
+            : lastServerSortRef.current.field === field
+              ? lastServerSortRef.current.order
+              : null;
+          const nextOrder = getNextSortOrder(currentOrder);
+          lastServerSortRef.current = {
+            field,
+            order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null,
+          };
+          onSort(field, nextOrder);
         } : undefined,
       }),
       title: <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{((col as any).title ?? col.label)}</span>,
@@ -428,6 +463,8 @@ const DataTable: React.FC<DataTableProps> = ({
       colObj.sortOrder = col.sortOrder;
     } else if (onSort && isSortable) {
       colObj.sortOrder = null;
+    } else if (isSortable) {
+      colObj.sortOrder = localSort.field === dataKey ? localSort.order ?? null : null;
     }
 
     return colObj;
@@ -462,6 +499,40 @@ const DataTable: React.FC<DataTableProps> = ({
   }
 
   const handleTableChange = (pagination: any, filters: any, sorter: any, extra: any) => {
+    // AntD phát chính xác một event cho mỗi lần người dùng click header. Lấy
+    // `field` từ dataIndex/key thay vì tự gắn thêm onClick vào header để không
+    // tạo hai luồng sort cạnh tranh nhau.
+    const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (activeSorter) {
+      // Prefer `columnKey`: every generated column gives it the page-defined
+      // key, whereas `field` is an AntD-derived value and has caused sort to
+      // jump to Name/Code on columns rendered from composite data.
+      const field = resolveSortField(activeSorter, columns as DataTableColumn[] | undefined);
+      const sourceColumn = field
+        ? (columns as DataTableColumn[] | undefined)?.find(
+            (column) => column.key === field || column.dataIndex === field,
+          )
+        : undefined;
+      if (typeof field === 'string' && field) {
+        const currentOrder = sourceColumn?.sortOrder !== undefined
+          ? sourceColumn.sortOrder
+          : !onSort && localSort.field === field
+            ? localSort.order
+            : lastServerSortRef.current.field === field
+              ? lastServerSortRef.current.order
+              : null;
+        const nextOrder = getNextSortOrder(currentOrder);
+        lastServerSortRef.current = { field, order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null };
+        if (onSort) {
+          onSort(field, nextOrder);
+        } else {
+          setLocalSort({
+            field: nextOrder ? field : undefined,
+            order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null,
+          });
+        }
+      }
+    }
     if (rest.onChange) {
       rest.onChange(pagination, filters, sorter, extra);
     }

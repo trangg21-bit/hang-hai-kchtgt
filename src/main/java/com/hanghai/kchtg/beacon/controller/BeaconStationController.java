@@ -158,7 +158,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/approve-l1")
-    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:approvec1', 'beaconstation:approvel1', 'lighthouseasset:manage', 'lighthouseasset:approvec1', 'lighthouseasset:approvel1', 'lighthouse:manage', 'lighthouse:approvec1', 'lighthouse:approvel1', 'data:approvec1', 'data:approvel1')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:approvec1', 'beaconstation:approvel1', 'lighthouseasset:approvec1', 'lighthouseasset:approvel1', 'lighthouse:approvec1', 'lighthouse:approvel1', 'data:approvec1', 'data:approvel1')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL1(
                     @PathVariable UUID id,
                     @RequestParam(required = false) java.util.UUID approverId,
@@ -170,7 +170,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/approve-l2")
-    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:approvec2', 'beaconstation:approvel2', 'lighthouseasset:manage', 'lighthouseasset:approvec2', 'lighthouseasset:approvel2', 'lighthouse:manage', 'lighthouse:approvec2', 'lighthouse:approvel2', 'data:approvec2', 'data:approvel2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:approvec2', 'beaconstation:approvel2', 'lighthouseasset:approvec2', 'lighthouseasset:approvel2', 'lighthouse:approvec2', 'lighthouse:approvel2', 'data:approvec2', 'data:approvel2')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> approveL2(
                     @PathVariable UUID id,
                     @RequestParam(required = false) java.util.UUID approverId,
@@ -182,7 +182,7 @@ public class BeaconStationController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:approvec1', 'beaconstation:approvec2', 'beaconstation:approvel1', 'beaconstation:approvel2', 'lighthouseasset:manage', 'lighthouseasset:approvec1', 'lighthouseasset:approvec2', 'lighthouseasset:approvel1', 'lighthouseasset:approvel2', 'lighthouse:manage', 'lighthouse:approvec1', 'lighthouse:approvec2', 'data:approvec1', 'data:approvel2')")
+    @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:approvec1', 'beaconstation:approvec2', 'beaconstation:approvel1', 'beaconstation:approvel2', 'lighthouseasset:approvec1', 'lighthouseasset:approvec2', 'lighthouseasset:approvel1', 'lighthouseasset:approvel2', 'lighthouse:approvec1', 'lighthouse:approvec2', 'data:approvec1', 'data:approvel2')")
     public ResponseEntity<ApiResponse<BeaconStationResponse>> reject(
             @PathVariable UUID id,
             @RequestParam String rejectReason,

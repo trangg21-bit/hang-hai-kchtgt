@@ -41,20 +41,9 @@ public class CoastalStationLRITResponse {
     private String conditionStatusLabel;
     private StationStatus status;
 
-    // --- Đặc thù LRIT ---
-    private String terminalId;
-    private String imoNumber;
-    private Integer reportingInterval;
-    private Double antennaHeight;
-    private Double powerOutput;
-    private String antennaType;
-    private String dataFormat;
-    private String communicationChannel;
     private String coverageArea;
     private String servicesProvided;
     private String description;
-    private String contactPerson;
-    private String contactPhone;
 
     // --- GIS ---
     private UUID spatialId;

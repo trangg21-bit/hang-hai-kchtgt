@@ -17,12 +17,29 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @Order(1)
 @Profile({ "local", "local-h2", "prod" })
 @Slf4j
 public class PermissionSeeder implements CommandLineRunner {
+
+        /** KCHT business resources use explicit action permissions; `manage` is redundant. */
+        private static final Set<String> KCHT_RESOURCES_WITHOUT_MANAGE = Set.of(
+                        "port", "seaport", "berth", "berthasset", "pier", "pierasset", "buoyberth", "buoyberthasset",
+                        "anchorage", "anchorageasset", "transferarea", "transferareaasset", "stormshelter", "stormshelterasset",
+                        "dryport", "dryportasset", "waterzone", "waterarea", "navigationchannel", "channel", "channelasset", "dikerevetment", "dikerevetmentasset",
+                        "shiprepair", "shiprepairfacility", "shiprepairyard", "radarstation", "tramradar",
+                        "beaconstation", "beaconlight", "lighthouseasset", "buoystation", "buoy", "buoyasset", "lighthouse", "lighthousestation",
+                        "vts", "vtssystem", "vtsasset", "vtsoperationcenter", "vtsassist", "vtsassistasset", "aissystem", "aisasset", "cctv", "cctvasset", "scada", "scadaasset",
+                        "transmission", "transmissionasset", "vhf", "vhfasset", "daittdh", "daittdhasset", "ttxltt", "ttxlttasset", "coastalstation", "specialstation", "station",
+                        "coastalstationinmarsat", "coastalstationcospassarsat", "coastalstationlrit",
+                        "coastalstationhaiphong", "inmarsat", "inmarsatasset", "cospassarsat", "cospassarsatasset", "lrit", "lritasset", "asset", "infraasset",
+                        "assetincrease", "assetdecrease", "assetexploitation", "movementrequest", "inventoryasset",
+                        "inventoryplan", "inventoryreport", "approvalrecord", "processingrecord", "maintenanceplan",
+                        "operationplan", "incident", "gispoint", "pointobject", "gisline", "lineobject",
+                        "gispolygon", "polygonobject");
 
         private final PermissionRepository permissionRepository;
         private final JdbcTemplate jdbcTemplate;
@@ -761,14 +778,13 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "specialstation", "approvec2", "Phê duyệt C2 trạm chuyên dùng", "Phê duyệt cấp 2 trạm chuyên dùng");
 
                 // 10.3 Đài thông tin vệ tinh Inmarsat (M-004)
-                // Dùng đúng mã xuất hiện trong cây phân quyền; không tạo mã coastalstationinmarsat:* song song.
-                seedPermission(definitions, "inmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
-                seedPermission(definitions, "inmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
-                seedPermission(definitions, "inmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
-                seedPermission(definitions, "inmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
-                seedPermission(definitions, "inmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
-                seedPermission(definitions, "inmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
-                seedPermission(definitions, "inmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
+                seedPermission(definitions, "coastalstationinmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
 
                 // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
                 seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem đài Cospas-Sarsat",
@@ -1049,6 +1065,9 @@ public class PermissionSeeder implements CommandLineRunner {
 
         private void seedPermission(Map<String, Permission> definitions, String resource, String action, String name,
                         String description) {
+                if ("manage".equals(action) && KCHT_RESOURCES_WITHOUT_MANAGE.contains(resource)) {
+                        return;
+                }
                 String code = resource + ":" + action;
                 if (definitions.containsKey(code))
                         return;

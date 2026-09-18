@@ -21,12 +21,6 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
 
     Optional<CoastalStationLRIT> findByIdAndDeletedAtIsNull(UUID id);
 
-    @Query("SELECT c FROM CoastalStationLRIT c WHERE c.terminalId = :terminalId AND c.deletedAt IS NULL")
-    Optional<CoastalStationLRIT> findByTerminalId(@Param("terminalId") String terminalId);
-
-    @Query("SELECT c FROM CoastalStationLRIT c WHERE c.imoNumber = :imoNumber AND c.deletedAt IS NULL")
-    Optional<CoastalStationLRIT> findByImoNumber(@Param("imoNumber") String imoNumber);
-
     @Query("SELECT c FROM CoastalStationLRIT c WHERE c.code = :code AND c.deletedAt IS NULL")
     Optional<CoastalStationLRIT> findByCode(@Param("code") String code);
 
@@ -37,7 +31,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
     @Query("SELECT c FROM CoastalStationLRIT c WHERE c.deletedAt IS NULL")
     List<CoastalStationLRIT> findAllActive();
 
-    @Query("SELECT c FROM CoastalStationLRIT c WHERE c.deletedAt IS NULL AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.terminalId) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    @Query("SELECT c FROM CoastalStationLRIT c WHERE c.deletedAt IS NULL AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     List<CoastalStationLRIT> search(@Param("keyword") String keyword);
 
     @Query("SELECT c FROM CoastalStationLRIT c WHERE c.deletedAt IS NULL")
@@ -59,6 +53,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
+        LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User uu ON uu.id = t.updatedBy
         LEFT JOIN User us ON us.id = t.submittedBy
         LEFT JOIN User ua1 ON ua1.id = t.approverLevel1
@@ -70,8 +65,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
           AND (CAST(:keyword AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:keyword AS string) OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string) OR
-            CAST(function('immutable_unaccent', LOWER(COALESCE(t.terminalId, ''))) AS string) LIKE CAST(:keyword AS string))
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string))
           AND (CAST(:name AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR

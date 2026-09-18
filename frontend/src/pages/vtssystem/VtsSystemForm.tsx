@@ -659,7 +659,14 @@ export default function VtsSystemForm({
       if (isCreateMode) {
         const created = await vtsSystemCRUD.create({
           ...payload,
-          approvalStatus: ApprovalStatus.DRAFT,
+          // "Lưu và phê duyệt" là một thao tác tạo trực tiếp ở cấp Cục.
+          // Không tạo nháp rồi PUT lần hai, vì C2 có thể không mang quyền update.
+          approvalStatus: actionTypeRef.current === 'approve'
+            ? ApprovalStatus.APPROVED
+            : ApprovalStatus.DRAFT,
+          // Tạo và gửi được xử lý trong một transaction ở API create. Không gọi
+          // POST /{id}/submit thứ hai, tránh để lại bản nháp nếu bước gửi lỗi.
+          submitForApproval: actionTypeRef.current === 'submit',
         });
         if (pendingFiles.length > 0 && created?.id) {
           try {
@@ -667,12 +674,6 @@ export default function VtsSystemForm({
           } catch (uploadErr) {
             console.warn('Failed to upload some pending files on create', uploadErr);
           }
-        }
-        if (actionTypeRef.current === 'submit' && created?.id) {
-          await vtsSystemApproval.submit(created.id);
-        } else if (actionTypeRef.current === 'approve' && created?.id) {
-          await vtsSystemApproval.submit(created.id).catch(() => {});
-          await vtsSystemApproval.approveC2(created.id, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
@@ -685,7 +686,14 @@ export default function VtsSystemForm({
         toast.success(msg);
         onSuccess?.();
       } else if (editId) {
-        await vtsSystemCRUD.update(editId, payload as UpdateVtsSystemRequest);
+        // "Lưu và phê duyệt" phải là đúng một lần cập nhật. Gọi PUT hai lần
+        // làm cùng một thao tác sinh hai mốc lịch sử/thay đổi dữ liệu.
+        await vtsSystemCRUD.update(editId, {
+          ...payload,
+          ...(actionTypeRef.current === 'approve'
+            ? { approvalStatus: ApprovalStatus.APPROVED }
+            : {}),
+        } as UpdateVtsSystemRequest);
         if (pendingDeletedAttachments.length > 0) {
           try {
             await Promise.all(pendingDeletedAttachments.map((a) => vtsSystemCRUD.deleteAttachment(editId, a.id)));
@@ -700,21 +708,8 @@ export default function VtsSystemForm({
             console.warn('Failed to upload some pending files on edit', uploadErr);
           }
         }
-        const isAlreadyApproved =
-          record?.approvalStatus === ApprovalStatus.APPROVED ||
-          (record?.approvalStatus as string) === 'APPROVED_LEVEL2';
-
         if (actionTypeRef.current === 'submit') {
           await vtsSystemApproval.submit(editId);
-        } else if (actionTypeRef.current === 'approve') {
-          if (!isAlreadyApproved) {
-            if (record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1) {
-              await vtsSystemApproval.approveC2(editId, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
-            } else {
-              await vtsSystemApproval.submit(editId);
-              await vtsSystemApproval.approveC2(editId, { decision: 'APPROVED', reason: 'Lưu và phê duyệt trực tiếp' });
-            }
-          }
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);

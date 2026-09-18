@@ -48,6 +48,8 @@ import {
 } from "../../../themetokenchk";
 import { formatAssetCode } from "../../../utils/assetCode";
 import { DEFAULT_STATUS_MAP } from "./status-map.constants";
+import { getNextSortOrder, resolveSortField } from "../../list-view/sortUtils";
+import { getApprovalStatusInfo } from "./status-badge";
 
 const ACTION_COLUMN_WIDTH = 60;
 const HEADER_CHAR_WIDTH = 8.8;
@@ -240,6 +242,49 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   const actualPageSize: number =
     externalPageSize !== undefined ? externalPageSize : internalPageSize;
 
+  // Direct-data tables without an external sort callback must still perform a
+  // real local sort. `sorter: true` only emits an AntD event; it does not
+  // rearrange records by itself. Server-backed and externally controlled
+  // tables keep their existing source of truth.
+  const displayedData = useMemo(() => {
+    if (isServiceProviderMode || onSortChange || !sortField || !sortOrder) {
+      return actualData;
+    }
+
+    const column = options?.mainColumns.find(
+      (item) => (item.sortField ?? item.dataIndex) === sortField,
+    );
+    if (!column) return actualData;
+
+    const compareValues = (left: unknown, right: unknown) => {
+      if (left == null && right == null) return 0;
+      if (left == null) return 1;
+      if (right == null) return -1;
+      if (typeof left === "number" && typeof right === "number") {
+        return left - right;
+      }
+      return String(left).localeCompare(String(right), "vi", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    };
+
+    return [...actualData].sort((left, right) => {
+      if (typeof column.sorter === "function") {
+        const result = column.sorter(left, right);
+        return sortOrder === "ascend" ? result : -result;
+      }
+      const leftValue = column.valueRef
+        ? column.valueRef(left)
+        : left[column.dataIndex as keyof T];
+      const rightValue = column.valueRef
+        ? column.valueRef(right)
+        : right[column.dataIndex as keyof T];
+      const result = compareValues(leftValue, rightValue);
+      return sortOrder === "ascend" ? result : -result;
+    });
+  }, [actualData, isServiceProviderMode, onSortChange, options?.mainColumns, sortField, sortOrder]);
+
   // Reset cuộn ngang về 0 khi đổi trang hoặc nạp dữ liệu
   const resetHorizontalScroll = useCallback(() => {
     if (!tableShellRef.current) return;
@@ -384,15 +429,29 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   const handleSortChange: NonNullable<TableProps<T>["onChange"]> = useCallback(
     (_pagination, _filters, sorter) => {
       const sorterObj = Array.isArray(sorter) ? sorter[0] : sorter;
-      const field = sorterObj?.columnKey as string | undefined;
-      const order = sorterObj?.order ?? null;
+      const field = sorterObj
+        ? resolveSortField(
+            sorterObj,
+            (options?.mainColumns || []).map((column) => ({
+              key: column.sortField ?? column.dataIndex,
+              dataIndex: column.dataIndex,
+            })),
+          )
+        : undefined;
+      if (!field) return;
+      // AntD can loop descend -> ascend when a null entry appears in
+      // sortDirections. The controlled state is authoritative: ascend ->
+      // descend -> no sort, regardless of AntD's reported third value.
+      const nextOrder = getNextSortOrder(field && field === sortField ? sortOrder : null);
+      const order = nextOrder === "asc" ? "ascend" : nextOrder === "desc" ? "descend" : null;
+      const nextField = order ? field : undefined;
 
-      setSortField(field);
+      setSortField(nextField);
       setSortOrder(order);
 
       if (isServiceProviderMode) {
         setInternalPage(1);
-        void fetchData(1, actualPageSize, effectiveFilters, field, order);
+        void fetchData(1, actualPageSize, effectiveFilters, nextField, order);
       }
       onSortChange?.(field ?? "", order);
     },
@@ -402,6 +461,9 @@ function CommonTableInternal<T extends Record<string, unknown>>(
       effectiveFilters,
       fetchData,
       onSortChange,
+      options?.mainColumns,
+      sortField,
+      sortOrder,
     ],
   );
 
@@ -539,12 +601,80 @@ function CommonTableInternal<T extends Record<string, unknown>>(
       const isSortable = Boolean(col.allowSort || col.sorter);
       const safeMinWidth = getHeaderMinWidth(colTitle, isSortable);
 
-      // Tính bề rộng thực tế đảm bảo không bị cắt chữ header
+      // Tự động mở rộng bề rộng nếu dữ liệu trạng thái dài để chứa đủ tên trạng thái
+      let statusDataMinWidth = 0;
+      const isStatusCol =
+        col.type === TableColumnType.Status ||
+        colField === "status" ||
+        colField === "approvalStatus" ||
+        colField === "conditionStatus" ||
+        (typeof colTitle === "string" &&
+          (colTitle.toLowerCase().includes("trạng thái") ||
+            colTitle.toLowerCase().includes("tình trạng")));
+
+      if (isStatusCol && actualData && actualData.length > 0) {
+        let maxLabelLen = 0;
+        for (const row of actualData) {
+          const rawVal = col.valueRef
+            ? col.valueRef(row, 0)
+            : (row as Record<string, unknown>)[colField];
+          if (rawVal !== undefined && rawVal !== null && rawVal !== "") {
+            const valStr = String(rawVal).trim();
+            let label = valStr;
+            if (col.statusMapping) {
+              if (Array.isArray(col.statusMapping)) {
+                const found = col.statusMapping.find(
+                  (m) =>
+                    String(m.value).toUpperCase() === valStr.toUpperCase() ||
+                    m.label === valStr
+                );
+                if (found?.label) label = found.label;
+              } else {
+                const found =
+                  col.statusMapping[valStr] ||
+                  col.statusMapping[valStr.toUpperCase()];
+                if (found?.label) label = found.label;
+              }
+            } else if (
+              DEFAULT_STATUS_MAP[valStr] ||
+              DEFAULT_STATUS_MAP[valStr.toUpperCase()]
+            ) {
+              label = (
+                DEFAULT_STATUS_MAP[valStr] ||
+                DEFAULT_STATUS_MAP[valStr.toUpperCase()]
+              ).label;
+            } else {
+              const info = getApprovalStatusInfo(valStr);
+              if (info.label && info.label !== "—") {
+                label = info.label;
+              }
+            }
+            if (label.length > maxLabelLen) {
+              maxLabelLen = label.length;
+            }
+          }
+        }
+        if (maxLabelLen > 0) {
+          // Pill badge: padding 20px + dot 13px + cell padding 32px + text ~8.5px/char
+          statusDataMinWidth = Math.ceil(maxLabelLen * 8.5) + 95;
+        }
+      }
+
+      // Tính bề rộng thực tế đảm bảo không bị cắt chữ header và chứa đủ dữ liệu trạng thái
+      const minRequired = Math.max(safeMinWidth, statusDataMinWidth);
       let finalWidth: number | string | undefined = col.width;
       if (typeof col.width === "number") {
-        finalWidth = Math.max(col.width, safeMinWidth);
-      } else if (!col.width && safeMinWidth > 0) {
-        finalWidth = safeMinWidth;
+        finalWidth = Math.max(col.width, minRequired);
+      } else if (!col.width && minRequired > 0) {
+        finalWidth = minRequired;
+      }
+      if (typeof col.minWidth === "number") {
+        finalWidth =
+          typeof finalWidth === "number"
+            ? Math.max(finalWidth, col.minWidth, minRequired)
+            : Math.max(col.minWidth, minRequired);
+      } else if (minRequired > 0 && typeof finalWidth === "number") {
+        finalWidth = Math.max(finalWidth, minRequired);
       }
 
       // Sorter: chỉ bật cờ để thu thập tham số sắp xếp gửi API (không sort memory)
@@ -559,6 +689,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         dataIndex: col.dataIndex,
         title: colTitle,
         width: finalWidth,
+        minWidth: typeof finalWidth === "number" ? finalWidth : undefined,
         align: col.align || "left",
         fixed: col.fixed,
         ellipsis: false,
@@ -566,7 +697,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         columnKey: colField,
         sortOrder: isCurrentSorted ? sortOrder : null,
         showSorterTooltip: false,
-        sortDirections: ["ascend", "descend", null],
+        sortDirections: ["ascend", "descend"],
         sortIcon: themeToken.tableSortIcon || tableSortIcon,
         onHeaderCell: () => ({
           className: isCurrentSorted
@@ -917,6 +1048,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
     return list;
   }, [
     options,
+    actualData,
     actualPage,
     actualPageSize,
     sortField,
@@ -1052,7 +1184,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
               (record as Record<string, unknown>).id ??
               (record as Record<string, unknown>).key) as React.Key
           }
-          dataSource={actualData}
+          dataSource={displayedData}
           columns={generatedColumns}
           rowSelection={rowSelection}
           pagination={false}

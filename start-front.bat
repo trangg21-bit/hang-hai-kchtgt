@@ -1,5 +1,5 @@
 @echo off
-cd /d C:\Users\trangtt1\hang-hai-kchtgt\frontend
+cd /d "%~dp0frontend"
 echo Starting Vite frontend dev server...
 echo.
 npm run dev

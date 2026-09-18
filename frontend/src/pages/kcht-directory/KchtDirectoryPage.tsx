@@ -244,7 +244,7 @@ const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   '/dry-port': 'dryport:read',
   '/dai-ttdh': 'daittdh:read',
   '/vhf': 'vhf:read',
-  '/station/inmarsat': ['inmarsat:read', 'specialstation:read', 'coastalstation:read'],
+  '/station/inmarsat': 'coastalstationinmarsat:read',
   '/station/cospas-sarsat': ['specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read'],
   '/station/lrit': ['specialstation:read', 'coastalstationlrit:read', 'coastalstation:read'],
   '/station/hanoi': ['specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read'],
@@ -253,7 +253,7 @@ const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   '/asset/inmarsat': ['inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read'],
   '/asset/cospas-sarsat': ['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read'],
   '/asset/lrit': ['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read'],
-  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'ttxltt:manage', 'coastalstationhaiphong:read'],
+  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read'],
 };
 
 // Lý do node bị vô hiệu hóa — chuẩn theo UX spec

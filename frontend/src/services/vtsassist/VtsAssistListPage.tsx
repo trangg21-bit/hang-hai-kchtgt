@@ -1153,7 +1153,7 @@ const VtsAssistListPage = () => {
   const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!(hasPerm?.("vtsassist:approvec2") || hasPerm?.("vtsassist:manage"));
+  const canSaveAndApprove = !!hasPerm?.("vtsassist:approvec2");
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
@@ -1613,7 +1613,7 @@ const VtsAssistListPage = () => {
         cellTitle: (record: VtsAssistResponse) => record.deviceName || '',
         render: (val: string, record: VtsAssistResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
-            {(hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage")) ? (
+            {hasPerm?.("vtsassist:read") ? (
               <Tooltip title={val || undefined} placement="topLeft">
                 <button
                   type="button"
@@ -1887,7 +1887,7 @@ const VtsAssistListPage = () => {
   };
 
   const openHistory = useCallback((r: VtsAssistResponse) => {
-    if (!hasPerm?.("vtsassist:history") && !hasPerm?.("vtsassist:read") && !hasPerm?.("vtsassist:manage") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("vtsassist:history")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống phụ trợ VTS");
       return;
     }
@@ -2356,7 +2356,7 @@ const VtsAssistListPage = () => {
         if (linkedAction === "edit") {
           openUpdateDrawer(record);
         } else {
-          if (!hasPerm?.("vtsassist:read") && !hasPerm?.("vtsassist:manage")) {
+          if (!hasPerm?.("vtsassist:read")) {
             toast.warning("Bạn không có quyền xem chi tiết hệ thống phụ trợ VTS");
             return;
           }
@@ -2381,7 +2381,7 @@ const VtsAssistListPage = () => {
       const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === "DELETED" || record.approvalStatus === "ARCHIVED");
       if (isDeleted) {
         const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
-        if (hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage")) {
+        if (hasPerm?.("vtsassist:read")) {
           actions.push({
             key: "view",
             label: "Xem chi tiết",
@@ -2395,7 +2395,7 @@ const VtsAssistListPage = () => {
             },
           });
         }
-        if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage") || hasPerm?.("data:read")) {
+        if (hasPerm?.("vtsassist:history")) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -2408,7 +2408,7 @@ const VtsAssistListPage = () => {
 
       const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
 
-      if (hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage")) {
+      if (hasPerm?.("vtsassist:read")) {
         actions.push({
           key: "view",
           label: "Xem chi tiết",
@@ -2434,7 +2434,7 @@ const VtsAssistListPage = () => {
       }
 
       // Lịch sử thay đổi (mở từ menu dòng, không nằm trong drawer chi tiết)
-      if (hasPerm?.("vtsassist:history") || hasPerm?.("vtsassist:read") || hasPerm?.("vtsassist:manage") || hasPerm?.("data:read")) {
+      if (hasPerm?.("vtsassist:history")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -2445,7 +2445,7 @@ const VtsAssistListPage = () => {
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
       if (
-        (hasPerm?.("vtsassist:update") || hasPerm?.("vtsassist:create") || hasPerm?.("vtsassist:manage")) &&
+        (hasPerm?.("vtsassist:update") || hasPerm?.("vtsassist:create")) &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2" ||
@@ -2464,7 +2464,7 @@ const VtsAssistListPage = () => {
 
       // PENDING_APPROVAL + vtsassist:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
       // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
-      if ((hasPerm?.("vtsassist:approvec1") || hasPerm?.("vtsassist:manage")) && record.approvalStatus === "PENDING_APPROVAL") {
+      if (hasPerm?.("vtsassist:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
         const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
         actions.push({
           key: "approveC1",
@@ -2494,7 +2494,7 @@ const VtsAssistListPage = () => {
 
       // APPROVED_LEVEL1 + vtsassist:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
       // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
-      if ((hasPerm?.("vtsassist:approvec2") || hasPerm?.("vtsassist:manage")) && record.approvalStatus === "APPROVED_LEVEL1") {
+      if (hasPerm?.("vtsassist:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
         const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
         actions.push({
           key: "approveC2",
@@ -3172,14 +3172,14 @@ const VtsAssistListPage = () => {
           { label: "Quản lý hệ thống phụ trợ VTS", path: "/vts-assist" },
         ]}
         actions={[
-          (hasPerm?.("vtsassist:create") || hasPerm?.("vtsassist:manage"))
+          hasPerm?.("vtsassist:create")
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("vtsassist:create") && !hasPerm?.("vtsassist:manage")) {
+                  if (!hasPerm?.("vtsassist:create")) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống phụ trợ VTS");
                     return;
                   }

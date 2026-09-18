@@ -826,7 +826,7 @@ function WaterZoneDetailMini({ record, symbols, files, userMap }: { record: any;
 export default function PortListPage() {
   // ── Permission ──────────────────────────────────────────────────
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const canSubmitForApproval = hasPerm?.('port:update') || hasPerm?.('port:manage');
+  const canSubmitForApproval = hasPerm?.('port:update');
 
   // ── State ───────────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');

@@ -250,7 +250,7 @@ export default function CospasSarsatStationList() {
   const listRequestId = useRef(0);
   const [isLookupReady, setIsLookupReady] = useState(false);
 
-  const canCreate = hasPerm('coastalstationcospassarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create');
+  const canCreate = hasPerm('coastalstationcospassarsat:create');
 
   useEffect(() => {
     let mounted = true;
@@ -511,7 +511,7 @@ export default function CospasSarsatStationList() {
       ),
     },
     {
-      key: 'stationName',
+      key: 'name',
       label: 'Tên/Mã đài Cospas-Sarsat',
       dataIndex: 'name',
       width: 260,
@@ -676,7 +676,7 @@ export default function CospasSarsatStationList() {
       },
     },
     {
-      key: 'submitted',
+      key: 'submittedAt',
       label: 'Ngày gửi phê duyệt',
       dataIndex: 'submittedAt',
       width: 200,
@@ -710,7 +710,7 @@ export default function CospasSarsatStationList() {
       },
     },
     {
-      key: 'approverL1',
+      key: 'approvedDateLevel1',
       label: 'Phê duyệt cấp Cảng vụ/Chi cục',
       dataIndex: 'approvedDateLevel1',
       width: 220,
@@ -744,7 +744,7 @@ export default function CospasSarsatStationList() {
       },
     },
     {
-      key: 'approverL2',
+      key: 'approvedDateLevel2',
       label: 'Phê duyệt cấp Cục',
       dataIndex: 'approvedDateLevel2',
       width: 220,
@@ -784,7 +784,7 @@ export default function CospasSarsatStationList() {
     const isCreator = Boolean(uid && (record.createdBy === uid || record.submittedBy === uid));
     const isApproverL1 = Boolean(uid && (record.approverLevel1 === uid || (record as any).approverLevel1Id === uid));
     const userUnitType = currentUser?.unitType || '';
-    const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+    const isAdmin = hasPerm('*') || hasPerm('admin:all');
     const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
@@ -849,7 +849,7 @@ export default function CospasSarsatStationList() {
         },
       });
     }
-    if ((hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if ((hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1')) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approveC1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -864,7 +864,7 @@ export default function CospasSarsatStationList() {
         onClick: () => openRejectModal(record.id, 'c1'),
       });
     }
-    const canApproveC2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin;
+    const canApproveC2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
     if (canApproveC2 && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approveC2',

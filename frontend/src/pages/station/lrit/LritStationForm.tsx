@@ -160,11 +160,11 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
   const userUnitType = currentUser?.unitType || '';
   const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
-  const canApproveL2 = (hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
-  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canApproveL2 = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
+  const canCreate = hasPerm('coastalstationlrit:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationlrit',
@@ -344,7 +344,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       setRecord(null);
 
       form.setFieldsValue({
-        conditionStatus: 'OPERATIONAL',
+        conditionStatus: 'NOT_YET_OPERATIONAL',
         geometryType: undefined,
         coordinateSystem: undefined,
         displayRule: undefined,
@@ -405,19 +405,9 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       operatingOrgId: data.operatingOrgId,
       provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
       locationAddress: data.locationAddress,
-      conditionStatus: normalizeConditionStatus(data.conditionStatus) || 'OPERATIONAL',
+      conditionStatus: normalizeConditionStatus(data.conditionStatus) || 'NOT_YET_OPERATIONAL',
       services: serviceList,
       coverageArea: data.coverageArea,
-      terminalId: data.terminalId,
-      imoNumber: data.imoNumber,
-      reportingInterval: data.reportingInterval,
-      antennaHeight: data.antennaHeight,
-      powerOutput: data.powerOutput,
-      antennaType: data.antennaType,
-      dataFormat: data.dataFormat,
-      communicationChannel: data.communicationChannel,
-      contactPerson: data.contactPerson,
-      contactPhone: data.contactPhone,
       description: data.description,
       geometryType,
       symbolId: data.symbolId || data.symbol || undefined,
@@ -709,16 +699,6 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         services: values.services ?? null,
         servicesProvided: Array.isArray(values.services) ? (values.services.length ? values.services.join(', ') : null) : (values.services ?? null),
         coverageArea: values.coverageArea?.trim() ?? null,
-        terminalId: values.terminalId?.trim() ?? null,
-        imoNumber: values.imoNumber?.trim() ?? null,
-        reportingInterval: values.reportingInterval ?? null,
-        antennaHeight: values.antennaHeight ?? null,
-        powerOutput: values.powerOutput ?? null,
-        antennaType: values.antennaType?.trim() ?? null,
-        dataFormat: values.dataFormat?.trim() ?? null,
-        communicationChannel: values.communicationChannel?.trim() ?? null,
-        contactPerson: values.contactPerson?.trim() ?? null,
-        contactPhone: values.contactPhone?.trim() ?? null,
         description: values.description?.trim() ?? null,
         geometryType: values.geometryType ?? null,
         symbolId: values.symbolId ?? null,
@@ -1062,108 +1042,6 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                                 showCount
                                 style={textAreaStyle}
                               />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="terminalId"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Mã thiết bị đầu cuối</span>}
-                              rules={[{ max: 100, message: 'Mã thiết bị đầu cuối tối đa 100 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập mã thiết bị đầu cuối" maxLength={100} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="imoNumber"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số IMO</span>}
-                              rules={[{ max: 50, message: 'Số IMO tối đa 50 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập số IMO" maxLength={50} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="reportingInterval"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Chu kỳ báo cáo (phút)</span>}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <InputNumber min={1} max={1440} placeholder="Nhập chu kỳ báo cáo" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="antennaHeight"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Độ cao ăng-ten (m)</span>}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <InputNumber min={0} max={500} placeholder="Nhập độ cao ăng-ten" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="powerOutput"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Công suất phát (W)</span>}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <InputNumber min={0} max={10000} placeholder="Nhập công suất phát" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="antennaType"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Loại ăng-ten</span>}
-                              rules={[{ max: 100, message: 'Loại ăng-ten tối đa 100 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập loại ăng-ten" maxLength={100} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="dataFormat"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Định dạng dữ liệu</span>}
-                              rules={[{ max: 100, message: 'Định dạng dữ liệu tối đa 100 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập định dạng dữ liệu" maxLength={100} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="communicationChannel"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Kênh truyền thông</span>}
-                              rules={[{ max: 100, message: 'Kênh truyền thông tối đa 100 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập kênh truyền thông" maxLength={100} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-
-                          <Col span={12}>
-                            <Form.Item
-                              name="contactPerson"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Người liên hệ</span>}
-                              rules={[{ max: 255, message: 'Người liên hệ tối đa 255 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập người liên hệ" maxLength={255} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="contactPhone"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Số điện thoại liên hệ</span>}
-                              rules={[{ max: 50, message: 'SĐT tối đa 50 ký tự' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Input placeholder="Nhập số điện thoại liên hệ" maxLength={50} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} />
                             </Form.Item>
                           </Col>
 

@@ -820,7 +820,7 @@ export default function DryPortListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('dryport:manage') || hasPerm('dryport:create')) {
+    if (hasPerm('dryport:create')) {
 
       actions.push({
         key: 'create',

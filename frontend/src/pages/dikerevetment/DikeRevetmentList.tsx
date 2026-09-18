@@ -575,7 +575,7 @@ export default function DikeRevetmentList() {
   const currentUser = useAuthStore((s: any) => s.user);
   // Phê duyệt 2 cấp (M-1006): C1 = Cảng vụ/Chi cục, C2 = Cục — quyền theo cấp duyệt.
   const canApproveC1 = hasPerm('dikerevetment:approvec1');
-  const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('*');
+  const canApproveC2 = hasPerm('dikerevetment:approvec2');
   const canSubmitForApproval = hasPerm('dikerevetment:update');
   // Đơn vị cha/Cục (scope_all, admin) được chọn đơn vị con khi thêm mới; tài khoản thường bị khóa theo đơn vị của mình
   const isElevatedOrg = hasPerm('orgunit:scope_all') || hasPerm('*')
@@ -1485,7 +1485,7 @@ export default function DikeRevetmentList() {
 
   // ── History ──────────────────────────────────────────────────────
   const openHistoryModal = useCallback(async (record: DikeRevetmentResponse) => {
-    if (!hasPerm?.('dikerevetment:history') && !hasPerm?.('dikerevetment:read') && !hasPerm?.('data:read')) {
+    if (!hasPerm?.('dikerevetment:history')) {
       message.warning('Bạn không có quyền xem lịch sử công trình đê kè');
       return;
     }
@@ -2282,7 +2282,7 @@ export default function DikeRevetmentList() {
           onClick: () => openDetailDrawer(record),
         });
       }
-      if (hasPerm('dikerevetment:history') || hasPerm('dikerevetment:read') || hasPerm('data:read')) {
+      if (hasPerm('dikerevetment:history')) {
         actions.push({
           key: 'history',
           label: 'Lịch sử',
@@ -2316,7 +2316,7 @@ export default function DikeRevetmentList() {
       });
     }
     // Lịch sử thay đổi.
-    if (hasPerm('dikerevetment:history') || hasPerm('dikerevetment:read') || hasPerm('data:read')) {
+    if (hasPerm('dikerevetment:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',

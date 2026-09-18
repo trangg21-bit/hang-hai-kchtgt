@@ -26,7 +26,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -56,7 +55,6 @@ public class CoastalStationLRITController {
             Map.entry("stationName", "t.name"),
             Map.entry("code", "t.code"),
             Map.entry("stationCode", "t.code"),
-            Map.entry("terminalId", "t.terminalId"),
             Map.entry("orgUnitName", "o.name"),
             Map.entry("orgUnitId", "t.orgUnitId"),
             Map.entry("operatingOrgName", "COALESCE(oo.name, oorg.name)"),
@@ -113,6 +111,41 @@ public class CoastalStationLRITController {
 
         if (field == null) {
             return defaultSort;
+        }
+        if ("name".equalsIgnoreCase(field) || "stationName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.name)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
+                    .and(defaultSort);
+        }
+        if ("code".equalsIgnoreCase(field) || "stationCode".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+        if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "pv.sortOrder")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+        if ("updatedInfo".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "uu.fullName")
+                    .and(JpaSort.unsafe(direction, "t.updatedAt"))
+                    .and(defaultSort);
+        }
+        if ("submittedInfo".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "us.fullName")
+                    .and(JpaSort.unsafe(direction, "t.submittedAt"))
+                    .and(defaultSort);
+        }
+        if ("approvedLevel1Info".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "ua1.fullName")
+                    .and(JpaSort.unsafe(direction, "t.approvedDateLevel1"))
+                    .and(defaultSort);
+        }
+        if ("approvedLevel2Info".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "ua2.fullName")
+                    .and(JpaSort.unsafe(direction, "t.approvedDateLevel2"))
+                    .and(defaultSort);
         }
         String property = SORTABLE_LIST_FIELDS.get(field);
         if (property == null) {
@@ -345,22 +378,6 @@ public class CoastalStationLRITController {
     @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:read', 'specialstation:read', 'data:read')")
     public ResponseEntity<List<CoastalStationLRIT>> searchStations(@RequestParam String keyword) {
         return ResponseEntity.ok(service.searchStations(keyword));
-    }
-
-    @GetMapping("/by-terminal/{terminalId}")
-    @Operation(summary = "Find an LRIT station by terminal ID")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:read', 'specialstation:read', 'data:read')")
-    public ResponseEntity<CoastalStationLRIT> findByTerminalId(@PathVariable String terminalId) {
-        Optional<CoastalStationLRIT> station = service.findByTerminalId(terminalId);
-        return station.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/by-imo/{imoNumber}")
-    @Operation(summary = "Find an LRIT station by IMO number")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:read', 'specialstation:read', 'data:read')")
-    public ResponseEntity<CoastalStationLRIT> findByImoNumber(@PathVariable String imoNumber) {
-        Optional<CoastalStationLRIT> station = service.findByImoNumber(imoNumber);
-        return station.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{id}/approve")

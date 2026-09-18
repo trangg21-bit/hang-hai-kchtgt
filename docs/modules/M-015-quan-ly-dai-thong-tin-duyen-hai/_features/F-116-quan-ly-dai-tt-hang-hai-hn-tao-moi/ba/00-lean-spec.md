@@ -2,7 +2,7 @@
 feature-id: F-116
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-28
+last-updated: 2026-09-17
 ---
 # Tạo mới Đài TTXLTT Hà Nội (CoastalStationHaiphong)
 
@@ -46,6 +46,14 @@ Nguồn: Excel sheet "Đài TTXLTT Hà Nội" (~line 1777) — 8 cột chính x�
 | TAB5 | Xử lý & theo dõi | `approvalStatus`/`updatedAt`/`submittedAt`/`approverLevel1/2`... | Badge/Text (read-only) | T/F | T/F | T | F | F |
 
 > Entity Haiphong còn có trường đặc thù ngoài Excel: `portName`, `district`, `ward`, `operationalLicense`, `licenseExpiry`, `inspectorName`, `inspectorPhone`, `lastInspectionDate`, `nextInspectionDate`, `equipmentType`, `communicationFrequency`, `contactPerson`, `contactPhone` — hiển thị thêm ở CT (SA chốt).
+
+## Ma trận chốt 17/09/2026 — thay thế mọi ghi chú mâu thuẫn trước đó
+
+Nguồn chốt là ma trận Excel **Đài TTXLTT Hàng hải**. TAB 1 chỉ có 9 trường: mã đài, tên đài, đơn vị quản lý, đơn vị khai thác, tỉnh/thành phố, địa điểm chi tiết, tình trạng, dịch vụ cung cấp và ghi chú. TAB 2 là GIS; TAB 3 là file; TAB 4 chỉ đọc thông tin vận hành/bảo trì/sự cố; TAB 5 chỉ đọc thông tin xử lý, theo dõi và phê duyệt.
+
+Các cột legacy ngoài ma trận (`portName`, `district`, `ward`, `operationalLicense`, `licenseExpiry`, `inspectorName`, `inspectorPhone`, `lastInspectionDate`, `nextInspectionDate`, `coverageArea`, `equipmentType`, `communicationFrequency`, `contactPerson`, `contactPhone`) không được hiển thị, nhập, cập nhật hoặc trả về qua hợp đồng API/UI của Đài TTXLTT. Chúng chỉ được giữ vật lý trong DB để không làm mất dữ liệu cũ.
+
+Khi tạo mới, `conditionStatus` mặc định là `NOT_YET_OPERATIONAL` ("Chưa khai thác/vận hành"). `provinceId` và `locationAddress` là bắt buộc ở cả UI lẫn API.
 
 ## Business Rules
 

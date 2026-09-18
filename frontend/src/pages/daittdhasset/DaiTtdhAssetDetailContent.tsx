@@ -14,6 +14,7 @@ import type {
 } from '../../services/daiTtdhAsset/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
@@ -620,15 +621,7 @@ export default function DaiTtdhAssetDetailContent({
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: adjustmentRows.length,
         icon: <AuditOutlined />,
-        customContent: (
-          <div style={{ padding: '4px 0' }}>
-            <CommonTable<DaiTtdhAssetAdjustment>
-              options={adjustmentTableOption}
-              dataSource={adjustmentRows}
-              total={adjustmentRows.length}
-            />
-          </div>
-        ),
+        customContent: <AssetAdjustmentHistoryTab dataSource={adjustmentRows} />,
       },
     ];
   }, [

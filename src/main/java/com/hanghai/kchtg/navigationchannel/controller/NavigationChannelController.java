@@ -38,6 +38,17 @@ public class NavigationChannelController {
         return ResponseEntity.ok(ApiResponse.success("Tạo luồng hàng hải thành công", service.create(req, userId)));
     }
 
+    @PostMapping("/create-and-approve")
+    @PreAuthorize("@auth.check(authentication, 'navigationchannel:create') and @auth.check(authentication, 'navigationchannel:approvec2')")
+    public ResponseEntity<ApiResponse<NavigationChannelResponse>> createAndApprove(
+            @RequestBody @Valid NavigationChannelCreateRequest req,
+            Authentication authentication) {
+        UUID userId = currentUserId(authentication);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Create and approve navigation channel successfully",
+                service.createAndApprove(req, userId)));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> getById(@PathVariable(name = "id") UUID id) {
@@ -53,7 +64,8 @@ public class NavigationChannelController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'navigationchannel:update')")
+    // Gửi duyệt là bước workflow; hồ sơ vừa tạo được phép gửi với quyền create.
+    @PreAuthorize("@auth.checkAny(authentication, 'navigationchannel:create', 'navigationchannel:update')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> update(
             @PathVariable(name = "id") UUID id,
             @RequestBody @Valid NavigationChannelUpdateRequest req,
@@ -73,12 +85,24 @@ public class NavigationChannelController {
 
     /** Gửi hồ sơ đi phê duyệt (mới — F-038). */
     @PostMapping("/{id}/submit-approval")
-    @PreAuthorize("@auth.check(authentication, 'navigationchannel:update')")
+    // Gửi duyệt từ hồ sơ vừa tạo chỉ cần quyền tạo; gửi lại sau khi sửa cần quyền cập nhật.
+    @PreAuthorize("@auth.checkAny(authentication, 'navigationchannel:create', 'navigationchannel:update')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> submitApproval(
             @PathVariable(name = "id") UUID id,
             Authentication authentication) {
         UUID userId = currentUserId(authentication);
         return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", service.submit(id, userId)));
+    }
+
+    @PostMapping("/{id}/approve-direct")
+    @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec2')")
+    public ResponseEntity<ApiResponse<NavigationChannelResponse>> directApprove(
+            @PathVariable(name = "id") UUID id,
+            Authentication authentication) {
+        UUID userId = currentUserId(authentication);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Approve navigation channel directly successfully",
+                service.directApprove(id, userId)));
     }
 
     @PostMapping("/{id}/approve/c1")

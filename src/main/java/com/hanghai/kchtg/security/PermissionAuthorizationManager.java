@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -18,6 +20,9 @@ import java.util.Set;
  */
 @Component("auth")
 public class PermissionAuthorizationManager {
+
+    private static final Set<String> LEGACY_ROUTE_FALLBACK_RESOURCES = Set.of(
+            "data", "infraasset", "specialstation", "coastalstation", "station");
 
     private final EffectivePermissionService effectivePermissionService;
 
@@ -51,7 +56,48 @@ public class PermissionAuthorizationManager {
     }
 
     public boolean checkAny(Authentication authentication, String... requiredPermissions) {
-        return check(authentication, requiredPermissions);
+        if (requiredPermissions == null || requiredPermissions.length == 0) {
+            return true;
+        }
+
+        List<String> normalized = Arrays.stream(requiredPermissions)
+                .filter(permission -> permission != null && !permission.isBlank())
+                .toList();
+        List<String> historyPermissions = normalized.stream()
+                .filter(permission -> "history".equals(actionOf(permission)))
+                .toList();
+        if (!historyPermissions.isEmpty()) {
+            return historyPermissions.stream()
+                    .anyMatch(permission -> effectivePermissionService.checkPermission(authentication, permission));
+        }
+        String primaryPermission = normalized.stream()
+                .filter(permission -> !LEGACY_ROUTE_FALLBACK_RESOURCES.contains(resourceOf(permission)))
+                .findFirst()
+                .orElse(null);
+
+        // Generic legacy permissions (`data:*`, `specialstation:*`, ...) were
+        // appended as fallbacks to many resource routes.  Once a concrete
+        // resource is present, evaluate only that resource and its formal
+        // aliases.  This makes a blank Inmarsat permission branch mean no
+        // Inmarsat access, including for an administrator account.
+        if (primaryPermission == null) {
+            return check(authentication, requiredPermissions);
+        }
+        String primaryResource = resourceOf(primaryPermission);
+        return normalized.stream()
+                .filter(permission -> EffectivePermissionService.areEquivalentResources(
+                        primaryResource, resourceOf(permission)))
+                .anyMatch(permission -> effectivePermissionService.checkPermission(authentication, permission));
+    }
+
+    private static String resourceOf(String permission) {
+        int separator = permission.indexOf(':');
+        return (separator >= 0 ? permission.substring(0, separator) : permission).trim().toLowerCase();
+    }
+
+    private static String actionOf(String permission) {
+        int separator = permission.indexOf(':');
+        return (separator >= 0 ? permission.substring(separator + 1) : "read").trim().toLowerCase();
     }
 
     /**

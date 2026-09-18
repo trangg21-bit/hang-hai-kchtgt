@@ -54,7 +54,7 @@ public class CctvSystemAssetController {
     private final CctvService cctvService;
 
     @PostMapping
-    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:create', 'cctv:create', 'cctv:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:create', 'cctv:create')")
     public ResponseEntity<ApiResponse<CctvSystemAssetResponse>> create(
             @RequestBody CctvSystemAssetRequest request) {
         CctvSystemAssetResponse response = service.create(request);
@@ -96,7 +96,7 @@ public class CctvSystemAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:update', 'cctv:update', 'cctv:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:update', 'cctv:update')")
     public ResponseEntity<ApiResponse<CctvSystemAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody CctvSystemAssetRequest request) {
@@ -105,7 +105,7 @@ public class CctvSystemAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:delete', 'cctv:delete', 'cctv:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:delete', 'cctv:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);

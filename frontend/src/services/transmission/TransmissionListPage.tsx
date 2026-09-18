@@ -524,7 +524,7 @@ const TransmissionListPage = () => {
   const editFormRef = useRef<TransmissionFormRef>(null);
 
   const handleOpenCreate = useCallback(() => {
-    if (!hasPerm?.("transmission:create") && !hasPerm?.("transmission:manage")) {
+    if (!hasPerm?.("transmission:create")) {
       toast.warning("Bạn không có quyền thêm mới hệ thống truyền dẫn");
       return;
     }
@@ -566,7 +566,7 @@ const TransmissionListPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2") || !!hasPerm?.("transmission:manage");
+  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2");
 
   // Modal bản đồ GIS xem chi tiết
   const [mapScope, setMapScope] = useState<'detail' | null>(null);
@@ -612,7 +612,7 @@ const TransmissionListPage = () => {
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   const openHistory = useCallback((r: TransmissionResponse) => {
-    if (!hasPerm?.("transmission:history") && !hasPerm?.("transmission:read") && !hasPerm?.("transmission:manage") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("transmission:history")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống truyền dẫn");
       return;
     }
@@ -811,7 +811,7 @@ const TransmissionListPage = () => {
         cellTitle: (record: TransmissionResponse) => record.deviceName || '',
         render: (val: string, record: TransmissionResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
-            {hasPerm?.("transmission:read") || hasPerm?.("transmission:manage") ? (
+            {hasPerm?.("transmission:read") ? (
               <Tooltip title={val || undefined} placement="topLeft">
                 <button
                   type="button"
@@ -1659,7 +1659,7 @@ const TransmissionListPage = () => {
 
       // Nếu bản ghi đã xóa, chỉ còn Xem chi tiết và Lịch sử
       if (isTransmissionDeleted(record)) {
-        if (hasPerm?.("transmission:read") || hasPerm?.("transmission:manage")) {
+        if (hasPerm?.("transmission:read")) {
           actions.push({
             key: "view",
             label: "Xem chi tiết",
@@ -1670,7 +1670,7 @@ const TransmissionListPage = () => {
             },
           });
         }
-        if (hasPerm?.("transmission:history") || hasPerm?.("transmission:read") || hasPerm?.("transmission:manage") || hasPerm?.("data:read")) {
+        if (hasPerm?.("transmission:history")) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -1681,7 +1681,7 @@ const TransmissionListPage = () => {
         return actions;
       }
 
-      if (hasPerm?.("transmission:read") || hasPerm?.("transmission:manage")) {
+      if (hasPerm?.("transmission:read")) {
         actions.push({
           key: "view",
           label: "Xem chi tiết",
@@ -1704,7 +1704,7 @@ const TransmissionListPage = () => {
       }
 
       // Lịch sử thay đổi (mở từ menu hành động dòng)
-      if (hasPerm?.("transmission:history") || hasPerm?.("transmission:read") || hasPerm?.("transmission:manage") || hasPerm?.("data:read")) {
+      if (hasPerm?.("transmission:history")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1715,7 +1715,7 @@ const TransmissionListPage = () => {
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + transmission:update → Gửi phê duyệt (submitTransmission)
       if (
-        (hasPerm?.("transmission:update") || hasPerm?.("transmission:create") || hasPerm?.("transmission:manage")) &&
+        (hasPerm?.("transmission:update") || hasPerm?.("transmission:create")) &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2" ||
@@ -1734,7 +1734,7 @@ const TransmissionListPage = () => {
 
       // PENDING_APPROVAL + transmission:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
       // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
-      if ((hasPerm?.("transmission:approvec1") || hasPerm?.("transmission:manage")) && record.approvalStatus === "PENDING_APPROVAL") {
+      if (hasPerm?.("transmission:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
         const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
         actions.push({
           key: "approveC1",
@@ -1764,7 +1764,7 @@ const TransmissionListPage = () => {
 
       // APPROVED_LEVEL1 + transmission:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
       // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
-      if ((hasPerm?.("transmission:approvec2") || hasPerm?.("transmission:manage")) && record.approvalStatus === "APPROVED_LEVEL1") {
+      if (hasPerm?.("transmission:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
         const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
         actions.push({
           key: "approveC2",
@@ -2307,7 +2307,7 @@ const TransmissionListPage = () => {
           { label: "Quản lý hệ thống truyền dẫn", path: "/transmission" },
         ]}
         actions={[
-          hasPerm?.("transmission:create") || hasPerm?.("transmission:manage")
+          hasPerm?.("transmission:create")
             ? {
                 key: "create",
                 label: "Thêm mới",

@@ -154,6 +154,21 @@ public class NavigationChannelService {
         return toResponse(nc);
     }
 
+    /** Tạo và phê duyệt trong một transaction để không để lại bản ghi khi C2 bị từ chối. */
+    @Transactional
+    public NavigationChannelResponse createAndApprove(NavigationChannelCreateRequest req, UUID userId) {
+        approvalService.requireApproveC2Permission(userId, "navigationchannel:approvec2");
+        NavigationChannelResponse created = create(req, userId);
+        NavigationChannel entity = repo.findById(created.getId())
+                .orElseThrow(() -> new IllegalStateException("Navigation channel was not created"));
+        approvalService.recordSaveAndApprove(
+                entity,
+                InfrastructureType.NAVIGATION_CHANNEL,
+                "Create and approve directly",
+                userId);
+        return toResponse(repo.save(entity));
+    }
+
     @Transactional(readOnly = true)
     public NavigationChannelResponse getById(UUID id) {
         return toResponse(repo.findById(id)
@@ -463,6 +478,19 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
         approvalService.submit(nc, InfrastructureType.NAVIGATION_CHANNEL, userId);
+        return toResponse(repo.save(nc));
+    }
+
+    @Transactional
+    public NavigationChannelResponse directApprove(UUID id, UUID userId) {
+        approvalService.requireApproveC2Permission(userId, "navigationchannel:approvec2");
+        NavigationChannel nc = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Navigation channel not found"));
+        approvalService.recordSaveAndApprove(
+                nc,
+                InfrastructureType.NAVIGATION_CHANNEL,
+                "Save and approve directly",
+                userId);
         return toResponse(repo.save(nc));
     }
 

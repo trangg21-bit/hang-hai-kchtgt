@@ -35,23 +35,8 @@ public class CoastalStationHaiphongResponse {
     private String locationAddress;
     private String conditionStatus;
 
-    // --- Đặc thù TTXLTT Hà Nội / Hải Phòng ---
-    private String portName;
-    private String district;
-    private String ward;
-    private String operationalLicense;
-    private String licenseExpiry;
-    private String inspectorName;
-    private String inspectorPhone;
-    private String lastInspectionDate;
-    private String nextInspectionDate;
-    private String coverageArea;
-    private String equipmentType;
-    private String communicationFrequency;
     private String servicesProvided;
     private String description;
-    private String contactPerson;
-    private String contactPhone;
 
     // --- GIS ---
     private UUID spatialId;

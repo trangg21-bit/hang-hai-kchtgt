@@ -63,6 +63,11 @@ export const navigationChannelCRUD = {
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
   },
 
+  async createAndApprove(data: CreateNavigationChannelRequest): Promise<NavigationChannelResponse> {
+    const res = await api.post('/v1/navigation-channel/create-and-approve', data);
+    return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
+  },
+
   async update(id: string, data: UpdateNavigationChannelRequest): Promise<NavigationChannelResponse> {
     const res = await api.put(`/v1/navigation-channel/${id}`, data);
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
@@ -92,6 +97,11 @@ export const navigationChannelApproval = {
 
   async approveC2(id: string, data: ApprovalRequest): Promise<NavigationChannelResponse> {
     const res = await api.post(`/v1/navigation-channel/${id}/approve/c2`, data);
+    return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
+  },
+
+  async directApprove(id: string): Promise<NavigationChannelResponse> {
+    const res = await api.post(`/v1/navigation-channel/${id}/approve-direct`);
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
   },
 

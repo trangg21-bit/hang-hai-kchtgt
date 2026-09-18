@@ -20,19 +20,9 @@ public class CoastalStationLRITUpdateRequest extends CoastalStationLRITRequest {
     @Override public void setStationName(String value) { markFieldPresent("stationName"); super.setStationName(value); }
     @Override public void setLocationAddress(String value) { markFieldPresent("locationAddress"); super.setLocationAddress(value); }
     @Override public void setConditionStatus(ConditionStatus value) { markFieldPresent("conditionStatus"); super.setConditionStatus(value); }
-    @Override public void setTerminalId(String value) { markFieldPresent("terminalId"); super.setTerminalId(value); }
-    @Override public void setImoNumber(String value) { markFieldPresent("imoNumber"); super.setImoNumber(value); }
-    @Override public void setReportingInterval(Integer value) { markFieldPresent("reportingInterval"); super.setReportingInterval(value); }
-    @Override public void setAntennaHeight(Double value) { markFieldPresent("antennaHeight"); super.setAntennaHeight(value); }
-    @Override public void setPowerOutput(Double value) { markFieldPresent("powerOutput"); super.setPowerOutput(value); }
-    @Override public void setAntennaType(String value) { markFieldPresent("antennaType"); super.setAntennaType(value); }
-    @Override public void setDataFormat(String value) { markFieldPresent("dataFormat"); super.setDataFormat(value); }
-    @Override public void setCommunicationChannel(String value) { markFieldPresent("communicationChannel"); super.setCommunicationChannel(value); }
     @Override public void setCoverageArea(String value) { markFieldPresent("coverageArea"); super.setCoverageArea(value); }
     @Override public void setServicesProvided(String value) { markFieldPresent("servicesProvided"); super.setServicesProvided(value); }
     @Override public void setDescription(String value) { markFieldPresent("description"); super.setDescription(value); }
-    @Override public void setContactPerson(String value) { markFieldPresent("contactPerson"); super.setContactPerson(value); }
-    @Override public void setContactPhone(String value) { markFieldPresent("contactPhone"); super.setContactPhone(value); }
     @Override public void setSpatialId(UUID value) { markFieldPresent("spatialId"); super.setSpatialId(value); }
     @Override public void setSymbolId(UUID value) { markFieldPresent("symbolId"); super.setSymbolId(value); }
     @Override public void setGeometryType(String value) { markFieldPresent("geometryType"); super.setGeometryType(value); }

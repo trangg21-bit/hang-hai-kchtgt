@@ -500,7 +500,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
   const hasPerm = usePermissionStore((s: { hasPermission: (k: string) => boolean }) => s.hasPermission);
-  const canApprove = hasPerm('navigationchannel:approvec1') || hasPerm('navigationchannel:approvec2') || hasPerm('admin:all');
+  const canApprove = hasPerm('navigationchannel:approvec2');
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -1001,13 +1001,12 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       };
 
       if (isCreateMode) {
-        const created = await navigationChannelCRUD.create(payload);
+        const created = saveActionRef.current === 'APPROVED'
+          ? await navigationChannelCRUD.createAndApprove(payload)
+          : await navigationChannelCRUD.create(payload);
         const newId = created?.id;
-        if (newId && (saveActionRef.current === 'PENDING_APPROVAL' || saveActionRef.current === 'APPROVED')) {
-          await navigationChannelApproval.submitApproval(newId).catch(() => {});
-          if (saveActionRef.current === 'APPROVED' && canApprove) {
-            await navigationChannelApproval.approveC1(newId, { status: 'APPROVED' }).catch(() => {});
-          }
+        if (newId && saveActionRef.current === 'PENDING_APPROVAL') {
+          await navigationChannelApproval.submitApproval(newId);
         }
         toast.success(saveActionRef.current === 'PENDING_APPROVAL' ? 'Tạo mới và gửi phê duyệt thành công' : 'Tạo mới thành công');
         if (isModalMode) {
@@ -1024,11 +1023,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           (window.parent as any).kchtDetailCache[id] = res;
         }
         if (saveActionRef.current === 'PENDING_APPROVAL' || shouldSubmitAfterSave) {
-          await navigationChannelApproval.submitApproval(res?.id ?? id).catch(() => {});
+          await navigationChannelApproval.submitApproval(res?.id ?? id);
           toast.success('Gửi phê duyệt thành công');
         } else if (saveActionRef.current === 'APPROVED' && canApprove) {
-          await navigationChannelApproval.submitApproval(res?.id ?? id).catch(() => {});
-          await navigationChannelApproval.approveC1(res?.id ?? id, { status: 'APPROVED' }).catch(() => {});
+          await navigationChannelApproval.directApprove(res?.id ?? id);
           toast.success('Phê duyệt thành công');
         } else {
           toast.success('Cập nhật thành công');

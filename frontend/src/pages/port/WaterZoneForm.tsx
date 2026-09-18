@@ -8,7 +8,6 @@ import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/port';
 import FormField from '../../components/FormField';
 import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
 import toast, { message } from '../../components/ToastNotification';
-import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 
@@ -22,15 +21,13 @@ export default function WaterZoneForm() {
   const [rejectLoading, setRejectLoading] = useState(false);
   const [cangBienOptions, setCangBienOptions] = useState<{ value: string; label: string }[]>([]);
 
-  const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-  const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('waterzone:create');
   const canUpdate = canEditApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
-  const canSubmit = (entityData?.status === 'DRAFT' || (entityData?.status as any) === 'REJECTED') && (hasPerm('waterzone:update') || hasPerm('data:update') || isAdmin);
+  const canSubmit = (entityData?.status === 'DRAFT' || (entityData?.status as any) === 'REJECTED') && hasPerm('waterzone:update');
   const canDelete = canDeleteApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
-  const canApprove1 = (hasPerm('waterzone:approvec1') || hasPerm('data:approvec1') || isAdmin);
-  const canApprove2 = (hasPerm('waterzone:approvec2') || hasPerm('data:approvec2') || isAdmin);
+  const canApprove1 = hasPerm('waterzone:approvec1') || hasPerm('data:approvec1');
+  const canApprove2 = hasPerm('waterzone:approvec2') || hasPerm('data:approvec2');
 
   useEffect(() => {
     (async () => {

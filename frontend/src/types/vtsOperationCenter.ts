@@ -121,6 +121,7 @@ export interface CreateVtsOperationCenterRequest {
   coordinateSystem?: string;
   displayRule?: string;
   approvalStatus?: ApprovalStatus | string;
+  submitForApproval?: boolean;
 }
 
 export interface UpdateVtsOperationCenterRequest extends CreateVtsOperationCenterRequest {}

@@ -65,8 +65,8 @@ public class AisSystemController {
      * lấy tên từ `operating_organization`, thiếu thì mới lùi về `org_units`
      * (xem {@code AisSystemService.toListItem}) nên phải sắp bằng COALESCE.
      *
-     * Ngoại lệ: Tỉnh/TP chỉ có mã số trong CSDL (chưa có entity Province để join)
-     * nên sắp theo mã tỉnh — trùng với thứ tự mã hành chính.
+     * Tỉnh/TP được sắp theo khóa thứ tự alphabet của danh mục tỉnh, không theo
+     * mã hành chính.
      */
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
             Map.entry("name", "t.name"),
@@ -90,23 +90,6 @@ public class AisSystemController {
             Map.entry("updatedBy", "t.updatedBy"),
             Map.entry("updatedAt", "t.updatedAt"),
             Map.entry("createdAt", "t.createdAt"));
-
-    public static final String PROVINCE_ORDER_EXPR = """
-        (CASE t.provinceId
-            WHEN 89 THEN 1 WHEN 77 THEN 2 WHEN 24 THEN 3 WHEN 6 THEN 4 WHEN 95 THEN 5
-            WHEN 27 THEN 6 WHEN 83 THEN 7 WHEN 52 THEN 8 WHEN 74 THEN 9 WHEN 70 THEN 10
-            WHEN 60 THEN 11 WHEN 96 THEN 12 WHEN 92 THEN 13 WHEN 4 THEN 14 WHEN 48 THEN 15
-            WHEN 66 THEN 16 WHEN 67 THEN 17 WHEN 11 THEN 18 WHEN 75 THEN 19 WHEN 87 THEN 20
-            WHEN 64 THEN 21 WHEN 2 THEN 22 WHEN 35 THEN 23 WHEN 1 THEN 24 WHEN 42 THEN 25
-            WHEN 30 THEN 26 WHEN 31 THEN 27 WHEN 93 THEN 28 WHEN 17 THEN 29 WHEN 33 THEN 30
-            WHEN 56 THEN 31 WHEN 91 THEN 32 WHEN 62 THEN 33 WHEN 12 THEN 34 WHEN 68 THEN 35
-            WHEN 20 THEN 36 WHEN 10 THEN 37 WHEN 80 THEN 38 WHEN 36 THEN 39 WHEN 40 THEN 40
-            WHEN 37 THEN 41 WHEN 58 THEN 42 WHEN 25 THEN 43 WHEN 54 THEN 44 WHEN 44 THEN 45
-            WHEN 49 THEN 46 WHEN 51 THEN 47 WHEN 22 THEN 48 WHEN 45 THEN 49 WHEN 94 THEN 50
-            WHEN 14 THEN 51 WHEN 72 THEN 52 WHEN 34 THEN 53 WHEN 19 THEN 54 WHEN 38 THEN 55
-            WHEN 46 THEN 56 WHEN 82 THEN 57 WHEN 79 THEN 58 WHEN 84 THEN 59 WHEN 8 THEN 60
-            WHEN 86 THEN 61 WHEN 26 THEN 62 WHEN 15 THEN 63 ELSE 999 END)
-        """.replaceAll("\\s+", " ").trim();
 
     /**
      * Dùng {@link JpaSort#unsafe} vì thuộc tính đã được qualify sẵn theo alias và
@@ -149,7 +132,7 @@ public class AisSystemController {
         }
 
         if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, PROVINCE_ORDER_EXPR)
+            return JpaSort.unsafe(direction, "pv.sortOrder")
                     .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
                     .and(defaultSort);
         }
@@ -270,7 +253,8 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Xóa hệ thống AIS thành công", null));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'aissystem:update')")
+    // Gửi duyệt là bước workflow; hồ sơ vừa tạo được phép gửi với quyền create.
+    @PreAuthorize("@auth.checkAny(authentication, 'aissystem:create', 'aissystem:update')")
     @PostMapping("/{id}/submit")
     public ResponseEntity<ApiResponse<Void>> submit(
             @PathVariable UUID id,
@@ -318,7 +302,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt thành công", null));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'aissystem:history') or @auth.check(authentication, 'aissystem:read')")
+    @PreAuthorize("@auth.check(authentication, 'aissystem:history')")
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,

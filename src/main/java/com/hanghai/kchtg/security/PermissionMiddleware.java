@@ -125,11 +125,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return;
         }
 
-        if (permissionRoleService.isSuperAdmin(auth)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         // Extract resource from path
         String resource = extractResource(path);
         // Map HTTP method to action
@@ -332,7 +327,7 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             entry("cospas-sarsat", "coastalstationcospassarsat"),
             entry("cospas", "coastalstationcospassarsat"),
             entry("lrit", "coastalstationlrit"),
-            entry("inmarsat", "inmarsat"),
+            entry("inmarsat", "coastalstationinmarsat"),
             entry("haiphong", "coastalstationhaiphong"),
             entry("hanoi", "coastalstationhaiphong"),
             entry("coastal", "coastalstation"),

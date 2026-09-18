@@ -411,25 +411,19 @@ public class InfrastructureApprovalService {
 
     /**
      * Kiểm tra thẩm quyền "Lưu và phê duyệt" (phê duyệt trực tiếp cấp Cục khi tạo mới hoặc cập nhật).
-     * Chỉ người dùng cấp Cục (Department level) có quyền approvec2 (hoặc data:approvec2 / admin)
-     * mới được phép thực hiện thao tác này.
+     * Chỉ người dùng cấp trung ương có quyền approvec2 (hoặc quyền C2 dùng chung)
+     * mới được phép thực hiện thao tác này. Quyền quản trị không tự thay thế quyền C2.
      */
     public void requireApproveC2Permission(UUID userId, String resourcePermission) {
-        if (SecurityUtils.isElevatedAdministrator()) {
-            return;
-        }
         UUID effectiveUserId = userId != null ? userId : SecurityUtils.getCurrentUserId();
         if (!isDepartmentLevelUser(effectiveUserId)) {
             throw new AccessDeniedException(
                     "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
         }
         Set<String> perms = SecurityUtils.getCurrentUserPermissions();
-        if (perms == null || (!perms.contains(resourcePermission)
-                && !perms.contains("data:approvec2")
-                && !perms.contains("kcht:approve_level2")
-                && !perms.contains("kcht:approvec2"))) {
+        if (perms == null || !perms.contains(resourcePermission)) {
             throw new AccessDeniedException(
-                    "Bạn không có quyền phê duyệt — thao tác 'Lưu và phê duyệt' cần quyền duyệt cấp Cục");
+                    "Bạn không có quyền phê duyệt — thao tác 'Lưu và phê duyệt' cần quyền duyệt C2, kể cả với tài khoản quản trị");
         }
     }
 

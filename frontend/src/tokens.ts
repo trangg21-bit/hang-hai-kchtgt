@@ -1,9 +1,13 @@
-import React from 'react';
 import {
-  DeleteOutlined, HistoryOutlined, SendOutlined,
-  CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
+    CheckOutlined, CloseOutlined,
+    DeleteOutlined, HistoryOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    SearchOutlined,
+    SendOutlined,
 } from '@ant-design/icons';
 import viVN from 'antd/locale/vi_VN';
+import React from 'react';
 import { colors } from './theme';
 export { colors };
 

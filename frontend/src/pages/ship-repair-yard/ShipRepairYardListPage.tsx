@@ -841,7 +841,7 @@ export default function ShipRepairYardList() {
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
-    if (hasPerm('shiprepairyard:create') || hasPerm('shiprepairyard:manage')) {
+    if (hasPerm('shiprepairyard:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -1063,7 +1063,7 @@ export default function ShipRepairYardList() {
         const actions: any[] = [
           { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
         ];
-        if (hasPerm('shiprepairyard:history') || hasPerm('shiprepairyard:manage')) {
+        if (hasPerm('shiprepairyard:history')) {
           actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
         }
         return actions;
@@ -1087,27 +1087,27 @@ export default function ShipRepairYardList() {
           },
         });
       }
-      if (['DRAFT','NHAP'].includes(st) && (hasPerm('shiprepairyard:update') || hasPerm('shiprepairyard:create') || hasPerm('shiprepairyard:manage'))) {
+      if (['DRAFT','NHAP'].includes(st) && (hasPerm('shiprepairyard:update') || hasPerm('shiprepairyard:create'))) {
         actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       }
-      if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && (hasPerm('shiprepairyard:update') || hasPerm('shiprepairyard:create') || hasPerm('shiprepairyard:manage'))) {
+      if (['REJECTED_LEVEL1','REJECTED_LEVEL2','REJECTED','TU_CHOI'].includes(st) && (hasPerm('shiprepairyard:update') || hasPerm('shiprepairyard:create'))) {
         actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
       }
       // Lịch sử — luôn hiển thị khi có quyền
-      if (hasPerm('shiprepairyard:history') || hasPerm('shiprepairyard:manage')) {
+      if (hasPerm('shiprepairyard:history')) {
         actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       }
       // Phê duyệt / Từ chối — theo trạng thái 2 cấp
-      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET','PROPOSED'].includes(st) && (hasPerm('shiprepairyard:approvec1') || hasPerm('shiprepairyard:manage'))) {
+      if (['PENDING_APPROVAL','PENDING','CHO_PHE_DUYET','PROPOSED'].includes(st) && hasPerm('shiprepairyard:approvec1')) {
         actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
         actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
       }
-      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && (hasPerm('shiprepairyard:approvec2') || hasPerm('shiprepairyard:manage'))) {
+      if (['APPROVED_LEVEL1','APPROVED_LEVEL2'].includes(st) && hasPerm('shiprepairyard:approvec2')) {
         actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
         actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
       }
       // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
-      if ((hasPerm('shiprepairyard:delete') || hasPerm('shiprepairyard:manage')) && ['DRAFT','NHAP'].includes(st)) {
+      if (hasPerm('shiprepairyard:delete') && ['DRAFT','NHAP'].includes(st)) {
         actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
       }
       return actions;

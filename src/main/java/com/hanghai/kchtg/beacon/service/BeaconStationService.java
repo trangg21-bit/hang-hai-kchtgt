@@ -1098,13 +1098,8 @@ public class BeaconStationService {
      * hoặc quản trị nâng cao (chuẩn F-092/AC-006 — backend chặn non-Cục).
      */
     private void requireApproveC2Permission() {
-        if (SecurityUtils.isElevatedAdministrator()) {
-            return;
-        }
         java.util.Set<String> perms = SecurityUtils.getCurrentUserPermissions();
-        if (perms == null
-                || !perms.contains("beaconstation:approvec2")
-                && !perms.contains("data:approvec2")) {
+        if (perms == null || !perms.contains("beaconstation:approvec2")) {
             throw new AccessDeniedException(
                     "Bạn không có quyền phê duyệt — thao tác \"Lưu và phê duyệt\" cần quyền duyệt cấp Cục");
         }

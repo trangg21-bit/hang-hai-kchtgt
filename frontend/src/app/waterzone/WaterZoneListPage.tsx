@@ -43,7 +43,6 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
 import { documentApi } from '../document/api';
@@ -107,11 +106,10 @@ export default function WaterZoneListPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
   const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
-  const canApprove = hasPerm('waterzone:approvec1') || hasPerm('waterzone:approvec2') || hasPerm('waterzone:approve') || hasPerm('data:approvec1') || hasPerm('data:approvec2') || hasPerm('data:approve') || isAdmin;
+  const canApprove = hasPerm('waterzone:approvec1') || hasPerm('waterzone:approvec2') || hasPerm('data:approvec1') || hasPerm('data:approvec2');
 
   const [search, setSearch] = useState('');
   const [filterMaVung, setFilterMaVung] = useState('');

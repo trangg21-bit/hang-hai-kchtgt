@@ -89,7 +89,6 @@ import DetailTable from "../../components/shared/DetailTable";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import toast from "../../components/ToastNotification";
 import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
-import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
@@ -680,11 +679,9 @@ const VhfListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
-  const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const canSaveAndApprove = useMemo(() => {
-    return hasPerm?.('vhf:approvec2') || hasPerm?.('vhf:approvec1') || isSystemAdmin;
-  }, [hasPerm, isSystemAdmin]);
+    return Boolean(hasPerm?.('vhf:approvec2'));
+  }, [hasPerm]);
 
   const [selectedRecord, setSelectedRecord] = useState<VhfResponse | null>(null);
   const vhfFormRef = useRef<VhfFormRef>(null);
@@ -1806,7 +1803,7 @@ const validHistoryGroups = useMemo(() => {
 
   // ── Row Actions chuẩn /cctv ──
   const handleOpenHistory = useCallback((record: VhfResponse) => {
-    if (!hasPerm?.("vhf:history") && !hasPerm?.("vhf:read") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("vhf:history")) {
       toast.error("Bạn không có quyền xem lịch sử thay đổi");
       return;
     }
@@ -1835,7 +1832,7 @@ const validHistoryGroups = useMemo(() => {
     });
 
     if (isVhfDeleted(record)) {
-      if (hasPerm?.("vhf:history") || hasPerm?.("vhf:read") || hasPerm?.("data:read")) {
+      if (hasPerm?.("vhf:history")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1855,7 +1852,7 @@ const validHistoryGroups = useMemo(() => {
       });
     }
 
-    if (hasPerm?.("vhf:history") || hasPerm?.("vhf:read") || hasPerm?.("data:read")) {
+    if (hasPerm?.("vhf:history")) {
       actions.push({
         key: "history",
         label: "Lịch sử",

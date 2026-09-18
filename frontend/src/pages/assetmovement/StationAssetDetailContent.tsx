@@ -25,6 +25,7 @@ import InfrastructureAttachmentTab, {
   triggerBlobDownload,
   resolveMimeType,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { fetchInfraAssetAttachments } from '../../services/assetmovement/api';
 import {
   colors,
@@ -107,6 +108,12 @@ const sectionTitleStyle: React.CSSProperties = {
 const APPROVAL_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
   NHAP: { color: statusDraft, label: 'Lưu tạm' },
+  LUU_TAM: { color: statusDraft, label: 'Lưu tạm' },
+  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt' },
+  WAITING: { color: actionPrimary, label: 'Chờ phê duyệt' },
+  CHO_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt' },
+  SUBMITTED: { color: actionPrimary, label: 'Chờ phê duyệt' },
+  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt' },
   PENDING_APPROVAL: {
     color: actionPrimary,
     label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
@@ -901,164 +908,9 @@ export default function StationAssetDetailContent({
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
-        customContent: () => (
-          <div
-            style={{
-              paddingTop: 6,
-              paddingRight: 4,
-              overflowY: 'auto',
-              maxHeight: 'calc(100vh - 190px)',
-              minHeight: 350,
-            }}
-          >
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: textTertiary,
-                  fontSize: fontSizeMd,
-                }}
-              >
-                Chưa có lịch sử thay đổi nguyên giá nào.
-              </div>
-            ) : (
-              combinedAdjustments.map((row, index) => {
-                const details = row.adjustmentDetails;
-                return (
-                  <div key={row.id} style={sectionBoxStyle}>
-                    <div style={sectionHeaderStyle}>
-                      <div style={sectionTitleStyle}>
-                        {row.icon}
-                        <span>
-                          {row.changeType} — Lần {index + 1}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Loại thay đổi</span>
-                        <span className="chk-detail-value">
-                          {row.changeType}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Số QĐ điều chỉnh
-                        </span>
-                        <span className="chk-detail-value">
-                          {String(
-                            details?.decisionNumber ||
-                              ('increaseCode' in row ? row.increaseCode : '') ||
-                              ('decreaseCode' in row ? row.decreaseCode : '') ||
-                              '—',
-                          )}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Ngày ra quyết định
-                        </span>
-                        <span className="chk-detail-value">
-                          {details?.decisionDate
-                            ? fmtDate(details.decisionDate)
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Ngày thay đổi nguyên giá
-                        </span>
-                        <span className="chk-detail-value">
-                          {details?.adjustmentDate
-                            ? fmtDate(details.adjustmentDate)
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Lý do điều chỉnh
-                        </span>
-                        <span className="chk-detail-value">
-                          {String(
-                            details?.adjustmentReason ||
-                              ('decreaseReason' in row
-                                ? row.decreaseReason
-                                : '') ||
-                              row.reason ||
-                              '—',
-                          )}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Nguyên giá trước điều chỉnh
-                        </span>
-                        <span className="chk-detail-value">
-                          {details?.originalValueBefore != null
-                            ? `${fmtNum(details.originalValueBefore as number)} VNĐ`
-                            : ''}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Nguyên giá sau điều chỉnh
-                        </span>
-                        <span className="chk-detail-value">
-                          {details?.originalValueAfter != null
-                            ? `${fmtNum(details.originalValueAfter as number)} VNĐ`
-                            : ''}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Giá trị còn lại trước
-                        </span>
-                        <span className="chk-detail-value">
-                          {details?.remainingValueBefore != null
-                            ? `${fmtNum(details.remainingValueBefore as number)} VNĐ`
-                            : ''}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Giá trị còn lại sau
-                        </span>
-                        <span className="chk-detail-value">
-                          {details?.remainingValueAfter != null
-                            ? `${fmtNum(details.remainingValueAfter as number)} VNĐ`
-                            : ''}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">
-                          Cán bộ thực hiện
-                        </span>
-                        <span className="chk-detail-value">
-                          {row.createdByName || ''}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label">
-                          Ghi chú điều chỉnh
-                        </span>
-                        <span className="chk-detail-value">
-                          {String(
-                            details?.adjustmentNotes ||
-                              details?.notes ||
-                              row.reason ||
-                              '',
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        ),
+        customContent: <AssetAdjustmentHistoryTab dataSource={combinedAdjustments} />,
       },
+
     ];
   }, [
     r,

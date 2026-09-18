@@ -917,7 +917,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               <Button onClick={() => { saveActionRef.current = 'draft'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'draft'} style={outlineButtonStyle}>
                 Lưu tạm
               </Button>
-              {hasPermissionFromList(userPermissions, 'dikerevetment:update') && (
+              {hasPermissionFromList(userPermissions, 'dikerevetment:create') && (
                 <Button type="primary" onClick={() => { saveActionRef.current = 'submit'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'submit'} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
@@ -989,4 +989,3 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
     </div>
   );
 }
-

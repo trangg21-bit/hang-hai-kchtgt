@@ -290,6 +290,7 @@ const tableMetaStyle: React.CSSProperties = {
 const CctvListPage = () => {
   const [searchParams] = useSearchParams();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s) => s.hasExplicitPermission);
   const currentUser = useAuthStore((s) => s.user);
   const isIframeModal = window.parent !== window.self;
   const linkedAction = searchParams.get("action");
@@ -1476,7 +1477,7 @@ const CctvListPage = () => {
             onClick: () => openViewDetail(record),
           });
         }
-        if (hasPerm?.("cctv:history") || hasPerm?.("cctv:read") || hasPerm?.("data:read")) {
+        if (hasExplicitPerm("cctv:history")) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -1524,7 +1525,7 @@ const CctvListPage = () => {
         });
       }
 
-      if (hasPerm?.("cctv:history") || hasPerm?.("cctv:read") || hasPerm?.("data:read")) {
+      if (hasExplicitPerm("cctv:history")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1639,7 +1640,7 @@ const CctvListPage = () => {
 
       return actions;
     },
-    [hasPerm, currentUser, openViewDetail, canSaveAndApprove]
+    [hasPerm, hasExplicitPerm, currentUser, openViewDetail, canSaveAndApprove]
   );
 
   const fetchData = useCallback(async () => {
@@ -2150,14 +2151,14 @@ const CctvListPage = () => {
           { label: "Quản lý hệ thống CCTV", path: "/cctv" },
         ]}
         actions={[
-          (hasPerm?.("cctv:create") || hasPerm?.("cctv:manage"))
+          hasExplicitPerm("cctv:create")
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: <PlusOutlined />,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("cctv:create") && !hasPerm?.("cctv:manage")) {
+                  if (!hasExplicitPerm("cctv:create")) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống CCTV");
                     return;
                   }

@@ -910,7 +910,7 @@ export function AisSystemList() {
     const isCreator = Boolean(uid && (record.createdBy === uid || (record as any).userId === uid));
     const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1Name === currentUser?.fullName));
     const userUnitType = currentUser?.unitType || '';
-    const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+    const isAdmin = hasPerm('*') || hasPerm('admin:all');
     const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
     const actions: any[] = [
@@ -967,7 +967,7 @@ export function AisSystemList() {
       });
     }
 
-    if ((hasPerm('aissystem:approvec1') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if (hasPerm('aissystem:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -983,7 +983,7 @@ export function AisSystemList() {
       });
     }
 
-    if ((hasPerm('aissystem:approvec2') || isAdmin) && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
+    if (hasPerm('aissystem:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',

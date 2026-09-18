@@ -184,14 +184,18 @@ public class VtsSystemService {
         }
         ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus()
                 : ApprovalStatus.DRAFT;
+        boolean submitForApproval = request.isSubmitForApproval();
+        if (submitForApproval && initialStatus == ApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Không thể vừa gửi phê duyệt vừa phê duyệt trực tiếp");
+        }
         if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
             initialStatus = ApprovalStatus.APPROVED_LEVEL1;
         }
-        // Tạo thẳng ở trạng thái "Đã duyệt" chỉ dành cho tài khoản cấp Cục.
-        if (initialStatus == ApprovalStatus.APPROVED && !approvalService.isDepartmentLevelUser(userId)) {
-            throw new IllegalStateException(
-                    "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; "
-                            + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
+        // Tạo thẳng ở trạng thái "Đã duyệt" chỉ dành cho tài khoản cấp Cục có
+        // quyền duyệt C2. Không chỉ kiểm tra cấp đơn vị vì client có thể tự gửi
+        // approvalStatus=APPROVED.
+        if (initialStatus == ApprovalStatus.APPROVED) {
+            approvalService.requireApproveC2Permission(userId, "vts:approvec2");
         }
 
         boolean isApproved = initialStatus == ApprovalStatus.APPROVED;
@@ -254,6 +258,27 @@ public class VtsSystemService {
         }
 
         VtsSystem saved = repository.save(entity);
+
+        // “Lưu và gửi phê duyệt” phải là một transaction: nếu bước workflow
+        // không hợp lệ thì toàn bộ bản ghi mới cũng rollback, không để lại nháp
+        // dù UI vừa báo lỗi ở bước gửi duyệt.
+        if (submitForApproval) {
+            approvalService.submit(saved, InfrastructureType.VTS_SYSTEM, userId);
+            saved = repository.save(saved);
+        }
+
+        // Phê duyệt trực tiếp khi tạo là một sự kiện workflow, không phải một
+        // "trường dữ liệu thay đổi". Để changedField null, lịch sử hiển thị
+        // đúng một mốc phê duyệt và không trộn vào lịch sử cập nhật.
+        if (isApproved) {
+            historyRepository.save(InfrastructureHistory.builder()
+                    .refId(saved.getId())
+                    .refType(InfrastructureType.VTS_SYSTEM)
+                    .status(InfrastructureHistoryStatus.APPROVED)
+                    .approvedBy(userId)
+                    .approvedDate(now)
+                    .build());
+        }
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
@@ -903,13 +928,31 @@ public class VtsSystemService {
             return defaultSort;
         }
         String[] parts = sort.split(",");
-        String property = SORTABLE_LIST_FIELDS.get(parts[0].trim());
-        if (property == null) {
-            return defaultSort;
-        }
+        String field = parts[0].trim();
         Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
+
+        if ("systemName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.systemName)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
+                    .and(defaultSort);
+        }
+        if ("code".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
+                    .and(defaultSort);
+        }
+        if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "pv.sortOrder")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
+                    .and(defaultSort);
+        }
+
+        String property = SORTABLE_LIST_FIELDS.get(field);
+        if (property == null) {
+            return defaultSort;
+        }
         // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau,
         // tránh bản ghi nhảy giữa các trang.
         return JpaSort.unsafe(direction, property).and(defaultSort);
@@ -1432,12 +1475,9 @@ public class VtsSystemService {
             // Phải ghi lại người duyệt + nhật ký như create(), nếu không hồ sơ sẽ
             // mang trạng thái Đã duyệt mà không có dấu vết ai duyệt.
             if (requestedStatus == ApprovalStatus.APPROVED && entity.getApproverLevel2() == null) {
-                // Duyệt thẳng bỏ qua 2 vòng chỉ dành cho tài khoản cấp Cục.
-                if (!approvalService.isDepartmentLevelUser(effectiveUserId)) {
-                    throw new IllegalStateException(
-                            "Chỉ tài khoản cấp Cục mới được lưu và phê duyệt trực tiếp; "
-                                    + "các đơn vị khác phải gửi hồ sơ qua quy trình phê duyệt 2 cấp");
-                }
+                // Duyệt thẳng bỏ qua 2 vòng chỉ dành cho tài khoản cấp Cục có
+                // quyền C2; không dựa vào mỗi nút hiển thị trên frontend.
+                approvalService.requireApproveC2Permission(effectiveUserId, "vts:approvec2");
                 if (entity.getApproverLevel1() == null) {
                     entity.setApproverLevel1(effectiveUserId);
                     entity.setApprovedDateLevel1(now);
@@ -1454,9 +1494,6 @@ public class VtsSystemService {
                         .status(InfrastructureHistoryStatus.APPROVED)
                         .approvedBy(effectiveUserId)
                         .approvedDate(now)
-                        .changedField("approvalStatus")
-                        .previousValue(previousApprovalStatus != null ? previousApprovalStatus.getLabel() : null)
-                        .newValue(ApprovalStatus.APPROVED.getLabel())
                         .build());
             }
         }

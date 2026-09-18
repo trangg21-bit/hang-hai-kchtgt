@@ -247,10 +247,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-  const canCreate = hasPerm('aissystem:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('aissystem:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, { hasPerm, resource: 'aissystem' });
-  const canSaveAndApprove = (hasPerm('aissystem:approvec2') || isAdmin);
+  const canSaveAndApprove = hasPerm('aissystem:approvec2');
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -736,6 +735,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         if (act === 'approve') {
           payload.approvalStatus = ApprovalStatus.APPROVED;
         }
+        payload.submitForApproval = act === 'submit';
         const created = await aisSystemService.create(payload);
         if (created?.id && pendingFiles.length > 0) {
           try {
@@ -743,9 +743,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           } catch {
             toast.warning('Đã tạo thiết bị AIS nhưng không tải lên được một số tệp đính kèm');
           }
-        }
-        if (act === 'submit' && created?.id) {
-          await aisSystemService.submit(created.id);
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);

@@ -316,7 +316,7 @@ export default function App() {
                 <Route path="/asset/ttdh" element={<PermissionGuard permission={['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage']}><TtdhAssetList /></PermissionGuard>} />
                 <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read']}><CospasSarsatAssetList /></PermissionGuard>} />
                 <Route path="/asset/lrit" element={<PermissionGuard permission={['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read']}><LritAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'ttxltt:manage', 'coastalstationhaiphong:read']}><TtxlttAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['ttxlttasset:manage', 'ttxlttasset:read']}><TtxlttAssetList /></PermissionGuard>} />
                 <Route path="/asset/vts-system" element={<PermissionGuard permission={['vtsasset:manage', 'vtsasset:read', 'vts:read', 'vtssystem:read']}><VtsSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/radar-station" element={<PermissionGuard permission={['radarasset:manage', 'radarasset:read', 'radarstation:read', 'tramradar:read']}><RadarStationAssetList /></PermissionGuard>} />
                 <Route path="/asset/ais-system" element={<PermissionGuard permission={['aisasset:manage', 'aisasset:read', 'aissystem:read']}><AisSystemAssetList /></PermissionGuard>} />
@@ -350,7 +350,7 @@ export default function App() {
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission={['coastalstation:read', 'specialstation:read', 'station:read', 'data:read']}><CoastalStationList /></PermissionGuard>} />
-                <Route path="/station/inmarsat" element={<PermissionGuard permission={['inmarsat:read', 'specialstation:read', 'coastalstation:read', 'data:read']}><InmarsatStationList /></PermissionGuard>} />
+                <Route path="/station/inmarsat" element={<PermissionGuard permission="coastalstationinmarsat:read"><InmarsatStationList /></PermissionGuard>} />
                 <Route path="/station/cospas-sarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatStationList /></PermissionGuard>} />
                 <Route path="/station/lrit" element={<PermissionGuard permission={['specialstation:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritStationList /></PermissionGuard>} />
                 <Route path="/station/hanoi" element={<PermissionGuard permission={['specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><HanoiStationList /></PermissionGuard>} />

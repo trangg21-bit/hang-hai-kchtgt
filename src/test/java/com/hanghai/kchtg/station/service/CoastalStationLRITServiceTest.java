@@ -17,6 +17,7 @@ import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
 import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -90,6 +91,7 @@ class CoastalStationLRITServiceTest {
         CoastalStationLRIT created = service.createStation(request);
 
         assertThat(created.getApprovalStatus()).isEqualTo(ApprovalStatus.DRAFT);
+        assertThat(created.getConditionStatus()).isEqualTo(ConditionStatus.NOT_YET_OPERATIONAL);
         verifyNoInteractions(historyService);
     }
 

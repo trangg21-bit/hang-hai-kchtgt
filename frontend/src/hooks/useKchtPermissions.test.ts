@@ -33,16 +33,42 @@ describe('useKchtPermissions Unit Tests', () => {
   });
 
   describe('Admin override', () => {
+    it('does not infer C1 or C2 approval from admin:all', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'admin-without-approval',
+          userId: 'admin-without-approval',
+          username: 'admin_without_approval',
+          unitType: 'MINISTRY',
+          orgUnitId: '00000000-0000-0000-0000-000000000017',
+          orgUnitCode: 'G17',
+          permissions: ['admin:all', 'vts:create'],
+        } as any,
+      });
+      usePermissionStore.setState({ permissions: ['admin:all', 'vts:create'] });
+
+      const perms = renderKchtHook('vts');
+      expect(perms.isAdmin).toBe(true);
+      expect(perms.hasApproveL1Perm).toBe(false);
+      expect(perms.hasApproveL2Perm).toBe(false);
+      expect(perms.canSaveAndApprove).toBe(false);
+      expect(perms.canApproveL1({ approvalStatus: 'PENDING_APPROVAL' })).toBe(false);
+      expect(perms.canApproveL2({ approvalStatus: 'APPROVED_LEVEL1' })).toBe(false);
+    });
+
     it('grants full permissions to SUPER_ADMIN', () => {
       useAuthStore.setState({
         user: {
           id: 'admin1',
           username: 'superadmin',
           role: 'SUPER_ADMIN',
-          unitType: 'CUC',
-          permissions: [],
+          unitType: 'MINISTRY',
+          orgUnitId: '00000000-0000-0000-0000-000000000017',
+          orgUnitCode: 'G17',
+          permissions: ['admin:all', 'vts:approvec1', 'vts:approvec2'],
         } as any,
       });
+      usePermissionStore.setState({ permissions: ['admin:all', 'vts:approvec1', 'vts:approvec2'] });
 
       const perms = renderKchtHook('vts');
       expect(perms.isAdmin).toBe(true);

@@ -20,7 +20,7 @@ import { useStandardApprovalStatusTabs } from '../../../components/shared/approv
 import toast from '../../../components/ToastNotification';
 import {
   actionPrimary, textSecondary,
-  fontWeightBold,
+  textPrimary, fontWeightBold,
   spaceSm, spaceMd,
   statusOperational, statusCritical, statusAttention, statusDraft,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
@@ -31,7 +31,7 @@ import {
 } from '../../../themetokenchk';
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
@@ -49,6 +49,49 @@ const filterLabelStyle: React.CSSProperties = {
 /** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
 const HISTORY_PAGE_SIZE = 20;
 
+type HanoiFilterValues = {
+  keyword?: string;
+  orgUnitId?: string;
+  operatingOrgId?: string;
+  stationCode?: string;
+  conditionStatus?: string;
+  provinceId?: number;
+  updateDateRange?: [Dayjs | null, Dayjs | null];
+};
+
+type HanoiHistoryChange = {
+  fieldName?: string;
+  field?: string;
+  fieldLabel?: string;
+  oldValue?: unknown;
+  newValue?: unknown;
+};
+
+type HanoiHistoryRecord = {
+  id?: string;
+  action?: string;
+  actionType?: string;
+  actionLabel?: string;
+  actionName?: string;
+  performedBy?: string;
+  performedByName?: string;
+  userName?: string;
+  performedAt?: string;
+  createdAt?: string;
+  timestamp?: string;
+  details?: string;
+  description?: string;
+  note?: string;
+  comment?: string;
+  changes?: HanoiHistoryChange[];
+  changedBy?: string;
+  changedAt?: string;
+  orgUnitName?: string;
+  changedField?: string;
+  previousValue?: unknown;
+  newValue?: unknown;
+};
+
 const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.OPERATIONAL]: statusOperational,
   [ConditionStatus.STOPPED]: statusCritical,
@@ -57,6 +100,38 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.NOT_YET_OPERATIONAL]: statusDraft,
   [ConditionStatus.SUSPENDED]: statusCritical,
 };
+
+/** Hiển thị gộp cán bộ và thời điểm thao tác, theo chuẩn danh sách Trung tâm điều hành VTS. */
+function renderOfficerInfo(name?: string | null, timestamp?: string | null) {
+  const isUuid = (value?: string | null) => Boolean(value && /^[0-9a-fA-F]{8}-/.test(value));
+  const person = isUuid(name) ? '—' : (name || '—');
+  const time = timestamp ? dayjs(timestamp).format('DD/MM/YYYY HH:mm:ss') : '—';
+
+  return (
+    <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+      <div
+        style={{
+          fontWeight: fontWeightBold,
+          color: textPrimary,
+          fontSize: fontSizeMd,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+        title={person}
+      >
+        {person}
+      </div>
+      <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+        {time}
+      </div>
+    </div>
+  );
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 const HanoiStationGlobalStyles = React.memo(() => (
   <style>{`
@@ -253,7 +328,7 @@ export default function HanoiStationList() {
   const statusCountFilterKey = useRef<string | null>(null);
 
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
-  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
+  const [filterValues, setFilterValues] = useState<HanoiFilterValues>({});
   const [filterKeyword, setFilterKeyword] = useState('');
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
@@ -292,13 +367,14 @@ export default function HanoiStationList() {
   const [orgUnits, setOrgUnits] = useState<OrgUnitTreeOption[]>([]);
   const [isLookupReady, setIsLookupReady] = useState(false);
 
-  const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
+  const canCreate = hasPerm('coastalstationhaiphong:create');
 
   useEffect(() => {
     let mounted = true;
     organizationService.getAll().then((res) => {
       if (!mounted) return;
-      const items = Array.isArray(res) ? res : ((res as any)?.data || []);
+      const items: OrgUnitTreeOption[] = Array.isArray(res) ? res : [];
       setOrgUnits(items);
       const resolvedDefault = resolveDefaultOrgUnitId(useAuthStore.getState().user, items);
       defaultOrgUnitRef.current = resolvedDefault;
@@ -323,10 +399,10 @@ export default function HanoiStationList() {
       const filterChanged = statusCountFilterKey.current !== currentFilterKey;
 
       const params: HanoiStationListParams = {
-        keyword: filterKeyword || undefined,
+        keyword: filterKeyword.trim() || undefined,
         orgUnitId: filterOrgUnitId || undefined,
         operatingOrgId: filterOperatingOrgId || undefined,
-        code: filterStationCode || undefined,
+        code: filterStationCode?.trim() || undefined,
         provinceId: filterProvinceId,
         conditionStatus: filterConditionStatus || undefined,
         approvalStatus: filterApprovalStatus || undefined,
@@ -346,8 +422,8 @@ export default function HanoiStationList() {
         setStatusCounts(res.statusCounts || {});
         statusCountFilterKey.current = currentFilterKey;
       }
-    } catch (err: any) {
-      const msg = err?.message || 'Không thể tải danh sách Đài TTXLTT Hàng hải';
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, 'Không thể tải danh sách Đài TTXLTT Hà Nội');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -417,8 +493,8 @@ export default function HanoiStationList() {
       toast.success(res?.message || 'Gửi phê duyệt thành công');
       statusCountFilterKey.current = null;
       fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || 'Có lỗi xảy ra khi gửi phê duyệt');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Có lỗi xảy ra khi gửi phê duyệt'));
     }
   };
 
@@ -442,8 +518,8 @@ export default function HanoiStationList() {
       setDeletingRecord(null);
       statusCountFilterKey.current = null;
       fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || 'Lỗi khi xóa Đài TTXLTT');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Lỗi khi xóa Đài TTXLTT'));
     } finally {
       setDeleteLoading(false);
     }
@@ -470,27 +546,43 @@ export default function HanoiStationList() {
 
       const entries = res || [];
 
-      const formattedEntries: CommonHistoryEntry[] = entries.map((raw: any) => ({
-        id: raw.id || `${raw.timestamp || Date.now()}_${Math.random()}`,
-        action: raw.action || raw.actionType || 'UPDATE',
-        actionLabel: raw.actionLabel || raw.actionName,
-        performedBy: raw.performedBy || raw.performedByName || raw.userName || '—',
-        performedAt: raw.performedAt || raw.createdAt || raw.timestamp || dayjs().toISOString(),
-        details: raw.details || raw.description || '',
-        note: raw.note || raw.comment || '',
-        changes: Array.isArray(raw.changes)
-          ? raw.changes.map((c: any) => {
-              const fieldName = c.fieldName || c.field || '';
-              const mappedLabel = HANOI_FIELD_MAP[fieldName] || c.fieldLabel || fieldName;
-              return {
-                fieldName,
-                fieldLabel: mappedLabel,
-                oldValue: formatHistoryValue(fieldName, c.oldValue),
-                newValue: formatHistoryValue(fieldName, c.newValue),
-              };
-            })
-          : [],
-      }));
+      const groupedEntries = new Map<string, CommonHistoryEntry>();
+      (entries as HanoiHistoryRecord[]).forEach((raw) => {
+        const action = raw.action || raw.actionType || 'UPDATE';
+        const performedAt = raw.performedAt || raw.changedAt || raw.createdAt || raw.timestamp;
+        const changes = Array.isArray(raw.changes)
+          ? raw.changes
+          : raw.changedField
+            ? [{ fieldName: raw.changedField, oldValue: raw.previousValue, newValue: raw.newValue }]
+            : [];
+
+        // Lịch sử chỉ hiển thị lần cập nhật có thay đổi thực; bỏ các log workflow cũ không có delta.
+        if (!performedAt || changes.length === 0) return;
+
+        const groupKey = `${action}|${performedAt}|${raw.changedBy || raw.performedBy || ''}`;
+        const entry = groupedEntries.get(groupKey) || {
+          id: raw.id || groupKey,
+          action,
+          changedBy: raw.changedBy || raw.performedBy || raw.performedByName || raw.userName || '—',
+          changedAt: performedAt,
+          orgUnitName: raw.orgUnitName || selectedRecord?.orgUnitName || '—',
+          note: raw.note || raw.comment || '',
+          changes: [],
+        };
+        entry.changes = [
+          ...(entry.changes || []),
+          ...changes.map((change) => {
+            const fieldName = change.fieldName || change.field || '';
+            return {
+              field: fieldName,
+              oldValue: formatHistoryValue(fieldName, change.oldValue),
+              newValue: formatHistoryValue(fieldName, change.newValue),
+            };
+          }),
+        ];
+        groupedEntries.set(groupKey, entry);
+      });
+      const formattedEntries = [...groupedEntries.values()];
 
       if (isInitial) {
         setHistoryRecords(formattedEntries);
@@ -541,11 +633,11 @@ export default function HanoiStationList() {
     }
   );
 
-  const handleFilterSearch = (vals: Record<string, any>) => {
-    setFilterKeyword(vals.keyword || '');
+  const handleFilterSearch = (vals: HanoiFilterValues) => {
+    setFilterKeyword(vals.keyword?.trim() || '');
     setFilterOrgUnitId(vals.orgUnitId);
     setFilterOperatingOrgId(vals.operatingOrgId);
-    setFilterStationCode(vals.stationCode);
+    setFilterStationCode(vals.stationCode?.trim() || undefined);
     setFilterConditionStatus(vals.conditionStatus);
     setFilterProvinceId(vals.provinceId);
     setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
@@ -608,7 +700,7 @@ export default function HanoiStationList() {
       width: 60,
       align: 'center' as const,
       fixed: 'left' as const,
-      render: (_: any, __: any, index: number) => (page - 1) * pageSize + index + 1,
+      render: (_: unknown, __: unknown, index: number) => (page - 1) * pageSize + index + 1,
     },
     {
       key: 'name',
@@ -620,7 +712,7 @@ export default function HanoiStationList() {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('name'),
-      render: (_: any, record: HanoiStationItem) => (
+      render: (_: unknown, record: HanoiStationItem) => (
         <div style={{ lineHeight: '1.4' }}>
           <div
             style={{
@@ -793,54 +885,72 @@ export default function HanoiStationList() {
       ),
     }] : []),
     {
-      key: 'updatedByName',
-      label: 'Cán bộ cập nhật',
-      dataIndex: 'updatedByName',
+      key: 'submittedInfo',
+      label: 'Cán bộ gửi phê duyệt',
       width: 220,
       align: 'left' as const,
+      ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
-      sortOrder: sortOrderFor('updatedByName'),
-      render: (_: any, record: HanoiStationItem) => {
-        const isUuid = (value?: string | null) => !!value && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(value);
-        const person = isUuid(record.updatedByName) ? '—' : (record.updatedByName || record.createdByName || '—');
-        const time = (record.updatedAt || record.updatedDate || record.createdAt)
-          ? dayjs(record.updatedAt || record.updatedDate || record.createdAt).format('DD/MM/YYYY HH:mm:ss')
-          : '—';
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-              title={person}
-            >
-              {person}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {time}
-            </div>
-          </div>
-        );
-      },
+      sortOrder: sortOrderFor('submittedInfo'),
+      render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
+        record.submittedByName,
+        record.submittedAt,
+      ),
+    },
+    {
+      key: 'approvedLevel1Info',
+      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+      width: 280,
+      align: 'left' as const,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvedLevel1Info'),
+      render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
+        record.approverLevel1Name,
+        record.approvedDateLevel1,
+      ),
+    },
+    {
+      key: 'approvedLevel2Info',
+      label: 'Cán bộ phê duyệt cấp Cục',
+      width: 220,
+      align: 'left' as const,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('approvedLevel2Info'),
+      render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
+        record.approverLevel2Name,
+        record.approvedDateLevel2,
+      ),
+    },
+    {
+      key: 'updatedInfo',
+      label: 'Cán bộ cập nhật',
+      width: 220,
+      align: 'left' as const,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedInfo'),
+      render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
+        record.updatedByName || record.createdByName,
+        record.updatedAt || record.updatedDate || record.createdAt,
+      ),
     },
   ], [page, pageSize, isRejectionTabActive, sortOrderFor, resolveOrgUnitName, resolveOperatingOrgName]);
 
   const rowActions = (record: HanoiStationItem) => {
     const uid = currentUser?.userId || currentUser?.id;
-    const isCreator = Boolean(uid && (record.createdBy === uid || (record as any).userId === uid));
-    const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1Name === currentUser?.fullName));
+    const isCreator = Boolean(uid && (record.createdBy === uid || record.userId === uid));
+    const isApproverL1 = Boolean(uid && (record.approverLevel1 === uid || record.approverLevel1Name === currentUser?.fullName));
     const userUnitType = currentUser?.unitType || '';
-    const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
     const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
-    const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin;
-    const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin;
+    const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1');
+    const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
 
     const canEdit = canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
@@ -954,8 +1064,8 @@ export default function HanoiStationList() {
       setApproveModalOpen(false);
       statusCountFilterKey.current = null;
       fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || 'Có lỗi xảy ra khi phê duyệt');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Có lỗi xảy ra khi phê duyệt'));
     }
   };
 
@@ -971,8 +1081,8 @@ export default function HanoiStationList() {
       setRejectModalOpen(false);
       statusCountFilterKey.current = null;
       fetchData();
-    } catch (err: any) {
-      toast.error(err?.message || 'Có lỗi xảy ra khi từ chối phê duyệt');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Có lỗi xảy ra khi từ chối phê duyệt'));
     }
   };
 
@@ -984,7 +1094,7 @@ export default function HanoiStationList() {
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
-            { label: 'Đài TTXLTT Hàng hải' },
+            { label: 'Đài TTXLTT Hà Nội' },
           ]}
           actions={
             canCreate
@@ -1030,11 +1140,12 @@ export default function HanoiStationList() {
               </div>
 
               <div style={{ marginBottom: 12 }}>
-                <div style={filterLabelStyle}>Tên đài TTXLTT Hàng hải</div>
+                <div style={filterLabelStyle}>Tên đài TTXLTT Hà Nội</div>
                 <Input
-                  placeholder="Tìm theo tên đài TTXLTT Hàng hải"
+                  placeholder="Tìm theo tên đài TTXLTT Hà Nội"
                   allowClear
-                  value={(filterValues.keyword as string) || ''}
+                  value={filterValues.keyword || ''}
+                  // Không trim khi đang gõ: trim ở handleFilterSearch để vẫn nhập được dấu cách giữa các từ.
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -1073,11 +1184,12 @@ export default function HanoiStationList() {
                   </div>
 
                   <div style={{ marginBottom: 12 }}>
-                    <div style={filterLabelStyle}>Mã đài TTXLTT Hàng hải</div>
+                    <div style={filterLabelStyle}>Mã đài TTXLTT Hà Nội</div>
                     <Input
-                      placeholder="Tìm theo mã đài TTXLTT Hàng hải"
+                      placeholder="Tìm theo mã đài TTXLTT Hà Nội"
                       allowClear
-                      value={(filterValues.stationCode as string) || ''}
+                      value={filterValues.stationCode || ''}
+                      // Không trim khi đang gõ: trim ở handleFilterSearch để vẫn nhập được dấu cách giữa các từ.
                       onChange={(e) => setFilterValues((prev) => ({ ...prev, stationCode: e.target.value }))}
                       onPressEnter={() => handleFilterSearch(filterValues)}
                       style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -1103,7 +1215,7 @@ export default function HanoiStationList() {
                   <div style={{ marginBottom: 12 }}>
                     <div style={filterLabelStyle}>Ngày cập nhật</div>
                     <DatePicker.RangePicker
-                      value={filterValues.updateDateRange as any}
+                      value={filterValues.updateDateRange}
                       onChange={(dates) => setFilterValues((prev) => ({ ...prev, updateDateRange: dates }))}
                       {...getRangePickerProps()}
                       format="DD/MM/YYYY"
@@ -1165,7 +1277,7 @@ export default function HanoiStationList() {
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ExclamationCircleOutlined style={{ color: statusCritical }} />
-              <span>Từ chối phê duyệt Đài TTXLTT Hàng hải</span>
+              <span>Từ chối phê duyệt Đài TTXLTT Hà Nội</span>
             </div>
           }
           open={rejectModalOpen}
@@ -1195,9 +1307,10 @@ export default function HanoiStationList() {
         <CommonHistoryDrawer
           open={historyModalOpen}
           onClose={() => setHistoryModalOpen(false)}
-          entityName={selectedRecord?.name || selectedRecord?.code || 'Đài TTXLTT Hàng hải'}
+          entityName={selectedRecord?.name || selectedRecord?.code || 'Đài TTXLTT Hà Nội'}
           records={historyRecords}
           loading={loadingHistory}
+          fieldLabelMap={HANOI_FIELD_MAP}
           serverFiltered
           onFilterChange={(filters) => handleHistorySearch(filters)}
           onLoadMore={handleLoadMoreHistory}
@@ -1216,7 +1329,7 @@ export default function HanoiStationList() {
           }}
           onConfirm={handleConfirmDelete}
           loading={deleteLoading}
-          itemType="Đài TTXLTT Hàng hải"
+          itemType="Đài TTXLTT Hà Nội"
           itemName={deletingRecord?.name}
           itemCode={deletingRecord?.code}
         />

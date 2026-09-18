@@ -164,6 +164,7 @@ export interface CreateAisSystemRequest {
   coordinates?: string | null;
   symbolId?: string | null;
   approvalStatus?: ApprovalStatus;
+  submitForApproval?: boolean;
 }
 
 export interface UpdateAisSystemRequest extends CreateAisSystemRequest {}
