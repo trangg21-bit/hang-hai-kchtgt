@@ -35,6 +35,7 @@ import {
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import { resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import {
   createAssetDecrease,
@@ -458,11 +459,30 @@ export default function ScadaSystemAssetList() {
     setDrawerMode('create');
     setAttachments([]);
     form.resetFields();
-    form.setFieldsValue({
-      valueUnit: 'VNĐ',
-      attachmentName: undefined,
-    });
-  }, [form]);
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+    if (currentOrgUnitId) {
+      form.setFieldsValue({
+        orgUnitId: currentOrgUnitId,
+        valueUnit: 'VNĐ',
+        attachmentName: undefined,
+      });
+    } else {
+      form.setFieldsValue({
+        valueUnit: 'VNĐ',
+        attachmentName: undefined,
+      });
+      if (!currentUser?.orgUnitId) {
+        api.get('/users/me').then((r) => {
+          const p = r.data?.data ?? r.data;
+          const uOrgId = p?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            form.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [form, currentUser, organizations]);
 
   const openEdit = useCallback(
     async (record: ScadaSystemAsset) => {

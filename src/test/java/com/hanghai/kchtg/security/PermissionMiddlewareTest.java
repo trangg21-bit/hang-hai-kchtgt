@@ -126,7 +126,7 @@ class PermissionMiddlewareTest {
 
     @Test
     void doFilterInternal_whenUserNotAuthenticated_shouldWrite403Forbidden() throws Exception {
-        when(request.getRequestURI()).thenReturn("/api/v1/users");
+        when(request.getRequestURI()).thenReturn("/api/v1/groups");
         when(request.getMethod()).thenReturn("GET");
 
         StringWriter stringWriter = new StringWriter();
@@ -138,7 +138,7 @@ class PermissionMiddlewareTest {
         verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
         verify(filterChain, never()).doFilter(request, response);
         verifyNoInteractions(permissionRoleService);
-        assertThat(stringWriter.toString()).contains("user:read");
+        assertThat(stringWriter.toString()).contains("group:read");
     }
 
     @Test
@@ -147,9 +147,9 @@ class PermissionMiddlewareTest {
                 testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        when(request.getRequestURI()).thenReturn("/api/v1/users");
+        when(request.getRequestURI()).thenReturn("/api/v1/groups");
         when(request.getMethod()).thenReturn("GET");
-        when(permissionRoleService.checkPermission(eq(auth), eq("user"), eq("read"))).thenReturn(false);
+        when(permissionRoleService.checkPermission(eq(auth), eq("group"), eq("read"))).thenReturn(false);
 
         StringWriter stringWriter = new StringWriter();
         PrintWriter printWriter = new PrintWriter(stringWriter);
@@ -159,7 +159,7 @@ class PermissionMiddlewareTest {
 
         verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
         verify(filterChain, never()).doFilter(request, response);
-        assertThat(stringWriter.toString()).contains("user:read");
+        assertThat(stringWriter.toString()).contains("group:read");
     }
 
     @Test
@@ -168,9 +168,9 @@ class PermissionMiddlewareTest {
                 testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        when(request.getRequestURI()).thenReturn("/api/v1/users");
+        when(request.getRequestURI()).thenReturn("/api/v1/groups");
         when(request.getMethod()).thenReturn("GET");
-        when(permissionRoleService.checkPermission(eq(auth), eq("user"), eq("read"))).thenReturn(true);
+        when(permissionRoleService.checkPermission(eq(auth), eq("group"), eq("read"))).thenReturn(true);
 
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
@@ -273,6 +273,86 @@ class PermissionMiddlewareTest {
         permissionMiddleware.doFilterInternal(request, response, filterChain);
 
         verify(permissionRoleService).checkPermission(eq(auth), eq("coastalstationlrit"), eq("history"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenRadarStationAliases_shouldUseRadarStationResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/radar-station/search-paged");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("radarstation"), eq("read"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("radarstation"), eq("read"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenCctvRoute_shouldUseCctvResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/cctv");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("cctv"), eq("read"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("cctv"), eq("read"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenScadaRoute_shouldUseScadaResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/scada");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("scada"), eq("read"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("scada"), eq("read"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenTransmissionRoute_shouldUseTransmissionResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/transmission");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("transmission"), eq("read"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("transmission"), eq("read"));
+        verify(filterChain).doFilter(request, response);
+    }
+
+    @Test
+    void doFilterInternal_whenVtsAssistRoute_shouldUseVtsAssistResource() throws Exception {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                testUser, "pass", List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        when(request.getRequestURI()).thenReturn("/api/v1/vts-assist");
+        when(request.getMethod()).thenReturn("GET");
+        when(permissionRoleService.checkPermission(eq(auth), eq("vtsassist"), eq("read"))).thenReturn(true);
+
+        permissionMiddleware.doFilterInternal(request, response, filterChain);
+
+        verify(permissionRoleService).checkPermission(eq(auth), eq("vtsassist"), eq("read"));
         verify(filterChain).doFilter(request, response);
     }
 }

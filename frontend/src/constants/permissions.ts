@@ -81,6 +81,7 @@ export const PERMISSIONS = {
 
   /** Cảng cạn (M-002) */
   DRYPORT: {
+    MANAGE: 'dryport:manage',
     READ: 'dryport:read',
     CREATE: 'dryport:create',
     UPDATE: 'dryport:update',
@@ -89,6 +90,7 @@ export const PERMISSIONS = {
     APPROVE_C2: 'dryport:approvec2',
     HISTORY: 'dryport:history',
   },
+
 
   /** Vùng nước (M-002) */
   WATERAREA: {
@@ -99,6 +101,30 @@ export const PERMISSIONS = {
     APPROVE_C1: 'waterarea:approvec1',
     APPROVE_C2: 'waterarea:approvec2',
     HISTORY: 'waterarea:history',
+  },
+
+  /** Khu neo đậu (M-002) */
+  ANCHORAGE: {
+    MANAGE: 'anchorage:manage',
+    READ: 'anchorage:read',
+    CREATE: 'anchorage:create',
+    UPDATE: 'anchorage:update',
+    DELETE: 'anchorage:delete',
+    APPROVE_C1: 'anchorage:approvec1',
+    APPROVE_C2: 'anchorage:approvec2',
+    HISTORY: 'anchorage:history',
+  },
+
+  /** Khu chuyển tải (M-002) */
+  TRANSFER_AREA: {
+    MANAGE: 'transferarea:manage',
+    READ: 'transferarea:read',
+    CREATE: 'transferarea:create',
+    UPDATE: 'transferarea:update',
+    DELETE: 'transferarea:delete',
+    APPROVE_C1: 'transferarea:approvec1',
+    APPROVE_C2: 'transferarea:approvec2',
+    HISTORY: 'transferarea:history',
   },
 
   /** Luồng hàng hải (M-003) */
@@ -126,6 +152,7 @@ export const PERMISSIONS = {
 
   /** Trạm Radar (M-003) */
   RADARSTATION: {
+    MANAGE: 'radarstation:manage',
     READ: 'radarstation:read',
     CREATE: 'radarstation:create',
     UPDATE: 'radarstation:update',
@@ -137,6 +164,7 @@ export const PERMISSIONS = {
 
   /** Cơ sở sửa chữa / đóng tàu (M-003) */
   SHIPREPAIRFACILITY: {
+    MANAGE: 'shiprepairfacility:manage',
     READ: 'shiprepairfacility:read',
     CREATE: 'shiprepairfacility:create',
     UPDATE: 'shiprepairfacility:update',
@@ -144,6 +172,16 @@ export const PERMISSIONS = {
     APPROVE_C1: 'shiprepairfacility:approvec1',
     APPROVE_C2: 'shiprepairfacility:approvec2',
     HISTORY: 'shiprepairfacility:history',
+  },
+  SHIP_REPAIR_YARD: {
+    MANAGE: 'shiprepairyard:manage',
+    READ: 'shiprepairyard:read',
+    CREATE: 'shiprepairyard:create',
+    UPDATE: 'shiprepairyard:update',
+    DELETE: 'shiprepairyard:delete',
+    APPROVE_C1: 'shiprepairyard:approvec1',
+    APPROVE_C2: 'shiprepairyard:approvec2',
+    HISTORY: 'shiprepairyard:history',
   },
 
   /** Phao / Đèn biển / Báo hiệu (M-003) */
@@ -221,6 +259,54 @@ export const PERMISSIONS = {
     APPROVE_C1: 'coastalstationhaiphong:approvec1',
     APPROVE_C2: 'coastalstationhaiphong:approvec2',
     HISTORY: 'coastalstationhaiphong:history',
+  },
+
+  /** Hệ thống CCTV (M-004) */
+  CCTV: {
+    MANAGE: 'cctv:manage',
+    READ: 'cctv:read',
+    CREATE: 'cctv:create',
+    UPDATE: 'cctv:update',
+    DELETE: 'cctv:delete',
+    APPROVE_C1: 'cctv:approvec1',
+    APPROVE_C2: 'cctv:approvec2',
+    HISTORY: 'cctv:history',
+  },
+
+  /** Hệ thống SCADA (M-004) */
+  SCADA: {
+    MANAGE: 'scada:manage',
+    READ: 'scada:read',
+    CREATE: 'scada:create',
+    UPDATE: 'scada:update',
+    DELETE: 'scada:delete',
+    APPROVE_C1: 'scada:approvec1',
+    APPROVE_C2: 'scada:approvec2',
+    HISTORY: 'scada:history',
+  },
+
+  /** Hệ thống truyền dẫn (M-004) */
+  TRANSMISSION: {
+    MANAGE: 'transmission:manage',
+    READ: 'transmission:read',
+    CREATE: 'transmission:create',
+    UPDATE: 'transmission:update',
+    DELETE: 'transmission:delete',
+    APPROVE_C1: 'transmission:approvec1',
+    APPROVE_C2: 'transmission:approvec2',
+    HISTORY: 'transmission:history',
+  },
+
+  /** Hệ thống phụ trợ VTS (M-004) */
+  VTS_ASSIST: {
+    MANAGE: 'vtsassist:manage',
+    READ: 'vtsassist:read',
+    CREATE: 'vtsassist:create',
+    UPDATE: 'vtsassist:update',
+    DELETE: 'vtsassist:delete',
+    APPROVE_C1: 'vtsassist:approvec1',
+    APPROVE_C2: 'vtsassist:approvec2',
+    HISTORY: 'vtsassist:history',
   },
 
   /** Văn bản pháp lý (M-001) */
@@ -309,6 +395,7 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.PIER.APPROVE_C1, title: 'Duyệt Cầu cảng C1' },
       { key: PERMISSIONS.PIER.APPROVE_C2, title: 'Duyệt Cầu cảng C2' },
       { key: PERMISSIONS.PIER.HISTORY, title: 'Lịch sử Cầu cảng' },
+      { key: PERMISSIONS.DRYPORT.MANAGE, title: 'Quản lý Cảng cạn' },
       { key: PERMISSIONS.DRYPORT.READ, title: 'Xem Cảng cạn' },
       { key: PERMISSIONS.DRYPORT.CREATE, title: 'Thêm Cảng cạn' },
       { key: PERMISSIONS.DRYPORT.UPDATE, title: 'Sửa Cảng cạn' },
@@ -323,6 +410,22 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.WATERAREA.APPROVE_C1, title: 'Duyệt Vùng nước C1' },
       { key: PERMISSIONS.WATERAREA.APPROVE_C2, title: 'Duyệt Vùng nước C2' },
       { key: PERMISSIONS.WATERAREA.HISTORY, title: 'Lịch sử Vùng nước' },
+      { key: PERMISSIONS.ANCHORAGE.MANAGE, title: 'Quản lý Khu neo đậu' },
+      { key: PERMISSIONS.ANCHORAGE.READ, title: 'Xem Khu neo đậu' },
+      { key: PERMISSIONS.ANCHORAGE.CREATE, title: 'Thêm Khu neo đậu' },
+      { key: PERMISSIONS.ANCHORAGE.UPDATE, title: 'Sửa Khu neo đậu' },
+      { key: PERMISSIONS.ANCHORAGE.DELETE, title: 'Xóa Khu neo đậu' },
+      { key: PERMISSIONS.ANCHORAGE.APPROVE_C1, title: 'Duyệt Khu neo đậu C1' },
+      { key: PERMISSIONS.ANCHORAGE.APPROVE_C2, title: 'Duyệt Khu neo đậu C2' },
+      { key: PERMISSIONS.ANCHORAGE.HISTORY, title: 'Lịch sử Khu neo đậu' },
+      { key: PERMISSIONS.TRANSFER_AREA.MANAGE, title: 'Quản lý Khu chuyển tải' },
+      { key: PERMISSIONS.TRANSFER_AREA.READ, title: 'Xem Khu chuyển tải' },
+      { key: PERMISSIONS.TRANSFER_AREA.CREATE, title: 'Thêm Khu chuyển tải' },
+      { key: PERMISSIONS.TRANSFER_AREA.UPDATE, title: 'Sửa Khu chuyển tải' },
+      { key: PERMISSIONS.TRANSFER_AREA.DELETE, title: 'Xóa Khu chuyển tải' },
+      { key: PERMISSIONS.TRANSFER_AREA.APPROVE_C1, title: 'Duyệt Khu chuyển tải C1' },
+      { key: PERMISSIONS.TRANSFER_AREA.APPROVE_C2, title: 'Duyệt Khu chuyển tải C2' },
+      { key: PERMISSIONS.TRANSFER_AREA.HISTORY, title: 'Lịch sử Khu chuyển tải' },
     ],
   },
   {
@@ -343,6 +446,7 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.DIKEREVETMENT.APPROVE_C1, title: 'Duyệt Đê chắn sóng C1' },
       { key: PERMISSIONS.DIKEREVETMENT.APPROVE_C2, title: 'Duyệt Đê chắn sóng C2' },
       { key: PERMISSIONS.DIKEREVETMENT.HISTORY, title: 'Lịch sử Đê chắn sóng' },
+      { key: PERMISSIONS.RADARSTATION.MANAGE, title: 'Quản lý Trạm Radar' },
       { key: PERMISSIONS.RADARSTATION.READ, title: 'Xem Trạm Radar' },
       { key: PERMISSIONS.RADARSTATION.CREATE, title: 'Thêm Trạm Radar' },
       { key: PERMISSIONS.RADARSTATION.UPDATE, title: 'Sửa Trạm Radar' },
@@ -350,6 +454,7 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.RADARSTATION.APPROVE_C1, title: 'Duyệt Trạm Radar C1' },
       { key: PERMISSIONS.RADARSTATION.APPROVE_C2, title: 'Duyệt Trạm Radar C2' },
       { key: PERMISSIONS.RADARSTATION.HISTORY, title: 'Lịch sử Trạm Radar' },
+      { key: PERMISSIONS.SHIPREPAIRFACILITY.MANAGE, title: 'Quản lý CS sửa chữa' },
       { key: PERMISSIONS.SHIPREPAIRFACILITY.READ, title: 'Xem CS sửa chữa' },
       { key: PERMISSIONS.SHIPREPAIRFACILITY.CREATE, title: 'Thêm CS sửa chữa' },
       { key: PERMISSIONS.SHIPREPAIRFACILITY.UPDATE, title: 'Sửa CS sửa chữa' },
@@ -412,6 +517,38 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.APPROVE_C1, title: 'Duyệt Đài TTXLTT Hà Nội C1' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.APPROVE_C2, title: 'Duyệt Đài TTXLTT Hà Nội C2' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.HISTORY, title: 'Lịch sử Đài TTXLTT Hà Nội' },
+      { key: PERMISSIONS.CCTV.MANAGE, title: 'Quản lý Hệ thống CCTV' },
+      { key: PERMISSIONS.CCTV.READ, title: 'Xem Hệ thống CCTV' },
+      { key: PERMISSIONS.CCTV.CREATE, title: 'Thêm Hệ thống CCTV' },
+      { key: PERMISSIONS.CCTV.UPDATE, title: 'Sửa Hệ thống CCTV' },
+      { key: PERMISSIONS.CCTV.DELETE, title: 'Xóa Hệ thống CCTV' },
+      { key: PERMISSIONS.CCTV.APPROVE_C1, title: 'Duyệt Hệ thống CCTV C1' },
+      { key: PERMISSIONS.CCTV.APPROVE_C2, title: 'Duyệt Hệ thống CCTV C2' },
+      { key: PERMISSIONS.CCTV.HISTORY, title: 'Lịch sử Hệ thống CCTV' },
+      { key: PERMISSIONS.SCADA.MANAGE, title: 'Quản lý Hệ thống SCADA' },
+      { key: PERMISSIONS.SCADA.READ, title: 'Xem Hệ thống SCADA' },
+      { key: PERMISSIONS.SCADA.CREATE, title: 'Thêm Hệ thống SCADA' },
+      { key: PERMISSIONS.SCADA.UPDATE, title: 'Sửa Hệ thống SCADA' },
+      { key: PERMISSIONS.SCADA.DELETE, title: 'Xóa Hệ thống SCADA' },
+      { key: PERMISSIONS.SCADA.APPROVE_C1, title: 'Duyệt Hệ thống SCADA C1' },
+      { key: PERMISSIONS.SCADA.APPROVE_C2, title: 'Duyệt Hệ thống SCADA C2' },
+      { key: PERMISSIONS.SCADA.HISTORY, title: 'Lịch sử Hệ thống SCADA' },
+      { key: PERMISSIONS.TRANSMISSION.MANAGE, title: 'Quản lý Hệ thống truyền dẫn' },
+      { key: PERMISSIONS.TRANSMISSION.READ, title: 'Xem Hệ thống truyền dẫn' },
+      { key: PERMISSIONS.TRANSMISSION.CREATE, title: 'Thêm Hệ thống truyền dẫn' },
+      { key: PERMISSIONS.TRANSMISSION.UPDATE, title: 'Sửa Hệ thống truyền dẫn' },
+      { key: PERMISSIONS.TRANSMISSION.DELETE, title: 'Xóa Hệ thống truyền dẫn' },
+      { key: PERMISSIONS.TRANSMISSION.APPROVE_C1, title: 'Duyệt Hệ thống truyền dẫn C1' },
+      { key: PERMISSIONS.TRANSMISSION.APPROVE_C2, title: 'Duyệt Hệ thống truyền dẫn C2' },
+      { key: PERMISSIONS.TRANSMISSION.HISTORY, title: 'Lịch sử Hệ thống truyền dẫn' },
+      { key: PERMISSIONS.VTS_ASSIST.MANAGE, title: 'Quản lý Phụ trợ VTS' },
+      { key: PERMISSIONS.VTS_ASSIST.READ, title: 'Xem Phụ trợ VTS' },
+      { key: PERMISSIONS.VTS_ASSIST.CREATE, title: 'Thêm Phụ trợ VTS' },
+      { key: PERMISSIONS.VTS_ASSIST.UPDATE, title: 'Sửa Phụ trợ VTS' },
+      { key: PERMISSIONS.VTS_ASSIST.DELETE, title: 'Xóa Phụ trợ VTS' },
+      { key: PERMISSIONS.VTS_ASSIST.APPROVE_C1, title: 'Duyệt Phụ trợ VTS C1' },
+      { key: PERMISSIONS.VTS_ASSIST.APPROVE_C2, title: 'Duyệt Phụ trợ VTS C2' },
+      { key: PERMISSIONS.VTS_ASSIST.HISTORY, title: 'Lịch sử Phụ trợ VTS' },
     ],
   },
   {

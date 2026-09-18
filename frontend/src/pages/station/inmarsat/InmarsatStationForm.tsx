@@ -265,11 +265,6 @@ export default function InmarsatStationForm({
     required,
   });
 
-  // User permission level
-  const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType));
-  const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = hasPerm('coastalstationinmarsat:approvec1') && (isCangVuLevel || !isCucLevel);
   const canApproveL2 = hasPerm('coastalstationinmarsat:approvec2');
   const canCreate = hasPerm('coastalstationinmarsat:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
@@ -786,7 +781,7 @@ export default function InmarsatStationForm({
                     </Button>
                   </>
                 )}
-                {(canApproveL1 || canApproveL2) && canCreate && (
+                {canApproveL2 && canCreate && (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
@@ -818,7 +813,7 @@ export default function InmarsatStationForm({
                     </Button>
                   </>
                 )}
-                {(canApproveL1 || canApproveL2) ? (
+                {canApproveL2 ? (
                   <Button
                     type="primary"
                     onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}

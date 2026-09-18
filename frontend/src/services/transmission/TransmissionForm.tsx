@@ -28,7 +28,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../organizationService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -331,20 +331,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       .catch(() => {})
       .finally(() => setLoadingOrgs(false));
 
-    if (!isEdit) {
-      const currentOrg = useAuthStore.getState().user?.orgUnitId;
-      if (currentOrg) {
-        form.setFieldsValue({ orgUnitId: currentOrg });
-      } else {
-        api.get('/users/me')
-          .then((res: any) => {
-            const p = res?.data?.data ?? res?.data;
-            if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
-          })
-          .catch(() => {});
-      }
-    }
-
     userService.list({ pageSize: 1000 })
       .then((resp) => {
         const users = resp.data || (resp as any).content || [];
@@ -383,18 +369,38 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       .finally(() => setLoadingAttached(false));
   }, []);
 
-  // Tự động sinh mã thiết bị khi tạo mới
+  // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
   useEffect(() => {
-    if (isEdit) return;
-    if (form.getFieldValue('deviceCode')) return;
-    setDeviceCodeLoading(true);
-    generateTransmissionCode()
-      .then((code) => {
-        if (code) form.setFieldsValue({ deviceCode: code });
-      })
-      .catch(() => {})
-      .finally(() => setDeviceCodeLoading(false));
-  }, [isEdit, form]);
+    if (!isEdit) {
+      if (!form.getFieldValue('deviceCode')) {
+        setDeviceCodeLoading(true);
+        generateTransmissionCode()
+          .then((code) => {
+            if (code) form.setFieldsValue({ deviceCode: code });
+          })
+          .catch(() => {})
+          .finally(() => setDeviceCodeLoading(false));
+      }
+
+      // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
+      if (currentOrgUnitId) {
+        form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else if (!form.getFieldValue('orgUnitId')) {
+        api.get('/users/me')
+          .then((r) => {
+            const p = r.data?.data ?? r.data;
+            const uOrgId = p?.orgUnitId;
+            if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+              form.setFieldsValue({ orgUnitId: uOrgId });
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [isEdit, currentUser, orgUnits, form]);
 
   // Đồng bộ số dòng tọa độ theo loại hình hình học
   useEffect(() => {
@@ -806,16 +812,14 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                   rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
                   style={{ marginBottom: spaceFormField }}
                 >
-                  <OrgUnitTreeSelect
-                    variant="form"
+                  <FormOrgUnitTreeSelect
                     organizations={orgUnits}
                     placeholder="Chọn đơn vị quản lý..."
                     loading={loadingOrgs}
-                    treeDefaultExpandAll={false}
                     disabled={isEdit && !isSystemAdmin}
                     allowClear
-                    showSearch
-                    style={selectStyle}
+                    showPath
+                    style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
               </Col>
@@ -859,9 +863,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="attachedInfrastructureType" {...labelProps('Loại hạ tầng trực thuộc')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item name="attachedInfrastructureType" {...labelProps('Thuộc loại hạ tầng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Loại hạ tầng là bắt buộc' }]}>
                   <Select
-                    placeholder="Chọn loại hạ tầng trực thuộc..."
+                    placeholder="Chọn loại hạ tầng trực thuộc"
                     options={ATTACHED_INFRA_TYPE_OPTIONS}
                     allowClear
                     onChange={() => form.setFieldValue('attachedInfrastructureId', undefined)}
@@ -870,7 +874,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="attachedInfrastructureId" {...labelProps('Hạ tầng trực thuộc')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item name="attachedInfrastructureId" {...labelProps('Thuộc hạ tầng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Hạ tầng phụ thuộc là bắt buộc' }]}>
                   <Select
                     placeholder={
                       watchedAttachedType === 1

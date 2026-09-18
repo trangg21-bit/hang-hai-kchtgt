@@ -283,6 +283,7 @@ class RadarStationServiceTest {
 
     @Test
     void testGetHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         InfrastructureHistory history = InfrastructureHistory.builder()
                 .id(UUID.fromString("00000000-0000-0000-0000-000000000001")).refId(TEST_ID)
@@ -322,6 +323,23 @@ class RadarStationServiceTest {
     class HistoryTests {
 
         private final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000005");
+
+        @BeforeEach
+        void setUpHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
+
+        @Test
+        @DisplayName("getHistory: Trả về danh sách rỗng khi bản ghi ở trạng thái Lưu tạm (DRAFT)")
+        void getHistory_whenDraft_returnsEmptyList() {
+            entity.setApprovalStatus(ApprovalStatus.DRAFT);
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).isEmpty();
+            verify(historyRepository, never()).findByRefTypeAndRefIdOrderByApprovedDateDesc(any(), any());
+        }
 
         @Test
         @DisplayName("Criterion 1 & 2: Resolve actor name and unit name from user's orgUnit")
@@ -655,6 +673,141 @@ class RadarStationServiceTest {
             assertThat(result.get(0).getChangedField()).isEqualTo("Tên trạm radar");
             assertThat(result.get(0).getPreviousValue()).isEqualTo("Trạm cũ");
             assertThat(result.get(0).getNewValue()).isEqualTo("Trạm mới");
+        }
+
+        @Test
+        @DisplayName("getHistory filters out approval workflow metadata fields")
+        void getHistory_filtersApprovalWorkflowMetadata() {
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            LocalDateTime now = LocalDateTime.now();
+
+            InfrastructureHistory meta1 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("approvalContentLevel1")
+                    .previousValue(null)
+                    .newValue("Đồng ý phê duyệt")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory meta2 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("submittedDate")
+                    .previousValue(null)
+                    .newValue("2026-03-01T10:00:00")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory meta3 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("rejectionReason")
+                    .previousValue(null)
+                    .newValue("Hồ sơ chưa đủ")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory genuine = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("towerHeight")
+                    .previousValue("30")
+                    .newValue("45")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
+                    .thenReturn(List.of(meta1, meta2, meta3, genuine));
+
+            User actor = new User();
+            actor.setId(USER_ID);
+            actor.setFullName("Cán bộ kỹ thuật");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(USER_ID))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("towerHeight");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("30");
+            assertThat(result.get(0).getNewValue()).isEqualTo("45");
+        }
+
+        @Test
+        @DisplayName("getHistory deduplicates canonical fields in the same session")
+        void getHistory_deduplicatesCanonicalFieldsInSameSession() {
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            LocalDateTime timestamp = LocalDateTime.of(2026, 3, 1, 10, 30, 0);
+
+            InfrastructureHistory englishField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("stationName")
+                    .previousValue("Trạm cũ")
+                    .newValue("Trạm mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory vietnameseField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("Tên trạm radar")
+                    .previousValue("Trạm cũ")
+                    .newValue("Trạm mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
+                    .thenReturn(List.of(englishField, vietnameseField));
+
+            User actor = new User();
+            actor.setId(USER_ID);
+            actor.setFullName("Cán bộ");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(USER_ID))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("stationName");
+        }
+
+        @Test
+        @DisplayName("getHistory falls back approvedBy to Hệ thống when user cannot be resolved")
+        void getHistory_fallbackUserNameToSystemWhenNull() {
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            UUID unknownUserId = UUID.randomUUID();
+
+            InfrastructureHistory hist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.RADAR_STATION)
+                    .changedField("note")
+                    .previousValue("Ghi chú cũ")
+                    .newValue("Ghi chú mới")
+                    .approvedDate(LocalDateTime.now())
+                    .approvedBy(unknownUserId)
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.RADAR_STATION, TEST_ID))
+                    .thenReturn(List.of(hist));
+            when(userRepository.findAllByIdInWithOrgUnit(any())).thenReturn(List.of());
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getApprovedBy()).isEqualTo("Hệ thống");
         }
 
         @Test

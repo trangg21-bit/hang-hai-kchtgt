@@ -51,6 +51,7 @@ import {
   textTertiary,
   textPrimary,
   borderDefault,
+  statusCritical,
   fontSizeSm,
   fontSizeLg,
   fontWeightBold,
@@ -61,6 +62,7 @@ import {
   outlineButtonStyle,
   primaryButtonStyle,
   statusBadgeStyle,
+  formatUserDisplayName,
   drawerTitleStyle,
   drawerProps,
   drawerCloseBtnStyle,
@@ -384,9 +386,7 @@ export default function TransferAreaDetailContent({
         }
         .transfer-area-detail-content-wrapper .chk-detail-row--full { grid-column: 1 / -1 !important; }
         .transfer-area-detail-content-wrapper .chk-detail-label,
-        .transfer-area-detail-content-wrapper .sec-col1-label,
-        .transfer-area-detail-content-wrapper .chk-detail-row .sec-col1-label,
-        .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
+        .transfer-area-detail-content-wrapper .chk-detail-row .chk-detail-label {
           width: 215px !important;
           min-width: 215px !important;
           max-width: 215px !important;
@@ -399,12 +399,20 @@ export default function TransferAreaDetailContent({
           align-self: flex-start !important;
           white-space: normal !important;
         }
+        .transfer-area-detail-content-wrapper .sec-col1-label,
+        .transfer-area-detail-content-wrapper .chk-detail-row .sec-col1-label {
+          width: 235px !important;
+          min-width: 235px !important;
+          max-width: 235px !important;
+          flex-shrink: 0 !important;
+        }
         .transfer-area-detail-content-wrapper .chk-detail-row--full .chk-detail-label {
           width: auto !important;
-          min-width: 220px !important;
+          min-width: 235px !important;
           max-width: 320px !important;
           white-space: nowrap !important;
         }
+        .transfer-area-detail-content-wrapper .sec-col2-label,
         .transfer-area-detail-content-wrapper .chk-detail-row .sec-col2-label {
           width: 250px !important;
           min-width: 250px !important;
@@ -693,8 +701,7 @@ export default function TransferAreaDetailContent({
                           emptyText="Chưa có dữ liệu"
                           rowKey={(rec: any) => rec.key}
                           scrollY={130}
-                          pageSize={5}
-                          pageSizeOptions={[5, 10, 20]}
+                          hidePagination={true}
                           columns={[
                             { title: 'STT', width: 50, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => idx + 1 },
                             {
@@ -713,10 +720,10 @@ export default function TransferAreaDetailContent({
                                     display: 'block',
                                     cursor: 'pointer',
                                   }}
-                                  title={d || ''}
+                                  title={d?.trim() || `Khu nước ${(rec?.key ?? 0) + 1}`}
                                   onClick={() => setViewingWaterArea(rec)}
                                 >
-                                  {d || ''}
+                                  {d?.trim() || `Khu nước ${(rec?.key ?? 0) + 1}`}
                                 </a>
                               ),
                             },
@@ -786,63 +793,56 @@ export default function TransferAreaDetailContent({
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                           <span className="chk-detail-value">
-                            {userMap.get(r.updatedBy || '') || r.updatedBy ? (
-                              <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.updatedBy || '') || r.updatedBy}</span>
-                            ) : ''}
+                            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName)}</span>
                           </span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                          <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
+                          <span className="chk-detail-value">{fmtDateTime(r.updatedAt || (r as any).updatedDate || r.createdAt || (r as any).createdDate)}</span>
+
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                           <span className="chk-detail-value">
-                            {userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy ? (
-                              <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.submittedForApprovalBy || '') || r.submittedForApprovalBy}</span>
-                            ) : ''}
+                            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.submittedForApprovalBy, (r as any).submittedForApprovalByName, userMap)}</span>
                           </span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                          <span className="chk-detail-value">{fmtDateTime(r.submittedForApprovalAt)}</span>
+                          <span className="chk-detail-value">{fmtDateTime(r.submittedForApprovalAt || (r as any).submittedDate)}</span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                           <span className="chk-detail-value">
-                            {userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy ? (
-                              <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.portAuthorityApprovedBy || '') || r.portAuthorityApprovedBy}</span>
-                            ) : ''}
+                            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.portAuthorityApprovedBy, (r as any).portAuthorityApprovedByName, userMap)}</span>
                           </span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                          <span className="chk-detail-value">{fmtDateTime(r.portAuthorityApprovedAt)}</span>
+                          <span className="chk-detail-value">{fmtDateTime(r.portAuthorityApprovedAt || (r as any).approvedDateLevel1)}</span>
                         </div>
                         <div className="chk-detail-row chk-detail-row--full">
                           <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-                          <span className="chk-detail-value">{r.portAuthorityApprovalContent || ''}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.portAuthorityApprovalContent || (r as any).approvalContentLevel1 || ''}</span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                           <span className="chk-detail-value">
-                            {userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy ? (
-                              <span style={{ fontWeight: fontWeightBold }}>{userMap.get(r.departmentApprovedBy || '') || r.departmentApprovedBy}</span>
-                            ) : ''}
+                            <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.departmentApprovedBy, (r as any).departmentApprovedByName, userMap)}</span>
                           </span>
                         </div>
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                          <span className="chk-detail-value">{fmtDateTime(r.departmentApprovedAt)}</span>
+                          <span className="chk-detail-value">{fmtDateTime(r.departmentApprovedAt || (r as any).approvedDateLevel2)}</span>
                         </div>
                         <div className="chk-detail-row chk-detail-row--full">
                           <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
-                          <span className="chk-detail-value">{r.departmentApprovalContent || ''}</span>
+                          <span className="chk-detail-value" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{r.departmentApprovalContent || (r as any).approvalContentLevel2 || ''}</span>
                         </div>
-                        {r.rejectionReason && (
+                        {Boolean(r.rejectionReason || (r as any).rejectReason) && String(r.approvalStatus).toUpperCase().indexOf('REJECT') >= 0 && (
                           <div className="chk-detail-row chk-detail-row--full">
-                            <span className="chk-detail-label sec-col1-label" style={{ color: '#E34948' }}>Lý do từ chối</span>
-                            <span className="chk-detail-value" style={{ color: '#E34948' }}>{r.rejectionReason}</span>
+                            <span className="chk-detail-label sec-col1-label">Lý do từ chối</span>
+                            <span className="chk-detail-value" style={{ color: statusCritical }}>{r.rejectionReason || (r as any).rejectReason}</span>
                           </div>
                         )}
                       </div>
@@ -862,12 +862,15 @@ export default function TransferAreaDetailContent({
                     <div className="chk-detail-grid">
                       {[
                         ['Loại đối tượng', (() => {
-                          const gt = String(r.geometryType || '');
+                          let gt = String(r.geometryType || '');
+                          if (!gt && coords.length > 0) {
+                            gt = coords.length > 2 ? 'POLYGON' : coords.length === 2 ? 'LINE' : 'POINT';
+                          }
                           const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
                           return labels[gt] || gt || '';
                         })()],
                         ['Biểu tượng', (() => {
-                          const symbolId = r.mapSymbolId || '';
+                          const symbolId = r.mapSymbolId || (r as any).bieuTuongId || (r as any).symbolId || '';
                           const name = symbolMap.get(symbolId) || symbolId || '';
                           const image = symbolImageMap.get(symbolId);
                           return (
@@ -905,7 +908,7 @@ export default function TransferAreaDetailContent({
                       emptyText="Chưa có tọa độ GPS nào"
                       scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                       columns={[
-                        { title: 'STT', width: 50, render: (_v, _r, idx) => idx + 1 },
+                        { title: 'STT', width: 50, align: 'center' as const, render: (_v, _r, idx) => idx + 1 },
                         {
                           title: 'Vĩ độ (Latitude - N)',
                           key: 'lat',
@@ -937,7 +940,7 @@ export default function TransferAreaDetailContent({
                     emptyText="Chưa có tài liệu đính kèm"
                     scrollY={detailFiles.length === 0 ? undefined : DRAWER_TABLE_SCROLL_Y.detailView}
                     columns={[
-                      { title: 'STT', width: 50 },
+                      { title: 'STT', width: 50, align: 'center' as const },
                       {
                         title: 'Tên tài liệu',
                         dataIndex: 'fileName',
@@ -1119,7 +1122,7 @@ export default function TransferAreaDetailContent({
                         rowKey={(rec) => rec.id || rec.planCode || rec.code || ''}
                         scrollY={160}
                         columns={[
-                          { title: 'STT', width: 50 },
+                          { title: 'STT', width: 50, align: 'center' as const },
                           { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                           { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v, rec) => v || rec.name || '' },
                           { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'start', width: 150, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.startTime || rec.start || null) },
@@ -1154,7 +1157,7 @@ export default function TransferAreaDetailContent({
                         rowKey={(rec) => rec.id || rec.planCode || rec.code || ''}
                         scrollY={160}
                         columns={[
-                          { title: 'STT', width: 50 },
+                          { title: 'STT', width: 50, align: 'center' as const },
                           { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                           { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'name', render: (v, rec) => v || rec.name || '' },
                           { title: 'Thời gian bắt đầu', dataIndex: 'startTime', key: 'start', width: 150, align: 'center' as const, render: (v, rec) => fmtDateTime(v || rec.start || rec.startDate || null) },
@@ -1189,7 +1192,7 @@ export default function TransferAreaDetailContent({
                         rowKey={(rec) => rec.id || rec.incidentCode || rec.code || ''}
                         scrollY={160}
                         columns={[
-                          { title: 'STT', width: 50 },
+                          { title: 'STT', width: 50, align: 'center' as const },
                           { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                           { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v, rec) => v || rec.type || '' },
                           { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v) => v || '' },
@@ -1478,9 +1481,6 @@ export default function TransferAreaDetailContent({
                 {viewingAnchorPointsOpen && (
                   <DetailTable
                     size="small"
-                    scroll={{ x: 590 }}
-                    pageSize={10}
-                    pageSizeOptions={[5, 10, 20, 50]}
                     dataSource={(Array.isArray(viewingWaterArea.anchorPoints) ? viewingWaterArea.anchorPoints : []).map((p: any, i: number) => ({ ...p, key: i }))}
                     emptyText="Chưa có dữ liệu tọa độ điểm neo"
                     rowKey={(rec: any) => rec.key}

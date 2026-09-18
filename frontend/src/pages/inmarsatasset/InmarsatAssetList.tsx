@@ -93,7 +93,7 @@ const getErrorMessage = (cause: unknown, fallback: string) => {
 const isValidationError = (cause: unknown) => Boolean((cause as { errorFields?: unknown }).errorFields);
 
 export default function InmarsatAssetList() {
-  const perms = useAssetPermissions(['coastalstationinmarsat', 'specialstation', 'coastalstation', 'inmarsatasset']);
+  const perms = useAssetPermissions(['inmarsat', 'specialstation', 'coastalstation', 'inmarsatasset']);
   const [data, setData] = useState<InmarsatAsset[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [inmarsatStations, setInmarsatStations] = useState<Array<{ id: string; code: string; name: string }>>([]);

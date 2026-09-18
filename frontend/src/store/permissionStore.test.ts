@@ -170,15 +170,12 @@ describe('permissionStore Unit Tests', () => {
     ])).toBe(false);
   });
 
-  it('allows a formally equivalent Inmarsat permission through a concrete route', () => {
+  it('does not allow an Inmarsat asset permission to open the station screen', () => {
     useAuthStore.setState({
       user: { id: '1', username: 'inmarsat-reader', permissions: ['inmarsat:read'] } as User,
     });
 
-    expect(usePermissionStore.getState().hasAnyPermission([
-      'coastalstationinmarsat:read',
-      'inmarsatasset:read',
-    ])).toBe(true);
+    expect(usePermissionStore.getState().hasPermission('coastalstationinmarsat:read')).toBe(false);
   });
 
   it('should evaluate hasAllPermissions correctly', () => {
@@ -228,7 +225,7 @@ describe('permissionStore Unit Tests', () => {
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
-    expect(store.hasPermission('coastalstationinmarsat:read')).toBe(true);
+    expect(store.hasPermission('inmarsat:read')).toBe(true);
     expect(store.hasPermission('coastalstationhaiphong:read')).toBe(true);
     expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(true);
   });

@@ -21,6 +21,7 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
@@ -700,179 +701,14 @@ export default function BuoyAssetDetailContent({
         key: 'adjustments',
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: increaseRows.length + decreaseRows.length,
-        customContent: () => {
-          const allRows = [
-            ...increaseRows.map((r) => ({ ...r, changeType: 'INCREASE' as const })),
-            ...decreaseRows.map((r) => ({ ...r, changeType: 'DECREASE' as const })),
-          ].sort(
-            (a, b) =>
-              dayjs(b.createdAt || 0).valueOf() -
-              dayjs(a.createdAt || 0).valueOf(),
-          );
-
-          if (allRows.length === 0) {
-            return (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '36px 0',
-                  color: textTertiary,
-                }}
-              >
-                Chưa có lịch sử biến động nguyên giá
-              </div>
-            );
-          }
-
-          return (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-                paddingTop: 6,
-              }}
-            >
-              {allRows.map((item, idx) => {
-                const isInc = item.changeType === 'INCREASE';
-                const details = item.adjustmentDetails;
-                const decisionNumber = details?.decisionNumber || ('increaseCode' in item ? (item as any).increaseCode : ('decreaseCode' in item ? (item as any).decreaseCode : ''));
-                const decisionDate = details?.decisionDate || (item as any).decisionDate;
-                const adjustmentDate = details?.adjustmentDate || (item as any).adjustmentDate;
-                const adjustmentReason = details?.adjustmentReason || (item as any).adjustmentReason || (item as any).reason;
-                const originalValueBefore = details?.originalValueBefore ?? (item as any).originalValueBefore ?? 0;
-                const originalValueAfter = details?.originalValueAfter ?? (item as any).originalValueAfter ?? 0;
-                const remainingValueBefore = details?.remainingValueBefore ?? (item as any).remainingValueBefore;
-                const remainingValueAfter = details?.remainingValueAfter ?? (item as any).remainingValueAfter;
-                const adjustmentNotes = details?.notes || (item as any).adjustmentNotes;
-
-                return (
-                  <div key={item.id || idx} style={sectionBoxStyle}>
-                    <div style={sectionHeaderStyle}>
-                      <div style={sectionTitleStyle}>
-                        {isInc ? (
-                          <PlusCircleOutlined style={{ color: statusOperational }} />
-                        ) : (
-                          <MinusCircleOutlined style={{ color: statusCritical }} />
-                        )}
-                        <span>
-                          {isInc
-                            ? 'Tăng nguyên giá tài sản'
-                            : 'Giảm nguyên giá tài sản'}
-                        </span>
-                      </div>
-                      <span style={{ fontSize: 12, color: textTertiary }}>
-                        {adjustmentDate
-                          ? dayjs(adjustmentDate).format('DD/MM/YYYY')
-                          : item.createdAt
-                            ? dayjs(item.createdAt).format('DD/MM/YYYY')
-                            : '—'}
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: '8px 24px',
-                        fontSize: fontSizeMd,
-                      }}
-                    >
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Số quyết định:{' '}
-                        </span>
-                        <span style={{ fontWeight: fontWeightBold }}>
-                          {decisionNumber || '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Ngày ra quyết định:{' '}
-                        </span>
-                        <span>
-                          {decisionDate
-                            ? dayjs(decisionDate).format('DD/MM/YYYY')
-                            : '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Lý do điều chỉnh:{' '}
-                        </span>
-                        <span>{adjustmentReason || '—'}</span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Giá trị điều chỉnh:{' '}
-                        </span>
-                        <span
-                          style={{
-                            fontWeight: fontWeightBold,
-                            color: isInc ? statusOperational : statusCritical,
-                          }}
-                        >
-                          {isInc ? '+' : '-'}
-                          {fmtNum(
-                            Math.abs(
-                              (originalValueAfter || 0) -
-                                (originalValueBefore || 0),
-                            ),
-                          )}{' '}
-                          VNĐ
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Nguyên giá trước:{' '}
-                        </span>
-                        <span>
-                          {originalValueBefore != null
-                            ? fmtNum(originalValueBefore) + ' VNĐ'
-                            : '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Nguyên giá sau:{' '}
-                        </span>
-                        <span style={{ fontWeight: fontWeightBold }}>
-                          {originalValueAfter != null
-                            ? fmtNum(originalValueAfter) + ' VNĐ'
-                            : '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Giá trị còn lại trước:{' '}
-                        </span>
-                        <span>
-                          {remainingValueBefore != null
-                            ? fmtNum(remainingValueBefore) + ' VNĐ'
-                            : '—'}
-                        </span>
-                      </div>
-                      <div>
-                        <span style={{ color: textTertiary }}>
-                          Giá trị còn lại sau:{' '}
-                        </span>
-                        <span style={{ fontWeight: fontWeightBold }}>
-                          {remainingValueAfter != null
-                            ? fmtNum(remainingValueAfter) + ' VNĐ'
-                            : '—'}
-                        </span>
-                      </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <span style={{ color: textTertiary }}>Ghi chú: </span>
-                        <span>{adjustmentNotes || '—'}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        },
+        icon: <AuditOutlined />,
+        customContent: (
+          <AssetAdjustmentHistoryTab
+            dataSource={[...increaseRows, ...decreaseRows]}
+          />
+        ),
       },
+
     ];
   }, [
     rec,

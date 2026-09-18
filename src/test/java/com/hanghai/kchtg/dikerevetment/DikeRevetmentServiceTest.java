@@ -217,6 +217,22 @@ class DikeRevetmentServiceTest {
 
         private final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000005");
 
+        @BeforeEach
+        void setUpHistory() {
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
+
+        @Test
+        @DisplayName("getHistory: Trả về danh sách rỗng khi bản ghi ở trạng thái Lưu tạm (DRAFT)")
+        void getHistory_whenDraft_returnsEmptyList() {
+            testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).isEmpty();
+        }
+
         @Test
         @DisplayName("Criterion 1 & 2: Resolve actor name and unit name from user's orgUnit")
         void getHistory_shouldResolveActorNameAndOrgUnit() {
@@ -593,6 +609,131 @@ class DikeRevetmentServiceTest {
             assertThat(result.get(0).getChangedField()).isEqualTo("Chiều dài (m)");
             assertThat(result.get(0).getPreviousValue()).isEqualTo("100");
             assertThat(result.get(0).getNewValue()).isEqualTo("200");
+        }
+
+        @Test
+        @DisplayName("getHistory filters out approval workflow metadata fields")
+        void getHistory_shouldFilterOutApprovalWorkflowMetadata() {
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+            LocalDateTime now = LocalDateTime.now();
+
+            InfrastructureHistory meta1 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("approvalContentLevel1")
+                    .previousValue(null)
+                    .newValue("Đồng ý phê duyệt")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory meta2 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("submittedDate")
+                    .previousValue(null)
+                    .newValue("2026-03-01T10:00:00")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory meta3 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("rejectionReason")
+                    .previousValue(null)
+                    .newValue("Hồ sơ chưa đủ")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory realField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("surfaceMaterial")
+                    .previousValue("Bê tông")
+                    .newValue("Đá hộc")
+                    .approvedDate(now)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, TEST_ID))
+                    .thenReturn(List.of(meta1, meta2, meta3, realField));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("surfaceMaterial");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("Bê tông");
+            assertThat(result.get(0).getNewValue()).isEqualTo("Đá hộc");
+        }
+
+        @Test
+        @DisplayName("getHistory deduplicates canonical fields in the same session")
+        void getHistory_shouldDeduplicateCanonicalFieldsInSameSession() {
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+            LocalDateTime timestamp = LocalDateTime.of(2026, 3, 1, 10, 30, 0);
+
+            InfrastructureHistory englishField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("dikeRevetmentName")
+                    .previousValue("Đê cũ")
+                    .newValue("Đê mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            InfrastructureHistory vietnameseField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("Tên đê kè")
+                    .previousValue("Đê cũ")
+                    .newValue("Đê mới")
+                    .approvedDate(timestamp)
+                    .approvedBy(USER_ID)
+                    .build();
+
+            when(approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, TEST_ID))
+                    .thenReturn(List.of(englishField, vietnameseField));
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("dikeRevetmentName");
+        }
+
+        @Test
+        @DisplayName("getHistory falls back approvedBy to Hệ thống when user cannot be resolved")
+        void getHistory_shouldFallbackApprovedByToSystemWhenUserNotFound() {
+            when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+            UUID unknownUserId = UUID.randomUUID();
+
+            InfrastructureHistory hist = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(TEST_ID)
+                    .refType(InfrastructureType.DIKE_REVETMENT)
+                    .changedField("note")
+                    .previousValue("Ghi chú 1")
+                    .newValue("Ghi chú 2")
+                    .approvedDate(LocalDateTime.now())
+                    .approvedBy(unknownUserId)
+                    .build();
+
+            when(approvalHistoryRepo.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.DIKE_REVETMENT, TEST_ID))
+                    .thenReturn(List.of(hist));
+            when(userRepository.findAllById(any())).thenReturn(List.of());
+
+            List<HistoryEntry> result = service.getHistory(TEST_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getApprovedBy()).isEqualTo("Hệ thống");
         }
 
         @Test

@@ -76,10 +76,24 @@ class VtsAssistControllerTest {
     }
 
     @Test
+    void testRejectC1() {
+        ApprovalRequest request = ApprovalRequest.builder()
+                .reason("Không đủ điều kiện")
+                .build();
+        when(vtsAssistApprovalService.approveC1(eq(TEST_ID), any(), any())).thenReturn(response);
+
+        ResponseEntity<?> result = controller.rejectC1(TEST_ID, request);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals("REJECTED", request.getDecision());
+        verify(vtsAssistApprovalService).approveC1(eq(TEST_ID), eq(request), any());
+    }
+
+    @Test
     void testApproveC2() {
         ApprovalRequest request = ApprovalRequest.builder()
-                .decision("REJECTED")
-                .reason("Thiếu hồ sơ kỹ thuật")
+                .decision("APPROVED")
+                .reason("Đồng ý phê duyệt C2")
                 .build();
         when(vtsAssistApprovalService.approveC2(eq(TEST_ID), any(), any())).thenReturn(response);
 
@@ -87,6 +101,20 @@ class VtsAssistControllerTest {
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
+        verify(vtsAssistApprovalService).approveC2(eq(TEST_ID), eq(request), any());
+    }
+
+    @Test
+    void testRejectC2() {
+        ApprovalRequest request = ApprovalRequest.builder()
+                .reason("Thiếu hồ sơ kỹ thuật")
+                .build();
+        when(vtsAssistApprovalService.approveC2(eq(TEST_ID), any(), any())).thenReturn(response);
+
+        ResponseEntity<?> result = controller.rejectC2(TEST_ID, request);
+
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        assertEquals("REJECTED", request.getDecision());
         verify(vtsAssistApprovalService).approveC2(eq(TEST_ID), eq(request), any());
     }
 

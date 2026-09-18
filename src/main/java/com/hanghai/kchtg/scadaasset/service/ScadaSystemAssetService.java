@@ -301,6 +301,17 @@ public class ScadaSystemAssetService {
         String entityId = id.toString();
         String entityType = "ScadaSystemAsset";
 
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Map.of(
+                    "entityId", entityId,
+                    "entityType", entityType,
+                    "currentApprovalStatus", ApprovalStatus.DRAFT.name(),
+                    "changeHistory", Collections.emptyList(),
+                    "approvalLog", Collections.emptyList(),
+                    "histories", Collections.emptyList()
+            );
+        }
+
         List<InfrastructureHistory> list = historyRepository.findByRefIdOrderByApprovedDateDesc(id);
 
         Set<UUID> userIds = list.stream()

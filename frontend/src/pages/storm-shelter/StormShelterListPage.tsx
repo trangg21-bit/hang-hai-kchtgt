@@ -794,8 +794,13 @@ export default function StormShelterListPage() {
   }, [rejectingRecord, rejectReason, fetchData, fetchCounts, orgUnit]);
 
   const openHistory = useCallback(async (r: StormShelterArea) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
     setHistoryFilters({ keyword: '' });
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/storm-shelter/${r.id}/history`);
       const d = res.data?.data;

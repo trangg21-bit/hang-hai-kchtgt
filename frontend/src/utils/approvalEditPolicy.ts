@@ -78,7 +78,7 @@ export function isEditableByOwner(status?: string | null): boolean {
 export interface ApprovalEditPolicyOptions {
   /** Hàm kiểm tra quyền của màn hình, thường là `usePermissionStore.hasPermission`. */
   hasPerm?: (key: string) => boolean;
-  /** Tiền tố resource của quyền, ví dụ `'vts'`, `'port'`, `'coastalstationinmarsat'`. */
+  /** Tiền tố resource của quyền, ví dụ `'vts'`, `'port'`, `'inmarsat'`. */
   resource?: string;
   /**
    * Các quyền được chấp nhận thay cho `<resource>:update` (quyền chung của hệ thống cũ),

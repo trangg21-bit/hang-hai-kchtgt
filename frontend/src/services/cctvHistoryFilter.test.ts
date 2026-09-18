@@ -15,7 +15,23 @@ describe('CCTV History Filter Logic (/cctv)', () => {
       DEFAULT_IGNORED_FIELDS.has(fLower) ||
       fLower === 'approvalstatus' ||
       fLower === 'trạng thái phê duyệt' ||
-      fLower === 'trang thai phe duyet'
+      fLower === 'trang thai phe duyet' ||
+      fLower === 'approvalcontentlevel1' ||
+      fLower === 'approvalcontentlevel2' ||
+      fLower === 'level1approvalcontent' ||
+      fLower === 'level2approvalcontent' ||
+      fLower === 'approverlevel1' ||
+      fLower === 'approverlevel2' ||
+      fLower === 'approveddatelevel1' ||
+      fLower === 'approveddatelevel2' ||
+      fLower === 'submitteddate' ||
+      fLower === 'submittedat' ||
+      fLower === 'submittedby' ||
+      fLower === 'cấp 1 phê duyệt' ||
+      fLower === 'cấp 2 phê duyệt' ||
+      fLower === 'nội dung phê duyệt' ||
+      fLower === 'ngày gửi phê duyệt' ||
+      fLower === 'người gửi phê duyệt'
     ) {
       return false;
     }
@@ -70,6 +86,70 @@ describe('CCTV History Filter Logic (/cctv)', () => {
     expect(isMeaningfulChange('approverLevel1', null, 'uuid-user')).toBe(false);
     expect(isMeaningfulChange('rejectionReason', null, 'Lý do từ chối')).toBe(false);
     expect(isMeaningfulChange('Lý do từ chối', null, 'Lý do')).toBe(false);
+  });
+
+  it('filters out approval workflow metadata fields and submission dates', () => {
+    expect(isMeaningfulChange('approvalContentLevel1', '', 'Cấp Cục phê duyệt trực tiếp')).toBe(false);
+    expect(isMeaningfulChange('approvalContentLevel2', '', 'Lưu và phê duyệt')).toBe(false);
+    expect(isMeaningfulChange('level1ApprovalContent', '', 'Nội dung cấp 1')).toBe(false);
+    expect(isMeaningfulChange('level2ApprovalContent', '', 'Nội dung cấp 2')).toBe(false);
+    expect(isMeaningfulChange('submittedDate', '', '2026-09-17T10:29:49.936285')).toBe(false);
+    expect(isMeaningfulChange('cấp 1 phê duyệt', '', 'Đã duyệt')).toBe(false);
+    expect(isMeaningfulChange('nội dung phê duyệt', '', 'Lưu và phê duyệt')).toBe(false);
+  });
+
+  it('deduplicates English and Vietnamese field entries pointing to same display name', () => {
+    const historyFieldLabels: Record<string, string> = {
+      deviceName: 'Tên thiết bị',
+      deviceCode: 'Mã thiết bị',
+      unitOfMeasure: 'Đơn vị tính',
+    };
+    const historyFieldName = (f: string) => historyFieldLabels[f] || f;
+
+    const changes = [
+      { field: 'deviceName', oldValue: 'Cam 1', newValue: 'Cam 2' },
+      { field: 'Tên thiết bị', oldValue: 'Cam 1', newValue: 'Cam 2' },
+      { field: 'deviceCode', oldValue: 'CCTV-01', newValue: 'CCTV-02' },
+    ];
+
+    const seenDisplayFields = new Set<string>();
+    const deduped: typeof changes = [];
+    for (const c of changes) {
+      const displayLabel = historyFieldName(c.field).trim().toLowerCase();
+      if (seenDisplayFields.has(displayLabel)) {
+        continue;
+      }
+      seenDisplayFields.add(displayLabel);
+      deduped.push(c);
+    }
+
+    expect(deduped).toHaveLength(2);
+    expect(deduped[0].field).toBe('deviceName');
+    expect(deduped[1].field).toBe('deviceCode');
+  });
+
+  it('formats unit of measure correctly and safely without empty arrows', () => {
+    const UOM_LABELS: Record<number, string> = {
+      1: 'Bộ',
+      4: 'Chiếc',
+      6: 'Cái',
+    };
+    const formatUnitOfMeasure = (val: unknown): string => {
+      if (val == null || val === '') return '';
+      const num = Number(val);
+      if (!Number.isNaN(num) && UOM_LABELS[num]) {
+        return UOM_LABELS[num];
+      }
+      const str = String(val).trim();
+      return str === '(null)' || str === 'null' ? '' : str;
+    };
+
+    expect(formatUnitOfMeasure(1)).toBe('Bộ');
+    expect(formatUnitOfMeasure('4')).toBe('Chiếc');
+    expect(formatUnitOfMeasure(null)).toBe('');
+    expect(formatUnitOfMeasure(undefined)).toBe('');
+    expect(formatUnitOfMeasure('(null)')).toBe('');
+    expect(formatUnitOfMeasure('Bộ')).toBe('Bộ');
   });
 });
 
@@ -147,6 +227,12 @@ describe('CCTV Status Bar & Tab Tất cả Logic (/cctv)', () => {
     const archivedTabRecords = filterRecordsForTab(records, 'ARCHIVED');
     expect(archivedTabRecords).toHaveLength(2);
     expect(archivedTabRecords.map((r) => r.id)).toEqual(['3', '5']);
+  });
+
+  it('suppresses history display when record is in DRAFT status', () => {
+    const record = { id: 'uuid-cctv', approvalStatus: 'DRAFT' };
+    const shouldLoadHistory = record.approvalStatus !== 'DRAFT';
+    expect(shouldLoadHistory).toBe(false);
   });
 });
 

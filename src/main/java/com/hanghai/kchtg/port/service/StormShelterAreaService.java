@@ -725,15 +725,25 @@ public class StormShelterAreaService {
                 .deletedBy(entity.getDeletedBy())
                 .build();
 
-        if (entity.getSpatialId() != null) {
-            response.setSpatialId(entity.getSpatialId());
-            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
-                if (spatialObj.getGeometryType() != null) {
-                    response.setGeometryType(spatialObj.getGeometryType());
-                }
-                response.setCoordinates(spatialObj.getCoordinates());
-                parseLatLng(spatialObj.getCoordinates(), response);
-            });
+        UUID spatialId = entity.getSpatialId();
+        GisSpatialObject spatialObj = null;
+        if (spatialId != null) {
+            spatialObj = gisSpatialObjectService.findById(spatialId).orElse(null);
+        }
+        if (spatialObj == null && entity.getId() != null) {
+            spatialObj = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.STORM_SHELTER_AREA).orElse(null);
+            if (spatialObj != null) {
+                entity.setSpatialId(spatialObj.getId());
+                stormShelterAreaRepository.save(entity);
+            }
+        }
+        if (spatialObj != null) {
+            response.setSpatialId(spatialObj.getId());
+            if (spatialObj.getGeometryType() != null) {
+                response.setGeometryType(spatialObj.getGeometryType());
+            }
+            response.setCoordinates(spatialObj.getCoordinates());
+            parseLatLng(spatialObj.getCoordinates(), response);
         }
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
@@ -741,13 +751,41 @@ public class StormShelterAreaService {
     }
 
     private void parseLatLng(String coordinates, StormShelterAreaResponse response) {
-        if (coordinates == null || !coordinates.startsWith("POINT(")) return;
+        if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String inner = coordinates.substring(6, coordinates.length() - 1).trim();
-            String[] parts = inner.split("\\s+");
-            if (parts.length == 2) {
-                response.setLongitude(new BigDecimal(parts[0]));
-                response.setLatitude(new BigDecimal(parts[1]));
+            String trimmed = coordinates.trim();
+            if (trimmed.toUpperCase().startsWith("POINT")) {
+                int start = trimmed.indexOf('(') + 1;
+                int end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("LINESTRING")) {
+                int start = trimmed.indexOf('(') + 1;
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf(')', start);
+                if (start > 0 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
+            } else if (trimmed.toUpperCase().startsWith("POLYGON")) {
+                int start = trimmed.indexOf("((") + 2;
+                int end = trimmed.indexOf(',', start);
+                if (end < 0) end = trimmed.indexOf("))", start);
+                if (start > 1 && end > start) {
+                    String[] parts = trimmed.substring(start, end).trim().split("\\s+");
+                    if (parts.length >= 2) {
+                        response.setLongitude(new BigDecimal(parts[0]));
+                        response.setLatitude(new BigDecimal(parts[1]));
+                    }
+                }
             }
         } catch (Exception ignored) { }
     }
@@ -782,19 +820,32 @@ public class StormShelterAreaService {
                     geomType, GisSpatialObjectType.POLYGON_STORM_SHELTER, wkt, saved.getId(),
                     InfrastructureType.STORM_SHELTER_AREA);
             saved.setSpatialId(spatialObj.getId());
-            stormShelterAreaRepository.save(saved);
+            stormShelterAreaRepository.saveAndFlush(saved);
         }
         replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
     }
 
     private void replaceMooringWaterAreas(UUID stormShelterAreaId, List<StormShelterMooringWaterAreaRequest> requests) {
-        stormShelterMooringWaterAreaRepository.deleteAll(stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(stormShelterAreaId));
-        if (requests == null || requests.isEmpty()) return;
+        if (requests == null) return;
+        List<StormShelterMooringWaterArea> existing = stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(stormShelterAreaId);
+        for (StormShelterMooringWaterArea wa : existing) {
+            stormShelterMooringWaterAreaAnchorPointRepository.deleteAll(stormShelterMooringWaterAreaAnchorPointRepository.findByStormShelterMooringWaterAreaId(wa.getId()));
+        }
+        stormShelterMooringWaterAreaRepository.deleteAll(existing);
+        if (requests.isEmpty()) return;
+
         for (StormShelterMooringWaterAreaRequest r : requests) {
-            if (r.getDescription() == null || r.getDescription().isBlank()) continue;
+            if (r == null) continue;
+            String desc = (r.getDescription() != null && !r.getDescription().isBlank())
+                    ? r.getDescription().trim() : null;
+            boolean hasPoints = r.getAnchorPoints() != null && r.getAnchorPoints().stream()
+                    .anyMatch(p -> p != null && p.getLatitude() != null && p.getLongitude() != null);
+            if (desc == null && r.getGeometryType() == null && r.getMapSymbolId() == null && !hasPoints) {
+                continue;
+            }
             StormShelterMooringWaterArea wa = StormShelterMooringWaterArea.builder()
                     .stormShelterAreaId(stormShelterAreaId)
-                    .description(r.getDescription().trim())
+                    .description(desc)
                     .geometryType(r.getGeometryType())
                     .mapSymbolId(r.getMapSymbolId())
                     .coordinateSystem(r.getCoordinateSystem())
@@ -804,7 +855,7 @@ public class StormShelterAreaService {
             List<StormShelterMooringWaterAreaAnchorPoint> points = new ArrayList<>();
             if (r.getAnchorPoints() != null) {
                 for (StormShelterMooringWaterAreaAnchorPointRequest p : r.getAnchorPoints()) {
-                    if (p.getLatitude() == null || p.getLongitude() == null) continue;
+                    if (p == null || p.getLatitude() == null || p.getLongitude() == null) continue;
                     points.add(StormShelterMooringWaterAreaAnchorPoint.builder()
                             .stormShelterMooringWaterAreaId(saved.getId())
                             .name(p.getName() != null ? p.getName().trim() : null)
@@ -813,7 +864,9 @@ public class StormShelterAreaService {
                             .build());
                 }
             }
-            stormShelterMooringWaterAreaAnchorPointRepository.saveAll(points);
+            if (!points.isEmpty()) {
+                stormShelterMooringWaterAreaAnchorPointRepository.saveAll(points);
+            }
         }
     }
 

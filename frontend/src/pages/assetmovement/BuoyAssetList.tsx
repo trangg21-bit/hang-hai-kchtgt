@@ -1,16 +1,16 @@
 import {
-    CheckOutlined,
-    CloseOutlined,
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
-    SendOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -26,81 +26,79 @@ import {
   TableFilter,
   type FilterOption,
   type ScreenHeaderAction,
-  type TableActionOption,
-  type TableOption,
+  type TableOption
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import {
-    triggerBlobDownload,
-    type InfrastructureAttachmentItem,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
-import { calculateAssetAdjustmentValues } from '../../utils/assetValueCalculation';
-import type { AssetValueAdjustmentDetails } from '../../services/assetmovement/types';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
 import {
-    approveInfraAssetC1,
-    approveInfraAssetC2,
-    createAssetDecrease,
-    createAssetIncrease,
-    createBuoyAsset,
-    createKhaiThac,
-    deleteBuoyAsset,
-    deleteInfraAssetAttachment,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchBuoyAssets,
-    fetchInfraAssetAttachments,
-    fetchInfraAssetHistory,
-    fetchKhaiThacList,
-    rejectInfraAssetC1,
-    rejectInfraAssetC2,
-    submitInfraAssetApproval,
-    updateBuoyAsset,
-    uploadInfraAssetAttachments,
+  approveInfraAssetC1,
+  approveInfraAssetC2,
+  createAssetDecrease,
+  createAssetIncrease,
+  createBuoyAsset,
+  createKhaiThac,
+  deleteBuoyAsset,
+  deleteInfraAssetAttachment,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchBuoyAssets,
+  fetchInfraAssetAttachments,
+  fetchInfraAssetHistory,
+  fetchKhaiThacList,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
+  updateBuoyAsset,
+  uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    BuoyAsset,
-    BuoyAssetFilters,
-    BuoyAssetPayload,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse, AssetValueAdjustmentDetails, BuoyAsset,
+  BuoyAssetFilters,
+  BuoyAssetPayload
 } from '../../services/assetmovement/types';
 import { fetchBuoyStationList } from '../../services/buoy-station/api';
 import type { BuoyStationResponse } from '../../services/buoy-station/types';
 import { fetchAllBuoys } from '../../services/buoy/api';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
-import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import type { Buoy } from '../../types/buoy';
-import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { calculateAssetAdjustmentValues } from '../../utils/assetValueCalculation';
 import { countHistoryUpdates, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import BuoyAssetDetailContent from './BuoyAssetDetailContent';
 import BuoyAssetForm, { type BuoyFormValues } from './BuoyAssetForm';
 import BuoyAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from './BuoyAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [
@@ -112,8 +110,6 @@ const STATUS_COUNT_KEYS = [
   'REJECTED_LEVEL2',
   'ARCHIVED',
 ];
-
-import { ASSET_CONDITION_OPTIONS } from '../../constants/assetDropdown';
 
 type DrawerMode = 'create' | 'edit' | 'detail';
 

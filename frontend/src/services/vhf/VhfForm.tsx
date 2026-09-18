@@ -28,7 +28,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -392,17 +392,23 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           .finally(() => setDeviceCodeLoading(false));
       }
 
-      const currentOrgUnitId = currentUser?.orgUnitId;
+      // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
       if (currentOrgUnitId) {
         form.setFieldsValue({ orgUnitId: currentOrgUnitId });
-      } else {
-        api.get('/users/me').then(r => {
+      } else if (!form.getFieldValue('orgUnitId')) {
+        api.get('/users/me').then((r) => {
           const p = r.data?.data ?? r.data;
-          if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
+          const uOrgId = p?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            form.setFieldsValue({ orgUnitId: uOrgId });
+          }
         }).catch(() => {});
       }
     }
-  }, [isEdit, currentUser, form]);
+  }, [isEdit, currentUser, orgUnits, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
@@ -745,14 +751,12 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                 >
-                  <OrgUnitTreeSelect
-                    variant="form"
+                  <FormOrgUnitTreeSelect
                     organizations={orgUnits}
                     placeholder="Chọn đơn vị quản lý..."
                     loading={loadingOrgs}
                     allowClear
                     showPath
-                    treeDefaultExpandAll={false}
                     disabled={isEdit && !isSystemAdmin}
                     style={{ borderRadius: radiusPill, height: 40 }}
                   />
@@ -829,7 +833,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="attachedInfrastructureType" {...labelProps('Thuộc loại hạ tầng')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item name="attachedInfrastructureType" {...labelProps('Thuộc loại hạ tầng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Loại hạ tầng là bắt buộc' }]}>
                   <Select
                     placeholder="Chọn loại hạ tầng"
                     options={ATTACHED_INFRA_TYPE_OPTIONS}
@@ -844,6 +848,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   name="attachedInfrastructureId"
                   {...labelProps('Thuộc hạ tầng')}
                   style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Hạ tầng phụ thuộc là bắt buộc' }]}
                 >
                   <Select
                     placeholder={

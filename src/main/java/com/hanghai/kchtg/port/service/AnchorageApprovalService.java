@@ -18,8 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -48,9 +50,31 @@ public class AnchorageApprovalService {
     private final UserRepository userRepository;
 
     @Transactional
+    public void submit(UUID id, String content, UUID userId) {
+        Anchorage entity = anchorageRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu neo đậu với id: " + id));
+
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể gửi phê duyệt khu neo đậu đã bị xóa");
+        }
+
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setSubmittedForApprovalAt(LocalDateTime.now());
+        entity.setSubmittedForApprovalBy(userId != null ? userId.toString() : null);
+        entity.setRejectionReason(null);
+        entity.setUpdatedAt(LocalDateTime.now());
+        anchorageRepository.save(entity);
+        log.info("Anchorage [{}] submitted for approval by {}", id, userId);
+    }
+
+    @Transactional
     public void approve(UUID id, String userId, String cap, String content) {
         Anchorage entity = anchorageRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu neo đậu với id: " + id));
+
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể phê duyệt khu neo đậu đã bị xóa");
+        }
 
         if ("CANG_VU".equals(cap)) {
             if (entity.getApprovalStatus() != ApprovalStatus.PENDING_APPROVAL
@@ -103,6 +127,10 @@ public class AnchorageApprovalService {
         Anchorage entity = anchorageRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu neo đậu với id: " + id));
 
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể từ chối khu neo đậu đã bị xóa");
+        }
+
         boolean isCuc = "CUC".equalsIgnoreCase(cap)
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
@@ -127,6 +155,102 @@ public class AnchorageApprovalService {
         log.info("Anchorage [{}] rejected by {} at level {}: {}", id, userId, isCuc ? "CUC" : "CANG_VU", reason);
     }
 
+    private static final Set<String> EXCLUDED_HISTORY_FIELDS = Set.of(
+            "approvalstatus",
+            "trạng thái phê duyệt",
+            "trang thai phe duyet",
+            "trạng thái",
+            "activitystatus",
+            "approvalcontentlevel1",
+            "approvalcontentlevel2",
+            "level1approvalcontent",
+            "level2approvalcontent",
+            "approvalcontent",
+            "submitteddate",
+            "submittedat",
+            "submittedby",
+            "submittedforapprovalat",
+            "submittedforapprovalby",
+            "approverlevel1",
+            "approverlevel2",
+            "approveddatelevel1",
+            "approveddatelevel2",
+            "rejectionreason",
+            "lý do từ chối",
+            "ly do tu choi",
+            "portauthorityapprovedby",
+            "portauthorityapprovedat",
+            "portauthorityapprovalcontent",
+            "departmentapprovedby",
+            "departmentapprovedat",
+            "departmentapprovalcontent",
+            "approvedby",
+            "approvedat",
+            "approvedremarks",
+            "cấp 1 phê duyệt",
+            "cấp 2 phê duyệt",
+            "nội dung phê duyệt",
+            "ngày gửi phê duyệt",
+            "người gửi phê duyệt",
+            "thời điểm gửi phê duyệt",
+            "thời điểm cảng vụ phê duyệt",
+            "thời điểm cục phê duyệt",
+            "nội dung cảng vụ phê duyệt",
+            "nội dung cục phê duyệt",
+            "cán bộ cảng vụ phê duyệt",
+            "cán bộ cục phê duyệt",
+            "infrastructurelist",
+            "infrastructurelist_raw",
+            "attachments",
+            "spatialid",
+            "vị trí không gian"
+    );
+
+    private boolean isExcludedHistoryField(String field) {
+        if (field == null || field.trim().isEmpty()) {
+            return true;
+        }
+        String normalized = field.trim().toLowerCase();
+        return EXCLUDED_HISTORY_FIELDS.contains(normalized);
+    }
+
+    private String canonicalizeFieldName(String field) {
+        if (field == null) {
+            return "";
+        }
+        String lower = field.trim().toLowerCase();
+        return switch (lower) {
+            case "anchoragecode", "mã khu neo đậu", "ma khu neo dau", "mã khu neo", "ma khu neo" -> "anchorageCode";
+            case "anchoragename", "tên khu neo đậu", "ten khu neo dau", "tên khu neo", "ten khu neo" -> "anchorageName";
+            case "portid", "thuộc cảng biển", "cảng biển", "thuoc cang bien", "cang bien" -> "portId";
+            case "buoystationid", "thuộc bến phao", "bến phao", "thuoc ben phao", "ben phao" -> "buoyStationId";
+            case "navigationchannelid", "thuộc luồng hàng hải", "luồng hàng hải", "thuoc luong hang hai", "luong hang hai" -> "navigationChannelId";
+            case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+            case "provinceid", "province", "địa điểm (tỉnh/thành phố)", "tỉnh/thành phố", "tinh/thanh pho", "địa điểm (tỉnh/tp)" -> "provinceId";
+            case "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet", "địa điểm" -> "detailedLocation";
+            case "operationalstatus", "tình trạng", "tình trạng hoạt động", "tinh trang", "tinh trang hoat dong" -> "operationalStatus";
+            case "shapedescription", "hình dạng", "hinh dang" -> "shapeDescription";
+            case "area", "diện tích (ha)", "diện tích", "dien tich" -> "area";
+            case "designwaterdepth", "độ sâu khu nước theo thiết kế (m)", "độ sâu theo thiết kế (m)", "do sau theo thiet ke" -> "designWaterDepth";
+            case "currentwaterdepth", "độ sâu khu nước hiện tại (theo tbhh gần nhất) (m)", "độ sâu hiện tại (m)", "do sau hien tai" -> "currentWaterDepth";
+            case "bottomelevationdesign", "cao độ đáy bến thiết kế", "cao do day ben thiet ke" -> "bottomElevationDesign";
+            case "maxvesseldwt", "cỡ tàu khai thác theo công bố (dwt)", "cỡ tàu khai thác (dwt)", "co tau khai thac" -> "maxVesselDWT";
+            case "activeanchoragecount", "số lượng khu neo đậu đang khai thác", "số khu neo đang khai thác", "so khu neo dang khai thac" -> "activeAnchorageCount";
+            case "publishedanchoragecount", "số lượng khu neo đậu đã công bố", "số khu neo đã công bố", "so khu neo da cong bo" -> "publishedAnchorageCount";
+            case "underinvestmentanchoragecount", "số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng", "số khu neo thỏa thuận đtxd", "so khu neo thoa thuan dtxd" -> "underInvestmentAnchorageCount";
+            case "remarks", "ghi chú", "ghi chu", "note" -> "remarks";
+            case "openingannouncementdate", "thời điểm công bố mở, đưa ra sử dụng", "ngày công bố mở", "ngay cong bo mo" -> "openingAnnouncementDate";
+            case "publicdecision", "quyết định công bố/ văn bản cho phép khai thác", "quyết định mở", "quyet dinh mo" -> "publicDecision";
+            case "investmentagreement", "văn bản thỏa thuận đầu tư xây dựng", "thỏa thuận đầu tư", "thoa thuan dau tu" -> "investmentAgreement";
+            case "geometrytype", "loại đối tượng", "loại đối tượng gis", "loai doi tuong" -> "geometryType";
+            case "mapsymbolid", "biểu tượng", "biểu tượng bản đồ", "bieu tuong", "symbolid" -> "mapSymbolId";
+            case "coordinatesystem", "hệ quy chiếu", "hệ tọa độ", "he quy chieu" -> "coordinateSystem";
+            case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+            case "coordinates", "tọa độ gps", "tọa độ gis", "tọa độ", "toa do" -> "coordinates";
+            default -> field.trim();
+        };
+    }
+
     @Transactional(readOnly = true)
     public java.util.Map<String, Object> getHistory(UUID id) {
         Anchorage entity = anchorageRepository.findById(id)
@@ -134,6 +258,17 @@ public class AnchorageApprovalService {
 
         String entityId = id.toString();
         String entityType = "Anchorage";
+
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Map.of(
+                    "entityId", entityId,
+                    "entityType", entityType,
+                    "currentApprovalStatus", ApprovalStatus.DRAFT.name(),
+                    "changeHistory", Collections.emptyList(),
+                    "approvalLog", Collections.emptyList(),
+                    "histories", Collections.emptyList()
+            );
+        }
 
         List<InfrastructureHistory> list =
                 historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.ANCHORAGE_AREA, id);
@@ -149,13 +284,38 @@ public class AnchorageApprovalService {
                                 u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
                                 (a, b) -> a));
 
+        Set<String> seenSessionKeys = new HashSet<>();
         List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> {
+                    if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
+                        return false;
+                    }
+                    String field = h.getChangedField();
+                    if (field != null && isExcludedHistoryField(field)) {
+                        return false;
+                    }
+                    if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+                        return false;
+                    }
+                    long epochSec = h.getApprovedDate() != null
+                            ? h.getApprovedDate().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+                            : 0L;
+                    String canonical = canonicalizeFieldName(h.getChangedField());
+                    String sessionKey = epochSec + "_" + canonical;
+                    if (!canonical.isEmpty() && !seenSessionKeys.add(sessionKey)) {
+                        return false;
+                    }
+                    return true;
+                })
                 .filter(h -> h.getChangedField() != null)
                 .map(h -> {
                     String field = h.getChangedField() != null ? h.getChangedField() : "";
                     String oldValue = h.getPreviousValue() != null ? h.getPreviousValue() : "";
                     String newValue = h.getNewValue() != null ? h.getNewValue() : "";
-                    String resolvedName = h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "";
+                    String resolvedName = h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null;
+                    if (resolvedName == null || resolvedName.isBlank()) {
+                        resolvedName = "Hệ thống";
+                    }
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", h.getId());
                     m.put("entityType", entityType);
@@ -167,10 +327,13 @@ public class AnchorageApprovalService {
                     m.put("newValue", newValue);
                     m.put("changedBy", resolvedName);
                     m.put("approvedByName", resolvedName);
-                    m.put("approvedBy", h.getApprovedBy() != null ? h.getApprovedBy().toString() : "");
+                    m.put("approvedBy", resolvedName);
                     m.put("changedAt", h.getApprovedDate());
                     m.put("approvedDate", h.getApprovedDate());
                     m.put("status", h.getStatus() != null ? h.getStatus().name() : "");
+                    if (entity.getOrgUnitId() != null) {
+                        m.put("orgUnitId", entity.getOrgUnitId().toString());
+                    }
                     return m;
                 })
                 .toList();
@@ -178,12 +341,16 @@ public class AnchorageApprovalService {
         List<Map<String, Object>> approvalLog = list.stream()
                 .filter(h -> h.getStatus() != null && h.getChangedField() == null)
                 .map(h -> {
+                    String resolvedName = h.getApprovedBy() != null ? userNameMap.get(h.getApprovedBy()) : null;
+                    if (resolvedName == null || resolvedName.isBlank()) {
+                        resolvedName = "Hệ thống";
+                    }
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", h.getId());
                     m.put("entityType", entityType);
                     m.put("entityId", entityId);
                     m.put("decision", h.getStatus().name());
-                    m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
+                    m.put("decidedBy", resolvedName);
                     m.put("decidedAt", h.getApprovedDate());
                     return m;
                 })
@@ -228,20 +395,45 @@ public class AnchorageApprovalService {
                                 User::getId,
                                 u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
                                 (a, b) -> a));
+
+        Set<String> seenSessionKeys = new HashSet<>();
         List<Map<String, Object>> changeHistory = list.stream()
+                .filter(h -> {
+                    if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
+                        return false;
+                    }
+                    String field = h.getChangedField();
+                    if (field != null && isExcludedHistoryField(field)) {
+                        return false;
+                    }
+                    if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+                        return false;
+                    }
+                    long epochSec = h.getApprovedDate() != null
+                            ? h.getApprovedDate().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+                            : 0L;
+                    String canonical = canonicalizeFieldName(h.getChangedField());
+                    String sessionKey = (h.getRefId() != null ? h.getRefId().toString() : "") + "_" + epochSec + "_" + canonical;
+                    if (!canonical.isEmpty() && !seenSessionKeys.add(sessionKey)) {
+                        return false;
+                    }
+                    return true;
+                })
                 .map(h -> {
+                    String resolvedName = h.getApprovedBy() != null
+                            ? userNameMap.get(h.getApprovedBy())
+                            : null;
+                    if (resolvedName == null || resolvedName.isBlank()) {
+                        resolvedName = "Hệ thống";
+                    }
                     Map<String, Object> m = new HashMap<>();
                     m.put("id", h.getId());
                     m.put("refId", h.getRefId());
                     m.put("entityId", h.getRefId() != null ? h.getRefId().toString() : null);
                     m.put("refType", h.getRefType());
                     m.put("status", h.getStatus());
-                    m.put("approvedBy", h.getApprovedBy() != null
-                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
-                            : null);
-                    m.put("approvedByName", h.getApprovedBy() != null
-                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
-                            : null);
+                    m.put("approvedBy", resolvedName);
+                    m.put("approvedByName", resolvedName);
                     m.put("approvedDate", h.getApprovedDate());
                     m.put("changedAt", h.getApprovedDate());
                     m.put("changedField", h.getChangedField());
@@ -249,9 +441,7 @@ public class AnchorageApprovalService {
                     m.put("previousValue", h.getPreviousValue());
                     m.put("oldValue", h.getPreviousValue());
                     m.put("newValue", h.getNewValue());
-                    m.put("changedBy", h.getApprovedBy() != null
-                            ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString())
-                            : "");
+                    m.put("changedBy", resolvedName);
                     return m;
                 })
                 .toList();

@@ -251,6 +251,22 @@ class CctvApprovalServiceTest {
 
         private final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000005");
 
+        @BeforeEach
+        void setUpHistory() {
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
+
+        @Test
+        @DisplayName("getHistory: Trả về danh sách rỗng khi bản ghi ở trạng thái Lưu tạm (DRAFT)")
+        void getHistory_whenDraft_returnsEmptyList() {
+            entity.setApprovalStatus(ApprovalStatus.DRAFT);
+            when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).isEmpty();
+        }
+
         @Test
         @DisplayName("Criterion 1 & 2: Resolve actor name and unit name from user's orgUnit")
         void getHistory_shouldResolveActorNameAndOrgUnit() {
@@ -352,6 +368,82 @@ class CctvApprovalServiceTest {
             assertThat(result.get(0).getChangedField()).isEqualTo("Tên thiết bị");
             assertThat(result.get(0).getPreviousValue()).isEqualTo("Camera cũ");
             assertThat(result.get(0).getNewValue()).isEqualTo("Camera mới");
+        }
+
+        @Test
+        @DisplayName("Filters approval metadata fields and deduplicates English/Vietnamese field representations")
+        void getHistory_filtersApprovalMetadataAndDeduplicates() {
+            when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+            LocalDateTime now = LocalDateTime.now();
+
+            InfrastructureHistory approvalContent1 = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.CCTV)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(now)
+                    .changedField("approvalContentLevel2")
+                    .previousValue("Lưu và phê duyệt")
+                    .newValue("Lưu và phê duyệt")
+                    .build();
+
+            InfrastructureHistory submittedDateHistory = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.CCTV)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(now)
+                    .changedField("submittedDate")
+                    .previousValue(null)
+                    .newValue("2026-09-17T10:29:49")
+                    .build();
+
+            InfrastructureHistory englishField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.CCTV)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(now)
+                    .changedField("deviceName")
+                    .previousValue("Cam 1")
+                    .newValue("Cam 2")
+                    .build();
+
+            InfrastructureHistory vietnameseField = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refId(ID)
+                    .refType(InfrastructureType.CCTV)
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(InfrastructureHistoryStatus.UPDATED)
+                    .approvedBy(USER_ID)
+                    .approvedDate(now)
+                    .changedField("Tên thiết bị")
+                    .previousValue("Cam 1")
+                    .newValue("Cam 2")
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.CCTV, ID))
+                    .thenReturn(List.of(approvalContent1, submittedDateHistory, englishField, vietnameseField));
+
+            User actor = new User();
+            actor.setId(USER_ID);
+            actor.setFullName("Cán bộ duyệt");
+            when(userRepository.findAllByIdInWithOrgUnit(Set.of(USER_ID))).thenReturn(List.of(actor));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            // Chỉ giữ lại 1 bản ghi duy nhất cho deviceName, loại bỏ approval metadata
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getChangedField()).isEqualTo("deviceName");
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("Cam 1");
+            assertThat(result.get(0).getNewValue()).isEqualTo("Cam 2");
         }
 
         @Test

@@ -367,6 +367,30 @@ class UserPermissionServiceTest {
     }
 
     @Test
+    void replaceDirectPermissions_throwsWhenAllPermissionsUnknown() {
+        UUID callerId = UUID.randomUUID();
+        User superAdmin = new User();
+        superAdmin.setId(callerId);
+        superAdmin.setUsername("superadmin");
+        var auth = new UsernamePasswordAuthenticationToken(superAdmin, "n/a", List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+
+        UUID userId = UUID.randomUUID();
+        User user = new User();
+        user.setId(userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.allScope());
+        when(permissionRepository.findByCodeIn(any())).thenReturn(List.of());
+
+        UserPermissionService service = new UserPermissionService(userRepository, permissionRepository,
+                overrideRepository, permissionCacheService, orgUnitScopeService);
+
+        assertThatThrownBy(() -> service.replaceDirectPermissions(userId, List.of("transmissionasset:approvec1")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Danh sách quyền chứa mã quyền không tồn tại");
+    }
+
+    @Test
     void replaceDirectPermissions_ignoresUnknownPermissions_andSavesValidOnes() {
         UUID callerId = UUID.randomUUID();
         User superAdmin = new User();
@@ -401,5 +425,6 @@ class UserPermissionServiceTest {
         verify(overrideRepository).save(captor.capture());
         assertThat(captor.getValue().getPermissionCode()).isEqualTo("vts:delete");
         verify(permissionCacheService).invalidateCache(userId);
+
     }
 }

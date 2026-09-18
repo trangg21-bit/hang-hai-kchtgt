@@ -1592,11 +1592,13 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       return mapped.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
     };
 
-    // Group items: Chỉ gom các bản ghi thuộc CÙNG 1 LẦN THAO TÁC (cùng request backend)
+    // Group items: one form save can update the record and upload files through
+    // consecutive requests. They are one user action when their visible second,
+    // actor and action are the same.
     // Điều kiện:
     // 1. Phải cùng người thực hiện
     // 2. Phải cùng loại hành động (không gộp UPDATE với UPLOAD_ATTACHMENT, APPROVE...)
-    // 3. Phải có timestamp hợp lệ ở cả 2 bản ghi và chênh lệch thời gian cực ngắn (<= 150ms do cùng 1 transaction lưu nhiều field)
+    // 3. Phải có timestamp hợp lệ ở cả 2 bản ghi và cùng giây hiển thị
     // 4. Không trùng trường dữ liệu thông thường (ngoại trừ tài liệu đính kèm)
     interface HistoryGroup {
       tsSec: number;
@@ -1626,16 +1628,13 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
         return prev.fields.has(norm);
       }) : false;
 
-      const prevMs = prev && prev.ts ? new Date(prev.ts).getTime() : 0;
-      const timeDiffMs = (prevMs > 0 && tsMs > 0) ? Math.abs(prevMs - tsMs) : Number.MAX_SAFE_INTEGER;
-
       const isSameGroup = Boolean(
         prev &&
         prev.actor === actor &&
         prev.action === action &&
-        prevMs > 0 &&
+        prev.tsSec > 0 &&
         tsMs > 0 &&
-        timeDiffMs <= 150 &&
+        prev.tsSec === tsSec &&
         !hasDuplicateField
       );
 

@@ -425,7 +425,17 @@ const DataTable: React.FC<DataTableProps> = ({
       onCell: (record: any) => {
         let cellTitleText: string | undefined = undefined;
         if (col.cellTitle) {
-          cellTitleText = col.cellTitle(record);
+          try {
+            const dataKey = col.dataIndex || col.key;
+            const val = dataKey && record ? record[dataKey] : undefined;
+            if (col.cellTitle.length >= 2) {
+              cellTitleText = (col.cellTitle as any)(val, record);
+            } else {
+              cellTitleText = col.cellTitle(record);
+            }
+          } catch {
+            cellTitleText = undefined;
+          }
         } else if (!col.render && dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object') {
           const raw = String(record[dataKey]);
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);

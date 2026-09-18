@@ -28,7 +28,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -366,17 +366,23 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
           .finally(() => setDeviceCodeLoading(false));
       }
 
-      const currentOrgUnitId = currentUser?.orgUnitId;
+      // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
       if (currentOrgUnitId) {
         form.setFieldsValue({ orgUnitId: currentOrgUnitId });
-      } else {
-        api.get('/users/me').then(r => {
+      } else if (!form.getFieldValue('orgUnitId')) {
+        api.get('/users/me').then((r) => {
           const p = r.data?.data ?? r.data;
-          if (p?.orgUnitId) form.setFieldsValue({ orgUnitId: p.orgUnitId });
+          const uOrgId = p?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            form.setFieldsValue({ orgUnitId: uOrgId });
+          }
         }).catch(() => {});
       }
     }
-  }, [isEdit, currentUser, form]);
+  }, [isEdit, currentUser, orgUnits, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
@@ -517,9 +523,6 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     setGpsError(null);
   };
 
-  const handleOrgUnitChange = () => {
-    // Giữ tọa độ hoặc reset khi cần
-  };
 
   // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
   const applyMapSelection = (val: any) => {
@@ -721,15 +724,14 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                   style={{ marginBottom: spaceFormField }}
                   rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}
                 >
-                  <OrgUnitTreeSelect
-                    variant="form"
+                  <FormOrgUnitTreeSelect
                     organizations={orgUnits}
-                    placeholder="Chọn đơn vị quản lý"
+                    placeholder="Chọn đơn vị quản lý..."
                     loading={loadingOrgs}
-                    disabled={isEdit && !isSystemAdmin}
+                    allowClear
                     showPath
-                    treeDefaultExpandAll={false}
-                    onChange={handleOrgUnitChange}
+                    disabled={isEdit && !isSystemAdmin}
+                    style={{ borderRadius: radiusPill, height: 40 }}
                   />
                 </Form.Item>
               </Col>

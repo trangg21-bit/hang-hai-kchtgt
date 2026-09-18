@@ -15,7 +15,8 @@ import {
   Modal,
   DatePicker,
 } from 'antd';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { dikeRevetmentCRUD, dikeRevetmentApproval } from '../../services/dikeRevetmentService';
 import { organizationService } from '../../services/organizationService';
@@ -149,12 +150,24 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
 
   useEffect(() => {
     if (isCreateMode) {
-      const currentOrgUnitId = currentUser?.orgUnitId;
+      // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+      const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
+        || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
       if (currentOrgUnitId) {
         form.setFieldsValue({ orgUnitId: currentOrgUnitId });
+      } else if (!form.getFieldValue('orgUnitId')) {
+        api.get('/users/me')
+          .then((r) => {
+            const p = r.data?.data ?? r.data;
+            if (p?.orgUnitId && p.orgUnitId !== '00000000-0000-0000-0000-000000000017' && p.orgUnitId !== 'G17') {
+              form.setFieldsValue({ orgUnitId: p.orgUnitId });
+            }
+          })
+          .catch(() => {});
       }
     }
-  }, [isCreateMode, currentUser, form]);
+  }, [isCreateMode, currentUser, organizations, form]);
 
   // Fetch detail data
   useEffect(() => {
@@ -824,11 +837,9 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         name="orgUnitId"
         style={formFieldStyle}
       >
-        <OrgUnitTreeSelect
-          variant="form"
+        <FormOrgUnitTreeSelect
           organizations={organizations}
           placeholder="Chọn đơn vị quản lý..."
-          treeDefaultExpandAll={false}
           style={selectStyle}
         />
       </Form.Item>

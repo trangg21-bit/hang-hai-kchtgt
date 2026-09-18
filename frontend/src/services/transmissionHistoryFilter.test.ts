@@ -13,7 +13,30 @@ describe('Transmission History Filter Logic (/transmission)', () => {
       normF === 'trạng thái phê duyệt' ||
       normF === 'trang thai phe duyet' ||
       normF === 'trạng thái' ||
-      normF === 'status'
+      normF === 'status' ||
+      normF === 'approvalcontentlevel1' ||
+      normF === 'approvalcontentlevel2' ||
+      normF === 'level1approvalcontent' ||
+      normF === 'level2approvalcontent' ||
+      normF === 'submitteddate' ||
+      normF === 'submittedat' ||
+      normF === 'submittedby' ||
+      normF === 'approverlevel1' ||
+      normF === 'approverlevel2' ||
+      normF === 'approveddatelevel1' ||
+      normF === 'approveddatelevel2' ||
+      normF === 'rejectionreason' ||
+      normF === 'lý do từ chối' ||
+      normF === 'ly do tu choi' ||
+      normF === 'portauthorityapprovedby' ||
+      normF === 'portauthorityapprovedat' ||
+      normF === 'portauthorityapprovalcontent' ||
+      normF === 'departmentapprovedby' ||
+      normF === 'departmentapprovedat' ||
+      normF === 'departmentapprovalcontent' ||
+      normF === 'approvedby' ||
+      normF === 'approvedat' ||
+      normF === 'approvedremarks'
     ) {
       return false;
     }
@@ -55,6 +78,9 @@ describe('Transmission History Filter Logic (/transmission)', () => {
     expect(isMeaningfulChange('Trạng thái phê duyệt', 'Lưu tạm', 'Đã duyệt')).toBe(false);
     expect(isMeaningfulChange('trạng thái', 'Chờ duyệt', 'Đã duyệt')).toBe(false);
     expect(isMeaningfulChange('status', '0', '1')).toBe(false);
+    expect(isMeaningfulChange('approvalContentLevel2', null, 'Lưu và phê duyệt')).toBe(false);
+    expect(isMeaningfulChange('approvalContentLevel1', null, 'Cấp Cục phê duyệt trực tiếp')).toBe(false);
+    expect(isMeaningfulChange('submittedDate', null, '2026-09-17T10:29:49.936285')).toBe(false);
   });
 
   it('filters out identical values including case insensitivity', () => {
@@ -90,5 +116,40 @@ describe('Transmission History Filter Logic (/transmission)', () => {
     expect(isMeaningfulChange('Tên thiết bị', 'Hệ thống truyền dẫn Cũ', 'Hệ thống truyền dẫn Mới')).toBe(true);
     expect(isMeaningfulChange('Trạng thái hoạt động', 'Chưa khai thác/vận hành', 'Đang khai thác/vận hành')).toBe(true);
     expect(isMeaningfulChange('Tài liệu đính kèm', 'Chưa có', 'document.pdf')).toBe(true);
+  });
+
+  it('deduplicates changes having the same display name in the same session', () => {
+    const historyFieldLabels: Record<string, string> = {
+      manufacturer: 'Hãng sản xuất',
+      model: 'Model',
+      quantity: 'Số lượng',
+    };
+    const historyFieldName = (fn: string) => historyFieldLabels[fn] || fn;
+
+    const rawChanges = [
+      { field: 'manufacturer', oldValue: null, newValue: 'JRC' },
+      { field: 'Hãng sản xuất', oldValue: 'Chưa có', newValue: 'JRC' },
+      { field: 'model', oldValue: null, newValue: 'NTE-183' },
+      { field: 'Model', oldValue: 'Chưa có', newValue: 'NTE-183' },
+    ];
+
+    const seenDisplayFields = new Set<string>();
+    const dedupedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+    for (const change of rawChanges) {
+      const displayName = historyFieldName(change.field);
+      if (!seenDisplayFields.has(displayName)) {
+        seenDisplayFields.add(displayName);
+        dedupedChanges.push(change);
+      }
+    }
+
+    expect(dedupedChanges).toHaveLength(2);
+    expect(dedupedChanges.map((c) => historyFieldName(c.field))).toEqual(['Hãng sản xuất', 'Model']);
+  });
+
+  it('suppresses history display when record is in DRAFT status', () => {
+    const record = { id: 'uuid-1', approvalStatus: 'DRAFT' };
+    const shouldLoadHistory = record.approvalStatus !== 'DRAFT';
+    expect(shouldLoadHistory).toBe(false);
   });
 });

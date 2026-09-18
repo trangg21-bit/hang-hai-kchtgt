@@ -41,7 +41,7 @@ export const TTDH_CONFIG: StationTypeConfig = {
 export const INMARSAT_CONFIG: StationTypeConfig = {
   type: 'INMARSAT_STATION',
   types: 'INMARSAT_STATION',
-  resource: ['inmarsatasset', 'inmarsat', 'coastalstationinmarsat', 'specialstation', 'coastalstation', 'infraasset'],
+  resource: ['inmarsatasset', 'inmarsat', 'specialstation', 'coastalstation', 'infraasset'],
   title: 'Tài sản đài Inmarsat',
   stationFieldName: 'inmarsatStationId',
   stationLabel: 'Mã đài Inmarsat',

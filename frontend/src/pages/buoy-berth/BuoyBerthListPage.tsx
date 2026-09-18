@@ -445,8 +445,13 @@ export default function BuoyBerthList() {
   const hasActiveHistoryFilter = !!(historyFilters.keyword?.trim() || historyFilters.fromDate || historyFilters.toDate);
 
   const openHistory = useCallback(async (r: BuoyBerth) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
     setHistoryFilters({ keyword: '' });
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/buoy-berth/${r.id}/history`);
       const d = res.data?.data;

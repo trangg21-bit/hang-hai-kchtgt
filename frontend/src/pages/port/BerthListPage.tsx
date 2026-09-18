@@ -516,8 +516,13 @@ export default function BerthList() {
   }, [filteredHistory, historyTarget, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap, symbolImageMap]);
 
   const openHistory = useCallback(async (r: Berth) => {
-    setHistoryTarget(r); setHistoryOpen(true); setHistoryLoading(true); setHistoryRecords([]);
+    setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
     setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+      return;
+    }
+    setHistoryLoading(true);
     try {
       const res = await api.get(`/v1/berths/${r.id}/history`);
       const d = res.data?.data;

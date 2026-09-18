@@ -51,9 +51,18 @@ export async function fetchVtsAssistList(params: {
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
-  if (params.search) sp.set('search', params.search);
-  if (params.deviceCode) sp.set('deviceCode', params.deviceCode);
-  if (params.deviceName) sp.set('deviceName', params.deviceName);
+  if (params.search) {
+    const trimmed = params.search.trim();
+    if (trimmed) sp.set('search', trimmed);
+  }
+  if (params.deviceCode) {
+    const trimmed = params.deviceCode.trim();
+    if (trimmed) sp.set('deviceCode', trimmed);
+  }
+  if (params.deviceName) {
+    const trimmed = params.deviceName.trim();
+    if (trimmed) sp.set('deviceName', trimmed);
+  }
   if (params.province) sp.set('province', params.province);
   if (params.operationalStatus !== undefined && params.operationalStatus !== '') sp.set('operatingStatus', String(params.operationalStatus));
   if (params.approvalStatus) sp.set('approvalStatus', params.approvalStatus);

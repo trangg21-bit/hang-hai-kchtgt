@@ -356,9 +356,9 @@ export default function DikeRevetmentDetailContent(props: DetailContentProps) {
                 {approvalOpen && (
                   <div className="chk-detail-grid" style={{ paddingTop: 6 }}>
                     {[
-                      { key: 'approvalStatus', label: 'Trạng thái phê duyệt', fullWidth: true, value: <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} /> },
+                      { key: 'approvalStatus', label: 'Trạng thái', fullWidth: true, value: <ApprovalStatusBadge status={detailRecord.approvalStatus} labelOverrides={DIKE_REVETMENT_STATUS_LABELS} /> },
                       { key: 'updatedBy', label: 'Cán bộ cập nhật', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || detailRecord.updatedBy || '—'}</span> },
-                      { key: 'updatedAt', label: 'Ngày cập nhật', fullWidth: false, value: detailRecord.updatedAt ? formatDate(detailRecord.updatedAt) : '—' },
+                      { key: 'updatedAt', label: 'Ngày cập nhật', fullWidth: false, value: (detailRecord.updatedAt || (detailRecord as any).createdAt) ? formatDate(detailRecord.updatedAt || (detailRecord as any).createdAt) : '—' },
                       { key: 'submittedBy', label: 'Cán bộ gửi phê duyệt', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || '—'}</span> },
                       { key: 'submittedAt', label: 'Ngày gửi phê duyệt', fullWidth: false, value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : '—' },
                       { key: 'approvedByLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', fullWidth: false, value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel1 || detailRecord.approverLevel1 || '—'}</span> },

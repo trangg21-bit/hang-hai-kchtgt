@@ -481,44 +481,22 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
     VtsAssist saved = vtsAssistRepository.save(entity);
 
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
-    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") — bản nháp/lưu tạm,
-    // hồ sơ đang chờ duyệt hoặc bị trả về KHÔNG ghi lịch sử.
-    if (approvedEdit) {
-      changeHistoryService.recordChanges("VTS_ASSIST", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
-      LocalDateTime now = LocalDateTime.now();
-      if (!previousValues.isEmpty()) {
-        for (Map.Entry<String, String> entry : previousValues.entrySet()) {
-          String field = entry.getKey();
-          String fieldName = getFieldDisplayName(field);
-          String oldVal = entry.getValue();
-          Object rawNew;
-          if ("coordinates".equals(field)) {
-            rawNew = request.getCoordinates();
-          } else if ("geometryType".equals(field)) {
-            rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
-          } else {
-            rawNew = getEntityFieldValue(saved, field);
-          }
-          String newVal = rawNew != null ? String.valueOf(rawNew) : null;
-          String oldDisp = formatDisplayValue(field, oldVal);
-          String newDisp = formatDisplayValue(field, newVal);
-          if (EntityUpdateUtils.areEqual(oldDisp, newDisp)) {
-            continue;
-          }
-          historyRepository.save(InfrastructureHistory.builder()
-              .refId(saved.getId())
-              .refType(InfrastructureType.VTS_ASSIST)
-              .approvalLevel(ApprovalLevel.LEVEL_2)
-              .status(InfrastructureHistoryStatus.UPDATED)
-              .approvedBy(currentUserId)
-              .approvedDate(now)
-              .changedField(fieldName)
-              .previousValue(oldDisp)
-              .newValue(newDisp)
-              .build());
-        }
+    // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
+    // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
+    if (approvedEdit && !previousValues.isEmpty()) {
+      if (previousValues.containsKey("coordinates")) {
+        changeHistoryService.insertChangeRecord("VTS_ASSIST", saved.getId(), "coordinates",
+            oldCoordinates != null ? oldCoordinates : "Chưa có",
+            request.getCoordinates(), currentUserId.toString());
       }
+      if (previousValues.containsKey("geometryType")) {
+        changeHistoryService.insertChangeRecord("VTS_ASSIST", saved.getId(), "geometryType",
+            oldGeometryType != null ? oldGeometryType : "Chưa có",
+            request.getGeometryType() != null ? request.getGeometryType().name() : null, currentUserId.toString());
+      }
+      changeHistoryService.recordChanges("VTS_ASSIST", saved.getId().toString(), currentUserId.toString(), snapshot, saved);
     }
+
 
     return toResponse(saved);
   }
@@ -1111,18 +1089,24 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
       // ignore file deletion failure; the DB record is still removed
     }
     attachmentRepository.delete(attachment);
-    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) — mirror /vts-operation-center.
-    historyRepository.save(InfrastructureHistory.builder()
-        .refId(entityId)
-        .refType(InfrastructureType.VTS_ASSIST)
-        .approvalLevel(ApprovalLevel.LEVEL_0)
-        .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
-        .approvedBy(userId)
-        .approvedDate(LocalDateTime.now())
-        .changedField("Tài liệu đính kèm")
-        .previousValue(attachment.getFileName())
-        .newValue("—")
-        .build());
+    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_DELETED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
+    VtsAssist entity = vtsAssistRepository.findById(entityId).orElse(null);
+    boolean wasApproved = entity != null
+        && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
+            || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
+    if (wasApproved) {
+      historyRepository.save(InfrastructureHistory.builder()
+          .refId(entityId)
+          .refType(InfrastructureType.VTS_ASSIST)
+          .approvalLevel(ApprovalLevel.LEVEL_0)
+          .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+          .approvedBy(userId)
+          .approvedDate(LocalDateTime.now())
+          .changedField("Tài liệu đính kèm")
+          .previousValue(attachment.getFileName())
+          .newValue("—")
+          .build());
+    }
   }
 
   private AttachmentDto toAttachmentDto(Attachment entity) {

@@ -250,7 +250,7 @@ export default function CospasSarsatStationList() {
   const listRequestId = useRef(0);
   const [isLookupReady, setIsLookupReady] = useState(false);
 
-  const canCreate = hasPerm('coastalstationcospassarsat:create') || hasPerm('station:create') || hasPerm('data:create');
+  const canCreate = hasPerm('coastalstationcospassarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create');
 
   useEffect(() => {
     let mounted = true;
@@ -788,7 +788,7 @@ export default function CospasSarsatStationList() {
     const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
-    if (hasPerm('coastalstationcospassarsat:read') || hasPerm('station:read') || hasPerm('data:read')) {
+    if (hasPerm('coastalstationcospassarsat:read') || hasPerm('specialstation:read') || hasPerm('data:read')) {
       actions.push({
         key: 'view',
         label: 'Xem chi tiết',

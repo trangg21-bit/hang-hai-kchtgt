@@ -25,6 +25,7 @@ import java.time.LocalTime;
 import java.text.Normalizer;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -33,6 +34,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -185,6 +188,11 @@ public class ScadaApprovalService {
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống SCADA với id: " + id));
     validateAllowedOrgUnit(parent.getOrgUnitId());
 
+    // Bản ghi Lưu tạm (DRAFT) chưa từng được phê duyệt nên không có lịch sử thay đổi
+    if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+      return Collections.emptyList();
+    }
+
     // Nhật ký: copy đúng /vts-operation-center (VtsOperationCenterService.getHistory) — trả về mọi
     // dòng nhật ký (mặc định) hoặc lọc từ khóa/khoảng ngày; KHÔNG lọc theo mốc/status.
     String normalizedKeyword = normalizeSearchKeyword(keyword);
@@ -199,6 +207,7 @@ public class ScadaApprovalService {
           paged ? PageRequest.of(page, pageSize) : Pageable.unpaged());
     }
 
+    Set<String> seenSessionKeys = new HashSet<>();
     List<InfrastructureHistory> filteredList = list.stream()
         .filter(h -> {
           if (h.getStatus() == InfrastructureHistoryStatus.CREATED) {
@@ -207,11 +216,19 @@ public class ScadaApprovalService {
           String field = h.getChangedField();
           if (field != null) {
             String norm = field.trim().toLowerCase();
-            if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+            if (isExcludedHistoryField(norm)) {
               return false;
             }
           }
           if (h.getPreviousValue() != null && Objects.equals(h.getPreviousValue(), h.getNewValue())) {
+            return false;
+          }
+          long epochSec = h.getApprovedDate() != null
+              ? h.getApprovedDate().atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+              : 0L;
+          String canonical = canonicalizeFieldName(h.getChangedField());
+          String sessionKey = epochSec + "_" + canonical;
+          if (!canonical.isEmpty() && !seenSessionKeys.add(sessionKey)) {
             return false;
           }
           return true;
@@ -228,6 +245,9 @@ public class ScadaApprovalService {
         .map(h -> {
           User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
           String userName = formatUserIdentity(u);
+          if (userName == null || userName.isBlank()) {
+            userName = "Hệ thống";
+          }
           String orgUnitName = null;
           if (u != null) {
             if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
@@ -241,6 +261,11 @@ public class ScadaApprovalService {
           if (orgUnitName == null) {
             orgUnitName = "Cục Hàng hải Việt Nam";
           }
+          String prevDisp = formatDisplayValue(h.getChangedField(), h.getPreviousValue());
+          String newDisp = formatDisplayValue(h.getChangedField(), h.getNewValue());
+          if (h.getStatus() == InfrastructureHistoryStatus.UPDATED && EntityUpdateUtils.areEqual(prevDisp, newDisp)) {
+            return null;
+          }
           return HistoryEntry.builder()
               .id(h.getId())
               .approvalLevel(h.getApprovalLevel())
@@ -249,11 +274,80 @@ public class ScadaApprovalService {
               .orgUnitName(orgUnitName)
               .approvedDate(h.getApprovedDate())
               .changedField(h.getChangedField())
-              .previousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()))
-              .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
+              .previousValue(prevDisp)
+              .newValue(newDisp)
               .build();
         })
+        .filter(Objects::nonNull)
         .collect(Collectors.toList());
+  }
+
+  private static boolean isExcludedHistoryField(String norm) {
+    if (norm == null) return false;
+    return norm.equals("approvalstatus")
+        || norm.equals("trạng thái phê duyệt")
+        || norm.equals("trang thai phe duyet")
+        || norm.equals("trạng thái")
+        || norm.equals("approvalcontentlevel1")
+        || norm.equals("approvalcontentlevel2")
+        || norm.equals("level1approvalcontent")
+        || norm.equals("level2approvalcontent")
+        || norm.equals("submitteddate")
+        || norm.equals("submittedat")
+        || norm.equals("submittedby")
+        || norm.equals("approverlevel1")
+        || norm.equals("approverlevel2")
+        || norm.equals("approveddatelevel1")
+        || norm.equals("approveddatelevel2")
+        || norm.equals("rejectionreason")
+        || norm.equals("lý do từ chối")
+        || norm.equals("ly do tu choi")
+        || norm.equals("portauthorityapprovedby")
+        || norm.equals("portauthorityapprovedat")
+        || norm.equals("portauthorityapprovalcontent")
+        || norm.equals("departmentapprovedby")
+        || norm.equals("departmentapprovedat")
+        || norm.equals("departmentapprovalcontent")
+        || norm.equals("approvedby")
+        || norm.equals("approvedat")
+        || norm.equals("approvedremarks")
+        || norm.equals("cấp 1 phê duyệt")
+        || norm.equals("cấp 2 phê duyệt")
+        || norm.equals("nội dung phê duyệt")
+        || norm.equals("ngày gửi phê duyệt")
+        || norm.equals("người gửi phê duyệt");
+  }
+
+  private static String canonicalizeFieldName(String field) {
+    if (field == null) return "";
+    String norm = field.trim().toLowerCase();
+    return switch (norm) {
+      case "devicecode", "mã thiết bị", "ma thiet bi", "mã scada", "ma scada" -> "deviceCode";
+      case "devicename", "tên thiết bị", "ten thiet bi", "tên scada", "ten scada" -> "deviceName";
+      case "manufacturer", "hãng sản xuất", "hang san xuat" -> "manufacturer";
+      case "model" -> "model";
+      case "quantity", "số lượng", "so luong" -> "quantity";
+      case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+      case "operatingunitid", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operatingUnitId";
+      case "provincename", "provinceid", "tỉnh/thành phố", "tinh/thanh pho", "địa điểm (tỉnh/tp)", "dia diem (tinh/tp)" -> "provinceName";
+      case "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet", "vị trí", "vi tri" -> "detailedLocation";
+      case "attachedinfrastructuretype", "loại hạ tầng", "loai ha tang", "thuộc loại hạ tầng", "thuoc loai ha tang" -> "attachedInfrastructureType";
+      case "attachedinfrastructureid", "thuộc hạ tầng", "thuoc ha tang", "hạ tầng phụ thuộc", "ha tang phu thuoc" -> "attachedInfrastructureId";
+      case "unitofmeasure", "đơn vị tính", "don vi tinh" -> "unitOfMeasure";
+      case "yearofuse", "năm đưa vào sử dụng", "nam dua vao su dung" -> "yearOfUse";
+      case "operationalstatus", "trạng thái hoạt động", "trang thai hoat dong", "tình trạng hoạt động", "tinh trang hoat dong", "tình trạng", "tinh trang" -> "operationalStatus";
+      case "specifications", "thông số kỹ thuật", "thong so ky thuat" -> "specifications";
+      case "maintenanceinformation", "thông tin bảo trì", "thong tin bao tri" -> "maintenanceInformation";
+      case "note", "ghi chú", "ghi chu" -> "note";
+      case "objecttype", "geometrytype", "loại đối tượng", "loai doi tuong", "loại đối tượng (gis)", "loai doi tuong (gis)", "loại đối tượng gis", "loai doi tuong gis" -> "geometryType";
+      case "mapsymbolid", "symbolid", "biểu tượng", "bieu tuong", "biểu tượng bản đồ", "bieu tuong ban do" -> "mapSymbolId";
+      case "coordinates", "tọa độ", "toa do", "tọa độ gis", "toa do gis", "tọa độ gps", "toa do gps" -> "coordinates";
+      case "coordinatesystem", "hệ quy chiếu", "he quy chieu", "hệ tọa độ", "he toa do" -> "coordinateSystem";
+      case "displayrule", "quy tắc hiển thị", "quy tac hien thi" -> "displayRule";
+      case "spatialid" -> "spatialId";
+      case "attachments", "tài liệu đính kèm", "tai lieu dinh kem", "file đính kèm", "file dinh kem" -> "attachments";
+      default -> norm;
+    };
   }
 
   private void validateAllowedOrgUnit(UUID orgUnitId) {

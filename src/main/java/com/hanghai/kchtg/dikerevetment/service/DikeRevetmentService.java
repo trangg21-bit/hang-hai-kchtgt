@@ -550,6 +550,9 @@ public class DikeRevetmentService {
         DikeRevetment parent = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
         validateAllowedOrgUnit(parent.getOrgUnitId());
+        if (parent.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Collections.emptyList();
+        }
 
         String normalizedKeyword = normalizeSearchKeyword(keyword);
         boolean paged = page != null && pageSize != null && pageSize > 0;
@@ -574,7 +577,7 @@ public class DikeRevetmentService {
                     String field = h.getChangedField();
                     if (field != null) {
                         String norm = field.trim().toLowerCase();
-                        if ("approvalstatus".equals(norm) || "trạng thái phê duyệt".equals(norm) || "trang thai phe duyet".equals(norm) || "trạng thái".equals(norm)) {
+                        if (isExcludedHistoryField(norm)) {
                             return false;
                         }
                     }
@@ -585,7 +588,21 @@ public class DikeRevetmentService {
                 })
                 .collect(Collectors.toList());
 
-        Set<UUID> userIds = filteredList.stream()
+        // Khử trùng lặp giữa bản ghi lưu bằng mã tiếng Anh và nhãn tiếng Việt trong cùng phiên cập nhật
+        List<InfrastructureHistory> dedupedList = new java.util.ArrayList<>();
+        Set<String> seenKeys = new java.util.HashSet<>();
+        for (InfrastructureHistory h : filteredList) {
+            String canonicalField = canonicalizeFieldName(h.getChangedField());
+            long epochSecond = h.getApprovedDate() != null
+                    ? h.getApprovedDate().toEpochSecond(java.time.ZoneOffset.UTC)
+                    : 0L;
+            String key = epochSecond + "_" + canonicalField;
+            if (seenKeys.add(key)) {
+                dedupedList.add(h);
+            }
+        }
+
+        Set<UUID> userIds = dedupedList.stream()
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
@@ -593,13 +610,16 @@ public class DikeRevetmentService {
                 userRepository.findAllByIdInWithOrgUnit(userIds).stream()
                         .collect(Collectors.toMap(User::getId, u -> u, (a, b) -> a));
 
-        return filteredList.stream()
+        return dedupedList.stream()
                 .map(h -> {
             User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
             String userName = u != null
                     ? (u.getFullName() != null && !u.getFullName().trim().isEmpty() ? u.getFullName()
                             : (u.getUsername() != null && !u.getUsername().trim().isEmpty() ? u.getUsername() : null))
                     : (h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null);
+            if (userName == null || userName.isBlank()) {
+                userName = "Hệ thống";
+            }
             String orgUnitName = null;
             if (u != null) {
                 if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null && !u.getOrgUnit().getName().isBlank()) {
@@ -625,6 +645,71 @@ public class DikeRevetmentService {
                     .newValue(formatDisplayValue(h.getChangedField(), h.getNewValue()))
                     .build();
         }).toList();
+    }
+
+    private static boolean isExcludedHistoryField(String norm) {
+        if (norm == null) return false;
+        return norm.equals("approvalstatus")
+                || norm.equals("trạng thái phê duyệt")
+                || norm.equals("trang thai phe duyet")
+                || norm.equals("trạng thái")
+                || norm.equals("approvalcontentlevel1")
+                || norm.equals("approvalcontentlevel2")
+                || norm.equals("level1approvalcontent")
+                || norm.equals("level2approvalcontent")
+                || norm.equals("submitteddate")
+                || norm.equals("submittedat")
+                || norm.equals("submittedby")
+                || norm.equals("approverlevel1")
+                || norm.equals("approverlevel2")
+                || norm.equals("approveddatelevel1")
+                || norm.equals("approveddatelevel2")
+                || norm.equals("rejectionreason")
+                || norm.equals("lý do từ chối")
+                || norm.equals("ly do tu choi")
+                || norm.equals("portauthorityapprovedby")
+                || norm.equals("portauthorityapprovedat")
+                || norm.equals("portauthorityapprovalcontent")
+                || norm.equals("departmentapprovedby")
+                || norm.equals("departmentapprovedat")
+                || norm.equals("departmentapprovalcontent")
+                || norm.equals("approvedby")
+                || norm.equals("approvedat")
+                || norm.equals("approvedremarks")
+                || norm.equals("cấp 1 phê duyệt")
+                || norm.equals("cấp 2 phê duyệt")
+                || norm.equals("nội dung phê duyệt")
+                || norm.equals("ngày gửi phê duyệt")
+                || norm.equals("người gửi phê duyệt");
+    }
+
+    private static String canonicalizeFieldName(String field) {
+        if (field == null) return "";
+        String norm = field.trim().toLowerCase();
+        return switch (norm) {
+            case "code", "mã đê kè", "ma de ke" -> "code";
+            case "dikerevetmentname", "tên đê kè", "ten de ke" -> "dikeRevetmentName";
+            case "dikerevetmenttype", "loại kết cấu công trình", "loai ket cau cong trinh", "loại đê kè", "loai de ke" -> "dikeRevetmentType";
+            case "location", "địa điểm (tỉnh/tp)", "dia diem (tinh/tp)", "địa điểm", "dia diem", "tỉnh/thành phố", "tinh/thanh pho" -> "location";
+            case "locationdetail", "địa điểm chi tiết", "dia diem chi tiet" -> "locationDetail";
+            case "seaportid", "thuộc cảng biển", "thuoc cang bien", "cảng biển", "cang bien" -> "seaportId";
+            case "operatingunitid", "đơn vị vận hành", "don vi van hanh", "đơn vị khai thác", "don vi khai thac" -> "operatingUnitId";
+            case "orgunitid", "đơn vị quản lý", "don vi quan ly" -> "orgUnitId";
+            case "length", "chiều dài", "chieu dai", "chiều dài (m)", "chieu dai (m)" -> "length";
+            case "height", "chiều cao", "chieu cao", "chiều cao (m)", "chieu cao (m)" -> "height";
+            case "crestelevation", "cao trình đỉnh", "cao trinh dinh", "cao trình đỉnh (m)", "cao trinh dinh (m)" -> "crestElevation";
+            case "commissioningdate", "thời điểm đưa vào khai thác", "thoi diem dua vao khai thac", "thời điểm đưa vào sử dụng", "thoi diem dua vao su dung" -> "commissioningDate";
+            case "constructiondate", "thời điểm xây dựng", "thoi diem xay dung" -> "constructionDate";
+            case "lastmaintenanceyear", "năm bảo trì gần nhất", "nam bao tri gan nhat" -> "lastMaintenanceYear";
+            case "surfacematerial", "vật liệu bề mặt", "vat lieu be mat" -> "surfaceMaterial";
+            case "status", "tình trạng", "tinh trang", "trạng thái hoạt động", "trang thai hoat dong" -> "status";
+            case "note", "ghi chú", "ghi chu" -> "note";
+            case "symbolid", "mapsymbolid", "biểu tượng bản đồ", "bieu tuong ban do", "biểu tượng", "bieu tuong" -> "symbolId";
+            case "coordinates", "tọa độ", "toa do", "tọa độ gis", "toa do gis" -> "coordinates";
+            case "geometrytype", "loại đối tượng", "loai doi tuong", "loại đối tượng (gis)", "loai doi tuong (gis)" -> "geometryType";
+            case "attachments", "tài liệu đính kèm", "tai lieu dinh kem", "file đính kèm", "file dinh kem" -> "attachments";
+            default -> norm;
+        };
     }
 
     private LocalDateTime parseFromDate(String value) {

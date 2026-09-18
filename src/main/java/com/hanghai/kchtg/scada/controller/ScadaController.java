@@ -7,6 +7,7 @@ import com.hanghai.kchtg.vtssystem.dto.HistoryEntry;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.SubmitContentRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.scada.dto.ApprovalRequest;
 import com.hanghai.kchtg.scada.dto.ScadaResponse;
 import com.hanghai.kchtg.scada.dto.ScadaOptionResponse;
@@ -48,7 +49,7 @@ public class ScadaController {
   private final ScadaApprovalService scadaApprovalService;
 
   @PostMapping
-  @PreAuthorize("@auth.check(authentication, 'scada:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:create', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> create(
     @Valid @RequestBody CreateScadaRequest request) {
     log.info("Creating SCADA: code={}", request.getDeviceCode());
@@ -57,7 +58,7 @@ public class ScadaController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:create', 'scada:read', 'scada:manage')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating SCADA device code");
     String code = scadaService.generateScadaCode();
@@ -72,7 +73,7 @@ public class ScadaController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@auth.check(authentication, 'scada:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:read', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> getById(@PathVariable UUID id) {
     log.info("Getting SCADA by id={}", id);
     ScadaResponse response = scadaService.getById(id);
@@ -81,7 +82,7 @@ public class ScadaController {
 
   @GetMapping
   @DataScope
-  @PreAuthorize("@auth.check(authentication, 'scada:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:read', 'scada:manage')")
   public ResponseEntity<ApiResponse<Page<ScadaResponse>>> findAll(
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "20") int size,
@@ -117,7 +118,7 @@ public class ScadaController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.checkAny(authentication, 'scada:update', 'scada:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:update', 'scada:approvec2', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> update(
     @Valid @RequestBody UpdateScadaRequest request) {
     log.info("Updating SCADA: id={}", request.getId());
@@ -126,7 +127,7 @@ public class ScadaController {
   }
 
   @DeleteMapping("/{id}")
-  @PreAuthorize("@auth.check(authentication, 'scada:delete')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:delete', 'scada:manage')")
   public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
     log.info("Soft-deleting SCADA: id={}", id);
     scadaService.softDelete(id);
@@ -134,7 +135,7 @@ public class ScadaController {
   }
 
   @PostMapping("/{id}/submit")
-  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:update', 'scada:create', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> submit(@PathVariable UUID id,
     @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting SCADA for approval: id={}", id);
@@ -143,8 +144,8 @@ public class ScadaController {
     return ResponseEntity.ok(ApiResponse.success("Gửi phê duyệt thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c1")
-  @PreAuthorize("@auth.check(authentication, 'scada:approvec1')")
+  @PostMapping(value = {"/{id}/approve/c1", "/{id}/approvec1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:approvec1', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> approveC1(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -153,8 +154,21 @@ public class ScadaController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Chi cục thành công", response));
   }
 
-  @PostMapping("/{id}/approve/c2")
-  @PreAuthorize("@auth.check(authentication, 'scada:approvec2')")
+  @PostMapping(value = {"/{id}/reject/c1", "/{id}/rejectc1"})
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:approvec1', 'scada:manage')")
+  public ResponseEntity<ApiResponse<ScadaResponse>> rejectC1(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Rejecting SCADA level 1: id={}", id);
+    if (request.getDecision() == null || request.getDecision().isBlank()) {
+      request.setDecision(ApprovalStatus.REJECTED.name());
+    }
+    ScadaResponse response = scadaApprovalService.approveC1(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt cấp Chi cục thành công", response));
+  }
+
+  @PostMapping(value = {"/{id}/approve/c2", "/{id}/approvec2", "/{id}/approve-l2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:approvec2', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> approveC2(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -163,8 +177,21 @@ public class ScadaController {
     return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp Cục thành công", response));
   }
 
+  @PostMapping(value = {"/{id}/reject/c2", "/{id}/rejectc2"})
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:approvec2', 'scada:manage')")
+  public ResponseEntity<ApiResponse<ScadaResponse>> rejectC2(
+    @PathVariable UUID id,
+    @Valid @RequestBody ApprovalRequest request) {
+    log.info("Rejecting SCADA level 2: id={}", id);
+    if (request.getDecision() == null || request.getDecision().isBlank()) {
+      request.setDecision(ApprovalStatus.REJECTED.name());
+    }
+    ScadaResponse response = scadaApprovalService.approveC2(id, request, SecurityUtils.getCurrentUserId());
+    return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt cấp Cục thành công", response));
+  }
+
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.check(authentication, 'scada:history') or @auth.check(authentication, 'scada:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:history', 'scada:read', 'scada:manage', 'data:read')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
     @PathVariable UUID id,
     @RequestParam(value = "page", required = false) Integer page,
@@ -182,7 +209,7 @@ public class ScadaController {
   }
 
   @GetMapping("/history/all")
-  @PreAuthorize("@auth.check(authentication, 'scada:history') or @auth.check(authentication, 'scada:read') or @auth.check(authentication, 'data:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:history', 'scada:read', 'scada:manage', 'data:read')")
   public ResponseEntity<ApiResponse<Object>> getAllHistory() {
     log.info("Getting all SCADA history");
     Object history = scadaApprovalService.getAllHistory();
@@ -190,7 +217,7 @@ public class ScadaController {
   }
 
   @PostMapping("/{id}/restore")
-  @PreAuthorize("@auth.check(authentication, 'scada:delete')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:delete', 'scada:manage')")
   public ResponseEntity<ApiResponse<ScadaResponse>> restore(@PathVariable UUID id) {
     log.info("Restoring SCADA id={}", id);
     ScadaResponse response = scadaService.restore(id);
@@ -200,7 +227,7 @@ public class ScadaController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:update', 'scada:create', 'scada:approvec2', 'scada:manage')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -211,7 +238,7 @@ public class ScadaController {
   }
 
   @GetMapping("/{id}/attachments")
-  @PreAuthorize("@auth.check(authentication, 'scada:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:read', 'scada:manage')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
     log.info("Listing SCADA attachments: id={}", id);
     return ResponseEntity.ok(ApiResponse.success(
@@ -220,7 +247,7 @@ public class ScadaController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.check(authentication, 'scada:update') or @auth.check(authentication, 'scada:create') or @auth.check(authentication, 'scada:delete') or @auth.check(authentication, 'scada:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:update', 'scada:create', 'scada:delete', 'scada:approvec2', 'scada:manage')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
@@ -231,7 +258,7 @@ public class ScadaController {
 
   // Tải xuống file đính kèm — mirror /vts-operation-center (VtsOperationCenterController.downloadAttachment)
   @GetMapping("/{id}/attachments/{attachmentId}/download")
-  @PreAuthorize("@auth.check(authentication, 'scada:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'scada:read', 'scada:manage')")
   public ResponseEntity<Resource> downloadAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

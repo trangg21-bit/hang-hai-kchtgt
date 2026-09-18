@@ -54,7 +54,7 @@ public class InmarsatAssetController {
     }
 
     @PostMapping
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:create', 'inmarsat:create', 'coastalstationinmarsat:create', 'inmarsat:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:create', 'inmarsat:create')")
     public ResponseEntity<ApiResponse<CoastalStationAssetResponse>> create(
             @RequestBody CoastalStationAssetRequest request) {
         CoastalStationAssetResponse response = service.create(request);
@@ -62,7 +62,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<CoastalStationAssetResponse>> getById(
             @PathVariable UUID id) {
         CoastalStationAssetResponse response = service.getById(id);
@@ -70,7 +70,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<CoastalStationAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -94,7 +94,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping("/counts")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<Map<String, Long>>> countByApprovalStatus(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -112,7 +112,7 @@ public class InmarsatAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:update', 'inmarsat:update', 'coastalstationinmarsat:update', 'inmarsat:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:update', 'inmarsat:update')")
     public ResponseEntity<ApiResponse<CoastalStationAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody CoastalStationAssetRequest request) {
@@ -121,26 +121,26 @@ public class InmarsatAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:delete', 'inmarsat:delete', 'coastalstationinmarsat:delete', 'inmarsat:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:delete', 'inmarsat:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Tài sản đài Inmarsat đã được xóa thành công", null));
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
     }
 
     @GetMapping("/{id}/exploitations")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<CoastalStationAssetExploitation>>> getExploitations(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getExploitations(id)));
     }
 
     @PostMapping("/{id}/exploitations")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:update', 'inmarsat:update', 'inmarsat:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:update', 'inmarsat:update')")
     public ResponseEntity<ApiResponse<CoastalStationAssetExploitation>> addExploitation(
             @PathVariable UUID id,
             @RequestBody CoastalStationExploitationRequest request) {
@@ -149,7 +149,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping("/{id}/adjustments")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<CoastalStationAssetAdjustment>>> getAdjustments(
             @PathVariable UUID id,
             @RequestParam(required = false) String type) {
@@ -157,7 +157,7 @@ public class InmarsatAssetController {
     }
 
     @PostMapping("/{id}/adjustments")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:update', 'inmarsat:update', 'inmarsat:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:update', 'inmarsat:update')")
     public ResponseEntity<ApiResponse<CoastalStationAssetAdjustment>> addAdjustment(
             @PathVariable UUID id,
             @RequestBody CoastalStationAdjustmentRequest request) {
@@ -182,7 +182,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping("/{id}/attachments")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> listAttachments(
             @PathVariable UUID id) {
         List<InfraAssetAttachmentResponse> result = service.listAttachments(id);
@@ -200,7 +200,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping("/{id}/attachments/{attId}/download")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'coastalstationinmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

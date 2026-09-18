@@ -43,25 +43,49 @@ export function getVisiblePermissionKeys(
   return result;
 }
 
+let activeCatalogKeys: Set<string> | null = null;
+
+export function setActiveCatalogKeys(keys: Iterable<string> | null): void {
+  if (!keys) {
+    activeCatalogKeys = null;
+    return;
+  }
+  activeCatalogKeys = new Set(Array.from(keys).map((k) => normalizePermissionKey(String(k))));
+}
+
+export function getActiveCatalogKeys(): Set<string> | null {
+  return activeCatalogKeys;
+}
+
 /**
  * Mở rộng tập mã quyền bao gồm cả mã gốc và các mã tương đương (canonical + alias).
  * Bỏ qua các nút nhóm cấp trên (bắt đầu bằng "group_").
- * Nếu validKeys được truyền vào, chỉ giữ lại các mã quyền thực sự tồn tại trong CSDL.
+ * Chỉ mở rộng sang các alias thực sự tồn tại trong catalog quyền của hệ thống.
  */
-function expandPermissionAliases(keys: Iterable<string>, validKeys?: Set<string>): Set<string> {
+export function expandPermissionAliases(
+  keys: Iterable<string>,
+  allowedKeys?: Set<string> | Iterable<string> | null,
+): Set<string> {
+  const allowedSet = allowedKeys !== undefined
+    ? (allowedKeys === null ? null : (allowedKeys instanceof Set ? allowedKeys : new Set(Array.from(allowedKeys).map((k) => normalizePermissionKey(String(k))))))
+    : activeCatalogKeys;
+
+
   const expanded = new Set<string>();
   for (const key of keys) {
     const k = String(key);
     if (k.startsWith('group_')) continue;
-    if (!validKeys || validKeys.has(k.toLowerCase())) {
+    const normK = normalizePermissionKey(k);
+    if (!allowedSet || allowedSet.has(normK)) {
       expanded.add(k);
     }
-    const eqKeys = getEquivalentPermissionKeys(k);
-    for (const eq of eqKeys) {
-      if (!validKeys || validKeys.has(eq.toLowerCase())) {
+    getEquivalentPermissionKeys(k).forEach((eq) => {
+      const normEq = normalizePermissionKey(eq);
+      if (!allowedSet || allowedSet.has(normEq)) {
         expanded.add(eq);
       }
-    }
+    });
+
   }
   return expanded;
 }
@@ -76,18 +100,19 @@ export function mergePermissionKeys(
   currentKeys: readonly string[],
   nextVisibleKeys: readonly string[],
   nodes: readonly MenuTreeNode[],
-  validKeys?: Set<string>,
+  allowedKeys?: Set<string> | Iterable<string> | null,
 ): string[] {
   // 1. Tập quyền (kèm alias) thuộc phạm vi cây hiển thị hiện tại
-  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes), validKeys);
+  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes), allowedKeys);
 
   // 2. Giữ lại các quyền nằm ngoài phạm vi cây lọc hiện tại
   const remainingKeys = currentKeys.filter(
     (key) => !visibleEquivKeys.has(normalizePermissionKey(String(key))),
   );
 
-  // 3. Mở rộng các quyền được tích chọn (đồng bộ cả canonical lẫn alias có tồn tại trong CSDL)
-  const nextExpandedKeys = expandPermissionAliases(nextVisibleKeys, validKeys);
+  // 3. Mở rộng các quyền được tích chọn (đồng bộ cả canonical lẫn alias tồn tại hợp lệ)
+  const nextExpandedKeys = expandPermissionAliases(nextVisibleKeys, allowedKeys);
+
 
   return [...new Set([...remainingKeys, ...nextExpandedKeys])];
 }
@@ -118,7 +143,6 @@ const RESOURCE_LABELS: Record<string, string> = {
   pier: 'Quản lý Cầu cảng',
   buoyberth: 'Quản lý Bến phao',
   anchorage: 'Quản lý Khu neo đậu',
-  anchoragearea: 'Quản lý Khu neo đậu',
   transferarea: 'Quản lý Khu chuyển tải',
   stormshelter: 'Quản lý Khu tránh, trú bão',
   dryport: 'Quản lý Cảng cạn',
@@ -147,8 +171,8 @@ const RESOURCE_LABELS: Record<string, string> = {
   vhf: 'Quản lý Hệ thống thông tin liên lạc VHF',
   coastalstation: 'Quản lý Đài duyên hải',
   specialstation: 'Quản lý Đài chuyên dùng / Vệ tinh',
+  inmarsat: 'Quản lý Tài sản đài Inmarsat',
   coastalstationinmarsat: 'Quản lý Đài thông tin vệ tinh Inmarsat',
-  inmarsat: 'Quản lý Đài thông tin vệ tinh Inmarsat',
   coastalstationcospassarsat: 'Quản lý Đài Cospas-Sarsat',
   cospassarsat: 'Quản lý Đài Cospas-Sarsat',
   coastalstationhaiphong: 'Quản lý Đài TTXLTT Hà Nội / Hải Phòng',
@@ -191,17 +215,42 @@ const HIDDEN_PERMISSIONS = new Set([
   'vts:read:restricted',
   'vts:read:confidential',
   'cctv:approve',
+  'cctvasset:approve',
   'vhf:approve',
   'scada:approve',
+  'scadaasset:approve',
   'transmission:approve',
+  'transmissionasset:approve',
   'vtsassist:approve',
+  'vtsassistasset:approve',
   'beaconstation:approve',
+  'lighthouse:approve',
+  'beaconlight:approve',
+  'lighthousestation:approve',
   'dikerevetment:approve',
   'radarstation:approve',
+  'tramradar:approve',
+  'port:approve',
+  'berth:approve',
+  'buoyberth:approve',
+  'pier:approve',
+  'dryport:approve',
+  'anchorage:approve',
+  'anchoragearea:approve',
+  'anchorageasset:approve',
+  'transferarea:approve',
+  'stormshelter:approve',
+  'shiprepairyard:approve',
+  'shiprepair:approve',
+  'shiprepairfacility:approve',
+  'waterzone:approve',
+  'data:approve',
+  'approve:action',
 ]);
 
 function isHiddenPermission(key: string): boolean {
   if (HIDDEN_PERMISSIONS.has(key)) return true;
+  if (key === 'anchoragearea' || key.startsWith('anchoragearea:')) return true;
   if (key.endsWith(':read:restricted') || key.endsWith(':read:confidential')) return true;
   if (key.endsWith(':restricted') || key.endsWith(':confidential')) return true;
   return false;
@@ -261,7 +310,6 @@ const RESOURCE_ORDER: string[] = [
   'pier',
   'buoyberth',
   'anchorage',
-  'anchoragearea',
   'transferarea',
   'stormshelter',
   'dryport',
@@ -289,7 +337,6 @@ const RESOURCE_ORDER: string[] = [
   'coastalstation',
   'specialstation',
   'inmarsat',
-  'coastalstationinmarsat',
   'cospassarsat',
   'coastalstationcospassarsat',
   'ttxltt',
@@ -347,10 +394,10 @@ export function usePermissions(options?: { enabled?: boolean }) {
     enabled: options?.enabled ?? true,
   });
 
-  const rawPerms = apiQuery.data || [];
+  const apiData = apiQuery.data;
   const perms = useMemo(
-    () => rawPerms.filter((p) => !isHiddenPermission(p.key)),
-    [rawPerms],
+    () => (apiData || []).filter((p) => !isHiddenPermission(p.key)),
+    [apiData],
   );
 
   // Group standard permissions by canonical resource with deduplication across equivalent action nodes
@@ -415,10 +462,12 @@ export function usePermissions(options?: { enabled?: boolean }) {
       }));
   }, [perms]);
 
-  const validCodesSet = useMemo(
-    () => new Set(perms.map((p) => p.key.toLowerCase())),
-    [perms],
-  );
+  const validCodesSet = useMemo(() => {
+    if (!perms.length) return null;
+    const set = new Set(perms.map((p) => normalizePermissionKey(p.key)));
+    setActiveCatalogKeys(set);
+    return set;
+  }, [perms]);
 
   const allKeys = useMemo(
     () => [...expandPermissionAliases(perms.map((p) => p.key), validCodesSet)],

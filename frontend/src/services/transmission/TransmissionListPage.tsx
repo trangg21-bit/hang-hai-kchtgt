@@ -18,6 +18,7 @@ import {
     Select,
     Space,
     Tabs,
+    Tooltip,
     Typography,
 } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,7 +35,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -103,8 +104,13 @@ const UOM_LABELS: Record<number, string> = {
   27: 'VNĐ',
 };
 
-function formatUnitOfMeasure(code: number | null | undefined): string {
-  return code != null && UOM_LABELS[code] ? UOM_LABELS[code] : null;
+function formatUnitOfMeasure(code: any): string | null {
+  if (code == null) return null;
+  const s = String(code).trim();
+  if (s === '' || s === '(null)' || s === 'null' || s === 'Chưa có' || s === '(trống)' || s === '—' || s === '-') return null;
+  const n = Number(s);
+  if (!isNaN(n) && UOM_LABELS[n]) return UOM_LABELS[n];
+  return s;
 }
 
 import dayjs from "dayjs";
@@ -199,13 +205,12 @@ const APPROVAL_COLOR: Record<string, string> = {
 
 // ── Detail-page helpers (aligned with PortDetailPage) ────────────────────
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return null;
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  } catch { return dateStr; }
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : String(dateStr);
+  } catch { return String(dateStr); }
 }
 
 /** Badge hiển thị giống chuẩn bến cảng: span pill + semantic token */
@@ -519,16 +524,33 @@ const TransmissionListPage = () => {
   const editFormRef = useRef<TransmissionFormRef>(null);
 
   const handleOpenCreate = useCallback(() => {
-    if (!hasPerm?.("transmission:create")) {
+    if (!hasPerm?.("transmission:create") && !hasPerm?.("transmission:manage")) {
       toast.warning("Bạn không có quyền thêm mới hệ thống truyền dẫn");
       return;
     }
     createForm.resetFields();
+    // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
+    const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
+      || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
+
     createForm.setFieldsValue({
       operationalStatus: 0,
-      orgUnitId: currentUser?.orgUnitId || defaultOrgUnitId.current,
+      orgUnitId: currentOrgUnitId,
     });
     setCreateModalOpen(true);
+
+    if (!currentOrgUnitId && !currentUser?.orgUnitId) {
+      api.get('/users/me')
+        .then((res) => {
+          const profile = res.data?.data ?? res.data;
+          const uOrgId = profile?.orgUnitId;
+          if (uOrgId && uOrgId !== '00000000-0000-0000-0000-000000000017' && uOrgId !== 'G17') {
+            createForm.setFieldsValue({ orgUnitId: uOrgId });
+          }
+        })
+        .catch(() => {});
+    }
+
     void generateTransmissionCode()
       .then((code) => {
         if (code) {
@@ -536,7 +558,7 @@ const TransmissionListPage = () => {
         }
       })
       .catch(() => {});
-  }, [createForm, hasPerm]);
+  }, [createForm, hasPerm, currentUser, orgUnits]);
 
   // Submit action & loading
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
@@ -544,7 +566,7 @@ const TransmissionListPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2");
+  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2") || !!hasPerm?.("transmission:manage");
 
   // Modal bản đồ GIS xem chi tiết
   const [mapScope, setMapScope] = useState<'detail' | null>(null);
@@ -590,7 +612,7 @@ const TransmissionListPage = () => {
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   const openHistory = useCallback((r: TransmissionResponse) => {
-    if (!hasPerm?.("transmission:history") && !hasPerm?.("transmission:read") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("transmission:history") && !hasPerm?.("transmission:read") && !hasPerm?.("transmission:manage") && !hasPerm?.("data:read")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống truyền dẫn");
       return;
     }
@@ -602,11 +624,19 @@ const TransmissionListPage = () => {
     setHistoryFrom('');
     setHistoryTo('');
     setHistoryReloadToken((t) => t + 1);
+    if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
+      setHistoryLoading(false);
+    }
   }, [hasPerm]);
 
   // Load history khi mở Drawer hoặc thay đổi bộ lọc tìm kiếm/ngày
   useEffect(() => {
     if (!historyOpen || !historyTarget) return;
+    if (historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') {
+      setHistoryRecords([]);
+      setHistoryLoading(false);
+      return;
+    }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setHistoryLoading(true);
@@ -706,36 +736,57 @@ const TransmissionListPage = () => {
     return m;
   }, [radarStations]);
 
-  // Sorting
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
-  const handleSort = useCallback((field: string, order: "asc" | "desc" | null) => {
-    if (!order) {
-      setSortField(null);
-      setSortOrder(null);
-    } else {
-      setSortField(field);
-      setSortOrder(order === "asc" ? "ascend" : "descend");
-    }
-    setPage(0);
-  }, []);
+
 
   const columns = useMemo(
     () => {
       // Cột dạng "Cán bộ/Ngày": dòng 1 = tên (đậm), dòng 2 = ngày (màu phụ)
       const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
         <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
-          <div
-            title={name || null}
-            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-          >
-            {name || null}
-          </div>
+          {name ? (
+            <Tooltip title={name} placement="topLeft">
+              <div
+                title={name}
+                style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+              >
+                {name}
+              </div>
+            </Tooltip>
+          ) : (
+            <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
+          )}
           <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: "nowrap" }}>
             {date ? dayjs(date).format("DD/MM/YYYY HH:mm:ss") : "—"}
           </div>
         </div>
       );
+
+      const renderCellWithTooltip = (
+        text: string | null | undefined,
+        isBold?: boolean
+      ) => {
+        if (!text) return null;
+        return (
+          <Tooltip title={text} placement="topLeft">
+            <span
+              style={{
+                ...tableMetaStyle,
+                fontWeight: isBold ? fontWeightBold : undefined,
+                display: "inline-block",
+                maxWidth: "100%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                verticalAlign: "middle",
+              }}
+              title={text}
+            >
+              {text}
+            </span>
+          </Tooltip>
+        );
+      };
+
       return [
       {
         key: "index",
@@ -756,34 +807,41 @@ const TransmissionListPage = () => {
         dataIndex: "deviceName",
         width: 300,
         fixed: "left" as const,
-        sortable: true,
-        sortOrder: sortField === "deviceName" ? sortOrder : null,
         ellipsis: false,
+        cellTitle: (record: TransmissionResponse) => record.deviceName || '',
         render: (val: string, record: TransmissionResponse) => (
-          <div style={{ minWidth: 0 }}>
-            {hasPerm?.("transmission:read") ? (
-              <button
-                type="button"
-                className="kcht-cell-title"
-                onClick={() => {
-                  setSelectedRecord(record);
-                  setDetailDrawerOpen(true);
-                }}
-                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-                title={val || null}
-              >
-                {val || null}
-              </button>
+          <div style={{ minWidth: 0, overflow: "hidden" }}>
+            {hasPerm?.("transmission:read") || hasPerm?.("transmission:manage") ? (
+              <Tooltip title={val || undefined} placement="topLeft">
+                <button
+                  type="button"
+                  className="kcht-cell-title"
+                  onClick={() => {
+                    setSelectedRecord(record);
+                    setDetailDrawerOpen(true);
+                  }}
+                  style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                  title={val || undefined}
+                >
+                  {val || "—"}
+                </button>
+              </Tooltip>
             ) : (
-              <span
-                className="kcht-cell-title"
-                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
-                title={val || null}
-              >
-                {val || null}
-              </span>
+              <Tooltip title={val || undefined} placement="topLeft">
+                <span
+                  className="kcht-cell-title"
+                  style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                  title={val || undefined}
+                >
+                  {val || null}
+                </span>
+              </Tooltip>
             )}
-            <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }}>{record.deviceCode || null}</span>
+            {record.deviceCode && (
+              <Tooltip title={record.deviceCode} placement="topLeft">
+                <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
+              </Tooltip>
+            )}
           </div>
         ),
       },
@@ -792,27 +850,24 @@ const TransmissionListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={{ ...tableMetaStyle, fontWeight: fontWeightBold }}>{val || null}</span>
-        ),
+        cellTitle: (record: TransmissionResponse) => record.orgUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
         label: "Thuộc TTDH VTS/Trạm Radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: TransmissionResponse) => record.attachedInfrastructureName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "operatingUnitName",
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: TransmissionResponse) => record.operatingUnitName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "provinceName",
@@ -820,9 +875,8 @@ const TransmissionListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
-        render: (val: string) => (
-          <span style={tableMetaStyle}>{val || null}</span>
-        ),
+        cellTitle: (record: TransmissionResponse) => record.provinceName || '',
+        render: (val: string) => renderCellWithTooltip(val),
       },
       {
         key: "unitOfMeasure",
@@ -830,9 +884,8 @@ const TransmissionListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
-        render: (val: number) => (
-          <span style={tableMetaStyle}>{formatUnitOfMeasure(val)}</span>
-        ),
+        cellTitle: (record: TransmissionResponse) => formatUnitOfMeasure(record.unitOfMeasure) || '',
+        render: (val: number) => renderCellWithTooltip(formatUnitOfMeasure(val)),
       },
       {
         key: "quantity",
@@ -893,8 +946,7 @@ const TransmissionListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
-        sortable: true,
-        sortOrder: sortField === "updatedAt" || sortField === "updatedByName" ? sortOrder : null,
+        cellTitle: (record: TransmissionResponse) => record.updatedByName || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
@@ -902,6 +954,7 @@ const TransmissionListPage = () => {
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        cellTitle: (record: TransmissionResponse) => record.submittedByName || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
@@ -909,6 +962,7 @@ const TransmissionListPage = () => {
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        cellTitle: (record: TransmissionResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
@@ -916,11 +970,12 @@ const TransmissionListPage = () => {
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        cellTitle: (record: TransmissionResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, sortField, sortOrder, hasPerm]
+    [page, pageSize, hasPerm]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1147,7 +1202,7 @@ const TransmissionListPage = () => {
     return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
   };
 
-  const isMeaningfulChange = (
+    const isMeaningfulChange = (
     field: string,
     rawOld: string | null | undefined,
     rawNew: string | null | undefined,
@@ -1158,7 +1213,30 @@ const TransmissionListPage = () => {
       normF === 'trạng thái phê duyệt' ||
       normF === 'trang thai phe duyet' ||
       normF === 'trạng thái' ||
-      normF === 'status'
+      normF === 'status' ||
+      normF === 'approvalcontentlevel1' ||
+      normF === 'approvalcontentlevel2' ||
+      normF === 'level1approvalcontent' ||
+      normF === 'level2approvalcontent' ||
+      normF === 'submitteddate' ||
+      normF === 'submittedat' ||
+      normF === 'submittedby' ||
+      normF === 'approverlevel1' ||
+      normF === 'approverlevel2' ||
+      normF === 'approveddatelevel1' ||
+      normF === 'approveddatelevel2' ||
+      normF === 'rejectionreason' ||
+      normF === 'lý do từ chối' ||
+      normF === 'ly do tu choi' ||
+      normF === 'portauthorityapprovedby' ||
+      normF === 'portauthorityapprovedat' ||
+      normF === 'portauthorityapprovalcontent' ||
+      normF === 'departmentapprovedby' ||
+      normF === 'departmentapprovedat' ||
+      normF === 'departmentapprovalcontent' ||
+      normF === 'approvedby' ||
+      normF === 'approvedat' ||
+      normF === 'approvedremarks'
     ) {
       return false;
     }
@@ -1301,8 +1379,27 @@ const TransmissionListPage = () => {
         }
       }
 
+      const seenDisplayFields = new Set<string>();
+      const dedupedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
+      for (const change of nonAttachmentChanges) {
+        const displayName = historyFieldName(change.field);
+        if (!seenDisplayFields.has(displayName)) {
+          seenDisplayFields.add(displayName);
+          dedupedChanges.push(change);
+        } else {
+          // If already seen, prefer the one with a non-blank oldValue if existing is blank
+          const idx = dedupedChanges.findIndex((c) => historyFieldName(c.field) === displayName);
+          if (idx !== -1) {
+            const existing = dedupedChanges[idx];
+            if (isBlank(existing.oldValue) && !isBlank(change.oldValue)) {
+              dedupedChanges[idx] = change;
+            }
+          }
+        }
+      }
+
       const changes = [
-        ...nonAttachmentChanges,
+        ...dedupedChanges,
         ...(attachmentChange ? [attachmentChange] : []),
       ];
 
@@ -1449,6 +1546,9 @@ const TransmissionListPage = () => {
                       const fn = change.field;
                       const ov = formatHistoryValue(fn, change.oldValue);
                       const nv = formatHistoryValue(fn, change.newValue);
+                      const isValBlank = (v: any) => v == null || String(v).trim() === '' || String(v).trim() === '—' || String(v).trim() === '(null)' || String(v).trim() === '(trống)' || String(v).trim().toLowerCase() === 'chưa có';
+                      if (isValBlank(ov) && isValBlank(nv)) return null;
+                      if (!isValBlank(ov) && !isValBlank(nv) && String(ov).trim().toLowerCase() === String(nv).trim().toLowerCase()) return null;
                       const renderCell = (rawVal: string | null) => {
                         if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
                           const img = symbolImageMap.get(rawVal);
@@ -1550,7 +1650,7 @@ const TransmissionListPage = () => {
     return () => {
       active = false;
     };
-  }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
+  }, [hasPerm, isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer]);
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
@@ -1559,7 +1659,7 @@ const TransmissionListPage = () => {
 
       // Nếu bản ghi đã xóa, chỉ còn Xem chi tiết và Lịch sử
       if (isTransmissionDeleted(record)) {
-        if (hasPerm?.("transmission:read")) {
+        if (hasPerm?.("transmission:read") || hasPerm?.("transmission:manage")) {
           actions.push({
             key: "view",
             label: "Xem chi tiết",
@@ -1570,7 +1670,7 @@ const TransmissionListPage = () => {
             },
           });
         }
-        if (hasPerm?.("transmission:history") || hasPerm?.("transmission:read") || hasPerm?.("data:read")) {
+        if (hasPerm?.("transmission:history") || hasPerm?.("transmission:read") || hasPerm?.("transmission:manage") || hasPerm?.("data:read")) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -1581,7 +1681,7 @@ const TransmissionListPage = () => {
         return actions;
       }
 
-      if (hasPerm?.("transmission:read")) {
+      if (hasPerm?.("transmission:read") || hasPerm?.("transmission:manage")) {
         actions.push({
           key: "view",
           label: "Xem chi tiết",
@@ -1604,7 +1704,7 @@ const TransmissionListPage = () => {
       }
 
       // Lịch sử thay đổi (mở từ menu hành động dòng)
-      if (hasPerm?.("transmission:history")) {
+      if (hasPerm?.("transmission:history") || hasPerm?.("transmission:read") || hasPerm?.("transmission:manage") || hasPerm?.("data:read")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1615,7 +1715,7 @@ const TransmissionListPage = () => {
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + transmission:update → Gửi phê duyệt (submitTransmission)
       if (
-        hasPerm?.("transmission:update") &&
+        (hasPerm?.("transmission:update") || hasPerm?.("transmission:create") || hasPerm?.("transmission:manage")) &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2" ||
@@ -1634,7 +1734,7 @@ const TransmissionListPage = () => {
 
       // PENDING_APPROVAL + transmission:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
       // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
-      if (hasPerm?.("transmission:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
+      if ((hasPerm?.("transmission:approvec1") || hasPerm?.("transmission:manage")) && record.approvalStatus === "PENDING_APPROVAL") {
         const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
         actions.push({
           key: "approveC1",
@@ -1664,7 +1764,7 @@ const TransmissionListPage = () => {
 
       // APPROVED_LEVEL1 + transmission:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
       // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
-      if (hasPerm?.("transmission:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
+      if ((hasPerm?.("transmission:approvec2") || hasPerm?.("transmission:manage")) && record.approvalStatus === "APPROVED_LEVEL1") {
         const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
         actions.push({
           key: "approveC2",
@@ -1707,7 +1807,7 @@ const TransmissionListPage = () => {
 
       return actions;
     },
-    [updateForm, hasPerm, currentUser, openHistory]
+    [updateForm, hasPerm, currentUser, openHistory, openUpdateDrawer]
   );
 
   const fetchData = useCallback(async () => {
@@ -1733,8 +1833,8 @@ const TransmissionListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: sortField || "updatedAt",
-        sortOrder: sortOrder ? (sortOrder === "ascend" ? "asc" : "desc") : undefined,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -1745,7 +1845,7 @@ const TransmissionListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   useEffect(() => {
@@ -1759,27 +1859,23 @@ const TransmissionListPage = () => {
       setOrgUnits(orgs);
       if (orgs.length > 0 && !defaultOrgApplied.current) {
         defaultOrgApplied.current = true;
-        const found = data && data.length > 0
-          ? data[0]
-          : null;
-        if (found) {
-          defaultOrgUnitId.current = found.id;
-          setFilterValues((prev) => ({ ...prev, orgUnitId: found.id }));
-        } else {
-          // lấy đơn vị của user đang đăng nhập
+        let resolvedOrgId: string | undefined = resolveDefaultOrgUnitId(currentUser, orgs);
+        if (!resolvedOrgId && !currentUser?.orgUnitId) {
           try {
             const profileRes = await api.get('/users/me');
             const profile = (profileRes as any)?.data?.data ?? (profileRes as any)?.data;
-            const userOrgId = profile?.orgUnitId;
-            const match = userOrgId && orgs.find((o: any) => o.id === userOrgId);
-            const defaultId = userOrgId ? (match ? userOrgId : orgs[0].id) : '__all__';
-            defaultOrgUnitId.current = defaultId;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: defaultId === '__all__' ? "" : defaultId }));
+            if (profile?.orgUnitId) {
+              resolvedOrgId = resolveDefaultOrgUnitId(profile, orgs) || profile.orgUnitId;
+            }
           } catch {
-            defaultOrgUnitId.current = orgs[0].id;
-            setFilterValues((prev) => ({ ...prev, orgUnitId: orgs[0].id }));
+            // ignore
           }
         }
+        if (!resolvedOrgId && data && data.length > 0) {
+          resolvedOrgId = data[0]?.id;
+        }
+        defaultOrgUnitId.current = resolvedOrgId;
+        setFilterValues((prev) => ({ ...prev, orgUnitId: resolvedOrgId || "" }));
       }
       setOrgUnitReady(true);
       setLoadingOrgs(false);
@@ -1789,7 +1885,7 @@ const TransmissionListPage = () => {
       setOrgUnitReady(true);
       setLoadingOrgs(false);
     });
-  }, []);
+  }, [currentUser]);
 
   const fetchSymbols = useCallback(async () => {
     setLoadingSymbols(true);
@@ -2211,7 +2307,7 @@ const TransmissionListPage = () => {
           { label: "Quản lý hệ thống truyền dẫn", path: "/transmission" },
         ]}
         actions={[
-          hasPerm?.("transmission:create")
+          hasPerm?.("transmission:create") || hasPerm?.("transmission:manage")
             ? {
                 key: "create",
                 label: "Thêm mới",
@@ -2313,6 +2409,7 @@ const TransmissionListPage = () => {
                           ? "Chọn Trung Tâm Điều Hành VTS"
                           : "Chọn loại hạ tầng trước"
                   } allowClear
+                    showSearch
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({
@@ -2465,7 +2562,6 @@ const TransmissionListPage = () => {
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}
-              onSort={handleSort}
               rowActions={rowActions}
               locale={{
                 emptyText: (
@@ -2536,7 +2632,7 @@ const TransmissionListPage = () => {
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderTransmissionStatusBadge(st) : null; })() },
                             { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null },
                           ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => {
-                            let labelCls = 'sec-col1-label';
+                            let labelCls: string;
                             if (row.fullWidth) {
                               labelCls = 'sec-full-label';
                               colIndex = 0;
@@ -2665,7 +2761,8 @@ const TransmissionListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                            <span className="chk-detail-value">{selectedRecord.updatedAt ? formatDate(selectedRecord.updatedAt) : (selectedRecord.createdAt ? formatDate(selectedRecord.createdAt) : '')}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.updatedAt || selectedRecord.createdAt)}</span>
+
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
@@ -2677,7 +2774,7 @@ const TransmissionListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                            <span className="chk-detail-value">{selectedRecord.submittedDate ? formatDate(selectedRecord.submittedDate) : ''}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.submittedDate)}</span>
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
@@ -2689,7 +2786,7 @@ const TransmissionListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel1 ? formatDate(selectedRecord.approvedDateLevel1) : ''}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel1)}</span>
                           </div>
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
@@ -2705,7 +2802,7 @@ const TransmissionListPage = () => {
                           </div>
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                            <span className="chk-detail-value">{selectedRecord.approvedDateLevel2 ? formatDate(selectedRecord.approvedDateLevel2) : ''}</span>
+                            <span className="chk-detail-value">{formatDate(selectedRecord.approvedDateLevel2)}</span>
                           </div>
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
@@ -3329,18 +3426,20 @@ const TransmissionListPage = () => {
         destroyOnClose
       >
         <style>{requiredMarkStyle}</style>
-        <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 0 }}>
-          <TransmissionForm
-            ref={createFormRef}
-            form={createForm}
-            onFinish={() => {
-              setCreateModalOpen(false);
-              void fetchData();
-              void fetchTabCounts();
-            }}
-            onSubmittingChange={setSubmitting}
-          />
-        </Form>
+        {createModalOpen && (
+          <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 0 }}>
+            <TransmissionForm
+              ref={createFormRef}
+              form={createForm}
+              onFinish={() => {
+                setCreateModalOpen(false);
+                void fetchData();
+                void fetchTabCounts();
+              }}
+              onSubmittingChange={setSubmitting}
+            />
+          </Form>
+        )}
       </AppDrawer>
 
       {/* ── Edit Drawer (đồng bộ chuẩn /berth) ─────────────────────── */}

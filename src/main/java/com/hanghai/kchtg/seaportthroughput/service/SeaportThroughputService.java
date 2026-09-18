@@ -49,6 +49,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -662,6 +663,9 @@ public class SeaportThroughputService {
     @Transactional(readOnly = true)
     public List<InfrastructureHistory> getHistory(UUID id) {
         SeaportThroughput entity = findById(id);
+        if (entity.getApprovalStatus() == ApprovalStatus.DRAFT) {
+            return Collections.emptyList();
+        }
         return historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(
                 REF_TYPE, entity.getId());
     }
