@@ -26,18 +26,12 @@ import {
   type ScreenHeaderAction,
   type TableOption,
 } from '../../components/list-view';
-import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { AppDrawer } from '../../components/shared/AppDrawer';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
+import { AppDrawer } from '../../components/shared/AppDrawer';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
-import type { BreadcrumbItem } from '../../components/shared/ScreenHeader';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import api from '../../services/api';
-import { organizationService, type Organization } from '../../services/organizationService';
 import {
   createAisSystemAsset,
   deleteAisSystemAsset,
@@ -52,6 +46,7 @@ import type {
   AisSystemAssetFilters,
   AisSystemAssetPayload,
 } from '../../services/aisasset/types';
+import api from '../../services/api';
 import {
   createAssetDecrease,
   createAssetIncrease,
@@ -66,6 +61,7 @@ import type {
   AssetIncreaseResponse,
   AssetValueAdjustmentDetails,
 } from '../../services/assetmovement/types';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
 import * as themeTokenChk from '../../themetokenchk';
 import {
@@ -82,13 +78,16 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
   saveAttachmentFile,
 } from '../../utils/attachmentStorage';
-import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
+import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
+import { fmtInputNumber } from '../../utils/numFmt';
 import AisSystemAssetDetailContent from './AisSystemAssetDetailContent';
+import AisSystemAssetForm, { type FormValues } from './AisSystemAssetForm';
 import AisSystemAssetOperationForm, {
   type OperationMode,
   type OperationValues,

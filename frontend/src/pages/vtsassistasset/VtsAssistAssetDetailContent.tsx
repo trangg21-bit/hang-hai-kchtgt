@@ -17,6 +17,7 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
@@ -708,15 +709,7 @@ export default function VtsAssistAssetDetailContent({
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: adjustmentRows.length,
         icon: <AuditOutlined />,
-        customContent: (
-          <div style={{ padding: '4px 0' }}>
-            <CommonTable<VtsAssistAssetAdjustment>
-              options={adjustmentTableOption}
-              dataSource={adjustmentRows}
-              total={adjustmentRows.length}
-            />
-          </div>
-        ),
+        customContent: <AssetAdjustmentHistoryTab dataSource={adjustmentRows} />,
       },
     ];
   }, [

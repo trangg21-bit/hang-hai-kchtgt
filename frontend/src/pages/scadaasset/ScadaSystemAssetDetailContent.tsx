@@ -17,6 +17,7 @@ import type {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
@@ -907,15 +908,7 @@ export default function ScadaSystemAssetDetailContent({
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
-        customContent: (
-          <div style={{ padding: '4px 0' }}>
-            <CommonTable<AdjustmentRowItem>
-              options={adjustmentTableOption}
-              dataSource={combinedAdjustments}
-              total={combinedAdjustments.length}
-            />
-          </div>
-        ),
+        customContent: <AssetAdjustmentHistoryTab dataSource={combinedAdjustments} />,
       },
     ];
   }, [

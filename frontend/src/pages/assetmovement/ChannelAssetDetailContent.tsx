@@ -20,6 +20,7 @@ import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
@@ -109,9 +110,9 @@ export default function ChannelAssetDetailContent({
   onClose,
   orgName,
   channelMap,
-  exploitationRows,
-  increaseRows,
-  decreaseRows,
+  exploitationRows = [],
+  increaseRows = [],
+  decreaseRows = [],
 }: ChannelAssetDetailContentProps) {
   const [detailAttachments, setDetailAttachments] = useState<InfrastructureAttachmentItem[]>([]);
 
@@ -678,212 +679,14 @@ export default function ChannelAssetDetailContent({
         key: 'adjustments',
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: increaseRows.length + decreaseRows.length,
-        customContent: () => {
-          const totalHistory = increaseRows.length + decreaseRows.length;
-          return (
-            <div style={{ paddingTop: 6 }}>
-              {totalHistory === 0 ? (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '36px 0',
-                    color: textTertiary,
-                  }}
-                >
-                  Chưa có lịch sử thay đổi nguyên giá
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {increaseRows.map((item, index) => {
-                    const d = item.adjustmentDetails;
-                    return (
-                      <div
-                        key={`inc-${item.id || index}`}
-                        style={{
-                          ...sectionBoxStyle,
-                          borderLeft: `4px solid ${statusOperational}`,
-                        }}
-                      >
-                        <div style={sectionHeaderStyle}>
-                          <div style={sectionTitleStyle}>
-                            <PlusCircleOutlined
-                              style={{ color: statusOperational }}
-                            />
-                            <span>Tăng nguyên giá — {item.increaseCode || item.reason || 'Điều chỉnh'}</span>
-                          </div>
-                          <span
-                            style={{
-                              color: statusOperational,
-                              fontWeight: fontWeightBold,
-                            }}
-                          >
-                            +{fmtNum(item.quantity || 0)} VNĐ
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '8px 24px',
-                            fontSize: fontSizeMd,
-                          }}
-                        >
-                          <div>
-                            <span style={{ color: textTertiary }}>Số QĐ: </span>
-                            <span>{d?.decisionNumber || '—'}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>Ngày QĐ: </span>
-                            <span>
-                              {d?.decisionDate
-                                ? dayjs(d.decisionDate).format('DD/MM/YYYY')
-                                : '—'}
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>Ngày tăng: </span>
-                            <span>
-                              {d?.adjustmentDate
-                                ? dayjs(d.adjustmentDate).format('DD/MM/YYYY')
-                                : '—'}
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>Lý do: </span>
-                            <span>{d?.adjustmentReason || item.reason || '—'}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>
-                              Nguyên giá trước/sau:{' '}
-                            </span>
-                            <span>
-                              {d?.originalValueBefore != null
-                                ? fmtNum(d.originalValueBefore)
-                                : '—'}{' '}
-                              →{' '}
-                              {d?.originalValueAfter != null
-                                ? fmtNum(d.originalValueAfter)
-                                : '—'}{' '}
-                              VNĐ
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>
-                              Giá trị còn lại trước/sau:{' '}
-                            </span>
-                            <span>
-                              {d?.remainingValueBefore != null
-                                ? fmtNum(d.remainingValueBefore)
-                                : '—'}{' '}
-                              →{' '}
-                              {d?.remainingValueAfter != null
-                                ? fmtNum(d.remainingValueAfter)
-                                : '—'}{' '}
-                              VNĐ
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {decreaseRows.map((item, index) => {
-                    const d = item.adjustmentDetails;
-                    return (
-                      <div
-                        key={`dec-${item.id || index}`}
-                        style={{
-                          ...sectionBoxStyle,
-                          borderLeft: `4px solid ${statusCritical}`,
-                        }}
-                      >
-                        <div style={sectionHeaderStyle}>
-                          <div style={sectionTitleStyle}>
-                            <MinusCircleOutlined
-                              style={{ color: statusCritical }}
-                            />
-                            <span>Giảm nguyên giá — {item.decreaseReason || item.reason || 'Điều chỉnh'}</span>
-                          </div>
-                          <span
-                            style={{
-                              color: statusCritical,
-                              fontWeight: fontWeightBold,
-                            }}
-                          >
-                            -{fmtNum(item.quantity || 0)} VNĐ
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '8px 24px',
-                            fontSize: fontSizeMd,
-                          }}
-                        >
-                          <div>
-                            <span style={{ color: textTertiary }}>Số QĐ: </span>
-                            <span>{d?.decisionNumber || '—'}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>Ngày QĐ: </span>
-                            <span>
-                              {d?.decisionDate
-                                ? dayjs(d.decisionDate).format('DD/MM/YYYY')
-                                : '—'}
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>Ngày giảm: </span>
-                            <span>
-                              {d?.adjustmentDate
-                                ? dayjs(d.adjustmentDate).format('DD/MM/YYYY')
-                                : '—'}
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>Lý do: </span>
-                            <span>{d?.adjustmentReason || item.reason || '—'}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>
-                              Nguyên giá trước/sau:{' '}
-                            </span>
-                            <span>
-                              {d?.originalValueBefore != null
-                                ? fmtNum(d.originalValueBefore)
-                                : '—'}{' '}
-                              →{' '}
-                              {d?.originalValueAfter != null
-                                ? fmtNum(d.originalValueAfter)
-                                : '—'}{' '}
-                              VNĐ
-                            </span>
-                          </div>
-                          <div>
-                            <span style={{ color: textTertiary }}>
-                              Giá trị còn lại trước/sau:{' '}
-                            </span>
-                            <span>
-                              {d?.remainingValueBefore != null
-                                ? fmtNum(d.remainingValueBefore)
-                                : '—'}{' '}
-                              →{' '}
-                              {d?.remainingValueAfter != null
-                                ? fmtNum(d.remainingValueAfter)
-                                : '—'}{' '}
-                              VNĐ
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        },
+        icon: <AuditOutlined />,
+        customContent: (
+          <AssetAdjustmentHistoryTab
+            dataSource={[...increaseRows, ...decreaseRows]}
+          />
+        ),
       },
+
     ];
   }, [
     rec,

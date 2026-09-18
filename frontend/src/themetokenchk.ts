@@ -1,10 +1,15 @@
-import React from 'react';
 import {
-  DeleteOutlined, HistoryOutlined, SendOutlined,
-  CheckOutlined, CloseOutlined, PlusOutlined, SearchOutlined, ReloadOutlined,
-  EnvironmentOutlined,
+    CheckOutlined, CloseOutlined,
+    DeleteOutlined,
+    EnvironmentOutlined,
+    HistoryOutlined,
+    PlusOutlined,
+    ReloadOutlined,
+    SearchOutlined,
+    SendOutlined,
 } from '@ant-design/icons';
 import viVN from 'antd/locale/vi_VN';
+import React from 'react';
 import { colors as baseColors, layout as baseLayout } from './theme';
 
 export const layout = baseLayout;
@@ -89,6 +94,7 @@ export const textTertiary = '#A1A5B7';
 
 // Border — --panel-border-color
 export const borderDefault = '#e4e4e4';
+export const borderBase = borderDefault;
 
 // Data series — dải xanh navy của chk
 export const dataNavy = '#1d2359';            // --kt-color-text-device-diagram
@@ -1201,9 +1207,9 @@ textarea.ant-input {
 }
 .${scope} .list-view-table .ant-table-thead > tr > th,
 .${scope} .ant-table-thead > tr > th,
-.ant-table-thead > tr > th { 
+.ant-table-thead > tr > th {
   background: ${tableHeaderBg};
-  color: ${tableHeaderColor}; 
+  color: ${tableHeaderColor};
   font-weight: 600;
   border-bottom: 1px solid ${borderDefault};
   transition: background-color 0.15s ease, color 0.15s ease;
@@ -1215,15 +1221,15 @@ textarea.ant-input {
 .${scope} .ant-table-thead > tr > th.ant-table-column-has-sorters {
   cursor: pointer !important;
 }
-.${scope} .list-view-table .ant-table-thead > tr > th.ant-table-column-has-sorters:hover { 
+.${scope} .list-view-table .ant-table-thead > tr > th.ant-table-column-has-sorters:hover {
   background: #f4f6fa !important;
   color: ${actionPrimary} !important;
 }
-.${scope} .list-view-table .ant-table-thead > tr > th.ant-table-column-sort { 
+.${scope} .list-view-table .ant-table-thead > tr > th.ant-table-column-sort {
   background: #f8fafc !important;
   color: ${actionPrimary} !important;
 }
-.${scope} .list-view-table .ant-table-thead > tr > th.ant-table-column-sort:hover { 
+.${scope} .list-view-table .ant-table-thead > tr > th.ant-table-column-sort:hover {
   background: #ffffff !important;
   color: ${actionPrimary} !important;
 }
@@ -1268,14 +1274,14 @@ textarea.ant-input {
 .${scope} .list-view-table .ant-table-tbody > tr:nth-child(even) > td {
   background: ${tableRowStripeBg};
 }
-.${scope} .list-view-table .ant-table-tbody > tr:hover > td { 
-  background: ${tableRowHoverBg} !important; 
+.${scope} .list-view-table .ant-table-tbody > tr:hover > td {
+  background: ${tableRowHoverBg} !important;
 }
 .${scope} .list-view-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
 .${scope} .list-view-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-start,
 .${scope} .list-view-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right,
-.${scope} .list-view-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-end { 
-  background: ${tableRowHoverBgFixed} !important; 
+.${scope} .list-view-table .ant-table-tbody > tr:hover > td.ant-table-cell-fix-end {
+  background: ${tableRowHoverBgFixed} !important;
 }
 
 .ant-drawer .ant-drawer-body::-webkit-scrollbar,

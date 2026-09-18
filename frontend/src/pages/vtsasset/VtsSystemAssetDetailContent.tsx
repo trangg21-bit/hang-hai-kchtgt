@@ -22,6 +22,7 @@ import {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
@@ -42,7 +43,6 @@ import {
   getAttachmentPreviewUrl,
   getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
-import { fmtNum } from '../../utils/numFmt';
 
 export { renderApprovalStatusBadge };
 
@@ -804,15 +804,7 @@ export default function VtsSystemAssetDetailContent({
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
-        customContent: (
-          <div style={{ padding: '4px 0' }}>
-            <CommonTable<AdjustmentRowItem>
-              options={adjustmentTableOption}
-              dataSource={combinedAdjustments}
-              total={combinedAdjustments.length}
-            />
-          </div>
-        ),
+        customContent: <AssetAdjustmentHistoryTab dataSource={combinedAdjustments} />,
       },
     ];
   }, [

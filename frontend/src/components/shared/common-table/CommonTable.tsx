@@ -48,6 +48,7 @@ import {
 } from "../../../themetokenchk";
 import { formatAssetCode } from "../../../utils/assetCode";
 import { DEFAULT_STATUS_MAP } from "./status-map.constants";
+import { getApprovalStatusInfo } from "./status-badge";
 
 const ACTION_COLUMN_WIDTH = 60;
 const HEADER_CHAR_WIDTH = 8.8;
@@ -539,12 +540,80 @@ function CommonTableInternal<T extends Record<string, unknown>>(
       const isSortable = Boolean(col.allowSort || col.sorter);
       const safeMinWidth = getHeaderMinWidth(colTitle, isSortable);
 
-      // Tính bề rộng thực tế đảm bảo không bị cắt chữ header
+      // Tự động mở rộng bề rộng nếu dữ liệu trạng thái dài để chứa đủ tên trạng thái
+      let statusDataMinWidth = 0;
+      const isStatusCol =
+        col.type === TableColumnType.Status ||
+        colField === "status" ||
+        colField === "approvalStatus" ||
+        colField === "conditionStatus" ||
+        (typeof colTitle === "string" &&
+          (colTitle.toLowerCase().includes("trạng thái") ||
+            colTitle.toLowerCase().includes("tình trạng")));
+
+      if (isStatusCol && actualData && actualData.length > 0) {
+        let maxLabelLen = 0;
+        for (const row of actualData) {
+          const rawVal = col.valueRef
+            ? col.valueRef(row, 0)
+            : (row as Record<string, unknown>)[colField];
+          if (rawVal !== undefined && rawVal !== null && rawVal !== "") {
+            const valStr = String(rawVal).trim();
+            let label = valStr;
+            if (col.statusMapping) {
+              if (Array.isArray(col.statusMapping)) {
+                const found = col.statusMapping.find(
+                  (m) =>
+                    String(m.value).toUpperCase() === valStr.toUpperCase() ||
+                    m.label === valStr
+                );
+                if (found?.label) label = found.label;
+              } else {
+                const found =
+                  col.statusMapping[valStr] ||
+                  col.statusMapping[valStr.toUpperCase()];
+                if (found?.label) label = found.label;
+              }
+            } else if (
+              DEFAULT_STATUS_MAP[valStr] ||
+              DEFAULT_STATUS_MAP[valStr.toUpperCase()]
+            ) {
+              label = (
+                DEFAULT_STATUS_MAP[valStr] ||
+                DEFAULT_STATUS_MAP[valStr.toUpperCase()]
+              ).label;
+            } else {
+              const info = getApprovalStatusInfo(valStr);
+              if (info.label && info.label !== "—") {
+                label = info.label;
+              }
+            }
+            if (label.length > maxLabelLen) {
+              maxLabelLen = label.length;
+            }
+          }
+        }
+        if (maxLabelLen > 0) {
+          // Pill badge: padding 20px + dot 13px + cell padding 32px + text ~8.5px/char
+          statusDataMinWidth = Math.ceil(maxLabelLen * 8.5) + 95;
+        }
+      }
+
+      // Tính bề rộng thực tế đảm bảo không bị cắt chữ header và chứa đủ dữ liệu trạng thái
+      const minRequired = Math.max(safeMinWidth, statusDataMinWidth);
       let finalWidth: number | string | undefined = col.width;
       if (typeof col.width === "number") {
-        finalWidth = Math.max(col.width, safeMinWidth);
-      } else if (!col.width && safeMinWidth > 0) {
-        finalWidth = safeMinWidth;
+        finalWidth = Math.max(col.width, minRequired);
+      } else if (!col.width && minRequired > 0) {
+        finalWidth = minRequired;
+      }
+      if (typeof col.minWidth === "number") {
+        finalWidth =
+          typeof finalWidth === "number"
+            ? Math.max(finalWidth, col.minWidth, minRequired)
+            : Math.max(col.minWidth, minRequired);
+      } else if (minRequired > 0 && typeof finalWidth === "number") {
+        finalWidth = Math.max(finalWidth, minRequired);
       }
 
       // Sorter: chỉ bật cờ để thu thập tham số sắp xếp gửi API (không sort memory)
@@ -559,6 +628,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         dataIndex: col.dataIndex,
         title: colTitle,
         width: finalWidth,
+        minWidth: typeof finalWidth === "number" ? finalWidth : undefined,
         align: col.align || "left",
         fixed: col.fixed,
         ellipsis: false,
@@ -917,6 +987,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
     return list;
   }, [
     options,
+    actualData,
     actualPage,
     actualPageSize,
     sortField,
