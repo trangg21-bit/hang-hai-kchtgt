@@ -368,7 +368,7 @@ export default function HanoiStationList() {
   const [isLookupReady, setIsLookupReady] = useState(false);
 
   const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('coastalstationhaiphong:create');
 
   useEffect(() => {
     let mounted = true;

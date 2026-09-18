@@ -263,7 +263,6 @@ export const PERMISSIONS = {
 
   /** Hệ thống CCTV (M-004) */
   CCTV: {
-    MANAGE: 'cctv:manage',
     READ: 'cctv:read',
     CREATE: 'cctv:create',
     UPDATE: 'cctv:update',
@@ -517,7 +516,6 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.APPROVE_C1, title: 'Duyệt Đài TTXLTT Hà Nội C1' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.APPROVE_C2, title: 'Duyệt Đài TTXLTT Hà Nội C2' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.HISTORY, title: 'Lịch sử Đài TTXLTT Hà Nội' },
-      { key: PERMISSIONS.CCTV.MANAGE, title: 'Quản lý Hệ thống CCTV' },
       { key: PERMISSIONS.CCTV.READ, title: 'Xem Hệ thống CCTV' },
       { key: PERMISSIONS.CCTV.CREATE, title: 'Thêm Hệ thống CCTV' },
       { key: PERMISSIONS.CCTV.UPDATE, title: 'Sửa Hệ thống CCTV' },

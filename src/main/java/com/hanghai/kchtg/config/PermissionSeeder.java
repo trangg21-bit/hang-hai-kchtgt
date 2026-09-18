@@ -17,12 +17,29 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @Order(1)
 @Profile({ "local", "local-h2", "prod" })
 @Slf4j
 public class PermissionSeeder implements CommandLineRunner {
+
+        /** KCHT business resources use explicit action permissions; `manage` is redundant. */
+        private static final Set<String> KCHT_RESOURCES_WITHOUT_MANAGE = Set.of(
+                        "port", "seaport", "berth", "berthasset", "pier", "pierasset", "buoyberth", "buoyberthasset",
+                        "anchorage", "anchorageasset", "transferarea", "transferareaasset", "stormshelter", "stormshelterasset",
+                        "dryport", "dryportasset", "waterzone", "waterarea", "navigationchannel", "channel", "channelasset", "dikerevetment", "dikerevetmentasset",
+                        "shiprepair", "shiprepairfacility", "shiprepairyard", "radarstation", "tramradar",
+                        "beaconstation", "beaconlight", "lighthouseasset", "buoystation", "buoy", "buoyasset", "lighthouse", "lighthousestation",
+                        "vts", "vtssystem", "vtsasset", "vtsoperationcenter", "vtsassist", "vtsassistasset", "aissystem", "aisasset", "cctv", "cctvasset", "scada", "scadaasset",
+                        "transmission", "transmissionasset", "vhf", "vhfasset", "daittdh", "daittdhasset", "ttxltt", "ttxlttasset", "coastalstation", "specialstation", "station",
+                        "coastalstationinmarsat", "coastalstationcospassarsat", "coastalstationlrit",
+                        "coastalstationhaiphong", "inmarsat", "inmarsatasset", "cospassarsat", "cospassarsatasset", "lrit", "lritasset", "asset", "infraasset",
+                        "assetincrease", "assetdecrease", "assetexploitation", "movementrequest", "inventoryasset",
+                        "inventoryplan", "inventoryreport", "approvalrecord", "processingrecord", "maintenanceplan",
+                        "operationplan", "incident", "gispoint", "pointobject", "gisline", "lineobject",
+                        "gispolygon", "polygonobject");
 
         private final PermissionRepository permissionRepository;
         private final JdbcTemplate jdbcTemplate;
@@ -1048,6 +1065,9 @@ public class PermissionSeeder implements CommandLineRunner {
 
         private void seedPermission(Map<String, Permission> definitions, String resource, String action, String name,
                         String description) {
+                if ("manage".equals(action) && KCHT_RESOURCES_WITHOUT_MANAGE.contains(resource)) {
+                        return;
+                }
                 String code = resource + ":" + action;
                 if (definitions.containsKey(code))
                         return;

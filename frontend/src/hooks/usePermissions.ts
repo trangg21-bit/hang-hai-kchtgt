@@ -248,8 +248,24 @@ const HIDDEN_PERMISSIONS = new Set([
   'approve:action',
 ]);
 
+const KCHT_RESOURCES_WITHOUT_MANAGE = new Set([
+  'port', 'berth', 'pier', 'buoyberth', 'anchorage', 'anchorageasset', 'transferarea', 'stormshelter',
+  'dryport', 'waterzone', 'waterarea', 'navigationchannel', 'dikerevetment', 'shiprepair',
+  'shiprepairfacility', 'shiprepairyard', 'radarstation', 'tramradar', 'beaconstation', 'beaconlight',
+  'buoystation', 'buoy', 'lighthouse', 'lighthousestation', 'vts', 'vtsoperationcenter', 'vtsassist',
+  'aissystem', 'cctv', 'cctvasset', 'scada', 'transmission', 'vhf', 'daittdh', 'ttxltt',
+  'coastalstation', 'specialstation', 'coastalstationinmarsat', 'coastalstationcospassarsat',
+  'coastalstationlrit', 'coastalstationhaiphong', 'inmarsat', 'cospassarsat', 'lrit', 'asset',
+  'infraasset', 'assetincrease', 'assetdecrease', 'assetexploitation', 'movementrequest',
+  'inventoryasset', 'inventoryplan', 'inventoryreport', 'approvalrecord', 'processingrecord',
+  'maintenanceplan', 'operationplan', 'incident', 'gispoint', 'pointobject', 'gisline', 'lineobject',
+  'gispolygon', 'polygonobject',
+]);
+
 function isHiddenPermission(key: string): boolean {
   if (HIDDEN_PERMISSIONS.has(key)) return true;
+  const [resource, action] = normalizePermissionKey(key).split(':', 2);
+  if (action === 'manage' && KCHT_RESOURCES_WITHOUT_MANAGE.has(canonicalResource(resource))) return true;
   if (key === 'anchoragearea' || key.startsWith('anchoragearea:')) return true;
   if (key.endsWith(':read:restricted') || key.endsWith(':read:confidential')) return true;
   if (key.endsWith(':restricted') || key.endsWith(':confidential')) return true;

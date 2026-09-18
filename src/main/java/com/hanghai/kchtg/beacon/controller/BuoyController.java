@@ -146,7 +146,7 @@ public class BuoyController {
         }
 
         @GetMapping("/{id}/history")
-        @PreAuthorize("@auth.check(authentication, 'buoy:read') or @auth.check(authentication, 'buoy:history') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.check(authentication, 'buoy:history')")
         public ResponseEntity<ApiResponse<Map<String, Object>>> getHistory(@PathVariable UUID id) {
                 String entityId = id.toString();
                 String entityType = "Buoy";
@@ -229,7 +229,7 @@ public class BuoyController {
         }
 
         @GetMapping("/history/all")
-        @PreAuthorize("@auth.check(authentication, 'buoy:read') or @auth.check(authentication, 'buoy:history') or @auth.check(authentication, 'data:read')")
+        @PreAuthorize("@auth.check(authentication, 'buoy:history')")
         public ResponseEntity<ApiResponse<Map<String, Object>>> getAllHistory() {
                 String entityType = "Buoy";
                 List<InfrastructureHistory> list = historyRepository

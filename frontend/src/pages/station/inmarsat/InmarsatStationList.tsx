@@ -811,7 +811,7 @@ export default function InmarsatStationList() {
       });
     }
 
-    if (hasPerm('coastalstationinmarsat:history') || hasPerm('coastalstationinmarsat:read')) {
+    if (hasPerm('coastalstationinmarsat:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',

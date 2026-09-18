@@ -303,7 +303,7 @@ public class CoastalStationInmarsatController {
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Xem lịch sử thay đổi Đài Inmarsat (F-103)")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationinmarsat:history', 'coastalstationinmarsat:read')")
+    @PreAuthorize("@auth.check(authentication, 'coastalstationinmarsat:history')")
     public ResponseEntity<List<CoastalStationInmarsatHistoryResponse>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,

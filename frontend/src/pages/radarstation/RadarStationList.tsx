@@ -1958,7 +1958,7 @@ export default function RadarStationList() {
       if (hasPerm('radarstation:read')) {
         actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
       }
-      if (hasPerm('radarstation:history') || hasPerm('radarstation:read') || hasPerm('data:read')) {
+      if (hasPerm('radarstation:history')) {
         actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
       }
       return actions;
@@ -1971,7 +1971,7 @@ export default function RadarStationList() {
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'radarstation' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: themeTokenChk.icons.edit, onClick: () => openEditDrawer(record) });
     }
-    if (hasPerm('radarstation:history') || hasPerm('radarstation:read') || hasPerm('data:read')) {
+    if (hasPerm('radarstation:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
     }
     const currentUserId = useAuthStore.getState().user?.userId;

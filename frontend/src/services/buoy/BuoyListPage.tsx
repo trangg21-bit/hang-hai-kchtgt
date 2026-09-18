@@ -1342,7 +1342,7 @@ export default function BuoyListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('buoy:create') || hasPerm('buoy:manage') || hasPerm('data:create')) {
+    if (hasPerm('buoy:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -1597,7 +1597,7 @@ export default function BuoyListPage() {
     });
 
     // Phê duyệt / Từ chối — theo trạng thái
-    if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update') || hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'DRAFT' || record.status === 'NHAP')) {
+    if (hasPerm('buoy:update') && (record.status === 'DRAFT' || record.status === 'NHAP')) {
       actions.push({
         key: 'submit',
         label: 'Gửi Cảng vụ phê duyệt',
@@ -1605,7 +1605,7 @@ export default function BuoyListPage() {
         onClick: () => openSubmitModal(record),
       });
     }
-    if ((hasPerm('buoy:update') || hasPerm('buoy:manage') || hasPerm('data:update') || hasPerm('data:read') || hasPerm('admin:manage')) && (record.status === 'REJECTED' || record.status === 'REJECTED_L1' || record.status === 'REJECTED_L2')) {
+    if (hasPerm('buoy:update') && (record.status === 'REJECTED' || record.status === 'REJECTED_L1' || record.status === 'REJECTED_L2')) {
       actions.push({
         key: 'resubmit',
         label: 'Gửi lại phê duyệt',
@@ -1649,7 +1649,7 @@ export default function BuoyListPage() {
 
     // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
     const deletableStatuses = ['DRAFT', 'NHAP'];
-    if ((hasPerm('buoy:delete') || hasPerm('buoy:manage') || hasPerm('data:delete')) && deletableStatuses.includes(record.status || '')) {
+    if (hasPerm('buoy:delete') && deletableStatuses.includes(record.status || '')) {
       actions.push({
         key: 'delete',
         label: 'Xóa',

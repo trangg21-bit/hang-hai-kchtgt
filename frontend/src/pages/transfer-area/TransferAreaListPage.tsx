@@ -911,7 +911,7 @@ export default function TransferAreaListPage() {
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
-    if (hasPerm('transferarea:manage') || hasPerm('transferarea:create')) {
+    if (hasPerm('transferarea:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
@@ -958,10 +958,10 @@ export default function TransferAreaListPage() {
           },
         });
       }
-      if (['DRAFT', 'NHAP'].includes(st) && (hasPerm('transferarea:manage') || hasPerm('transferarea:update'))) {
+      if (['DRAFT', 'NHAP'].includes(st) && hasPerm('transferarea:update')) {
         actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
       }
-      if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('transferarea:manage') || hasPerm('transferarea:update'))) {
+      if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && hasPerm('transferarea:update')) {
         actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
       }
 

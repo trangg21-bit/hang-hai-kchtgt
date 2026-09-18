@@ -205,7 +205,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
       // Inside dryportGroup, actions must be deduplicated (read, create, manage)
       const dryportActions = dryportGroup?.children?.map((c) => c.key);
-      expect(dryportActions).toEqual(['dryport:read', 'dryport:create', 'dryport:manage']);
+      expect(dryportActions).toEqual(['dryport:read', 'dryport:create']);
 
       // Check berth group
       const berthGroup = tree.find((g) => g.key === 'group_berth');
@@ -289,7 +289,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'anchorage:approvec1',
         'anchorage:approvec2',
         'anchorage:history',
-        'anchorage:manage',
       ]);
 
       // 4. Must NOT contain anchorage:approve or anchorageasset:approve
@@ -345,7 +344,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'transferarea:approvec1',
         'transferarea:approvec2',
         'transferarea:history',
-        'transferarea:manage',
       ]);
 
       expect(childKeys).not.toContain('transferarea:approve');
@@ -397,7 +395,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'lighthouse:approvec1',
         'lighthouse:approvec2',
         'lighthouse:history',
-        'lighthouse:manage',
       ]);
 
       expect(childKeys).not.toContain('beaconstation:approve');
@@ -449,7 +446,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'dikerevetment:approvec1',
         'dikerevetment:approvec2',
         'dikerevetment:history',
-        'dikerevetment:manage',
       ]);
 
       expect(childKeys).not.toContain('dikerevetment:approve');
@@ -500,7 +496,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'vhf:approvec1',
         'vhf:approvec2',
         'vhf:history',
-        'vhf:manage',
       ]);
 
       expect(childKeys).not.toContain('vhf:approve');
@@ -555,7 +550,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'radarstation:approvec1',
         'radarstation:approvec2',
         'radarstation:history',
-        'radarstation:manage',
       ]);
 
       expect(childKeys).not.toContain('radarstation:approve');
@@ -611,7 +605,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'cctv:approvec1',
         'cctv:approvec2',
         'cctv:history',
-        'cctv:manage',
       ]);
 
       expect(childKeys).not.toContain('cctv:approve');
@@ -667,7 +660,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'scada:approvec1',
         'scada:approvec2',
         'scada:history',
-        'scada:manage',
       ]);
 
       expect(childKeys).not.toContain('scada:approve');
@@ -723,7 +715,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'transmission:approvec1',
         'transmission:approvec2',
         'transmission:history',
-        'transmission:manage',
       ]);
 
       expect(childKeys).not.toContain('transmission:approve');
@@ -779,7 +770,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'vtsassist:approvec1',
         'vtsassist:approvec2',
         'vtsassist:history',
-        'vtsassist:manage',
       ]);
 
       expect(childKeys).not.toContain('vtsassist:approve');
@@ -834,7 +824,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'shiprepairfacility:approvec1',
         'shiprepairfacility:approvec2',
         'shiprepairfacility:history',
-        'shiprepairfacility:manage',
       ]);
 
       expect(childKeys).not.toContain('shiprepairyard:approve');

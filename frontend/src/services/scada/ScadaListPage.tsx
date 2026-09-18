@@ -1059,7 +1059,7 @@ const ScadaListPage = () => {
   };
 
   const openHistory = useCallback(async (r: ScadaResponse) => {
-    if (!hasPerm?.("scada:history") && !hasPerm?.("scada:read") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("scada:history")) {
       toast.warning("Bạn không có quyền xem lịch sử hệ thống SCADA");
       return;
     }
@@ -1560,7 +1560,7 @@ const ScadaListPage = () => {
             onClick: () => openDetailRecord(record),
           });
         }
-        if (hasPerm?.("scada:history") || hasPerm?.("scada:read") || hasPerm?.("data:read")) {
+        if (hasPerm?.("scada:history")) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -1591,7 +1591,7 @@ const ScadaListPage = () => {
       }
 
       // Lịch sử thay đổi (Audit trail — chuẩn CHK: Xem chi tiết → Chỉnh sửa → Lịch sử)
-      if (hasPerm?.("scada:history") || hasPerm?.("scada:read") || hasPerm?.("data:read")) {
+      if (hasPerm?.("scada:history")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -2138,14 +2138,14 @@ const ScadaListPage = () => {
           { label: "Quản lý hệ thống SCADA", path: "/scada" },
         ]}
         actions={[
-          (hasPerm?.("scada:create") || hasPerm?.("scada:manage"))
+          hasPerm?.("scada:create")
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("scada:create") && !hasPerm?.("scada:manage")) {
+                  if (!hasPerm?.("scada:create")) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống SCADA");
                     return;
                   }

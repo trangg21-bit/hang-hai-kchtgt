@@ -22,10 +22,9 @@ export default function WaterZoneForm() {
   const [cangBienOptions, setCangBienOptions] = useState<{ value: string; label: string }[]>([]);
 
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('waterzone:create');
   const canUpdate = canEditApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
-  const canSubmit = (entityData?.status === 'DRAFT' || (entityData?.status as any) === 'REJECTED') && (hasPerm('waterzone:update') || hasPerm('data:update') || isAdmin);
+  const canSubmit = (entityData?.status === 'DRAFT' || (entityData?.status as any) === 'REJECTED') && hasPerm('waterzone:update');
   const canDelete = canDeleteApprovalRecord(entityData?.status, { hasPerm, resource: 'waterzone' });
   const canApprove1 = hasPerm('waterzone:approvec1') || hasPerm('data:approvec1');
   const canApprove2 = hasPerm('waterzone:approvec2') || hasPerm('data:approvec2');

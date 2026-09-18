@@ -1120,7 +1120,7 @@ export default function AnchorageListPage() {
     // Bản ghi đã xóa: thao tác bị giới hạn CHỈ CÒN "Xem chi tiết" và "Lịch sử"
     if (isDeletedAnchorage(record)) {
       const deletedActions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
-      if (hasPerm('anchorage:history') || hasPerm('anchorage:manage')) {
+      if (hasPerm('anchorage:history')) {
         deletedActions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
       }
       return deletedActions;
@@ -1135,20 +1135,20 @@ export default function AnchorageListPage() {
         onClick: () => { setEditAnchorageId(record.id); setEditBaseStatus(record.approvalStatus); setCreateDrawerVisible(true); },
       });
     }
-    if (['DRAFT', 'NHAP'].includes(st) && (hasPerm('anchorage:update') || hasPerm('anchorage:create') || hasPerm('anchorage:manage'))) {
+    if (['DRAFT', 'NHAP'].includes(st) && (hasPerm('anchorage:update') || hasPerm('anchorage:create'))) {
       actions.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     }
-    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('anchorage:update') || hasPerm('anchorage:create') || hasPerm('anchorage:manage'))) {
+    if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('anchorage:update') || hasPerm('anchorage:create'))) {
       actions.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => handleSubmitApproval(record) });
     }
-    if (hasPerm('anchorage:history') || hasPerm('anchorage:manage')) {
+    if (hasPerm('anchorage:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
     }
-    if ((hasPerm('anchorage:approvec1') || hasPerm('anchorage:manage')) && st === 'PENDING_APPROVAL') {
+    if (hasPerm('anchorage:approvec1') && st === 'PENDING_APPROVAL') {
       actions.push({ key: 'approve_c1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
-    if ((hasPerm('anchorage:approvec2') || hasPerm('anchorage:manage')) && st === 'APPROVED_LEVEL1') {
+    if (hasPerm('anchorage:approvec2') && st === 'APPROVED_LEVEL1') {
       actions.push({ key: 'approve_c2', label: 'Phê duyệt cấp Cục', icon: icons.approve, onClick: () => { setApprovingRecord(record); setApproveModalOpen(true); } });
       actions.push({ key: 'reject_c2', label: 'Từ chối cấp Cục', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
     }
@@ -1366,7 +1366,7 @@ export default function AnchorageListPage() {
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
-    if (hasPerm('anchorage:create') || hasPerm('anchorage:manage')) {
+    if (hasPerm('anchorage:create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',

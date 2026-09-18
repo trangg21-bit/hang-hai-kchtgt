@@ -223,7 +223,7 @@ export default function LritStationList() {
   const statusCountFilterKey = useRef<string | null>(null);
   const [isOptionsReady, setIsOptionsReady] = useState(false);
 
-  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || hasPerm('*') || hasPerm('admin:all');
+  const canCreate = hasPerm('coastalstationlrit:create');
 
   // Handle map linked action
   useEffect(() => {
@@ -763,7 +763,7 @@ export default function LritStationList() {
       });
     }
 
-    if (hasPerm('coastalstationlrit:history') || hasPerm('specialstation:history') || hasPerm('data:read')) {
+    if (hasPerm('coastalstationlrit:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',

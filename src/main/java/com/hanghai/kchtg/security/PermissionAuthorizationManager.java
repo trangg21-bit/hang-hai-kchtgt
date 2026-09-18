@@ -63,6 +63,13 @@ public class PermissionAuthorizationManager {
         List<String> normalized = Arrays.stream(requiredPermissions)
                 .filter(permission -> permission != null && !permission.isBlank())
                 .toList();
+        List<String> historyPermissions = normalized.stream()
+                .filter(permission -> "history".equals(actionOf(permission)))
+                .toList();
+        if (!historyPermissions.isEmpty()) {
+            return historyPermissions.stream()
+                    .anyMatch(permission -> effectivePermissionService.checkPermission(authentication, permission));
+        }
         String primaryPermission = normalized.stream()
                 .filter(permission -> !LEGACY_ROUTE_FALLBACK_RESOURCES.contains(resourceOf(permission)))
                 .findFirst()
@@ -86,6 +93,11 @@ public class PermissionAuthorizationManager {
     private static String resourceOf(String permission) {
         int separator = permission.indexOf(':');
         return (separator >= 0 ? permission.substring(0, separator) : permission).trim().toLowerCase();
+    }
+
+    private static String actionOf(String permission) {
+        int separator = permission.indexOf(':');
+        return (separator >= 0 ? permission.substring(separator + 1) : "read").trim().toLowerCase();
     }
 
     /**

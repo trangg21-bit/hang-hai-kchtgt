@@ -250,7 +250,7 @@ export default function CospasSarsatStationList() {
   const listRequestId = useRef(0);
   const [isLookupReady, setIsLookupReady] = useState(false);
 
-  const canCreate = hasPerm('coastalstationcospassarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create');
+  const canCreate = hasPerm('coastalstationcospassarsat:create');
 
   useEffect(() => {
     let mounted = true;

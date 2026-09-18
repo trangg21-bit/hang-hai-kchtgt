@@ -1485,7 +1485,7 @@ export default function DikeRevetmentList() {
 
   // ── History ──────────────────────────────────────────────────────
   const openHistoryModal = useCallback(async (record: DikeRevetmentResponse) => {
-    if (!hasPerm?.('dikerevetment:history') && !hasPerm?.('dikerevetment:read') && !hasPerm?.('data:read')) {
+    if (!hasPerm?.('dikerevetment:history')) {
       message.warning('Bạn không có quyền xem lịch sử công trình đê kè');
       return;
     }
@@ -2282,7 +2282,7 @@ export default function DikeRevetmentList() {
           onClick: () => openDetailDrawer(record),
         });
       }
-      if (hasPerm('dikerevetment:history') || hasPerm('dikerevetment:read') || hasPerm('data:read')) {
+      if (hasPerm('dikerevetment:history')) {
         actions.push({
           key: 'history',
           label: 'Lịch sử',
@@ -2316,7 +2316,7 @@ export default function DikeRevetmentList() {
       });
     }
     // Lịch sử thay đổi.
-    if (hasPerm('dikerevetment:history') || hasPerm('dikerevetment:read') || hasPerm('data:read')) {
+    if (hasPerm('dikerevetment:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',

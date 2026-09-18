@@ -160,8 +160,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canCreate = hasPerm('aissystem:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('aissystem:create');
   const canUpdate = canEditApprovalRecord(item?.approvalStatus, { hasPerm, resource: 'aissystem' });
   const canSaveAndApprove = hasPerm('aissystem:approvec2');
 

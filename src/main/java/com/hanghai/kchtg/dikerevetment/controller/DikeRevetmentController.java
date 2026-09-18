@@ -236,7 +236,7 @@ public class DikeRevetmentController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.check(authentication, 'dikerevetment:history') or @auth.check(authentication, 'dikerevetment:read') or @auth.check(authentication, 'data:read')")
+    @PreAuthorize("@auth.check(authentication, 'dikerevetment:history')")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,

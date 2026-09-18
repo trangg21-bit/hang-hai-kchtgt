@@ -1803,7 +1803,7 @@ const validHistoryGroups = useMemo(() => {
 
   // ── Row Actions chuẩn /cctv ──
   const handleOpenHistory = useCallback((record: VhfResponse) => {
-    if (!hasPerm?.("vhf:history") && !hasPerm?.("vhf:read") && !hasPerm?.("data:read")) {
+    if (!hasPerm?.("vhf:history")) {
       toast.error("Bạn không có quyền xem lịch sử thay đổi");
       return;
     }
@@ -1832,7 +1832,7 @@ const validHistoryGroups = useMemo(() => {
     });
 
     if (isVhfDeleted(record)) {
-      if (hasPerm?.("vhf:history") || hasPerm?.("vhf:read") || hasPerm?.("data:read")) {
+      if (hasPerm?.("vhf:history")) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -1852,7 +1852,7 @@ const validHistoryGroups = useMemo(() => {
       });
     }
 
-    if (hasPerm?.("vhf:history") || hasPerm?.("vhf:read") || hasPerm?.("data:read")) {
+    if (hasPerm?.("vhf:history")) {
       actions.push({
         key: "history",
         label: "Lịch sử",

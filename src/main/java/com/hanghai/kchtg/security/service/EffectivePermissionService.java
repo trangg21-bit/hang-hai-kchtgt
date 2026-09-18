@@ -39,6 +39,22 @@ public class EffectivePermissionService {
             "ADMIN:ALL",
             "*");
 
+    private static final Set<String> KCHT_RESOURCES = Set.of(
+            "port", "seaport", "berth", "berthasset", "pier", "pierasset", "buoyberth", "buoyberthasset",
+            "anchorage", "anchorageasset", "transferarea", "transferareaasset", "stormshelter", "stormshelterasset",
+            "dryport", "dryportasset", "waterzone", "waterarea", "navigationchannel", "channel", "channelasset",
+            "dikerevetment", "dikerevetmentasset", "shiprepair", "shiprepairfacility", "shiprepairyard",
+            "radarstation", "tramradar", "radarasset", "beaconstation", "beaconlight", "lighthouse", "lighthouseasset",
+            "lighthousestation", "buoy", "buoyasset", "buoystation", "vts", "vtssystem", "vtsasset",
+            "vtsoperationcenter", "vtsassist", "vtsassistasset", "aissystem", "aisasset", "cctv", "cctvasset",
+            "scada", "scadaasset", "transmission", "transmissionasset", "vhf", "vhfasset", "daittdh", "daittdhasset",
+            "ttxltt", "ttxlttasset", "coastalstation", "specialstation", "station", "coastalstationinmarsat",
+            "coastalstationcospassarsat", "coastalstationlrit", "coastalstationhaiphong", "inmarsat", "inmarsatasset",
+            "cospassarsat", "cospassarsatasset", "lrit", "lritasset", "asset", "infraasset", "assetincrease",
+            "assetdecrease", "assetexploitation", "movementrequest", "inventoryasset", "inventoryplan", "inventoryreport",
+            "approvalrecord", "processingrecord", "maintenanceplan", "operationplan", "incident", "gispoint",
+            "pointobject", "gisline", "lineobject", "gispolygon", "polygonobject");
+
     /**
      * Bản đồ ánh xạ chuẩn hóa tên Resource (Resource Canonicalization Map)
      * Thay thế hoàn toàn các chuỗi so sánh hardcode rời rạc giữa tên cũ và tên mới.
@@ -515,7 +531,10 @@ public class EffectivePermissionService {
             return false;
         }
 
-        String canonicalRes = canonicalResource(resource);
+        if (ACTION_MANAGE.equals(action) && KCHT_RESOURCES.contains(resource)) {
+            return false;
+        }
+
         Set<String> targetResources = getEquivalentResources(resource);
 
         // C1/C2 are explicit business authorities. A system-admin wildcard or
@@ -530,24 +549,17 @@ public class EffectivePermissionService {
             return matchesExplicitApprovalLevel(permissions, targetResources, action);
         }
 
+        if (ACTION_HISTORY.equals(action) || "history".equals(action)) {
+            return permissions.contains(PermissionConstants.build(resource, ACTION_HISTORY));
+        }
+
         // 1. Exact, alias, manage or wildcard match across all equivalent resources
         for (String res : targetResources) {
             if (permissions.contains(PermissionConstants.build(res, action))
                     || permissions.contains(PermissionConstants.build(res, ACTION_WILDCARD))
-                    || permissions.contains(PermissionConstants.build(res, ACTION_MANAGE))) {
+                    || (!KCHT_RESOURCES.contains(res)
+                            && permissions.contains(PermissionConstants.build(res, ACTION_MANAGE)))) {
                 return true;
-            }
-        }
-
-        // 2. History matching: an explicit reader of this resource may see its history.
-        if (ACTION_HISTORY.equals(action) || "history".equals(action)) {
-            for (String res : targetResources) {
-                if (permissions.contains(PermissionConstants.build(res, ACTION_HISTORY))
-                        || permissions.contains(PermissionConstants.build(res, ACTION_READ))
-                        || permissions.contains(PermissionConstants.build(res, ACTION_WILDCARD))
-                        || permissions.contains(PermissionConstants.build(res, ACTION_MANAGE))) {
-                    return true;
-                }
             }
         }
 

@@ -160,7 +160,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = hasPerm('*') || hasPerm('admin:all');
   const canApproveL2 = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
-  const canCreate = hasPerm('coastalstationhaiphong:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('coastalstationhaiphong:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationhaiphong',

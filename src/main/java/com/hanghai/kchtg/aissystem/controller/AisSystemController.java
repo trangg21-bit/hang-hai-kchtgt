@@ -302,7 +302,7 @@ public class AisSystemController {
         return ResponseEntity.ok(ApiResponse.success("Từ chối phê duyệt thành công", null));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'aissystem:history') or @auth.check(authentication, 'aissystem:read')")
+    @PreAuthorize("@auth.check(authentication, 'aissystem:history')")
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable UUID id,

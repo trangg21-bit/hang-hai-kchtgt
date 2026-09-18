@@ -12,6 +12,18 @@ const LEGACY_ROUTE_FALLBACK_RESOURCES = new Set([
   'data', 'infraasset', 'specialstation', 'coastalstation', 'station',
 ]);
 
+const KCHT_RESOURCE_CANONICALS = new Set([
+  'port', 'berth', 'pier', 'buoyberth', 'anchorage', 'transferarea', 'stormshelter', 'dryport',
+  'waterzone', 'waterarea', 'navigationchannel', 'dikerevetment', 'shiprepairfacility', 'radarstation',
+  'lighthouse', 'buoy', 'vts', 'vtsoperationcenter', 'vtsassist', 'aissystem', 'cctv', 'scada',
+  'transmission', 'vhf', 'daittdh', 'ttxltt', 'coastalstation', 'specialstation', 'station',
+  'coastalstationinmarsat', 'cospassarsat', 'coastalstationhaiphong', 'lrit', 'asset', 'infraasset',
+  'assetincrease', 'assetdecrease', 'assetexploitation', 'movementrequest', 'inventoryasset',
+  'inventoryplan', 'inventoryreport', 'approvalrecord', 'processingrecord', 'maintenanceplan',
+  'operationplan', 'incident', 'gispoint', 'pointobject', 'gisline', 'lineobject', 'gispolygon',
+  'polygonobject',
+]);
+
 export interface PermissionState {
   permissions: string[];
   hasPermission: (key: string, options?: { explicitOnly?: boolean }) => boolean;
@@ -316,6 +328,14 @@ export function hasPermissionFromList(
     return permissions.has(normalizedKey);
   }
 
+  // History is an independently assigned business permission.  It must not
+  // be inherited from :read, :manage, parent resources, or legacy aliases.
+  if (requestedAction === 'history') {
+    return (grantedPermissions || []).some(
+      (permission) => normalizePermissionKey(permission?.trim() || '') === normalizedKey,
+    );
+  }
+
   // A system-administrator role is not an implicit business permission.  In
   // particular, do not turn a stale/generated "*" claim into access to every
   // KCHT screen; each resource must be assigned explicitly.
@@ -327,15 +347,19 @@ export function hasPermissionFromList(
   if (!rawResource) return false;
 
   const resource = canonicalResource(rawResource);
+  const isKchtResource = KCHT_RESOURCE_CANONICALS.has(rawResource) || KCHT_RESOURCE_CANONICALS.has(resource);
+  if (isKchtResource && action === 'manage') {
+    return false;
+  }
 
-  if (permissions.has(`${rawResource}:manage`) || permissions.has(`${resource}:manage`) ||
+  if ((!isKchtResource && (permissions.has(`${rawResource}:manage`) || permissions.has(`${resource}:manage`))) ||
       permissions.has(`${rawResource}:*`) || permissions.has(`${resource}:*`)) {
     return true;
   }
 
   // Parent domain match
   const parents = RESOURCE_PARENT_DOMAINS[resource] || RESOURCE_PARENT_DOMAINS[rawResource];
-  if (!options?.explicitOnly && parents) {
+  if (!isKchtResource && !options?.explicitOnly && parents) {
     for (const parent of parents) {
       if (permissions.has(`${parent}:${action}`) || permissions.has(`${parent}:manage`) || permissions.has(`${parent}:*`)) {
         return true;
@@ -356,7 +380,7 @@ export function hasPermissionFromList(
   }
 
   // Implicit Read: Chỉ áp dụng cho xem menu/trang/tuyến đường khi không yêu cầu explicitOnly
-  if (!options?.explicitOnly && (action === 'read' || action === 'view' || action === 'search')) {
+  if (!isKchtResource && !options?.explicitOnly && (action === 'read' || action === 'view' || action === 'search')) {
     for (const p of permissions) {
       const pRes = p.split(':', 2)[0];
       if (isResourceCoveredBy(pRes, resource)) {
@@ -365,7 +389,7 @@ export function hasPermissionFromList(
     }
   }
 
-  if (['create', 'update', 'delete'].includes(action || '') &&
+  if (!isKchtResource && ['create', 'update', 'delete'].includes(action || '') &&
       (permissions.has(`${rawResource}:write`) || permissions.has(`${resource}:write`))) {
     return true;
   }

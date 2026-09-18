@@ -48,7 +48,7 @@ public class CctvController {
   private final CctvApprovalService cctvApprovalService;
 
   @PostMapping
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:create')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:create')")
   public ResponseEntity<ApiResponse<CctvResponse>> create(
     @Valid @RequestBody CreateCctvRequest request) {
     log.info("Creating CCTV: code={}", request.getDeviceCode());
@@ -57,7 +57,7 @@ public class CctvController {
   }
 
   @GetMapping("/generate-code")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:create', 'cctv:read')")
+  @PreAuthorize("@auth.checkAny(authentication, 'cctv:create', 'cctv:read')")
   public ResponseEntity<ApiResponse<Map<String, String>>> generateCode() {
     log.info("Generating CCTV device code");
     String code = cctvService.generateCctvCode();
@@ -72,7 +72,7 @@ public class CctvController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:read')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:read')")
   public ResponseEntity<ApiResponse<CctvResponse>> getById(@PathVariable UUID id) {
     log.info("Getting CCTV by id={}", id);
     CctvResponse response = cctvService.getById(id);
@@ -81,7 +81,7 @@ public class CctvController {
 
   @GetMapping
   @DataScope
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:read')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:read')")
   public ResponseEntity<ApiResponse<Page<CctvResponse>>> findAll(
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "20") int size,
@@ -117,7 +117,7 @@ public class CctvController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:update', 'cctv:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'cctv:update', 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<CctvResponse>> update(
     @Valid @RequestBody UpdateCctvRequest request) {
     log.info("Updating CCTV: id={}", request.getId());
@@ -126,7 +126,7 @@ public class CctvController {
   }
 
   @DeleteMapping("/{id}")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:delete')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:delete')")
   public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
     log.info("Soft-deleting CCTV: id={}", id);
     cctvService.softDelete(id);
@@ -134,7 +134,7 @@ public class CctvController {
   }
 
   @PostMapping("/{id}/submit")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:update', 'cctv:create')")
+  @PreAuthorize("@auth.checkAny(authentication, 'cctv:update', 'cctv:create')")
   public ResponseEntity<ApiResponse<CctvResponse>> submit(@PathVariable UUID id,
     @RequestBody(required = false) SubmitContentRequest request) {
     log.info("Submitting CCTV for approval: id={}", id);
@@ -144,7 +144,7 @@ public class CctvController {
   }
 
   @PostMapping(value = {"/{id}/approve/c1", "/{id}/approvec1"})
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:approvec1')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:approvec1')")
   public ResponseEntity<ApiResponse<CctvResponse>> approveC1(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -154,7 +154,7 @@ public class CctvController {
   }
 
   @PostMapping(value = {"/{id}/approve/c2", "/{id}/approvec2", "/{id}/approve-l2"})
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:approvec2')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<CctvResponse>> approveC2(
     @PathVariable UUID id,
     @Valid @RequestBody ApprovalRequest request) {
@@ -164,7 +164,7 @@ public class CctvController {
   }
 
   @PostMapping(value = {"/{id}/reject/c1", "/{id}/rejectc1"})
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:approvec1')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:approvec1')")
   public ResponseEntity<ApiResponse<CctvResponse>> rejectC1(
       @PathVariable UUID id,
       @RequestParam(value = "reason", required = false) String reason,
@@ -179,7 +179,7 @@ public class CctvController {
   }
 
   @PostMapping(value = {"/{id}/reject/c2", "/{id}/rejectc2"})
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:approvec2')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<CctvResponse>> rejectC2(
       @PathVariable UUID id,
       @RequestParam(value = "reason", required = false) String reason,
@@ -194,7 +194,7 @@ public class CctvController {
   }
 
   @GetMapping("/{id}/history")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:history', 'cctv:read', 'data:read')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:history')")
   public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
     @PathVariable UUID id,
     @RequestParam(value = "page", required = false) Integer page,
@@ -212,7 +212,7 @@ public class CctvController {
   }
 
   @GetMapping("/history/all")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:history', 'cctv:read', 'data:read')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:history')")
   public ResponseEntity<ApiResponse<Object>> getAllHistory() {
     log.info("Getting all CCTV history");
     Object history = cctvApprovalService.getAllHistory();
@@ -220,7 +220,7 @@ public class CctvController {
   }
 
   @PostMapping("/{id}/restore")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:delete')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:delete')")
   public ResponseEntity<ApiResponse<CctvResponse>> restore(@PathVariable UUID id) {
     log.info("Restoring CCTV id={}", id);
     CctvResponse response = cctvService.restore(id);
@@ -230,7 +230,7 @@ public class CctvController {
   // ── Attachment endpoints (File đính kèm) ─────────────────────────
 
   @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:update', 'cctv:create', 'cctv:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'cctv:update', 'cctv:create', 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
       @PathVariable UUID id,
       @RequestParam("files") List<MultipartFile> files) {
@@ -241,7 +241,7 @@ public class CctvController {
   }
 
   @GetMapping("/{id}/attachments")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:read')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:read')")
   public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
     log.info("Listing CCTV attachments: id={}", id);
     return ResponseEntity.ok(ApiResponse.success(
@@ -250,7 +250,7 @@ public class CctvController {
   }
 
   @DeleteMapping("/{id}/attachments/{attachmentId}")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:update', 'cctv:create', 'cctv:delete', 'cctv:approvec2')")
+  @PreAuthorize("@auth.checkAny(authentication, 'cctv:update', 'cctv:create', 'cctv:delete', 'cctv:approvec2')")
   public ResponseEntity<ApiResponse<Void>> deleteAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {
@@ -261,7 +261,7 @@ public class CctvController {
 
   // Tải xuống file đính kèm — mirror /vts-operation-center (VtsOperationCenterController.downloadAttachment)
   @GetMapping("/{id}/attachments/{attachmentId}/download")
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:manage', 'cctv:read')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:read')")
   public ResponseEntity<Resource> downloadAttachment(
       @PathVariable UUID id,
       @PathVariable UUID attachmentId) {

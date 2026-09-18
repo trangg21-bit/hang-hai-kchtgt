@@ -197,16 +197,16 @@ describe('permissionStore Unit Tests', () => {
     expect(usePermissionStore.getState().hasPermission('vts:approvec1')).toBe(true);
   });
 
-  it('should implicitly grant read permission when user has operational permissions (Implicit Read)', () => {
+  it('should require an explicit read permission for KCHT resources', () => {
     // User only has approvec1 for VTS, no explicit read
     useAuthStore.setState({
     user: { id: '1', username: 'evaluator', permissions: ['vts:approvec1'] } as User,
     });
 
     const store = usePermissionStore.getState();
-    expect(store.hasPermission('vts:read')).toBe(true);
-    expect(store.hasPermission('vts:view')).toBe(true);
-    expect(store.hasPermission('vts:search')).toBe(true);
+    expect(store.hasPermission('vts:read')).toBe(false);
+    expect(store.hasPermission('vts:view')).toBe(false);
+    expect(store.hasPermission('vts:search')).toBe(false);
     expect(store.hasPermission('vts:delete')).toBe(false);
 
     // User only has create for LRIT station
@@ -214,20 +214,22 @@ describe('permissionStore Unit Tests', () => {
     user: { id: '2', username: 'creator', permissions: ['coastalstationlrit:create'] } as User,
     });
 
-    expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
+    expect(store.hasPermission('coastalstationlrit:read')).toBe(false);
     expect(store.hasPermission('coastalstationlrit:delete')).toBe(false);
   });
 
-  it('should cover child stations when user has parent specialstation permission', () => {
+  it('should not cover child stations from a parent station permission', () => {
     useAuthStore.setState({
     user: { id: '3', username: 'specialAdmin', permissions: ['specialstation:read'] } as User,
     });
 
     const store = usePermissionStore.getState();
-    expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
+    expect(store.hasPermission('coastalstationlrit:read')).toBe(false);
+    // `inmarsat` is the legacy asset resource; the dedicated coastal-station
+    // resources above must remain isolated from the parent permission.
     expect(store.hasPermission('inmarsat:read')).toBe(true);
-    expect(store.hasPermission('coastalstationhaiphong:read')).toBe(true);
-    expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(true);
+    expect(store.hasPermission('coastalstationhaiphong:read')).toBe(false);
+    expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(false);
   });
 
   it('should not leak vts permissions to vtsoperationcenter or vhf', () => {
@@ -237,7 +239,7 @@ describe('permissionStore Unit Tests', () => {
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('vts:create')).toBe(true);
-    expect(store.hasPermission('vts:read')).toBe(true);
+    expect(store.hasPermission('vts:read')).toBe(false);
     expect(store.hasExplicitPermission('vts:read')).toBe(false);
     expect(store.hasExplicitPermission('vts:create')).toBe(true);
     expect(store.hasPermission('vtsoperationcenter:read')).toBe(false);

@@ -164,7 +164,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   const userUnitType = currentUser?.unitType || '';
   const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
   const canApproveL2 = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
-  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('coastalstationlrit:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationlrit',

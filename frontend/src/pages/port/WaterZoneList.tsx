@@ -43,8 +43,7 @@ const STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
 export default function WaterZoneList() {
   const navigate = useNavigate();
   const hasPerm = usePermissionStore((state: { hasPermission: (key: string) => boolean }) => state.hasPermission);
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canCreate = hasPerm('waterzone:create') || hasPerm('data:create') || isAdmin;
+  const canCreate = hasPerm('waterzone:create');
 
   const [search, setSearch] = useState('');
   const [filterLoai, setFilterLoai] = useState<string | undefined>();
@@ -210,7 +209,7 @@ export default function WaterZoneList() {
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'waterzone' })) {
       actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => navigate(`/WaterZone/${record.id}`) });
     }
-    const canSubmit = (record.approvalStatus === 'DRAFT' || record.approvalStatus === 'REJECTED') && (hasPerm('waterzone:update') || hasPerm('data:update') || isAdmin);
+    const canSubmit = (record.approvalStatus === 'DRAFT' || record.approvalStatus === 'REJECTED') && hasPerm('waterzone:update');
     if (canSubmit) {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
     }
@@ -228,7 +227,7 @@ export default function WaterZoneList() {
       actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
     }
     return actions;
-  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject, hasPerm, isAdmin]);
+  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject, hasPerm]);
 
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
