@@ -17,6 +17,7 @@ import type {
 } from '../../services/assetmovement/types';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
@@ -611,154 +612,10 @@ export default function BuoyBerthAssetDetailContent({
         key: 'adjustments',
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: combinedAdjustments.length,
-        customContent: () => (
-          <div
-            style={{
-              paddingTop: 6,
-              paddingRight: 4,
-              overflowY: 'auto',
-              maxHeight: 'calc(100vh - 190px)',
-              minHeight: 350,
-            }}
-          >
-            {combinedAdjustments.length === 0 ? (
-              <div
-                style={{
-                  textAlign: 'center',
-                  padding: '40px 0',
-                  color: textTertiary,
-                  fontSize: 13.5,
-                }}
-              >
-                Chưa có lịch sử thay đổi nguyên giá nào.
-              </div>
-            ) : (
-              combinedAdjustments.map((row, index) => {
-                const details = row.adjustmentDetails;
-                const origBefore = details?.originalValueBefore != null ? Number(details.originalValueBefore) : undefined;
-                const origAfter = details?.originalValueAfter != null ? Number(details.originalValueAfter) : undefined;
-                const diffAmount = (origBefore != null && origAfter != null)
-                  ? Math.abs(origAfter - origBefore)
-                  : undefined;
-
-                return (
-                  <div key={row.id} style={sectionBoxStyle}>
-                    <div style={sectionHeaderStyle}>
-                      <div style={sectionTitleStyle}>
-                        <SlidersOutlined style={{ color: row.changeType === 'Tăng nguyên giá' ? statusOperational : statusCritical }} />
-                        <span>
-                          {row.changeType} — Lần {index + 1} ({fmtDateTime(row.updatedAt || row.createdAt)})
-                        </span>
-                      </div>
-                    </div>
-                    <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Loại thay đổi</span>
-                        <span
-                          className="chk-detail-value"
-                          style={{
-                            fontWeight: fontWeightBold,
-                            color: row.changeType === 'Tăng nguyên giá' ? statusOperational : statusCritical,
-                          }}
-                        >
-                          {row.changeType}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Số QĐ điều chỉnh</span>
-                        <span className="chk-detail-value">
-                          {String(
-                            details?.decisionNumber ||
-                              ('increaseCode' in row ? row.increaseCode : ('decreaseCode' in row ? row.decreaseCode : '—'))
-                          )}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày ra quyết định</span>
-                        <span className="chk-detail-value">
-                          {details?.decisionDate ? fmtDate(details.decisionDate) : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày điều chỉnh</span>
-                        <span className="chk-detail-value">
-                          {details?.adjustmentDate ? fmtDate(details.adjustmentDate) : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Giá trị điều chỉnh</span>
-                        <span
-                          className="chk-detail-value"
-                          style={{
-                            fontWeight: fontWeightBold,
-                            color: row.changeType === 'Tăng nguyên giá' ? statusOperational : statusCritical,
-                          }}
-                        >
-                          {diffAmount != null
-                            ? `${row.changeType === 'Tăng nguyên giá' ? '+' : '-'}${fmtNum(diffAmount)} VNĐ`
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Nguyên giá trước</span>
-                        <span className="chk-detail-value">
-                          {origBefore != null ? `${fmtNum(origBefore)} VNĐ` : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Nguyên giá sau</span>
-                        <span
-                          className="chk-detail-value"
-                          style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}
-                        >
-                          {origAfter != null ? `${fmtNum(origAfter)} VNĐ` : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Khấu hao lũy kế</span>
-                        <span className="chk-detail-value">
-                          {details?.accumulatedDepreciation != null
-                            ? `${fmtNum(Number(details.accumulatedDepreciation))} VNĐ`
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Giá trị còn lại sau điều chỉnh</span>
-                        <span className="chk-detail-value">
-                          {details?.remainingValueAfter != null
-                            ? `${fmtNum(Number(details.remainingValueAfter))} VNĐ`
-                            : '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Lý do điều chỉnh</span>
-                        <span className="chk-detail-value">
-                          {String(
-                            details?.adjustmentReason ||
-                              ('decreaseReason' in row ? row.decreaseReason : (row.reason || '—'))
-                          )}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Cán bộ thực hiện</span>
-                        <span className="chk-detail-value">
-                          {row.createdByName || '—'}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label">Ghi chú</span>
-                        <span className="chk-detail-value">
-                          {String(details?.adjustmentNotes || '—')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        ),
+        icon: <AuditOutlined />,
+        customContent: <AssetAdjustmentHistoryTab dataSource={combinedAdjustments} />,
       },
+
     ];
   }, [
     r,

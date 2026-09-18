@@ -1,16 +1,16 @@
 import {
-    CheckOutlined,
-    CloseOutlined,
-    DeleteOutlined,
-    EditOutlined,
-    EyeOutlined,
-    HistoryOutlined,
-    MinusCircleOutlined,
-    PlusCircleOutlined,
-    PlusOutlined,
-    RocketOutlined,
-    SearchOutlined,
-    SendOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  HistoryOutlined,
+  MinusCircleOutlined,
+  PlusCircleOutlined,
+  PlusOutlined,
+  RocketOutlined,
+  SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
 import type { Dayjs } from 'dayjs';
@@ -18,84 +18,84 @@ import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
 import {
-    CommonStatusTabs,
-    CommonTable,
-    FilterTableLayout,
-    ScreenHeader,
-    TableColumnType,
-    TableFilter,
-    type FilterOption,
-    type ScreenHeaderAction,
-    type TableOption,
+  CommonStatusTabs,
+  CommonTable,
+  FilterTableLayout,
+  ScreenHeader,
+  TableColumnType,
+  TableFilter,
+  type FilterOption,
+  type ScreenHeaderAction,
+  type TableOption,
 } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
-import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import {
-    triggerBlobDownload,
-    type InfrastructureAttachmentItem,
+  triggerBlobDownload,
+  type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
+import { MARITIME_ASSET_TYPE_OPTIONS } from '../../constants/assetType';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
 import {
-    approveInfraAssetC1,
-    approveInfraAssetC2,
-    createAssetDecrease,
-    createAssetIncrease,
-    createChannelAsset,
-    createKhaiThac,
-    deleteChannelAsset,
-    deleteInfraAssetAttachment,
-    fetchAssetDecreaseList,
-    fetchAssetIncreaseList,
-    fetchChannelAssets,
-    fetchInfraAssetAttachments,
-    fetchInfraAssetHistory,
-    fetchKhaiThacList,
-    rejectInfraAssetC1,
-    rejectInfraAssetC2,
-    submitInfraAssetApproval,
-    updateChannelAsset,
-    uploadInfraAssetAttachments,
+  approveInfraAssetC1,
+  approveInfraAssetC2,
+  createAssetDecrease,
+  createAssetIncrease,
+  createChannelAsset,
+  createKhaiThac,
+  deleteChannelAsset,
+  deleteInfraAssetAttachment,
+  fetchAssetDecreaseList,
+  fetchAssetIncreaseList,
+  fetchChannelAssets,
+  fetchInfraAssetAttachments,
+  fetchInfraAssetHistory,
+  fetchKhaiThacList,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
+  updateChannelAsset,
+  uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
 import type {
-    AssetDecreaseResponse,
-    AssetExploitationResponse,
-    AssetIncreaseResponse,
-    ChannelAsset,
-    ChannelAssetFilters,
-    ChannelAssetPayload,
+  AssetDecreaseResponse,
+  AssetExploitationResponse,
+  AssetIncreaseResponse,
+  ChannelAsset,
+  ChannelAssetFilters,
+  ChannelAssetPayload,
 } from '../../services/assetmovement/types';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { organizationService, type Organization } from '../../services/organizationService';
 import { useAuthStore } from '../../store/authStore';
-import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    colors,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontSizeMd,
-    fontWeightBold,
-    radiusPill,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  colors,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontSizeMd,
+  fontWeightBold,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  textTertiary,
 } from '../../themetokenchk';
 import type { NavigationChannelResponse } from '../../types/navigationChannel';
-import { canDeleteApprovalRecord, isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { countHistoryUpdates, DEFAULT_IGNORED_FIELDS, isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import ChannelAssetDetailContent from './ChannelAssetDetailContent';
 import ChannelAssetForm, { type ChannelFormValues } from './ChannelAssetForm';
 import ChannelAssetOperationForm, {
-    type OperationMode,
-    type OperationValues,
+  type OperationMode,
+  type OperationValues,
 } from './ChannelAssetOperationForm';
 
 const STATUS_COUNT_KEYS = [

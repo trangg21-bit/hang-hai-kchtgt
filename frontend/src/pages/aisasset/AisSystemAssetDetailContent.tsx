@@ -22,6 +22,7 @@ import {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import type { AisSystemAsset } from '../../services/aisasset/types';
 import type {
   AssetDecreaseResponse,
@@ -909,15 +910,7 @@ export default function AisSystemAssetDetailContent({
         label: 'Lịch sử thay đổi nguyên giá',
         badgeCount: combinedAdjustments.length,
         icon: <AuditOutlined />,
-        customContent: (
-          <div style={{ padding: '4px 0' }}>
-            <CommonTable<AdjustmentRowItem>
-              options={adjustmentTableOption}
-              dataSource={combinedAdjustments}
-              total={combinedAdjustments.length}
-            />
-          </div>
-        ),
+        customContent: <AssetAdjustmentHistoryTab dataSource={combinedAdjustments} />,
       },
     ];
   }, [
