@@ -71,7 +71,7 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", nullable = false, columnDefinition = "SMALLINT")
-    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
+    private ConditionStatus conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
 
     // --- Thông số đặc thù TTXLTT Hà Nội / Hải Phòng ---
     @Column(name = "port_name")
@@ -208,7 +208,7 @@ public class CoastalStationHaiphong extends BaseEntity implements ApprovableEnti
             this.approvalStatus = ApprovalStatus.DRAFT;
         }
         if (this.conditionStatus == null) {
-            this.conditionStatus = ConditionStatus.OPERATIONAL;
+            this.conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
         }
     }
 

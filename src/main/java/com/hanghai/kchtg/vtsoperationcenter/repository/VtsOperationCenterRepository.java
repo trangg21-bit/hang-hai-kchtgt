@@ -60,6 +60,7 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN Port p ON p.id = t.portId
         LEFT JOIN VtsSystem vs ON vs.id = t.vtsSystemId
+        LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User u ON u.id = t.updatedBy
         LEFT JOIN User uSub ON uSub.id = t.submittedBy
         LEFT JOIN User uApp1 ON uApp1.id = t.approverLevel1

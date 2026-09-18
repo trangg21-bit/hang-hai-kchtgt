@@ -153,6 +153,7 @@ public class CoastalStationHaiphongService {
     public Page<CoastalStationHaiphongResponse> searchPaged(
             UUID orgUnitId,
             String keyword,
+            String code,
             UUID operatingOrgId,
             Integer provinceId,
             String conditionStatus,
@@ -169,7 +170,7 @@ public class CoastalStationHaiphongService {
         String kw = toKeywordLike(keyword);
 
         Page<CoastalStationHaiphong> page = repository.searchPaged(
-                scopeEnabled, scopeOrgUnitIds, null, kw, operatingOrgId, provinceId,
+                scopeEnabled, scopeOrgUnitIds, null, kw, toKeywordLike(code), operatingOrgId, provinceId,
                 parseConditionStatus(conditionStatus), approvalStatus, updatedBy, updatedFrom, updatedTo, pageable);
 
         return page.map(this::buildResponse);
@@ -177,7 +178,7 @@ public class CoastalStationHaiphongService {
 
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(UUID orgUnitId, String keyword, String conditionStatus) {
-        return countByApprovalStatus(orgUnitId, keyword, conditionStatus, null, null, null, null, null);
+        return countByApprovalStatus(orgUnitId, keyword, null, conditionStatus, null, null, null, null, null);
     }
 
     /**
@@ -186,7 +187,7 @@ public class CoastalStationHaiphongService {
      */
     @Transactional(readOnly = true)
     public Map<String, Long> countByApprovalStatus(
-            UUID orgUnitId, String keyword, String conditionStatus,
+            UUID orgUnitId, String keyword, String code, String conditionStatus,
             UUID operatingOrgId, Integer provinceId, UUID updatedBy,
             LocalDateTime updatedFrom, LocalDateTime updatedTo) {
         Scope scope = resolveEffectiveScope(orgUnitId);
@@ -196,7 +197,7 @@ public class CoastalStationHaiphongService {
         String kw = toKeywordLike(keyword);
 
         List<Object[]> rawCounts = repository.countByApprovalStatus(
-                scopeEnabled, scopeOrgUnitIds, null, kw, parseConditionStatus(conditionStatus),
+                scopeEnabled, scopeOrgUnitIds, null, kw, toKeywordLike(code), parseConditionStatus(conditionStatus),
                 operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo);
 
         Map<ApprovalStatus, Long> countsByStatus = new EnumMap<>(ApprovalStatus.class);
@@ -283,25 +284,11 @@ public class CoastalStationHaiphongService {
         entity.setLocationAddress(request.getLocationAddress());
         entity.setConditionStatus(request.getConditionStatus() != null
                 ? parseConditionStatus(request.getConditionStatus())
-                : com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL);
+                : com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL);
         entity.setApprovalStatus(ApprovalStatus.DRAFT);
 
-        entity.setPortName(request.getPortName());
-        entity.setDistrict(request.getDistrict());
-        entity.setWard(request.getWard());
-        entity.setOperationalLicense(request.getOperationalLicense());
-        entity.setLicenseExpiry(request.getLicenseExpiry());
-        entity.setInspectorName(request.getInspectorName());
-        entity.setInspectorPhone(request.getInspectorPhone());
-        entity.setLastInspectionDate(request.getLastInspectionDate());
-        entity.setNextInspectionDate(request.getNextInspectionDate());
-        entity.setCoverageArea(request.getCoverageArea());
-        entity.setEquipmentType(request.getEquipmentType());
-        entity.setCommunicationFrequency(request.getCommunicationFrequency());
         entity.setServicesProvided(request.getServicesProvided());
         entity.setDescription(request.getDescription());
-        entity.setContactPerson(request.getContactPerson());
-        entity.setContactPhone(request.getContactPhone());
         entity.setSymbolId(resolveSymbolId(request.getSymbolId(), request.getSymbol()));
 
         CoastalStationHaiphong saved = repository.save(entity);
@@ -341,14 +328,10 @@ public class CoastalStationHaiphongService {
             validateAllowedOrgUnit(request.getOrgUnitId());
         }
 
-        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-
         Map<String, String> oldValues = new LinkedHashMap<>();
-        if (wasApproved) {
-            if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
-                oldValues.put("name", entity.getName() != null ? entity.getName() : null);
-            }
+        if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
+            oldValues.put("name", entity.getName() != null ? entity.getName() : null);
+        }
             if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
                 String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
                 oldValues.put("orgUnitId", oldName != null ? oldName : null);
@@ -366,53 +349,11 @@ public class CoastalStationHaiphongService {
             if (request.getConditionStatus() != null && !Objects.equals(parseConditionStatus(request.getConditionStatus()), entity.getConditionStatus())) {
                 oldValues.put("conditionStatus", entity.getConditionStatus() != null ? entity.getConditionStatus().name() : null);
             }
-            if (request.getPortName() != null && !Objects.equals(request.getPortName(), entity.getPortName())) {
-                oldValues.put("portName", entity.getPortName() != null ? entity.getPortName() : null);
-            }
-            if (request.getDistrict() != null && !Objects.equals(request.getDistrict(), entity.getDistrict())) {
-                oldValues.put("district", entity.getDistrict() != null ? entity.getDistrict() : null);
-            }
-            if (request.getWard() != null && !Objects.equals(request.getWard(), entity.getWard())) {
-                oldValues.put("ward", entity.getWard() != null ? entity.getWard() : null);
-            }
-            if (request.getOperationalLicense() != null && !Objects.equals(request.getOperationalLicense(), entity.getOperationalLicense())) {
-                oldValues.put("operationalLicense", entity.getOperationalLicense() != null ? entity.getOperationalLicense() : null);
-            }
-            if (request.getLicenseExpiry() != null && !Objects.equals(request.getLicenseExpiry(), entity.getLicenseExpiry())) {
-                oldValues.put("licenseExpiry", entity.getLicenseExpiry() != null ? String.valueOf(entity.getLicenseExpiry()) : null);
-            }
-            if (request.getInspectorName() != null && !Objects.equals(request.getInspectorName(), entity.getInspectorName())) {
-                oldValues.put("inspectorName", entity.getInspectorName() != null ? entity.getInspectorName() : null);
-            }
-            if (request.getInspectorPhone() != null && !Objects.equals(request.getInspectorPhone(), entity.getInspectorPhone())) {
-                oldValues.put("inspectorPhone", entity.getInspectorPhone() != null ? entity.getInspectorPhone() : null);
-            }
-            if (request.getLastInspectionDate() != null && !Objects.equals(request.getLastInspectionDate(), entity.getLastInspectionDate())) {
-                oldValues.put("lastInspectionDate", entity.getLastInspectionDate() != null ? String.valueOf(entity.getLastInspectionDate()) : null);
-            }
-            if (request.getNextInspectionDate() != null && !Objects.equals(request.getNextInspectionDate(), entity.getNextInspectionDate())) {
-                oldValues.put("nextInspectionDate", entity.getNextInspectionDate() != null ? String.valueOf(entity.getNextInspectionDate()) : null);
-            }
-            if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
-                oldValues.put("coverageArea", entity.getCoverageArea() != null ? entity.getCoverageArea() : null);
-            }
-            if (request.getEquipmentType() != null && !Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
-                oldValues.put("equipmentType", entity.getEquipmentType() != null ? entity.getEquipmentType() : null);
-            }
-            if (request.getCommunicationFrequency() != null && !Objects.equals(request.getCommunicationFrequency(), entity.getCommunicationFrequency())) {
-                oldValues.put("communicationFrequency", entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : null);
-            }
             if (request.getServicesProvided() != null && !Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
                 oldValues.put("servicesProvided", entity.getServicesProvided() != null ? entity.getServicesProvided() : null);
             }
             if (request.getDescription() != null && !Objects.equals(request.getDescription(), entity.getDescription())) {
                 oldValues.put("description", entity.getDescription() != null ? entity.getDescription() : null);
-            }
-            if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
-                oldValues.put("contactPerson", entity.getContactPerson() != null ? entity.getContactPerson() : null);
-            }
-            if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
-                oldValues.put("contactPhone", entity.getContactPhone() != null ? entity.getContactPhone() : null);
             }
 
             // GIS tracking
@@ -428,7 +369,6 @@ public class CoastalStationHaiphongService {
             if (newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
                 oldValues.put("coordinates", oldCoord != null ? oldCoord : null);
             }
-        }
 
         if (request.getOrgUnitId() != null) {
             validateAllowedOrgUnit(request.getOrgUnitId());
@@ -447,22 +387,8 @@ public class CoastalStationHaiphongService {
         if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
         if (request.getConditionStatus() != null) entity.setConditionStatus(parseConditionStatus(request.getConditionStatus()));
 
-        if (request.getPortName() != null) entity.setPortName(request.getPortName());
-        if (request.getDistrict() != null) entity.setDistrict(request.getDistrict());
-        if (request.getWard() != null) entity.setWard(request.getWard());
-        if (request.getOperationalLicense() != null) entity.setOperationalLicense(request.getOperationalLicense());
-        if (request.getLicenseExpiry() != null) entity.setLicenseExpiry(request.getLicenseExpiry());
-        if (request.getInspectorName() != null) entity.setInspectorName(request.getInspectorName());
-        if (request.getInspectorPhone() != null) entity.setInspectorPhone(request.getInspectorPhone());
-        if (request.getLastInspectionDate() != null) entity.setLastInspectionDate(request.getLastInspectionDate());
-        if (request.getNextInspectionDate() != null) entity.setNextInspectionDate(request.getNextInspectionDate());
-        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
-        if (request.getEquipmentType() != null) entity.setEquipmentType(request.getEquipmentType());
-        if (request.getCommunicationFrequency() != null) entity.setCommunicationFrequency(request.getCommunicationFrequency());
         if (request.getServicesProvided() != null) entity.setServicesProvided(request.getServicesProvided());
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
         if (request.getSymbolId() != null || request.getSymbol() != null) {
             entity.setSymbolId(resolveSymbolId(request.getSymbolId(), request.getSymbol()));
         }
@@ -481,7 +407,7 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong updated = repository.save(entity);
 
-        if (wasApproved && !oldValues.isEmpty()) {
+        if (!oldValues.isEmpty()) {
             UUID currentUserId = SecurityUtils.getCurrentUserId();
             historyService.recordDeltaChanges(
                     InfrastructureType.HANOI_STATION,
@@ -523,13 +449,8 @@ public class CoastalStationHaiphongService {
             case "provinceId", "Địa điểm (Tỉnh/TP)" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "—";
             case "locationAddress", "Địa điểm chi tiết" -> entity.getLocationAddress() != null ? entity.getLocationAddress() : "—";
             case "conditionStatus", "Tình trạng" -> entity.getConditionStatus() != null ? entity.getConditionStatus().name() : "—";
-            case "coverageArea", "Vùng phủ sóng" -> entity.getCoverageArea() != null ? entity.getCoverageArea() : "—";
-            case "equipmentType", "Loại thiết bị" -> entity.getEquipmentType() != null ? entity.getEquipmentType() : "—";
-            case "communicationFrequency", "Tần số liên lạc" -> entity.getCommunicationFrequency() != null ? entity.getCommunicationFrequency() : "—";
             case "servicesProvided", "Dịch vụ cung cấp" -> entity.getServicesProvided() != null ? entity.getServicesProvided() : "—";
             case "description", "Ghi chú" -> entity.getDescription() != null ? entity.getDescription() : "—";
-            case "contactPerson", "Người liên hệ" -> entity.getContactPerson() != null ? entity.getContactPerson() : "—";
-            case "contactPhone", "Số điện thoại liên hệ" -> entity.getContactPhone() != null ? entity.getContactPhone() : "—";
             case "symbolId", "Biểu tượng" -> (entity.getSymbolId() != null && gisSpatialObjectService != null)
                     ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString())
                     : (entity.getSymbolId() != null ? String.valueOf(entity.getSymbolId()) : null);
@@ -550,7 +471,8 @@ public class CoastalStationHaiphongService {
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         approvalService.deleteDraft(entity, InfrastructureType.HANOI_STATION, currentUserId);
-        repository.delete(entity);
+        // Xóa hồ sơ chỉ chuyển trạng thái ARCHIVED để tab "Đã xóa" và lịch sử vẫn truy vấn được.
+        repository.save(entity);
 
         historyService.recordHistory(
                 InfrastructureType.HANOI_STATION,
@@ -686,6 +608,9 @@ public class CoastalStationHaiphongService {
     public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id, Integer page, Integer pageSize,
             String keyword, LocalDateTime fromDate, LocalDateTime toDate) {
         CoastalStationHaiphong entity = getStationById(id);
+        String managementOrgUnitName = entity.getOrgUnitId() != null
+                ? orgUnitCacheService.getName(entity.getOrgUnitId())
+                : null;
         String code = entity.getCode() != null ? entity.getCode() : entity.getStationCode();
         LocalDateTime finalApprovalAt = entity.getApprovedDate() != null
                 ? entity.getApprovedDate()
@@ -721,7 +646,8 @@ public class CoastalStationHaiphongService {
                     r.setPreviousValue(h.getPreviousValue());
                     r.setNewValue(h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
-                    r.setOrgUnitName(h.getOrgUnitName());
+                    // Header lịch sử luôn là đơn vị quản lý của hồ sơ, không phải đơn vị hiện tại của tài khoản sửa.
+                    r.setOrgUnitName(managementOrgUnitName);
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })
@@ -789,22 +715,8 @@ public class CoastalStationHaiphongService {
                 .name(entity.getName())
                 .locationAddress(entity.getLocationAddress())
                 .conditionStatus(entity.getConditionStatus() != null ? entity.getConditionStatus().name() : null)
-                .portName(entity.getPortName())
-                .district(entity.getDistrict())
-                .ward(entity.getWard())
-                .operationalLicense(entity.getOperationalLicense())
-                .licenseExpiry(entity.getLicenseExpiry())
-                .inspectorName(entity.getInspectorName())
-                .inspectorPhone(entity.getInspectorPhone())
-                .lastInspectionDate(entity.getLastInspectionDate())
-                .nextInspectionDate(entity.getNextInspectionDate())
-                .coverageArea(entity.getCoverageArea())
-                .equipmentType(entity.getEquipmentType())
-                .communicationFrequency(entity.getCommunicationFrequency())
                 .servicesProvided(entity.getServicesProvided())
                 .description(entity.getDescription())
-                .contactPerson(entity.getContactPerson())
-                .contactPhone(entity.getContactPhone())
                 .spatialId(entity.getSpatialId())
                 .symbolId(entity.getSymbolId())
                 .symbol(entity.getSymbol())

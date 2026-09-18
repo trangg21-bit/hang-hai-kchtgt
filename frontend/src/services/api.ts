@@ -105,13 +105,16 @@ api.interceptors.response.use(
     } else if (status === 401) {
       friendlyMsg = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
     } else if (status === 403) {
+      const forbiddenMessage = error.response?.data?.message;
       const isAuthPath =
         error.config?.url?.includes('/auth/') ||
         error.config?.url?.includes('/register') ||
         error.config?.url?.includes('/forgot-password') ||
         error.config?.url?.includes('/reset-password');
-      if (isAuthPath && error.response?.data?.message) {
-        friendlyMsg = error.response.data.message;
+      if (forbiddenMessage) {
+        // Giữ thông báo nghiệp vụ từ BE (ví dụ sai cấp duyệt / ngoài phạm vi
+        // đơn vị) thay vì biến mọi lỗi 403 thành một thông báo chung chung.
+        friendlyMsg = forbiddenMessage;
       } else {
         const token = localStorage.getItem('auth_token');
         friendlyMsg = token

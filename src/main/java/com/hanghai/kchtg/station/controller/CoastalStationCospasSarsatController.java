@@ -177,13 +177,29 @@ public class CoastalStationCospasSarsatController {
             return defaultSort;
         }
         String[] parts = sort.split(",", 2);
-        String property = SORTABLE_LIST_FIELDS.get(parts[0].trim());
-        if (property == null) {
-            return defaultSort;
-        }
+        String field = parts[0].trim();
         Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
+        if ("name".equalsIgnoreCase(field) || "stationName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(c.name)")
+                    .and(JpaSort.unsafe(direction, "LOWER(c.code)"))
+                    .and(defaultSort);
+        }
+        if ("code".equalsIgnoreCase(field) || "stationCode".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(c.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(c.name)"))
+                    .and(defaultSort);
+        }
+        if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "pv.sortOrder")
+                    .and(JpaSort.unsafe(direction, "LOWER(c.name)"))
+                    .and(defaultSort);
+        }
+        String property = SORTABLE_LIST_FIELDS.get(field);
+        if (property == null) {
+            return defaultSort;
+        }
         return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 

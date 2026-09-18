@@ -34,6 +34,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -102,21 +103,7 @@ class CoastalStationHaiphongControllerTest {
                 .id(id)
                 .code("HP-001")
                 .name("Haiphong Station")
-                .portName("Haiphong Port")
-                .district("Hong Bang")
-                .ward("Thuong Ly")
-                .operationalLicense("LIC-2024-001")
-                .licenseExpiry("2025-12-31")
-                .inspectorName("Tran Van A")
-                .inspectorPhone("+84999000111")
-                .lastInspectionDate("2024-06-15")
-                .nextInspectionDate("2025-06-15")
-                .coverageArea("Haiphong Bay")
-                .equipmentType("VHF Transceiver")
-                .communicationFrequency("156.8 MHz")
                 .locationAddress("1 Port Road, Haiphong")
-                .contactPerson("Le Thi B")
-                .contactPhone("+84999000222")
                 .approvalStatus(ApprovalStatus.PROPOSED)
                 .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
@@ -133,6 +120,7 @@ class CoastalStationHaiphongControllerTest {
                 {
                   "stationCode": "HP-001",
                   "stationName": "Haiphong Station",
+                  "provinceId": 89,
                   "portName": "Haiphong Port",
                   "district": "Hong Bang",
                   "ward": "Thuong Ly",
@@ -173,6 +161,7 @@ class CoastalStationHaiphongControllerTest {
                 {
                   "stationCode": "HP-001",
                   "stationName": "Updated Haiphong",
+                  "provinceId": 89,
                   "portName": "Haiphong Port",
                   "district": "Hong Bang",
                   "ward": "Thuong Ly",
@@ -239,15 +228,53 @@ class CoastalStationHaiphongControllerTest {
     @DisplayName("GET /api/v1/stations/haiphong — includes status counts in the list response")
     void searchIncludesStatusCounts() throws Exception {
         when(service.searchPaged(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
-        when(service.countByApprovalStatus(any(), any(), any(), any(), any(), any(), any(), any()))
+        when(service.countByApprovalStatus(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(Map.of("DRAFT", 1L));
 
         mockMvc.perform(get(BASE).param("includeCounts", "true"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.statusCounts.DRAFT").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/stations/haiphong — sort cán bộ cập nhật dùng đúng khóa cột gộp")
+    void searchSortsUpdatedOfficerInfo() throws Exception {
+        when(service.searchPaged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        mockMvc.perform(get(BASE)
+                        .param("sortBy", "updatedInfo")
+                        .param("sortDir", "asc"))
+                .andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(service, times(1)).searchPaged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), pageableCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                pageableCaptor.getValue().getSort().toString().contains("COALESCE(uu.fullName, uc.fullName): ASC"));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/stations/haiphong — sort tỉnh dùng thứ tự tên tỉnh hiển thị")
+    void searchSortsProvinceByDisplayName() throws Exception {
+        when(service.searchPaged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        mockMvc.perform(get(BASE)
+                        .param("sortBy", "provinceId")
+                        .param("sortDir", "asc"))
+                .andExpect(status().isOk());
+
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(service, times(1)).searchPaged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), pageableCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                pageableCaptor.getValue().getSort().toString().contains("CASE t.provinceId"));
     }
 
     @Test
@@ -372,8 +399,8 @@ class CoastalStationHaiphongControllerTest {
                 """;
 
         mockMvc.perform(post(BASE + "/create")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(invalidJson))
-                .andExpect(status().isOk());
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalidJson))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -51,7 +51,9 @@ public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalS
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
+        LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User uu ON uu.id = t.updatedBy
+        LEFT JOIN User uc ON uc.id = t.createdBy
         LEFT JOIN User us ON us.id = t.submittedBy
         LEFT JOIN User ua1 ON ua1.id = t.approverLevel1
         LEFT JOIN User ua2 ON ua2.id = t.approverLevel2
@@ -64,6 +66,8 @@ public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalS
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.portName, ''))) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:approvalStatus IS NULL
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
@@ -83,6 +87,7 @@ public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalS
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
+        @Param("code") String code,
         @Param("operatingOrgId") UUID operatingOrgId,
         @Param("provinceId") Integer provinceId,
         @Param("conditionStatus") ConditionStatus conditionStatus,
@@ -107,6 +112,8 @@ public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalS
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string) OR
                 CAST(function('immutable_unaccent', LOWER(COALESCE(t.portName, ''))) AS string) LIKE CAST(:keyword AS string)
               ))
+          AND (CAST(:code AS string) IS NULL OR
+                CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
           AND (:operatingOrgId IS NULL OR t.operatingOrgId = :operatingOrgId)
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
@@ -120,6 +127,7 @@ public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalS
         @Param("scopeOrgUnitIds") List<UUID> scopeOrgUnitIds,
         @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
+        @Param("code") String code,
         @Param("conditionStatus") ConditionStatus conditionStatus,
         @Param("operatingOrgId") UUID operatingOrgId,
         @Param("provinceId") Integer provinceId,

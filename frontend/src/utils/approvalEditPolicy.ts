@@ -141,7 +141,7 @@ export function canEditApprovalRecord(
   if (st === 'APPROVED') {
     const perms = [
       ...(resource ? [`${resource}:approvec2`] : []),
-      ...extraApprovePerms,
+      ...extraApprovePerms.filter(isExplicitC2Permission),
     ];
     return perms.some(checkPerm);
   }
@@ -157,6 +157,11 @@ export function canEditApprovalRecord(
 
   // Trạng thái lạ: mặc định an toàn là không cho sửa.
   return false;
+}
+
+function isExplicitC2Permission(permission: string): boolean {
+  const normalized = permission.trim().toLowerCase();
+  return /:(approvec2|approvel2|approve:c2|approve:l2|approve-c2|approve-l2|approve_level2)$/.test(normalized);
 }
 
 export interface ApprovalDeletePolicyOptions {
@@ -221,7 +226,9 @@ export function canDeleteApprovalRecord(
   const perms = [
     ...(resource ? [`${resource}:delete`, `${resource}:manage`] : []),
     ...extraDeletePerms,
-    'admin:manage',
+    // `admin:manage` chỉ là quyền quản trị chức năng, không phải bypass dữ
+    // liệu nghiệp vụ. Chỉ `admin:all` mới tương ứng với wildcard của backend.
+    'admin:all',
   ];
   return perms.some(checkPerm);
 }
@@ -314,4 +321,3 @@ export function isAssetRecordEditable(status: string | number | null | undefined
 
   return true;
 }
-

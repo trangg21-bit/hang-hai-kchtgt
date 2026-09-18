@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.dto.haiphong;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,31 +22,18 @@ public class CoastalStationHaiphongRequest {
 
     private UUID orgUnitId;
     private UUID operatingOrgId;
+    @NotNull(message = "Địa điểm (Tỉnh/TP) là bắt buộc")
     private Integer provinceId;
 
     private String code;
     private String name;
 
+    @NotBlank(message = "Địa điểm chi tiết là bắt buộc")
     private String locationAddress;
     private String conditionStatus;
 
-    // --- Đặc thù TTXLTT Hà Nội / Hải Phòng ---
-    private String portName;
-    private String district;
-    private String ward;
-    private String operationalLicense;
-    private String licenseExpiry;
-    private String inspectorName;
-    private String inspectorPhone;
-    private String lastInspectionDate;
-    private String nextInspectionDate;
-    private String coverageArea;
-    private String equipmentType;
-    private String communicationFrequency;
     private String servicesProvided;
     private String description;
-    private String contactPerson;
-    private String contactPhone;
 
     // --- GIS ---
     private UUID spatialId;

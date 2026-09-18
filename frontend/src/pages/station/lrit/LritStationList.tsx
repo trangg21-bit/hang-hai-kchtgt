@@ -223,7 +223,7 @@ export default function LritStationList() {
   const statusCountFilterKey = useRef<string | null>(null);
   const [isOptionsReady, setIsOptionsReady] = useState(false);
 
-  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN';
+  const canCreate = hasPerm('coastalstationlrit:create') || hasPerm('specialstation:create') || hasPerm('data:create') || hasPerm('*') || hasPerm('admin:all');
 
   // Handle map linked action
   useEffect(() => {
@@ -633,7 +633,7 @@ export default function LritStationList() {
       },
     },
     {
-      key: 'province',
+      key: 'provinceId',
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'provinceId',
       width: 180,
@@ -731,7 +731,7 @@ export default function LritStationList() {
     const isCreator = Boolean(uid && (record.createdBy === uid || record.createdBy === currentUser?.username));
     const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1 === currentUser?.username));
     const userUnitType = currentUser?.unitType || '';
-    const isAdmin = (currentUser as any)?.role === 'SUPER_ADMIN' || (currentUser as any)?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
+    const isAdmin = hasPerm('*') || hasPerm('admin:all');
     const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
     const st = normalizeApprovalStatus(record.approvalStatus);
 
@@ -789,7 +789,7 @@ export default function LritStationList() {
       });
     }
 
-    if ((hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if ((hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1')) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',
@@ -805,7 +805,7 @@ export default function LritStationList() {
       });
     }
 
-    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin;
+    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
     if (canApproveL2Perm && (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && (!isApproverL1 || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',

@@ -1,6 +1,6 @@
 # Quy trình nghiệp vụ: Nhập và phê duyệt hồ sơ Kết cấu hạ tầng hàng hải (tối đa 2 cấp)
 
-> Tài liệu mô tả nghiệp vụ, dùng chung cho BA / DEV / Test.
+> Tài liệu mô tả nghiệp vụ, dùng chung cho BA / DEV / Test. Quy tắc chi tiết về quyền và hành vi giao diện được đồng bộ với `docs/conventions/approval-2-level-spec.md`.
 > Phạm vi: quy trình nhập và phê duyệt hồ sơ của **28 loại kết cấu hạ tầng hàng hải**. Quy trình **giống nhau cho mọi loại**; số vòng duyệt (1 hoặc 2) phụ thuộc vào **đơn vị gửi**, không phụ thuộc loại.
 > Phần thân tài liệu viết thuần nghiệp vụ, không dùng mã kỹ thuật. Chi tiết kỹ thuật (mã trạng thái, tên bảng, tên chương trình) được tách riêng ở **Phụ lục cuối cùng** dành cho DEV.
 
@@ -30,7 +30,7 @@ Một hồ sơ kết cấu hạ tầng trải qua **7 trạng thái** (6 trạng
 | **Cấp duyệt thứ nhất** | Lãnh đạo Cảng vụ hàng hải hoặc Chi cục | Duyệt hoặc trả về ở vòng 1 |
 | **Cấp duyệt cuối** | Lãnh đạo Cục | Duyệt hoặc trả về ở vòng 2 (quyết định cuối) |
 
-> Quyền duyệt gắn với **chức vụ của người duyệt** (lãnh đạo Cảng vụ/Chi cục duyệt vòng 1, lãnh đạo Cục duyệt vòng 2), không phụ thuộc vào loại kết cấu hạ tầng. Số vòng duyệt phụ thuộc **đơn vị của người gửi** (xem quy tắc 14).
+> Quyền duyệt gắn với **chức vụ và quyền được cấp**: Cảng vụ/Chi cục dùng quyền duyệt C1, Cục dùng quyền duyệt C2. Chỉ tài khoản **thuộc cấp Cục hoặc đơn vị gốc cấp trên Cục** và có quyền C2 của **đúng loại hồ sơ** được phê duyệt trực tiếp khi tạo mới. Tài khoản **Admin** vẫn phải được cấp riêng quyền C1/C2 tương ứng; quyền quản trị, quyền C1/C2 của loại hồ sơ khác hoặc khóa quyền dùng chung legacy không tự thay thế quyền duyệt. Số vòng duyệt của luồng gửi duyệt phụ thuộc **đơn vị của người gửi** (xem quy tắc 14).
 
 ---
 
@@ -66,8 +66,11 @@ sequenceDiagram
             CUC-->>NV: "Bị Cục trả về"
         end
     end
+    opt Người nhập thuộc cấp trung ương và có quyền duyệt C2
+        NV->>CUC: Lưu và phê duyệt trực tiếp → "Đã duyệt" ✅
+    end
     Note over NV: Khi bị trả về → sửa lại → gửi duyệt lại
-    Note over CUC: Dữ liệu tích hợp từ hệ thống ngoài → lưu thẳng "Đã duyệt"
+    Note over CUC: Dữ liệu tích hợp từ hệ thống ngoài cũng có thể lưu thẳng "Đã duyệt"
 ```
 
 ### 3.2. Sơ đồ vòng đời trạng thái
@@ -85,6 +88,7 @@ stateDiagram-v2
 
     Nhap --> ChoCC: Gửi duyệt (người gửi cấp Cảng vụ/Chi cục)
     Nhap --> ChoCuc: Gửi duyệt (người gửi cấp Cục — bỏ qua vòng 1)
+    Nhap --> DaDuyet: Lưu và phê duyệt trực tiếp (cấp trung ương, có quyền C2)
     ChoCC --> ChoCuc: Cảng vụ / Chi cục duyệt
     ChoCC --> TraVe1: Cảng vụ / Chi cục từ chối
     ChoCuc --> DaDuyet: Cục duyệt
@@ -110,6 +114,11 @@ stateDiagram-v2
 
 **Trường hợp phân cấp (người gửi thuộc Cục):**
 - Hồ sơ do cấp Cục gửi đi sẽ **bỏ qua vòng 1**, vào thẳng **"Chờ Cục duyệt"** — chỉ còn 1 vòng duyệt.
+
+**Trường hợp phê duyệt trực tiếp khi tạo mới (cấp trung ương):**
+- Tài khoản thuộc **cấp Cục hoặc đơn vị gốc cấp trên Cục** có quyền duyệt C2 có thêm nút **"Lưu và phê duyệt"**. Admin ở đơn vị gốc cũng phải có quyền C2 tường minh. Hành động này tạo hồ sơ và chuyển thẳng sang **"Đã duyệt"**.
+- Đây là ngoại lệ có kiểm soát của luồng tuần tự hai cấp: hệ thống ghi nhận đủ thông tin duyệt C1 và C2 để hồ sơ không thiếu dữ liệu truy vết.
+- Tài khoản Cảng vụ/Chi cục, kể cả có quyền C1, **không** có nút này; C1 chỉ xử lý hồ sơ đang chờ duyệt vòng 1.
 
 **Trường hợp đặc biệt:**
 - Dữ liệu từ hệ thống ngoài (tích hợp) đưa vào có thể được lưu thẳng ở trạng thái **"Đã duyệt"**, không qua vòng duyệt.
@@ -138,7 +147,16 @@ stateDiagram-v2
 | Các bước | 1. Chọn "Gửi duyệt" → 2. Hệ thống ghi lại người và thời điểm gửi |
 | Kết quả | Người gửi thuộc Cảng vụ/Chi cục → "Chờ Cảng vụ / Chi cục duyệt"; người gửi thuộc Cục → "Chờ Cục duyệt" |
 
-### Ca dùng 3 — Duyệt vòng 1 (Cảng vụ / Chi cục)
+### Ca dùng 3 — Tạo mới và phê duyệt trực tiếp (Cục)
+
+| Mục | Nội dung |
+|---|---|
+| Người thực hiện | Người nhập thuộc cấp Cục hoặc đơn vị gốc cấp trên Cục, có quyền duyệt C2 |
+| Điều kiện trước | Đã điền đủ thông tin bắt buộc |
+| Các bước | 1. Nhập thông tin → 2. Chọn "Lưu và phê duyệt" |
+| Kết quả | Hồ sơ ở trạng thái "Đã duyệt"; hệ thống lưu người và thời điểm phê duyệt trực tiếp, đồng thời hoàn thiện thông tin duyệt C1/C2 để truy vết |
+
+### Ca dùng 4 — Duyệt vòng 1 (Cảng vụ / Chi cục)
 
 | Mục | Nội dung |
 |---|---|
@@ -147,7 +165,7 @@ stateDiagram-v2
 | Các bước | 1. Xem hồ sơ → 2. Chọn "Đồng ý" hoặc "Từ chối" → 3. Hệ thống ghi lại người và thời điểm duyệt |
 | Kết quả | Đồng ý → "Chờ Cục duyệt"; Từ chối → "Bị Cảng vụ / Chi cục trả về" |
 
-### Ca dùng 4 — Duyệt vòng 2 (Cục)
+### Ca dùng 5 — Duyệt vòng 2 (Cục)
 
 | Mục | Nội dung |
 |---|---|
@@ -156,7 +174,7 @@ stateDiagram-v2
 | Các bước | 1. Xem hồ sơ → 2. Chọn "Đồng ý" hoặc "Từ chối" → 3. Hệ thống ghi lại người và thời điểm duyệt |
 | Kết quả | Đồng ý → "Đã duyệt"; Từ chối → "Bị Cục trả về" |
 
-### Ca dùng 5 — Trả về (từ chối)
+### Ca dùng 6 — Trả về (từ chối)
 
 | Mục | Nội dung |
 |---|---|
@@ -164,7 +182,7 @@ stateDiagram-v2
 | Các bước | Chọn "Từ chối" trên hồ sơ đang chờ |
 | Kết quả | Hồ sơ trở về tay người nhập với trạng thái "Bị ... trả về" |
 
-### Ca dùng 6 — Sửa lại và gửi lại sau khi bị trả về
+### Ca dùng 7 — Sửa lại và gửi lại sau khi bị trả về
 
 | Mục | Nội dung |
 |---|---|
@@ -173,7 +191,7 @@ stateDiagram-v2
 | Các bước | 1. Sửa nội dung → 2. Gửi duyệt lại |
 | Kết quả | Hồ sơ quay về "Chờ Cảng vụ / Chi cục duyệt", lặp lại quy trình |
 
-### Ca dùng 7 — Dữ liệu tích hợp lưu thẳng trạng thái "Đã duyệt" (trường hợp đặc biệt)
+### Ca dùng 8 — Dữ liệu tích hợp lưu thẳng trạng thái "Đã duyệt" (trường hợp đặc biệt)
 
 | Mục | Nội dung |
 |---|---|
@@ -181,7 +199,7 @@ stateDiagram-v2
 | Các bước | 1. Hệ thống ngoài đẩy dữ liệu hồ sơ vào → 2. Hệ thống lưu thẳng ở trạng thái "Đã duyệt" |
 | Kết quả | Hồ sơ ở ngay trạng thái "Đã duyệt", không qua 2 vòng duyệt |
 
-### Ca dùng 8 — Sửa hồ sơ đã duyệt
+### Ca dùng 9 — Sửa hồ sơ đã duyệt
 
 | Mục | Nội dung |
 |---|---|
@@ -190,7 +208,7 @@ stateDiagram-v2
 | Các bước | 1. Sửa nội dung → 2. Chọn "Lưu và phê duyệt" → 3. Bản cũ ghi vào nhật ký thay đổi, hồ sơ cập nhật và giữ trạng thái "Đã duyệt" |
 | Kết quả | Hồ sơ vẫn "Đã duyệt" (không phải duyệt lại); bản cũ lưu trong nhật ký để đối chiếu |
 
-### Ca dùng 9 — Xóa hồ sơ nháp
+### Ca dùng 10 — Xóa hồ sơ nháp
 
 | Mục | Nội dung |
 |---|---|
@@ -208,12 +226,12 @@ stateDiagram-v2
 | 1 | Mọi hồ sơ kết cấu hạ tầng **bắt buộc phải chọn loại** và **đơn vị quản lý** khi tạo |
 | 2 | Hồ sơ chỉ có 7 trạng thái như mục 1, không có trạng thái nào khác |
 | 3 | Hành động "Gửi duyệt" đưa hồ sơ về trạng thái chờ duyệt theo đơn vị gửi: người gửi thuộc cấp Cục → "Chờ Cục duyệt"; còn lại → "Chờ Cảng vụ / Chi cục duyệt" |
-| 4 | Phê duyệt **tối đa 2 vòng theo đúng thứ tự, không được nhảy vòng**: vòng 1 (Cảng vụ/Chi cục) duyệt trước, vòng 2 (Cục) duyệt sau |
+| 4 | Luồng gửi duyệt có tối đa 2 vòng theo đúng thứ tự, không được nhảy vòng: vòng 1 (Cảng vụ/Chi cục) duyệt trước, vòng 2 (Cục) duyệt sau. Ngoại lệ duy nhất là phê duyệt trực tiếp khi tạo mới bởi cấp trung ương có quyền C2 và dữ liệu tích hợp ngoài hệ thống |
 | 5 | Vòng 1 từ chối → "Bị Cảng vụ / Chi cục trả về"; vòng 2 từ chối → "Bị Cục trả về" |
 | 6 | Hồ sơ bị trả về **bắt buộc sửa rồi gửi lại**, không thể giữ nguyên gửi thẳng |
 | 7 | Mỗi lần gửi duyệt và mỗi lần duyệt **đều phải ghi lại người thực hiện và thời điểm** (để truy vết) |
-| 8 | Quyền duyệt theo chức vụ: lãnh đạo Cảng vụ/Chi cục chỉ duyệt vòng 1, lãnh đạo Cục duyệt vòng 2 |
-| 9 | Trường hợp lưu thẳng "Đã duyệt" (không qua 2 vòng) chỉ dành cho dữ liệu tích hợp từ hệ thống ngoài |
+| 8 | Quyền duyệt theo chức vụ và quyền được cấp: Cảng vụ/Chi cục có quyền C1 chỉ duyệt vòng 1; cấp trung ương có quyền C2 duyệt vòng 2 và có thể phê duyệt trực tiếp khi tạo mới. Admin ở đơn vị gốc vẫn phải có quyền C1/C2 tường minh cho từng thao tác duyệt |
+| 9 | Lưu thẳng "Đã duyệt" chỉ áp dụng cho dữ liệu tích hợp từ hệ thống ngoài hoặc thao tác "Lưu và phê duyệt" của tài khoản cấp trung ương có quyền C2 |
 | 10 | Quy trình **áp dụng giống nhau cho cả 28 loại** kết cấu hạ tầng |
 | 11 | Mọi thay đổi trên hồ sơ đều được ghi nhật ký (bản cũ lưu trong nhật ký thay đổi); hồ sơ "Lưu tạm" có thể bị xóa và chuyển sang trạng thái "Đã xóa (lịch sử)" |
 | 12 | Chỉ hồ sơ ở trạng thái **"Đã duyệt"** mới được đưa vào báo cáo tổng hợp |
@@ -228,6 +246,7 @@ stateDiagram-v2
 |---|---|---|---|
 | (mới) | Lưu tạm | Lưu tạm | Người nhập |
 | (mới) | Gửi duyệt ngay | Chờ Cảng vụ / Chi cục duyệt | Người nhập |
+| (mới) | Lưu và phê duyệt | Đã duyệt | Người nhập thuộc cấp trung ương có quyền duyệt C2 |
 | Lưu tạm | Gửi duyệt | Chờ Cảng vụ / Chi cục duyệt | Người nhập |
 | Chờ Cảng vụ / Chi cục duyệt | Đồng ý | Chờ Cục duyệt | Cảng vụ / Chi cục |
 | Chờ Cảng vụ / Chi cục duyệt | Từ chối | Bị Cảng vụ / Chi cục trả về | Cảng vụ / Chi cục |
@@ -241,7 +260,7 @@ stateDiagram-v2
 
 > **Lưu ý phân cấp:** khi người gửi thuộc **cấp Cục**, các hành động "Gửi duyệt" ở bảng trên đưa hồ sơ thẳng vào "Chờ Cục duyệt" (bỏ qua "Chờ Cảng vụ / Chi cục duyệt").
 >
-> **Case test bắt buộc:** không được phép "nhảy vòng" (Chờ Cảng vụ/Chi cục → Đã duyệt), không được duyệt ngược (Chờ Cục → Chờ Cảng vụ/Chi cục), không được gửi duyệt khi chưa điền đủ thông tin bắt buộc, không được xóa hồ sơ khi không ở trạng thái "Lưu tạm".
+> **Case test bắt buộc:** không được phép "nhảy vòng" (Chờ Cảng vụ/Chi cục → Đã duyệt), không được duyệt ngược (Chờ Cục → Chờ Cảng vụ/Chi cục), không được gửi duyệt khi chưa điền đủ thông tin bắt buộc, không được xóa hồ sơ khi không ở trạng thái "Lưu tạm". Nút "Lưu và phê duyệt" chỉ hiện và chỉ thành công khi người tạo thuộc cấp trung ương có quyền duyệt C2 tường minh; Admin không có quyền C2 cũng không được hiện nút hoặc duyệt thẳng. Quyền C1 hoặc quyền C2 của đơn vị cấp dưới không đủ điều kiện.
 
 ---
 

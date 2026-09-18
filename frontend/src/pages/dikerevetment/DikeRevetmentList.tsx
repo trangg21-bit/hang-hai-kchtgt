@@ -540,7 +540,7 @@ export default function DikeRevetmentList() {
   const currentUser = useAuthStore((s: any) => s.user);
   // Phê duyệt 2 cấp (M-1006): C1 = Cảng vụ/Chi cục, C2 = Cục — quyền theo cấp duyệt.
   const canApproveC1 = hasPerm('dikerevetment:approvec1');
-  const canApproveC2 = hasPerm('dikerevetment:approvec2') || hasPerm('*');
+  const canApproveC2 = hasPerm('dikerevetment:approvec2');
   const canSubmitForApproval = hasPerm('dikerevetment:update');
   // Đơn vị cha/Cục (scope_all, admin) được chọn đơn vị con khi thêm mới; tài khoản thường bị khóa theo đơn vị của mình
   const isElevatedOrg = hasPerm('orgunit:scope_all') || hasPerm('*')

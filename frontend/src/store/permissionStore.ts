@@ -5,6 +5,13 @@ import { useAuthStore } from './authStore';
 const permissionSetCache = new WeakMap<object, Set<string>>();
 const EMPTY_PERMISSIONS: string[] = [];
 
+// Legacy umbrella resources were historically appended to route permission
+// lists (for example `data:read` on an Inmarsat screen).  They must not open a
+// resource-specific screen when its own checkbox is not assigned.
+const LEGACY_ROUTE_FALLBACK_RESOURCES = new Set([
+  'data', 'infraasset', 'specialstation', 'coastalstation', 'station',
+]);
+
 export interface PermissionState {
   permissions: string[];
   hasPermission: (key: string, options?: { explicitOnly?: boolean }) => boolean;
@@ -37,8 +44,6 @@ export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
   coastalstationlrit: 'lrit',
   cospassarsatasset: 'cospassarsat',
   coastalstationcospassarsat: 'cospassarsat',
-  ttxlttasset: 'ttxltt',
-  coastalstationhaiphong: 'ttxltt',
   vtsasset: 'vts',
   vtssystem: 'vts',
   radarasset: 'radarstation',
@@ -95,9 +100,8 @@ export const EQUIVALENT_RESOURCES_MAP: Record<string, string[]> = {
   cospassarsat: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
   cospassarsatasset: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
   coastalstationcospassarsat: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
-  ttxltt: ['ttxltt', 'ttxlttasset', 'coastalstationhaiphong'],
-  ttxlttasset: ['ttxltt', 'ttxlttasset', 'coastalstationhaiphong'],
-  coastalstationhaiphong: ['ttxltt', 'ttxlttasset', 'coastalstationhaiphong'],
+  ttxlttasset: ['ttxlttasset'],
+  coastalstationhaiphong: ['coastalstationhaiphong'],
   vts: ['vts', 'vtsasset', 'vtssystem'],
   vtsasset: ['vts', 'vtsasset', 'vtssystem'],
   vtssystem: ['vts', 'vtsasset', 'vtssystem'],
@@ -183,8 +187,7 @@ const RESOURCE_PARENT_DOMAINS: Record<string, string[]> = {
   lrit: ['specialstation', 'coastalstation', 'station'],
   cospassarsatasset: ['cospassarsat', 'coastalstationcospassarsat', 'specialstation', 'coastalstation', 'station'],
   cospassarsat: ['specialstation', 'coastalstation', 'station'],
-  ttxlttasset: ['ttxltt', 'coastalstationhaiphong', 'specialstation', 'coastalstation', 'station'],
-  ttxltt: ['specialstation', 'coastalstation', 'station'],
+  ttxlttasset: [],
   inmarsatasset: ['inmarsat', 'coastalstationinmarsat', 'specialstation', 'coastalstation', 'station'],
   inmarsat: ['specialstation', 'coastalstation', 'station'],
   daittdh: ['coastalstation'],
@@ -280,7 +283,33 @@ export function hasPermissionFromList(
     permissionSetCache.set(source, permissions);
   }
 
-  if (permissions.has('*') || permissions.has(normalizedKey)) {
+  const separatorIndex = normalizedKey.indexOf(':');
+  const requestedResource = separatorIndex >= 0 ? normalizedKey.slice(0, separatorIndex) : normalizedKey;
+  const requestedAction = separatorIndex >= 0 ? normalizedKey.slice(separatorIndex + 1) : '';
+  const isApprovalLevelAction = [
+    'approvec1', 'approvec2',
+    'approvel1', 'approvel2',
+    'approve_level1', 'approve_level2',
+    'approve:c1', 'approve:c2',
+    'approve:l1', 'approve:l2',
+    'approve-c1', 'approve-c2',
+    'approve-l1', 'approve-l2',
+  ].includes(requestedAction);
+  if (isApprovalLevelAction) {
+    // Chữ ký C1/C2 phải khớp một quyền duyệt cụ thể. Không suy diễn từ
+    // wildcard, admin:all, :manage hay quyền bao trùm của tài nguyên.
+    // `data`/`kcht` là khóa legacy dùng chung, không còn được phép cấp
+    // thẩm quyền duyệt cho bất kỳ resource nào.
+    if (requestedResource === 'data' || requestedResource === 'kcht') {
+      return false;
+    }
+    return permissions.has(normalizedKey);
+  }
+
+  // A system-administrator role is not an implicit business permission.  In
+  // particular, do not turn a stale/generated "*" claim into access to every
+  // KCHT screen; each resource must be assigned explicitly.
+  if (permissions.has(normalizedKey)) {
     return true;
   }
 
@@ -296,7 +325,7 @@ export function hasPermissionFromList(
 
   // Parent domain match
   const parents = RESOURCE_PARENT_DOMAINS[resource] || RESOURCE_PARENT_DOMAINS[rawResource];
-  if (parents) {
+  if (!options?.explicitOnly && parents) {
     for (const parent of parents) {
       if (permissions.has(`${parent}:${action}`) || permissions.has(`${parent}:manage`) || permissions.has(`${parent}:*`)) {
         return true;
@@ -341,6 +370,23 @@ export function hasPermissionFromList(
   return false;
 }
 
+/**
+ * Chỉ kiểm tra mã quyền được gán trực tiếp. Không cho `*`, `admin:all`,
+ * `:manage`, quyền cha hay alias tài nguyên trở thành quyền duyệt ngầm.
+ * Dùng cho C1/C2 vì hai thao tác này phải hiện đúng theo checkbox phân quyền.
+ */
+export function hasExplicitPermissionFromList(
+  grantedPermissions: string[] | undefined,
+  key: string,
+): boolean {
+  const normalizedKey = normalizePermissionKey(key);
+  if (!normalizedKey) return false;
+
+  return (grantedPermissions || []).some(
+    (permission) => normalizePermissionKey(permission?.trim() || '') === normalizedKey,
+  );
+}
+
 const initialPermissions = useAuthStore.getState().user?.permissions || [];
 
 export const usePermissionStore = create<PermissionState>((set, get) => ({
@@ -359,7 +405,27 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
   },
 
   hasAnyPermission: (keys: string[]) => {
-    return keys.some((k) => get().hasPermission(k));
+    const normalizedKeys = keys
+      .map(normalizePermissionKey)
+      .filter(Boolean);
+    const primaryKey = normalizedKeys.find((permission) => {
+      const resource = permission.split(':', 1)[0];
+      return resource && !LEGACY_ROUTE_FALLBACK_RESOURCES.has(resource);
+    });
+
+    if (!primaryKey) {
+      return normalizedKeys.some((permission) => get().hasPermission(permission, { explicitOnly: true }));
+    }
+
+    const primaryResource = primaryKey.split(':', 1)[0];
+    const equivalentResources = new Set(
+      EQUIVALENT_RESOURCES_MAP[primaryResource]
+      || EQUIVALENT_RESOURCES_MAP[canonicalResource(primaryResource)]
+      || [primaryResource],
+    );
+    return normalizedKeys
+      .filter((permission) => equivalentResources.has(permission.split(':', 1)[0]))
+      .some((permission) => get().hasPermission(permission, { explicitOnly: true }));
   },
 
   hasAllPermissions: (keys: string[]) => {

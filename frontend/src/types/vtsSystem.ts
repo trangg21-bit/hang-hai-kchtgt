@@ -133,6 +133,7 @@ export interface CreateVtsSystemRequest {
   operationStartDate?: string | null;
   conditionStatus: ConditionStatus;
   approvalStatus?: ApprovalStatus;
+  submitForApproval?: boolean;
   note?: string;
   zones?: VtsZoneDto[];
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | string;

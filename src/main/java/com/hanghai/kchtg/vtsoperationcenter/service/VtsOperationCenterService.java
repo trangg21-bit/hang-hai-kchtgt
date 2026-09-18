@@ -159,8 +159,14 @@ public class VtsOperationCenterService {
 
         ApprovalStatus initialStatus = request.getApprovalStatus() != null ? request.getApprovalStatus()
                 : ApprovalStatus.DRAFT;
+        if (request.isSubmitForApproval() && initialStatus == ApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Không thể vừa gửi phê duyệt vừa phê duyệt trực tiếp");
+        }
         if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
             initialStatus = ApprovalStatus.APPROVED_LEVEL1;
+        }
+        if (initialStatus == ApprovalStatus.APPROVED) {
+            approvalService.requireApproveC2Permission(userId, "vtsoperationcenter:approvec2");
         }
         boolean isApproved = (initialStatus == ApprovalStatus.APPROVED);
         boolean isBypassedL1 = (initialStatus == ApprovalStatus.APPROVED_LEVEL1);
@@ -196,6 +202,13 @@ public class VtsOperationCenterService {
                 .build();
 
         VtsOperationCenter saved = repository.save(entity);
+
+        // Tạo và gửi duyệt là một transaction: nếu không đủ điều kiện gửi duyệt,
+        // toàn bộ bản ghi mới bị rollback thay vì để lại hồ sơ Lưu tạm.
+        if (request.isSubmitForApproval()) {
+            approvalService.submit(saved, InfrastructureType.VTS_OPERATION_CENTER, userId);
+            saved = repository.save(saved);
+        }
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
@@ -306,11 +319,28 @@ public class VtsOperationCenterService {
         ApprovalStatus previousApprovalStatus = entity.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
+        boolean isDirectApproval = !wasApproved && request.getApprovalStatus() == ApprovalStatus.APPROVED;
+        LocalDateTime approvalTime = LocalDateTime.now();
 
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         } else if (request.getApprovalStatus() != null) {
             entity.setApprovalStatus(request.getApprovalStatus());
+            if (isDirectApproval) {
+                approvalService.requireApproveC2Permission(userId, "vtsoperationcenter:approvec2");
+                if (entity.getSubmittedAt() == null) {
+                    entity.setSubmittedAt(approvalTime);
+                    entity.setSubmittedBy(userId);
+                }
+                if (entity.getApproverLevel1() == null) {
+                    entity.setApproverLevel1(userId);
+                    entity.setApprovedDateLevel1(approvalTime);
+                    entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+                }
+                entity.setApproverLevel2(userId);
+                entity.setApprovedDateLevel2(approvalTime);
+                entity.setLevel2ApprovalContent("Lưu và phê duyệt trực tiếp");
+            }
         }
 
         entity.setUpdatedBy(userId);

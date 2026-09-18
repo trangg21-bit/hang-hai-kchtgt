@@ -253,7 +253,7 @@ const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
   '/asset/inmarsat': ['inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'inmarsat:manage', 'coastalstationinmarsat:read'],
   '/asset/cospas-sarsat': ['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read'],
   '/asset/lrit': ['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read'],
-  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'ttxltt:manage', 'coastalstationhaiphong:read'],
+  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read'],
 };
 
 // Lý do node bị vô hiệu hóa — chuẩn theo UX spec

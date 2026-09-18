@@ -110,6 +110,21 @@ public class CoastalStationInmarsatController {
         if (field == null) {
             return defaultSort;
         }
+        if ("name".equalsIgnoreCase(field) || "stationName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.name)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
+                    .and(defaultSort);
+        }
+        if ("code".equalsIgnoreCase(field) || "deviceCode".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+        if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "pv.sortOrder")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
         String property = SORTABLE_LIST_FIELDS.get(field);
         if (property == null) {
             return defaultSort;

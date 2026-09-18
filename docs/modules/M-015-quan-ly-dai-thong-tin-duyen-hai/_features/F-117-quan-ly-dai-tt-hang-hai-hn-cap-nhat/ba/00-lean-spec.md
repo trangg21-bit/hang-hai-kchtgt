@@ -2,7 +2,7 @@
 feature-id: F-117
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-28
+last-updated: 2026-09-17
 ---
 # Cập nhật Đài TTXLTT Hà Nội (CoastalStationHaiphong)
 
@@ -28,6 +28,10 @@ Tính năng cập nhật hồ sơ Đài TTXLTT Hà Nội. **ĐÃ XÁC MINH:** `P
 ## Field Coverage Matrix
 
 Giống F-116 (sheet "Đài TTXLTT Hà Nội") — Sửa = T toàn TAB1; mã `code` disabled khi sửa; "Địa điểm chi tiết" có Bộ lọc = T.
+
+## Ma trận chốt 17/09/2026
+
+Áp dụng nguyên ma trận F-116: Sửa chỉ cho phép 9 trường TAB 1, GIS và file theo cột Sửa = T. Các cột legacy ngoài ma trận (vùng phủ sóng, tần số/thiết bị, giấy phép, kiểm định, liên hệ và các trường tương đương) không được cập nhật qua UI hay API.
 
 ## Business Rules
 

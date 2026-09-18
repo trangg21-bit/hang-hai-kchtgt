@@ -167,6 +167,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         LEFT JOIN OperatingOrganization op ON op.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         LEFT JOIN Port p ON p.id = t.portId
+        LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User u ON u.id = t.updatedBy
         LEFT JOIN User uCreate ON uCreate.id = t.createdBy
         WHERE (

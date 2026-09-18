@@ -56,6 +56,8 @@ public class VtsOperationCenterRequest extends FieldPresenceTrackedRequest {
     private String coordinates;
     private UUID symbolId;
     private ApprovalStatus approvalStatus;
+    /** Chỉ dùng khi tạo mới để tạo và gửi duyệt trong cùng transaction. */
+    private boolean submitForApproval;
 
     public void setVtsSystemId(UUID vtsSystemId) {
         markFieldPresent("vtsSystemId");
@@ -127,6 +129,7 @@ public class VtsOperationCenterRequest extends FieldPresenceTrackedRequest {
         private String coordinates;
         private UUID symbolId;
         private ApprovalStatus approvalStatus;
+        private boolean submitForApproval;
 
         public Builder code(String code) { this.code = code; return this; }
         public Builder name(String name) { this.name = name; return this; }
@@ -143,10 +146,12 @@ public class VtsOperationCenterRequest extends FieldPresenceTrackedRequest {
         public Builder coordinates(String coordinates) { this.coordinates = coordinates; return this; }
         public Builder symbolId(UUID symbolId) { this.symbolId = symbolId; return this; }
         public Builder approvalStatus(ApprovalStatus approvalStatus) { this.approvalStatus = approvalStatus; return this; }
+        public Builder submitForApproval(boolean submitForApproval) { this.submitForApproval = submitForApproval; return this; }
 
         public VtsOperationCenterRequest build() {
             return new VtsOperationCenterRequest(code, name, vtsSystemId, portId, orgUnitId, provinceId,
-                    detailedLocation, coverage, conditionStatus, note, spatialId, geometryType, coordinates, symbolId, approvalStatus);
+                    detailedLocation, coverage, conditionStatus, note, spatialId, geometryType, coordinates, symbolId,
+                    approvalStatus, submitForApproval);
         }
     }
 }

@@ -65,14 +65,15 @@ public class CoastalStationHaiphongController {
             Map.entry("conditionStatus", "t.conditionStatus"),
             Map.entry("approvalStatus", "t.approvalStatus"),
             Map.entry("rejectionReason", "t.rejectionReason"),
-            Map.entry("updatedByName", "uu.fullName"),
+            Map.entry("updatedByName", "COALESCE(uu.fullName, uc.fullName)"),
+            Map.entry("createdByName", "uc.fullName"),
             Map.entry("submittedByName", "us.fullName"),
             Map.entry("approverLevel1Name", "ua1.fullName"),
             Map.entry("approverLevel2Name", "ua2.fullName"),
             // Bốn cột cán bộ trên bảng gộp tên + thời gian nên không có dataIndex;
             // client gửi lên chính KHÓA CỘT, thiếu bốn dòng này thì bấm sắp xếp
             // các cột đó không có tác dụng gì.
-            Map.entry("updatedInfo", "uu.fullName"),
+            Map.entry("updatedInfo", "COALESCE(uu.fullName, uc.fullName)"),
             Map.entry("submittedInfo", "us.fullName"),
             Map.entry("approvedLevel1Info", "ua1.fullName"),
             Map.entry("approvedLevel2Info", "ua2.fullName"),
@@ -112,6 +113,49 @@ public class CoastalStationHaiphongController {
         if (field == null) {
             return defaultSort;
         }
+
+        if ("name".equalsIgnoreCase(field) || "stationName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.name)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
+                    .and(defaultSort);
+        }
+
+        if ("code".equalsIgnoreCase(field) || "stationCode".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "LOWER(t.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+
+        if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "pv.sortOrder")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+
+        if ("updatedInfo".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "COALESCE(uu.fullName, uc.fullName)")
+                    .and(JpaSort.unsafe(direction, "COALESCE(t.updatedAt, t.createdAt)"))
+                    .and(defaultSort);
+        }
+
+        if ("submittedInfo".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "us.fullName")
+                    .and(JpaSort.unsafe(direction, "t.submittedAt"))
+                    .and(defaultSort);
+        }
+
+        if ("approvedLevel1Info".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "ua1.fullName")
+                    .and(JpaSort.unsafe(direction, "t.approvedDateLevel1"))
+                    .and(defaultSort);
+        }
+
+        if ("approvedLevel2Info".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(direction, "ua2.fullName")
+                    .and(JpaSort.unsafe(direction, "t.approvedDateLevel2"))
+                    .and(defaultSort);
+        }
+
         String property = SORTABLE_LIST_FIELDS.get(field);
         if (property == null) {
             return defaultSort;
@@ -125,6 +169,7 @@ public class CoastalStationHaiphongController {
     public ResponseEntity<Map<String, Object>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String conditionStatus,
@@ -145,11 +190,11 @@ public class CoastalStationHaiphongController {
                 pageable.getPageNumber(), safeSize, resolveListSort(pageable.getSort(), sortBy, sortDir, sort));
 
         Page<CoastalStationHaiphongResponse> results = service.searchPaged(
-                orgUnitId, keyword, operatingOrgId, provinceId, conditionStatus, approvalStatus,
+                orgUnitId, keyword, code, operatingOrgId, provinceId, conditionStatus, approvalStatus,
                 updatedBy, updatedFrom, updatedTo, sanitizedPageable);
         Map<String, Long> statusCounts = includeCounts
                 ? service.countByApprovalStatus(
-                        orgUnitId, keyword, conditionStatus, operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo)
+                        orgUnitId, keyword, code, conditionStatus, operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo)
                 : Map.of();
 
         Map<String, Object> data = new HashMap<>();
@@ -168,6 +213,7 @@ public class CoastalStationHaiphongController {
     public ResponseEntity<Map<String, Long>> getCounts(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String code,
             @RequestParam(required = false) String conditionStatus,
             @RequestParam(required = false) UUID operatingOrgId,
             @RequestParam(required = false) Integer provinceId,
@@ -175,7 +221,7 @@ public class CoastalStationHaiphongController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime updatedTo) {
         return ResponseEntity.ok(service.countByApprovalStatus(
-                orgUnitId, keyword, conditionStatus, operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo));
+                orgUnitId, keyword, code, conditionStatus, operatingOrgId, provinceId, updatedBy, updatedFrom, updatedTo));
     }
 
     @GetMapping("/options")

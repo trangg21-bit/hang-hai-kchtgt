@@ -62,6 +62,7 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
         LEFT JOIN OrgUnit o ON o.id = c.orgUnitId
         LEFT JOIN OperatingOrganization oo ON oo.id = c.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = c.operatingOrgId
+        LEFT JOIN Province pv ON pv.id = c.provinceId
         LEFT JOIN User uu ON uu.id = c.updatedBy
         WHERE (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getNextSortOrder, resolveSortField } from './sortUtils';
+import { getNextSortOrder } from '../components/list-view/sortUtils';
 
 describe('DataTable sorting 3-state cycle', () => {
   it('cycles from undefined to asc (Lần 1: Sắp xếp tăng dần)', () => {
@@ -32,31 +32,25 @@ describe('DataTable sorting 3-state cycle', () => {
       }
     };
 
+    // 1st click: asc
     handleSort('code', getNextSortOrder(null));
     expect(sortField).toBe('code');
     expect(sortOrder).toBe('ascend');
 
+    // 2nd click: desc
     handleSort('code', getNextSortOrder(sortOrder));
     expect(sortField).toBe('code');
     expect(sortOrder).toBe('descend');
 
+    // 3rd click: null -> must clear sortField & sortOrder
     handleSort('code', getNextSortOrder(sortOrder));
     expect(sortField).toBe(null);
     expect(sortOrder).toBe(null);
 
+    // 4th click after reset: cycles back to asc without getting stuck at desc
     handleSort('code', getNextSortOrder(sortOrder));
     expect(sortField).toBe('code');
     expect(sortOrder).toBe('ascend');
   });
 
-  it('uses the explicit column key instead of a stale AntD derived field', () => {
-    const columns = [
-      { key: 'name', dataIndex: 'name' },
-      // Cột "Cán bộ cập nhật" là cột gộp render thủ công, không có dataIndex.
-      { key: 'updatedInfo' },
-    ];
-
-    expect(resolveSortField({ columnKey: 'updatedInfo', field: 'name' }, columns))
-      .toBe('updatedInfo');
-  });
 });

@@ -50,6 +50,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
+        LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User uu ON uu.id = t.updatedBy
         WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)

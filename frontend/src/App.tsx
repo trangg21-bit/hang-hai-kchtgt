@@ -316,7 +316,7 @@ export default function App() {
                 <Route path="/asset/ttdh" element={<PermissionGuard permission={['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage']}><TtdhAssetList /></PermissionGuard>} />
                 <Route path="/asset/cospas-sarsat" element={<PermissionGuard permission={['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read']}><CospasSarsatAssetList /></PermissionGuard>} />
                 <Route path="/asset/lrit" element={<PermissionGuard permission={['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read']}><LritAssetList /></PermissionGuard>} />
-                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'ttxltt:manage', 'coastalstationhaiphong:read']}><TtxlttAssetList /></PermissionGuard>} />
+                <Route path="/asset/ttxltt" element={<PermissionGuard permission={['ttxlttasset:manage', 'ttxlttasset:read']}><TtxlttAssetList /></PermissionGuard>} />
                 <Route path="/asset/vts-system" element={<PermissionGuard permission={['vtsasset:manage', 'vtsasset:read', 'vts:read', 'vtssystem:read']}><VtsSystemAssetList /></PermissionGuard>} />
                 <Route path="/asset/radar-station" element={<PermissionGuard permission={['radarasset:manage', 'radarasset:read', 'radarstation:read', 'tramradar:read']}><RadarStationAssetList /></PermissionGuard>} />
                 <Route path="/asset/ais-system" element={<PermissionGuard permission={['aisasset:manage', 'aisasset:read', 'aissystem:read']}><AisSystemAssetList /></PermissionGuard>} />

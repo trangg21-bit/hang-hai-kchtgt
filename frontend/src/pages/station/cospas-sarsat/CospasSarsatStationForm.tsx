@@ -387,8 +387,8 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   // User permission level (chuẩn VTS / Inmarsat)
-  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || (user as any)?.roleName === 'SUPER_ADMIN' || (user as any)?.roleName === 'ADMIN';
-  const canApproveL2 = (hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
+  const canApproveL2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
 
   // Attachments state & queues chuẩn VTS
   const initialAttachments = useMemo(() => {

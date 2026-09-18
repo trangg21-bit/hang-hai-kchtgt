@@ -312,7 +312,7 @@ export default function BeaconStationList() {
   // "Lưu và phê duyệt" (duyệt thẳng cấp Cục) chỉ hiện khi tài khoản có quyền duyệt C2
   const canApproveDirect =
     hasPerm('beaconstation:approvec2')
-    || hasPerm('data:approvec2') || hasPerm('*');
+    || hasPerm('data:approvec2');
 
   // ── Filter state ─────────────────────────────────────────────────
   const [inputName, setInputName] = useState('');
@@ -639,7 +639,7 @@ export default function BeaconStationList() {
   }, [createForm, hasPerm]);
 
   const openEditDrawer = useCallback((record: BeaconStation) => {
-    if (!canEditApprovalRecord(record.status || '', { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) {
+    if (!canEditApprovalRecord(record.status || '', { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update'] })) {
       toast.error('Bạn không có quyền chỉnh sửa bản ghi này');
       return;
     }
@@ -832,7 +832,7 @@ export default function BeaconStationList() {
       actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
     }
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(st, { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update', 'admin:manage'], extraApprovePerms: ['admin:manage'] })) {
+    if (canEditApprovalRecord(st, { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update'] })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: themeTokenChk.icons.edit, onClick: () => openEditDrawer(record) });
     }
     if (hasPerm('beaconstation:history')) {

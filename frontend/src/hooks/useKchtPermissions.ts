@@ -2,6 +2,10 @@ import { useMemo } from 'react';
 import { useAuthStore, type AuthState } from '../store/authStore';
 import { usePermissionStore, type PermissionState } from '../store/permissionStore';
 import {
+  MINISTRY_ROOT_CODE,
+  MINISTRY_ROOT_ID,
+} from '../components/org-unit/useUserDefaultOrgUnit';
+import {
   canEditApprovalRecord,
   canDeleteApprovalRecord,
   normalizeApprovalStatus,
@@ -24,6 +28,7 @@ export interface KchtRecordLike {
   id?: string;
   approvalStatus?: string | null;
   createdBy?: string | null;
+  creatorId?: string | null;
   userId?: string | null;
   approverLevel1?: string | null;
   approverLevel1Name?: string | null;
@@ -49,28 +54,32 @@ export function useKchtPermissions(
   const authStoreUser = useAuthStore((s: AuthState) => s.user);
   const currentUser = (options.currentUser !== undefined ? options.currentUser : (authStoreUser || useAuthStore.getState().user)) as AuthState['user'];
   const storeHasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const storeHasExplicitPerm = usePermissionStore((s: PermissionState) => s.hasExplicitPermission);
   const hasPerm = storeHasPerm || usePermissionStore.getState().hasPermission;
+  const hasExplicitPerm = storeHasExplicitPerm || usePermissionStore.getState().hasExplicitPermission;
 
-  const isAdmin = useMemo(() => {
-    return Boolean(
-      (currentUser as any)?.role === 'SUPER_ADMIN' ||
-      (currentUser as any)?.role === 'ADMIN' ||
-      (currentUser as any)?.roleName === 'SUPER_ADMIN' ||
-      (currentUser as any)?.roleName === 'ADMIN' ||
-      (currentUser as any)?.roles?.includes('ADMIN') ||
-      (currentUser as any)?.roles?.includes('SUPER_ADMIN')
-    );
-  }, [currentUser]);
+  // FE phải dùng đúng tập quyền hiệu lực mà backend dùng. Role hiển thị
+  // "ADMIN" chỉ là metadata tài khoản, không được tự biến thành toàn quyền.
+  // Backend chỉ bypass khi có wildcard '*' hoặc 'admin:all'.
+  const isAdmin = useMemo(
+    () => hasPerm('*') || hasPerm('admin:all'),
+    [hasPerm]
+  );
 
   const userUnitType = currentUser?.unitType || '';
   const isCucLevel = useMemo(() => {
-    return (
-      Boolean(
-        userUnitType &&
-        ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)
-      ) || isAdmin
+    const hasCucUnitType = Boolean(
+      userUnitType &&
+      ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)
     );
-  }, [userUnitType, isAdmin]);
+    const isMinistryRoot =
+      currentUser?.orgUnitCode === MINISTRY_ROOT_CODE ||
+      currentUser?.orgUnitId === MINISTRY_ROOT_ID;
+    // Nhóm duyệt trung ương gồm Cục và đơn vị gốc G17 phía trên Cục. Backend
+    // cũng coi admin không gán đơn vị là cấp cao nhất; không suy diễn mọi
+    // admin:all ở đơn vị cấp dưới thành cấp Cục.
+    return hasCucUnitType || isMinistryRoot || (isAdmin && !currentUser?.orgUnitId);
+  }, [currentUser?.orgUnitCode, currentUser?.orgUnitId, isAdmin, userUnitType]);
 
   const isCangVuLevel = useMemo(() => {
     return Boolean(userUnitType && ['CVHH', 'CANG_VU'].includes(userUnitType));
@@ -104,7 +113,6 @@ export function useKchtPermissions(
   }, [isAdmin, hasPerm, resource, extraUpdatePerms]);
 
   const hasApprovePerm = useMemo(() => {
-    if (isAdmin) return true;
     if (
       hasPerm(`${resource}:approve`) ||
       hasPerm(`${resource}:approvec1`) ||
@@ -114,41 +122,35 @@ export function useKchtPermissions(
       hasPerm('data:approvec2')
     ) return true;
     return extraApprovePerms.some((p) => hasPerm(p));
-  }, [isAdmin, hasPerm, resource, extraApprovePerms]);
+  }, [hasPerm, resource, extraApprovePerms]);
 
   const hasApproveL1Perm = useMemo(() => {
-    if (isAdmin) return true;
-    if (
-      hasPerm(`${resource}:approve`) ||
-      hasPerm(`${resource}:approvec1`) ||
-      hasPerm('data:approve') ||
-      hasPerm('data:approvec1') ||
-      extraApproveL1Perms.some((p) => hasPerm(p))
-    ) {
-      return true;
-    }
-    return false;
-  }, [isAdmin, hasPerm, resource, extraApproveL1Perms]);
+    // C1 là quyền nghiệp vụ tường minh. Không suy diễn từ quyền approve chung,
+    // data:approve, admin:all, `*` hoặc quyền thuộc đơn vị cấp Chi cục/Cảng vụ.
+    return [
+      `${resource}:approvec1`,
+      ...extraApproveL1Perms,
+    ].some((permission) => hasExplicitPerm(permission));
+  }, [hasExplicitPerm, resource, extraApproveL1Perms]);
 
   const hasApproveL2Perm = useMemo(() => {
-    if (isAdmin) return true;
-    if (
-      hasPerm(`${resource}:approvec2`) ||
-      hasPerm('data:approvec2') ||
-      extraApproveL2Perms.some((p) => hasPerm(p))
-    ) {
-      return true;
-    }
-    return false;
-  }, [isAdmin, hasPerm, resource, extraApproveL2Perms]);
+    // C2 cũng phải là mã quyền cụ thể của resource. C1, admin:all và `*`
+    // không bao hàm C2 ở tầng hiển thị nút.
+    return [
+      `${resource}:approvec2`,
+      ...extraApproveL2Perms,
+    ].some((permission) => hasExplicitPerm(permission));
+  }, [hasExplicitPerm, resource, extraApproveL2Perms]);
 
   // Can Save & Approve in Form
   const canSaveAndApprove = useMemo(() => {
     if (approvalLevels === 1) {
-      return hasApprovePerm || hasApproveL1Perm || isAdmin;
+      return hasApprovePerm || hasApproveL1Perm;
     }
-    return hasApproveL2Perm || hasApprovePerm || isAdmin;
-  }, [approvalLevels, hasApprovePerm, hasApproveL1Perm, hasApproveL2Perm, isAdmin]);
+    // Quyền duyệt là quyền tường minh: kể cả Admin ở đơn vị gốc vẫn phải được
+    // cấp đúng C2. Điều này giúp tester kiểm chứng được từng checkbox quyền.
+    return isCucLevel && hasApproveL2Perm;
+  }, [approvalLevels, hasApproveL1Perm, hasApproveL2Perm, hasApprovePerm, isCucLevel]);
 
   // Record-specific helpers
   const isCreator = (record?: KchtRecordLike | null): boolean => {
@@ -156,7 +158,7 @@ export function useKchtPermissions(
     return (
       record.createdBy === currentUserId ||
       record.userId === currentUserId ||
-      (record as any).creatorId === currentUserId
+      record.creatorId === currentUserId
     );
   };
 
@@ -208,7 +210,7 @@ export function useKchtPermissions(
     const isPending = st === 'PENDING_APPROVAL';
     if (!isPending) return false;
     if (approvalLevels === 1) {
-      return (hasApprovePerm || hasApproveL1Perm || isAdmin) && (!isCreator(record) || isAdmin);
+      return (hasApprovePerm || hasApproveL1Perm) && (!isCreator(record) || isAdmin);
     }
     return hasApproveL1Perm && (!isCreator(record) || isCucLevel || isAdmin);
   };

@@ -660,20 +660,18 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       };
 
       if (isCreateMode) {
-        const created = await vtsOperationCenterService.create(payload);
+        const created = await vtsOperationCenterService.create({
+          ...payload,
+          // C2 tạo thẳng hồ sơ đã duyệt; không phụ thuộc vào quyền update.
+          approvalStatus: act === 'approve' ? ApprovalStatus.APPROVED : ApprovalStatus.DRAFT,
+          submitForApproval: act === 'submit',
+        });
         if (created?.id && pendingFiles.length > 0) {
           try {
             await vtsOperationCenterService.uploadAttachments(created.id, pendingFiles);
           } catch {
             attachmentPartialFailure = true;
           }
-        }
-        if (act === 'submit' && created?.id) {
-          await vtsOperationCenterService.submit(created.id);
-        } else if (act === 'approve' && created?.id) {
-          await vtsOperationCenterService.submit(created.id);
-          await vtsOperationCenterService.approveC1(created.id, 'APPROVED', 'Cấp Cục phê duyệt trực tiếp').catch(() => {});
-          await vtsOperationCenterService.approveC2(created.id, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
@@ -691,7 +689,12 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
             : createSuccessMsg,
         );
       } else if (editId) {
-        await vtsOperationCenterService.update(editId, payload as UpdateVtsOperationCenterRequest);
+        // "Lưu và phê duyệt" là đúng một lần cập nhật để không tạo hai lịch sử
+        // cho cùng một thao tác sửa.
+        await vtsOperationCenterService.update(editId, {
+          ...payload,
+          ...(act === 'approve' ? { approvalStatus: ApprovalStatus.APPROVED } : {}),
+        } as UpdateVtsOperationCenterRequest);
         if (pendingDeletedAttachments.length > 0) {
           const deletionResults = await Promise.allSettled(
             pendingDeletedAttachments.map((a) => vtsOperationCenterService.deleteAttachment(editId, a.id)),
@@ -704,22 +707,8 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           ]);
           if (uploadResults.some((result) => result.status === 'rejected')) attachmentPartialFailure = true;
         }
-        const isAlreadyApproved =
-          record?.approvalStatus === ApprovalStatus.APPROVED ||
-          (record?.approvalStatus as string) === 'APPROVED_LEVEL2';
-
         if (act === 'submit') {
           await vtsOperationCenterService.submit(editId);
-        } else if (act === 'approve') {
-          if (!isAlreadyApproved) {
-            if (record?.approvalStatus === ApprovalStatus.APPROVED_LEVEL1) {
-              await vtsOperationCenterService.approveC2(editId, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
-            } else {
-              await vtsOperationCenterService.submit(editId);
-              await vtsOperationCenterService.approveC1(editId, 'APPROVED', 'Cấp Cục phê duyệt trực tiếp').catch(() => {});
-              await vtsOperationCenterService.approveC2(editId, 'APPROVED', 'Lưu và phê duyệt trực tiếp');
-            }
-          }
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);

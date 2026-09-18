@@ -2,13 +2,13 @@
 feature-id: F-110
 document: lean-spec
 output-mode: lean
-last-updated: 2026-08-28
+last-updated: 2026-09-18
 ---
 # Tạo mới Đài LRIT (CoastalStationLRIT)
 
 ## Summary
 
-Tính năng tạo mới hồ sơ Đài LRIT. **ĐÃ XÁC MINH:** entity `CoastalStationLRIT` (`@Table coastal_station_lrit`, `@Filter(orgUnitFilter, condition = "org_unit_id IN (:orgUnitIds)")`) + controller `CoastalStationLRITController` (`@RequestMapping("/api/v1/stations/lrit")`, `@DataScope`). Excel sheet "Đài LRIT" (~line 1674). **Auto-code CÓ:** `CoastalStationLRITService.generateCode()` → `"LRIT-%04d"`; createStation dùng request.getCode() nếu có, ngược lại generateCode(); trùng → IllegalArgumentException. Tạo mới đặt DRAFT + conditionStatus="OPERATIONAL" (@PrePersist). **DRIFT #5:** brief ghi "pending sau tạo" — code thực tế DRAFT. **DRIFT #1:** enum ORDINAL smallint (đúng); conditionStatus String. Điểm khác Excel LRIT: KHÔNG có trường "Tần số liên lạc" (chỉ 10 trường TAB1) nhưng entity có `communicationChannel`, `dataFormat`, `terminalId`, `imoNumber`, `reportingInterval`, `antennaHeight`, `powerOutput`, `antennaType` — trường đặc thù LRIT ngoài Excel. History CREATE.
+Tính năng tạo mới hồ sơ Đài LRIT. **ĐÃ XÁC MINH:** entity `CoastalStationLRIT` (`@Table coastal_station_lrit`, `@Filter(orgUnitFilter, condition = "org_unit_id IN (:orgUnitIds)")`) + controller `CoastalStationLRITController` (`@RequestMapping("/api/v1/stations/lrit")`, `@DataScope`). Excel sheet "Đài LRIT" (~line 1674). **Auto-code CÓ:** `CoastalStationLRITService.generateCode()` → `"LRIT-%04d"`; createStation dùng request.getCode() nếu có, ngược lại generateCode(); trùng → IllegalArgumentException. Tạo mới đặt DRAFT + conditionStatus="NOT_YET_OPERATIONAL" (@PrePersist). Enum trạng thái phê duyệt lưu ORDINAL smallint; `conditionStatus` là String. Ma trận dưới đây là đầy đủ: mười trường kỹ thuật đặc thù cũ đã được loại bỏ đồng bộ khỏi FE, API/BE và CSDL theo migration `V100`. History CREATE.
 
 ## Use Cases
 
@@ -37,7 +37,7 @@ Nguồn: Excel sheet "Đài LRIT" (~line 1674) — 8 cột chính xác. Lưu ý:
 | 4 | Đơn vị khai thác | `operatingOrgId` | SelectCateOther | T | F | T | T | T |
 | 5 | Địa điểm (Tỉnh/TP) (bắt buộc) | `provinceId` | SelectCateOther | T | T | T | T | T |
 | 6 | Địa điểm chi tiết (bắt buộc) | `locationAddress` | InputTextArea | F | F | T | T | T |
-| 7 | Tình trạng (bắt buộc) | `conditionStatus` (String, default OPERATIONAL) | SelectAppParams | T | T | T | T | T |
+| 7 | Tình trạng (bắt buộc) | `conditionStatus` (String, default NOT_YET_OPERATIONAL) | SelectAppParams | T | T | T | T | T |
 | 8 | Vùng phủ sóng | `coverageArea` | InputTextArea | F | F | T | T | T |
 | 9 | Dịch vụ cung cấp | `servicesProvided` | SelectAppParams (multi-select) | F | F | T | T | T |
 | 10 | Ghi chú | `description` | InputTextArea | F | F | T | T | T |
@@ -46,14 +46,14 @@ Nguồn: Excel sheet "Đài LRIT" (~line 1674) — 8 cột chính xác. Lưu ý:
 | TAB4 | Vận hành & bảo trì (read-only) | từ module VH&BT | Text (read-only) | F | F | T | F | F |
 | TAB5 | Xử lý & theo dõi | `approvalStatus`/`updatedAt`/`submittedAt`/`approverLevel1/2`... | Badge/Text (read-only) | T/F | T/F | T | F | F |
 
-> Entity LRIT còn có trường đặc thù ngoài Excel: `terminalId`, `imoNumber`, `reportingInterval`, `antennaHeight`, `powerOutput`, `antennaType`, `dataFormat`, `communicationChannel`, `contactPerson`, `contactPhone` — hiển thị thêm ở CT (SA chốt vị trí).
+> Không có trường kỹ thuật LRIT bổ sung ngoài ma trận này. Các trường `terminalId`, `imoNumber`, `reportingInterval`, `antennaHeight`, `powerOutput`, `antennaType`, `dataFormat`, `communicationChannel`, `contactPerson`, `contactPhone` đã bị loại bỏ khỏi form, chi tiết, API, entity và CSDL theo migration `V100__drop_obsolete_lrit_technical_fields.sql`.
 
 ## Business Rules
 
 | ID | Rule | Acceptance | Note |
 |---|---|---|---|
 | BR-110-01 | Mã tự sinh `LRIT-%04d`; client truyền code thì dùng; trùng → 400 | AC-110-01 | generateCode + retry |
-| BR-110-02 | Trạng thái khởi tạo DRAFT + conditionStatus=OPERATIONAL | AC-110-02 | @PrePersist |
+| BR-110-02 | Trạng thái khởi tạo DRAFT + conditionStatus=NOT_YET_OPERATIONAL | AC-110-02 | @PrePersist |
 | BR-110-03 | Trường bắt buộc: Tên đài, Đơn vị quản lý, Địa điểm Tỉnh/TP, Địa điểm chi tiết, Tình trạng | AC-110-03 | |
 | BR-110-04 | History CREATE | AC-110-04 | |
 | BR-110-05 | Quyền `coastalstationlrit:create` (fallback specialstation:create, data:create, admin:all) | AC-110-05 | |
@@ -62,7 +62,7 @@ Nguồn: Excel sheet "Đài LRIT" (~line 1674) — 8 cột chính xác. Lưu ý:
 
 ## Domain Model
 
-`CoastalStationLRIT` (`coastal_station_lrit`): orgUnitId, unitId, operatingOrgId, provinceId, code, stationCode, name, stationName, description(1000), locationAddress(1000), spatialId, isActive, conditionStatus, status/approvalStatus (ORDINAL smallint), approvalLevel, submittedAt/By, approverLevel1/2, approvedDateLevel1/2, approvedBy/Date, rejectionReason, terminalId, imoNumber, reportingInterval (Integer), antennaHeight, powerOutput (Double), antennaType, contactPerson, contactPhone, dataFormat, communicationChannel, coverageArea, servicesProvided(1000), geometryType (POINT), symbol, coordinateSystem (WGS84), displayRule, latitude/longitude (BigDecimal 10,6). `getOrgUnitId()` = orgUnitId ?? unitId. Implements ApprovableEntity.
+`CoastalStationLRIT` (`coastal_station_lrit`): orgUnitId, unitId, operatingOrgId, provinceId, code, stationCode, name, stationName, description(1000), locationAddress(1000), spatialId, isActive, conditionStatus, status/approvalStatus (ORDINAL smallint), approvalLevel, submittedAt/By, approverLevel1/2, approvedDateLevel1/2, approvedBy/Date, rejectionReason, coverageArea, servicesProvided(1000), geometryType (POINT), symbol, coordinateSystem (WGS84), displayRule, latitude/longitude (BigDecimal 10,6). `getOrgUnitId()` = orgUnitId ?? unitId. Implements ApprovableEntity.
 
 ## Approval flow (2 cấp C1→C2)
 
@@ -77,7 +77,7 @@ Giống F-095 nhưng endpoint LRIT dùng tên **`approve-c1`/`approve-c2`** (Đ�
 | ID | Given/When/Then |
 |---|---|
 | AC-110-01 | POST /create không code → code=`LRIT-{seq}`; code trùng → 400 |
-| AC-110-02 | Sau tạo: approvalStatus=DRAFT, status=DRAFT, conditionStatus=OPERATIONAL |
+| AC-110-02 | Sau tạo: approvalStatus=DRAFT, status=DRAFT, conditionStatus=NOT_YET_OPERATIONAL |
 | AC-110-03 | Thiếu trường bắt buộc → chặn, tiếng Việt có dấu |
 | AC-110-04 | History CREATE tồn tại |
 | AC-110-05 | User thiếu `coastalstationlrit:create` → 403 |
@@ -88,8 +88,8 @@ Giống F-095 nhưng endpoint LRIT dùng tên **`approve-c1`/`approve-c2`** (Đ�
 
 | Question | Answer | Rationale |
 |---|---|---|
-| Domain model affected? | No | Entity đầy đủ + trường đặc thù LRIT |
+| Domain model affected? | Yes | Đã loại bỏ mười trường kỹ thuật LRIT không thuộc ma trận |
 | Architecture affected? | Low | Tên endpoint approve-c1/c2 đã chuẩn |
 | Implementation clear? | Yes | generateCode + createStation đã có |
-| Documentation risk | Medium | Brief ghi "pending sau tạo" — sai với DRAFT (drift #5) |
+| Documentation risk | Low | Đã đồng bộ trạng thái mặc định và ma trận trường với triển khai |
 | **Verdict** | `Ready for Solution Designer review` | Rõ ràng |

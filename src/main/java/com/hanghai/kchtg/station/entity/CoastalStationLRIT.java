@@ -59,42 +59,11 @@ public class CoastalStationLRIT extends BaseEntity implements ApprovableEntity {
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", columnDefinition = "SMALLINT")
-    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
+    private ConditionStatus conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "status", columnDefinition = "smallint default 0")
     protected StationStatus status = StationStatus.DRAFT;
-
-    // --- Thông số đặc thù LRIT ---
-    @Column(name = "terminal_id")
-    private String terminalId;
-
-    @Column(name = "imo_number")
-    private String imoNumber;
-
-    @Column(name = "reporting_interval")
-    private Integer reportingInterval;
-
-    @Column(name = "antenna_height")
-    private Double antennaHeight;
-
-    @Column(name = "power_output")
-    private Double powerOutput;
-
-    @Column(name = "antenna_type")
-    private String antennaType;
-
-    @Column(name = "contact_person")
-    private String contactPerson;
-
-    @Column(name = "contact_phone")
-    private String contactPhone;
-
-    @Column(name = "data_format")
-    private String dataFormat;
-
-    @Column(name = "communication_channel")
-    private String communicationChannel;
 
     @Column(name = "coverage_area")
     private String coverageArea;
@@ -255,7 +224,7 @@ public class CoastalStationLRIT extends BaseEntity implements ApprovableEntity {
             this.status = StationStatus.DRAFT;
         }
         if (this.conditionStatus == null) {
-            this.conditionStatus = ConditionStatus.OPERATIONAL;
+            this.conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
         }
     }
 }

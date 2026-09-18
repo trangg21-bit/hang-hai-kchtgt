@@ -41,6 +41,7 @@ export const hanoiStationService = {
   async search(params?: HanoiStationListParams): Promise<HanoiStationSearchResponse> {
     const sp = buildSearchParams({
       keyword: params?.keyword,
+      code: params?.code,
       orgUnitId: params?.orgUnitId,
       operatingOrgId: params?.operatingOrgId,
       provinceId: params?.provinceId,

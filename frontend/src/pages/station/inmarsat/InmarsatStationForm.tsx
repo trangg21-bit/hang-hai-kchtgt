@@ -267,17 +267,14 @@ export default function InmarsatStationForm({
 
   // User permission level
   const userUnitType = currentUser?.unitType || '';
-  const isAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser as any)?.roleName === 'SUPER_ADMIN' || (currentUser as any)?.roleName === 'ADMIN';
-  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType));
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = (hasPerm('coastalstationinmarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1') || isAdmin) && (isCangVuLevel || !isCucLevel || isAdmin);
-  const canApproveL2 = (hasPerm('coastalstationinmarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2') || isAdmin);
-  const canCreate = hasPerm('coastalstationinmarsat:create') || hasPerm('specialstation:create') || hasPerm('data:create') || isAdmin;
+  const canApproveL1 = hasPerm('coastalstationinmarsat:approvec1') && (isCangVuLevel || !isCucLevel);
+  const canApproveL2 = hasPerm('coastalstationinmarsat:approvec2');
+  const canCreate = hasPerm('coastalstationinmarsat:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationinmarsat',
-    extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const [internalOrgUnits, setInternalOrgUnits] = useState<any[]>([]);

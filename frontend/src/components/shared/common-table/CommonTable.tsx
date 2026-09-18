@@ -48,6 +48,7 @@ import {
 } from "../../../themetokenchk";
 import { formatAssetCode } from "../../../utils/assetCode";
 import { DEFAULT_STATUS_MAP } from "./status-map.constants";
+import { getNextSortOrder, resolveSortField } from "../../list-view/sortUtils";
 
 const ACTION_COLUMN_WIDTH = 60;
 const HEADER_CHAR_WIDTH = 8.8;
@@ -240,6 +241,49 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   const actualPageSize: number =
     externalPageSize !== undefined ? externalPageSize : internalPageSize;
 
+  // Direct-data tables without an external sort callback must still perform a
+  // real local sort. `sorter: true` only emits an AntD event; it does not
+  // rearrange records by itself. Server-backed and externally controlled
+  // tables keep their existing source of truth.
+  const displayedData = useMemo(() => {
+    if (isServiceProviderMode || onSortChange || !sortField || !sortOrder) {
+      return actualData;
+    }
+
+    const column = options?.mainColumns.find(
+      (item) => (item.sortField ?? item.dataIndex) === sortField,
+    );
+    if (!column) return actualData;
+
+    const compareValues = (left: unknown, right: unknown) => {
+      if (left == null && right == null) return 0;
+      if (left == null) return 1;
+      if (right == null) return -1;
+      if (typeof left === "number" && typeof right === "number") {
+        return left - right;
+      }
+      return String(left).localeCompare(String(right), "vi", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    };
+
+    return [...actualData].sort((left, right) => {
+      if (typeof column.sorter === "function") {
+        const result = column.sorter(left, right);
+        return sortOrder === "ascend" ? result : -result;
+      }
+      const leftValue = column.valueRef
+        ? column.valueRef(left)
+        : left[column.dataIndex as keyof T];
+      const rightValue = column.valueRef
+        ? column.valueRef(right)
+        : right[column.dataIndex as keyof T];
+      const result = compareValues(leftValue, rightValue);
+      return sortOrder === "ascend" ? result : -result;
+    });
+  }, [actualData, isServiceProviderMode, onSortChange, options?.mainColumns, sortField, sortOrder]);
+
   // Reset cuộn ngang về 0 khi đổi trang hoặc nạp dữ liệu
   const resetHorizontalScroll = useCallback(() => {
     if (!tableShellRef.current) return;
@@ -384,15 +428,29 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   const handleSortChange: NonNullable<TableProps<T>["onChange"]> = useCallback(
     (_pagination, _filters, sorter) => {
       const sorterObj = Array.isArray(sorter) ? sorter[0] : sorter;
-      const field = sorterObj?.columnKey as string | undefined;
-      const order = sorterObj?.order ?? null;
+      const field = sorterObj
+        ? resolveSortField(
+            sorterObj,
+            (options?.mainColumns || []).map((column) => ({
+              key: column.sortField ?? column.dataIndex,
+              dataIndex: column.dataIndex,
+            })),
+          )
+        : undefined;
+      if (!field) return;
+      // AntD can loop descend -> ascend when a null entry appears in
+      // sortDirections. The controlled state is authoritative: ascend ->
+      // descend -> no sort, regardless of AntD's reported third value.
+      const nextOrder = getNextSortOrder(field && field === sortField ? sortOrder : null);
+      const order = nextOrder === "asc" ? "ascend" : nextOrder === "desc" ? "descend" : null;
+      const nextField = order ? field : undefined;
 
-      setSortField(field);
+      setSortField(nextField);
       setSortOrder(order);
 
       if (isServiceProviderMode) {
         setInternalPage(1);
-        void fetchData(1, actualPageSize, effectiveFilters, field, order);
+        void fetchData(1, actualPageSize, effectiveFilters, nextField, order);
       }
       onSortChange?.(field ?? "", order);
     },
@@ -402,6 +460,9 @@ function CommonTableInternal<T extends Record<string, unknown>>(
       effectiveFilters,
       fetchData,
       onSortChange,
+      options?.mainColumns,
+      sortField,
+      sortOrder,
     ],
   );
 
@@ -566,7 +627,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
         columnKey: colField,
         sortOrder: isCurrentSorted ? sortOrder : null,
         showSorterTooltip: false,
-        sortDirections: ["ascend", "descend", null],
+        sortDirections: ["ascend", "descend"],
         sortIcon: themeToken.tableSortIcon || tableSortIcon,
         onHeaderCell: () => ({
           className: isCurrentSorted
@@ -1052,7 +1113,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
               (record as Record<string, unknown>).id ??
               (record as Record<string, unknown>).key) as React.Key
           }
-          dataSource={actualData}
+          dataSource={displayedData}
           columns={generatedColumns}
           rowSelection={rowSelection}
           pagination={false}

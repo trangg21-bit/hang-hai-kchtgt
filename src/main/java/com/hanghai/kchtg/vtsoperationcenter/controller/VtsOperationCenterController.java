@@ -83,8 +83,7 @@ public class VtsOperationCenterController {
      * trỏ vào alias của các LEFT JOIN trong {@code VtsOperationCenterRepository.search}
      * để sắp theo đúng chữ người dùng nhìn thấy, thay vì theo UUID.
      *
-     * Ngoại lệ: Tỉnh/TP chỉ có mã số trong CSDL (chưa có entity Province để join)
-     * nên sắp theo mã tỉnh — trùng với thứ tự mã hành chính.
+     * Tỉnh/TP được sắp theo tên người dùng nhìn thấy, không theo mã hành chính.
      */
     private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
             Map.entry("name", "t.name"),
@@ -126,6 +125,21 @@ public class VtsOperationCenterController {
         Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) || "asc".equalsIgnoreCase(sortDir)
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
+        if ("name".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(direction, "LOWER(t.name)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
+                    .and(defaultSort);
+        }
+        if ("code".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(direction, "LOWER(t.code)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
+        if ("province".equalsIgnoreCase(cleanSortBy) || "provinceId".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(direction, "pv.sortOrder")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
+                    .and(defaultSort);
+        }
         // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
         return JpaSort.unsafe(direction, property).and(defaultSort);
     }
@@ -214,7 +228,8 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Xóa trung tâm điều hành VTS thành công", null));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vtsoperationcenter:update')")
+    // Gửi duyệt là bước workflow; hồ sơ vừa tạo được phép gửi với quyền create.
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsoperationcenter:create', 'vtsoperationcenter:update')")
     @PostMapping("/{id}/submit")
     public ResponseEntity<ApiResponse<Void>> submit(
             @PathVariable UUID id,

@@ -1,6 +1,8 @@
-if (typeof globalThis.localStorage === 'undefined') {
+const globalWithStorage = globalThis as unknown as { localStorage?: Storage };
+
+if (typeof globalWithStorage.localStorage === 'undefined') {
   const mockStorage: Record<string, string> = {};
-  (globalThis as any).localStorage = {
+  globalWithStorage.localStorage = {
     getItem: (key: string) => mockStorage[key] || null,
     setItem: (key: string, value: string) => {
       mockStorage[key] = value;
@@ -11,12 +13,12 @@ if (typeof globalThis.localStorage === 'undefined') {
     clear: () => {
       Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
     },
-  };
+  } as unknown as Storage;
 }
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePermissionStore } from './permissionStore';
-import { useAuthStore } from './authStore';
+import { useAuthStore, type User } from './authStore';
 
 describe('permissionStore Unit Tests', () => {
   beforeEach(() => {
@@ -25,14 +27,14 @@ describe('permissionStore Unit Tests', () => {
         id: '1',
         username: 'testuser',
         permissions: [],
-      } as any,
+      } as User,
     });
     usePermissionStore.setState({ permissions: [] });
   });
 
   it('should not treat admin:manage as global access', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'admin', permissions: ['admin:manage'] } as any,
+    user: { id: '1', username: 'admin', permissions: ['admin:manage'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -43,7 +45,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should return true when user has user:permission direct permission', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'admin', permissions: ['user:permission'] } as any,
+    user: { id: '1', username: 'admin', permissions: ['user:permission'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -51,18 +53,60 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasPermission('user:manage')).toBe(false);
   });
 
-  it('should return true when user has * wildcard override', () => {
+  it('does not treat an admin wildcard claim as business-resource access', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'admin', permissions: ['*'] } as any,
+    user: { id: '1', username: 'admin', permissions: ['*'] } as User,
     });
 
     const store = usePermissionStore.getState();
-    expect(store.hasPermission('document:approve')).toBe(true);
+    expect(store.hasPermission('document:approve')).toBe(false);
+    expect(store.hasPermission('vts:approvec1')).toBe(false);
+    expect(store.hasPermission('vts:approvec2')).toBe(false);
+    expect(store.hasPermission('seaportthroughput:approve_level2')).toBe(false);
+  });
+
+  it('requires an explicit C1/C2 permission even when a resource has manage', () => {
+    useAuthStore.setState({
+    user: { id: '1', username: 'manager', permissions: ['vts:manage', 'vts:approvec2'] } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('vts:approvec1')).toBe(false);
+    expect(store.hasPermission('vts:approvec2')).toBe(true);
+  });
+
+  it('does not use Operation Center VTS approval to approve the VTS System resource', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'vts-operation-center-approver',
+        username: 'operation_center_approver',
+        permissions: ['vtsoperationcenter:approvec2'],
+      } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('vtsoperationcenter:approvec2')).toBe(true);
+    expect(store.hasPermission('vts:approvec2')).toBe(false);
+  });
+
+  it('does not accept a legacy shared approval key', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'legacy-approver',
+        username: 'legacy_approver',
+        permissions: ['data:approvec2', 'kcht:approve_level1'],
+      } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('data:approvec2')).toBe(false);
+    expect(store.hasPermission('kcht:approve_level1')).toBe(false);
+    expect(store.hasPermission('vts:approvec2')).toBe(false);
   });
 
   it('should return true for direct exact permission match', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'user1', permissions: ['user:read', 'role:manage'] } as any,
+    user: { id: '1', username: 'user1', permissions: ['user:read', 'role:manage'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -73,7 +117,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should return true when user has resource:manage wildcard permission', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'user1', permissions: ['user:manage'] } as any,
+    user: { id: '1', username: 'user1', permissions: ['user:manage'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -89,7 +133,7 @@ describe('permissionStore Unit Tests', () => {
         id: '1',
         username: 'user1',
         permissions: ['user:read', 'map:manage', 'data:create'],
-      } as any,
+      } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -100,7 +144,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should evaluate hasAnyPermission correctly', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'user1', permissions: ['user:read'] } as any,
+    user: { id: '1', username: 'user1', permissions: ['user:read'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -108,9 +152,38 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasAnyPermission(['user:delete', 'role:manage'])).toBe(false);
   });
 
+  it('does not use legacy umbrella read permission to open a concrete station screen', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'admin', permissions: ['data:read', 'specialstation:read'] } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    expect(store.hasAnyPermission([
+      'coastalstationinmarsat:read',
+      'specialstation:read',
+      'data:read',
+    ])).toBe(false);
+    expect(store.hasAnyPermission([
+      'coastalstationinmarsat:read',
+      'inmarsat:read',
+      'inmarsatasset:read',
+    ])).toBe(false);
+  });
+
+  it('allows a formally equivalent Inmarsat permission through a concrete route', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'inmarsat-reader', permissions: ['inmarsat:read'] } as User,
+    });
+
+    expect(usePermissionStore.getState().hasAnyPermission([
+      'coastalstationinmarsat:read',
+      'inmarsatasset:read',
+    ])).toBe(true);
+  });
+
   it('should evaluate hasAllPermissions correctly', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'user1', permissions: ['user:read', 'user:update'] } as any,
+    user: { id: '1', username: 'user1', permissions: ['user:read', 'user:update'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -120,7 +193,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should automatically sync permissions array when authStore user updates', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'user1', permissions: ['vts:read', 'vts:approvec1'] } as any,
+    user: { id: '1', username: 'user1', permissions: ['vts:read', 'vts:approvec1'] } as User,
     });
 
     expect(usePermissionStore.getState().permissions).toEqual(['vts:read', 'vts:approvec1']);
@@ -130,7 +203,7 @@ describe('permissionStore Unit Tests', () => {
   it('should implicitly grant read permission when user has operational permissions (Implicit Read)', () => {
     // User only has approvec1 for VTS, no explicit read
     useAuthStore.setState({
-      user: { id: '1', username: 'evaluator', permissions: ['vts:approvec1'] } as any,
+    user: { id: '1', username: 'evaluator', permissions: ['vts:approvec1'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -141,7 +214,7 @@ describe('permissionStore Unit Tests', () => {
 
     // User only has create for LRIT station
     useAuthStore.setState({
-      user: { id: '2', username: 'creator', permissions: ['coastalstationlrit:create'] } as any,
+    user: { id: '2', username: 'creator', permissions: ['coastalstationlrit:create'] } as User,
     });
 
     expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
@@ -150,7 +223,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should cover child stations when user has parent specialstation permission', () => {
     useAuthStore.setState({
-      user: { id: '3', username: 'specialAdmin', permissions: ['specialstation:read'] } as any,
+    user: { id: '3', username: 'specialAdmin', permissions: ['specialstation:read'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -162,7 +235,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should not leak vts permissions to vtsoperationcenter or vhf', () => {
     useAuthStore.setState({
-      user: { id: '4', username: 'vtsCreator', permissions: ['vts:create'] } as any,
+    user: { id: '4', username: 'vtsCreator', permissions: ['vts:create'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -178,7 +251,7 @@ describe('permissionStore Unit Tests', () => {
 
   it('should symmetrically resolve equivalent asset permissions (dryport <-> dryportasset)', () => {
     useAuthStore.setState({
-      user: { id: '5', username: 'dryportAssetUser', permissions: ['dryportasset:read', 'berth:create'] } as any,
+    user: { id: '5', username: 'dryportAssetUser', permissions: ['dryportasset:read', 'berth:create'] } as User,
     });
 
     const store = usePermissionStore.getState();
@@ -200,4 +273,3 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasPermission('berth:delete')).toBe(false);
   });
 });
-

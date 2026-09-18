@@ -32,8 +32,8 @@ import {
   primaryButtonStyle,
   surfaceCard,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
 } from '../../../themetokenchk';
 import { getProvinceNameById } from '../../../types/common';
 import DetailTable from '../../../components/shared/DetailTable';
@@ -122,8 +122,8 @@ const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> =
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return null;
-  const label = getConditionStatusLabel(status as any);
-  const color = getConditionStatusColor(status as any);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return (
     <span
       style={{

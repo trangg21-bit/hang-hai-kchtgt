@@ -32,7 +32,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -80,17 +79,7 @@ class CoastalStationLRITControllerTest {
         entity.setId(id);
         entity.setCode("LRIT-001");
         entity.setName("LRIT Station");
-        entity.setTerminalId("T-001");
-        entity.setImoNumber("IMO1234567");
-        entity.setReportingInterval(360);
-        entity.setAntennaHeight(15.0);
-        entity.setPowerOutput(50.0);
-        entity.setAntennaType("Parabolic");
         entity.setLocationAddress("789 Harbor Blvd");
-        entity.setContactPerson("Alice Wang");
-        entity.setContactPhone("+84555666777");
-        entity.setDataFormat("AIS");
-        entity.setCommunicationChannel("VHF Ch 16");
         entity.setCoverageArea("Territorial");
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(ApprovalStatus.PROPOSED);
@@ -103,17 +92,7 @@ class CoastalStationLRITControllerTest {
                 .id(id)
                 .stationCode("LRIT-001")
                 .stationName("LRIT Station")
-                .terminalId("T-001")
-                .imoNumber("IMO1234567")
-                .reportingInterval(360)
-                .antennaHeight(15.0)
-                .powerOutput(50.0)
-                .antennaType("Parabolic")
                 .locationAddress("789 Harbor Blvd")
-                .contactPerson("Alice Wang")
-                .contactPhone("+84555666777")
-                .dataFormat("AIS")
-                .communicationChannel("VHF Ch 16")
                 .coverageArea("Territorial")
                 .status(StationStatus.PENDING_APPROVAL)
                 .approvalStatus(ApprovalStatus.PROPOSED)
@@ -132,17 +111,7 @@ class CoastalStationLRITControllerTest {
                 {
                   "stationCode": "LRIT-001",
                   "stationName": "LRIT Station",
-                  "terminalId": "T-001",
-                  "imoNumber": "IMO1234567",
-                  "reportingInterval": 360,
-                  "antennaHeight": 15.0,
-                  "powerOutput": 50.0,
-                  "antennaType": "Parabolic",
                   "locationAddress": "789 Harbor Blvd",
-                  "contactPerson": "Alice Wang",
-                  "contactPhone": "+84555666777",
-                  "dataFormat": "AIS",
-                  "communicationChannel": "VHF Ch 16",
                   "coverageArea": "Territorial"
                 }
                 """;
@@ -169,17 +138,7 @@ class CoastalStationLRITControllerTest {
                 {
                   "stationCode": "LRIT-001",
                   "stationName": "Updated LRIT",
-                  "terminalId": "T-001",
-                  "imoNumber": "IMO1234567",
-                  "reportingInterval": 360,
-                  "antennaHeight": 15.0,
-                  "powerOutput": 50.0,
-                  "antennaType": "Parabolic",
                   "locationAddress": "789 Harbor Blvd",
-                  "contactPerson": "Alice Wang",
-                  "contactPhone": "+84555666777",
-                  "dataFormat": "AIS",
-                  "communicationChannel": "VHF Ch 16",
                   "coverageArea": "Territorial"
                 }
                 """;
@@ -330,51 +289,11 @@ class CoastalStationLRITControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/stations/lrit/by-terminal/{terminalId} — returns 200 when found")
-    void testFindByTerminalId() throws Exception {
-        CoastalStationLRIT entity = makeEntity(UUID.randomUUID());
-        when(service.findByTerminalId("T-001")).thenReturn(Optional.of(entity));
-
-        mockMvc.perform(get(BASE + "/by-terminal/{terminalId}", "T-001"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("LRIT-001"));
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/stations/lrit/by-terminal/{terminalId} — returns 404 when not found")
-    void testFindByTerminalIdNotFound() throws Exception {
-        when(service.findByTerminalId("UNKNOWN")).thenReturn(Optional.empty());
-
-        mockMvc.perform(get(BASE + "/by-terminal/{terminalId}", "UNKNOWN"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/stations/lrit/by-imo/{imoNumber} — returns 200 when found")
-    void testFindByImoNumber() throws Exception {
-        CoastalStationLRIT entity = makeEntity(UUID.randomUUID());
-        when(service.findByImoNumber("IMO1234567")).thenReturn(Optional.of(entity));
-
-        mockMvc.perform(get(BASE + "/by-imo/{imoNumber}", "IMO1234567"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("LRIT-001"));
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/stations/lrit/by-imo/{imoNumber} — returns 404 when not found")
-    void testFindByImoNumberNotFound() throws Exception {
-        when(service.findByImoNumber("UNKNOWN")).thenReturn(Optional.empty());
-
-        mockMvc.perform(get(BASE + "/by-imo/{imoNumber}", "UNKNOWN"))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
     @DisplayName("POST /api/v1/stations/lrit/create — returns 400 for invalid body")
     void testCreateValidationError() throws Exception {
         String invalidJson = """
                 {
-                  "reportingInterval": "not-a-number"
+                  "orgUnitId": "not-a-uuid"
                 }
                 """;
 

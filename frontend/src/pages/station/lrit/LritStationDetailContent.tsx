@@ -32,8 +32,8 @@ import {
   outlineButtonStyle,
   primaryButtonStyle,
   DRAWER_TABLE_SCROLL_Y,
-  getConditionStatusColor,
-  getConditionStatusLabel,
+  getVtsConditionStatusColor,
+  getVtsConditionStatusLabel,
   surfaceCard,
 } from '../../../themetokenchk';
 import { getProvinceNameById } from '../../../types/common';
@@ -256,8 +256,8 @@ const parseWktToPoints = (record?: LritStationItem | null): { lat: number; lng: 
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (status == null || status === '') return null;
-  const label = getConditionStatusLabel(status as any);
-  const color = getConditionStatusColor(status as any);
+  const label = getVtsConditionStatusLabel(status);
+  const color = getVtsConditionStatusColor(status);
   return (
     <span
       style={{
@@ -486,51 +486,6 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                     <div className="chk-detail-row chk-detail-row--full">
                       <span className="chk-detail-label sec-full-label">Vùng phủ sóng</span>
                       <span className="chk-detail-value">{record.coverageArea || '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Mã thiết bị đầu cuối</span>
-                      <span className="chk-detail-value">{record.terminalId || '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Số IMO</span>
-                      <span className="chk-detail-value">{record.imoNumber || '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Chu kỳ báo cáo</span>
-                      <span className="chk-detail-value">{record.reportingInterval != null ? `${record.reportingInterval} phút` : '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Độ cao ăng-ten</span>
-                      <span className="chk-detail-value">{record.antennaHeight != null ? `${record.antennaHeight} m` : '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Công suất phát</span>
-                      <span className="chk-detail-value">{record.powerOutput != null ? `${record.powerOutput} W` : '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Loại ăng-ten</span>
-                      <span className="chk-detail-value">{record.antennaType || '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Định dạng dữ liệu</span>
-                      <span className="chk-detail-value">{record.dataFormat || '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Kênh truyền thông</span>
-                      <span className="chk-detail-value">{record.communicationChannel || '—'}</span>
-                    </div>
-
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Người liên hệ</span>
-                      <span className="chk-detail-value">{record.contactPerson ? `${record.contactPerson}${record.contactPhone ? ` (${record.contactPhone})` : ''}` : '—'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Số điện thoại</span>
-                      <span className="chk-detail-value">{record.contactPhone || '—'}</span>
                     </div>
 
                     <div className="chk-detail-row chk-detail-row--full">

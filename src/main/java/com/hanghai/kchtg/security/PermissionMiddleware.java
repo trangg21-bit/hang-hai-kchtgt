@@ -128,11 +128,6 @@ public class PermissionMiddleware extends OncePerRequestFilter {
             return;
         }
 
-        if (permissionRoleService.isSuperAdmin(auth)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         // Extract resource from path
         String resource = extractResource(path);
         // Map HTTP method to action

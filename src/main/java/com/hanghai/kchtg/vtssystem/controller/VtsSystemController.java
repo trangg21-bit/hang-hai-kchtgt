@@ -196,7 +196,11 @@ public class VtsSystemController {
         return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:update')")
+    // Gửi duyệt là bước workflow, không phải thao tác sửa dữ liệu. Khi tạo mới,
+    // UI tạo hồ sơ bằng vts:create rồi gọi endpoint này để chuyển hồ sơ ra khỏi
+    // trạng thái Lưu tạm; vì vậy không được bắt buộc thêm vts:update ở luồng đó.
+    // Hồ sơ đã tồn tại chỉ có thể được chỉnh sửa/gửi lại từ UI khi có vts:update.
+    @PreAuthorize("@auth.checkAny(authentication, 'vts:create', 'vts:update')")
     @DataScope
     @PostMapping("/{id}/submit")
     public ResponseEntity<ApiResponse<VtsSystemMutationResponse>> submit(

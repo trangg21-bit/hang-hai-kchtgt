@@ -56,7 +56,7 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/asset/cang-can': ['dryportasset:manage', 'dryportasset:read', 'dryport:read', 'dryport:manage'],
   '/asset/lrit': ['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read'],
   '/asset/cospas-sarsat': ['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read'],
-  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'ttxltt:manage', 'coastalstationhaiphong:read'],
+  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read'],
   '/asset/ttdh': ['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage'],
   '/navigation-channel': ['navigationchannel:read', 'channel:read'],
   '/navigation-channel-chk': ['navigationchannel:read', 'channel:read'],

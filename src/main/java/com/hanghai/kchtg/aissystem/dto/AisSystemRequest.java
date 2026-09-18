@@ -83,6 +83,8 @@ public class AisSystemRequest extends FieldPresenceTrackedRequest {
     private String coordinates;
     private String symbolId;
     private ApprovalStatus approvalStatus;
+    /** Chỉ dùng khi tạo mới để tạo và gửi duyệt trong cùng transaction. */
+    private boolean submitForApproval;
 
     public void setVtsOperationCenterId(UUID value) {
         markFieldPresent("vtsOperationCenterId");

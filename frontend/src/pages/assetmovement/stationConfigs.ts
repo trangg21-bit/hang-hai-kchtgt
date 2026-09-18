@@ -67,7 +67,7 @@ export const COSPAS_SARSAT_CONFIG: StationTypeConfig = {
 export const TTXLTT_CONFIG: StationTypeConfig = {
   type: 'TTXLTT_STATION',
   types: 'TTXLTT_STATION',
-  resource: ['ttxlttasset', 'ttxltt', 'coastalstationhaiphong', 'specialstation', 'coastalstation', 'infraasset'],
+  resource: ['ttxlttasset', 'infraasset'],
   title: 'Tài sản đài TTXLTT',
   stationFieldName: 'ttxlttStationId',
   stationLabel: 'Mã đài TTXLTT',

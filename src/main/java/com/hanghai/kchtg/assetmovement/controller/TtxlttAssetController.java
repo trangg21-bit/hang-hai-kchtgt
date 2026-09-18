@@ -52,7 +52,7 @@ public class TtxlttAssetController {
     }
 
     @PostMapping
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:create', 'ttxltt:create', 'ttxltt:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:create')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> create(
             @RequestBody InfraAssetRequest request) {
         InfraAssetResponse response = service.create(request);
@@ -60,7 +60,7 @@ public class TtxlttAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'data:read')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> getById(
             @PathVariable UUID id) {
         InfraAssetResponse response = service.getById(id);
@@ -68,7 +68,7 @@ public class TtxlttAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<InfraAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
             @RequestParam(required = false) String assetName,
@@ -94,7 +94,7 @@ public class TtxlttAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:update', 'ttxltt:update', 'ttxltt:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:update')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody InfraAssetRequest request) {
@@ -103,7 +103,7 @@ public class TtxlttAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:delete', 'ttxltt:delete', 'ttxltt:manage')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
@@ -111,14 +111,14 @@ public class TtxlttAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'data:read')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
     }
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:update', 'ttxlttasset:create', 'ttxltt:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:update', 'ttxlttasset:create')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files) {
@@ -132,7 +132,7 @@ public class TtxlttAssetController {
     }
 
     @GetMapping("/{id}/attachments")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'data:read')")
     public ResponseEntity<ApiResponse<List<InfraAssetAttachmentResponse>>> listAttachments(
             @PathVariable UUID id) {
         List<InfraAssetAttachmentResponse> result = service.listAttachments(id);
@@ -140,7 +140,7 @@ public class TtxlttAssetController {
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:update', 'ttxltt:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:update')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {
@@ -150,7 +150,7 @@ public class TtxlttAssetController {
     }
 
     @GetMapping("/{id}/attachments/{attId}/download")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'ttxltt:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'data:read')")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId) {

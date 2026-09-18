@@ -99,9 +99,8 @@ public class EffectivePermissionService {
             Map.entry("cospassarsatasset", Set.of("cospassarsatasset", "cospassarsat", "coastalstationcospassarsat")),
             Map.entry("cospassarsat", Set.of("cospassarsatasset", "cospassarsat", "coastalstationcospassarsat")),
             Map.entry("coastalstationcospassarsat", Set.of("cospassarsatasset", "cospassarsat", "coastalstationcospassarsat")),
-            Map.entry("ttxlttasset", Set.of("ttxlttasset", "ttxltt", "coastalstationhaiphong")),
-            Map.entry("ttxltt", Set.of("ttxlttasset", "ttxltt", "coastalstationhaiphong")),
-            Map.entry("coastalstationhaiphong", Set.of("ttxlttasset", "ttxltt", "coastalstationhaiphong")),
+            Map.entry("ttxlttasset", Set.of("ttxlttasset")),
+            Map.entry("coastalstationhaiphong", Set.of("coastalstationhaiphong")),
             Map.entry("vtsassistasset", Set.of("vtsassistasset", "vtsassist")),
             Map.entry("vtsassist", Set.of("vtsassistasset", "vtsassist")),
             Map.entry("vhfasset", Set.of("vhfasset", "vhf")),
@@ -146,7 +145,7 @@ public class EffectivePermissionService {
             Map.entry("dryportasset", Set.of("infraasset", "dryport", "port", "data")),
             Map.entry("lritasset", Set.of("infraasset", "lrit", "coastalstationlrit", "specialstation", "coastalstation", "data")),
             Map.entry("cospassarsatasset", Set.of("infraasset", "cospassarsat", "coastalstationcospassarsat", "specialstation", "coastalstation", "data")),
-            Map.entry("ttxlttasset", Set.of("infraasset", "ttxltt", "coastalstationhaiphong", "specialstation", "coastalstation", "data")),
+            Map.entry("ttxlttasset", Set.of("infraasset", "data")),
             Map.entry("vtsassistasset", Set.of("infraasset", "vtsassist", "vts", "transmission", "data")),
             Map.entry("vhfasset", Set.of("infraasset", "vhf", "transmission", "data")),
             Map.entry("daittdhasset", Set.of("infraasset", "daittdh", "coastalstation", "specialstation", "data")),
@@ -154,7 +153,7 @@ public class EffectivePermissionService {
             Map.entry("infraasset", Set.of("data")),
             Map.entry("coastalstationlrit", Set.of("specialstation", "coastalstation", "station", "lritasset", "lrit", "infraasset", "data")),
             Map.entry("coastalstationinmarsat", Set.of("specialstation", "coastalstation", "station", "inmarsatasset", "inmarsat", "infraasset", "data")),
-            Map.entry("coastalstationhaiphong", Set.of("specialstation", "coastalstation", "station", "ttxlttasset", "ttxltt", "infraasset", "data")),
+            Map.entry("coastalstationhaiphong", Set.of("specialstation", "coastalstation", "station", "infraasset", "data")),
             Map.entry("coastalstationcospassarsat", Set.of("specialstation", "coastalstation", "station", "cospassarsatasset", "cospassarsat", "infraasset", "data")),
             Map.entry("portplanning", Set.of("document")),
             Map.entry("planningadjustment", Set.of("document")),
@@ -180,6 +179,19 @@ public class EffectivePermissionService {
         if (resource == null) return Collections.emptySet();
         String normalized = resource.trim().toLowerCase(Locale.ROOT);
         return RESOURCE_EQUIVALENTS.getOrDefault(normalized, Set.of(normalized));
+    }
+
+    /**
+     * Whether two permission resources are aliases of the same business
+     * resource.  Used by route authorization to discard legacy umbrella
+     * fallbacks without breaking the formally seeded aliases.
+     */
+    public static boolean areEquivalentResources(String firstResource, String secondResource) {
+        String firstCanonical = canonicalResource(firstResource);
+        String secondCanonical = canonicalResource(secondResource);
+        return firstCanonical.equals(secondCanonical)
+                || getEquivalentResources(firstResource).contains(secondCanonical)
+                || getEquivalentResources(secondResource).contains(firstCanonical);
     }
 
     private static boolean isResourceCoveredBy(String candidateResource, String targetResource) {
@@ -222,7 +234,7 @@ public class EffectivePermissionService {
             try {
                 Set<String> cached = permissionCacheService.getPermissionsFromCache(userId);
                 if (cached != null) {
-                    return cached;
+                    return withoutLegacyAdminWildcard(cached);
                 }
             } catch (RuntimeException e) {
                 log.debug("Redis permission cache read failed for user {}: {}", userId, e.getMessage());
@@ -234,11 +246,10 @@ public class EffectivePermissionService {
             return Collections.emptySet();
         }
 
+        // A system-admin role is administrative metadata, not an implicit
+        // grant for every business resource.  Keep the persisted permission
+        // matrix as the sole source of authorization.
         Set<String> permissions = normalizePermissions(user.getAllPermissions());
-        if (isSuperAdmin(user)) {
-            permissions = new HashSet<>(permissions);
-            permissions.add("*");
-        }
 
         if (permissionCacheService != null) {
             try {
@@ -262,7 +273,7 @@ public class EffectivePermissionService {
             try {
                 Set<String> cached = permissionCacheService.getPermissionsFromCache(user.getId());
                 if (cached != null) {
-                    return cached;
+                    return withoutLegacyAdminWildcard(cached);
                 }
             } catch (RuntimeException e) {
                 log.debug("Redis permission cache read failed for user {}: {}", user.getId(), e.getMessage());
@@ -274,14 +285,7 @@ public class EffectivePermissionService {
             User loaded = userRepository.findByIdWithRelations(user.getId()).orElse(null);
             if (loaded != null) {
                 computed = normalizePermissions(loaded.getAllPermissions());
-                if (isSuperAdmin(loaded)) {
-                    computed = new HashSet<>(computed);
-                    computed.add("*");
-                }
             }
-        } else if (isSuperAdmin(user)) {
-            computed = new HashSet<>(computed);
-            computed.add("*");
         }
 
         if (user.getId() != null && permissionCacheService != null) {
@@ -309,12 +313,6 @@ public class EffectivePermissionService {
                         .collect(Collectors.toSet())
                 : Collections.emptySet();
 
-        if (hasSuperAdminAuthority(authorityPermissions)) {
-            Set<String> superAdminPerms = new HashSet<>(authorityPermissions);
-            superAdminPerms.add("*");
-            return superAdminPerms;
-        }
-
         // JwtAuthFilter puts the effective permissions into Authentication authorities.
         // If the Authentication already holds permission authorities (containing ':'),
         // trust the authenticated snapshot to avoid extra Redis/DB queries in the same
@@ -334,6 +332,20 @@ public class EffectivePermissionService {
         }
 
         return authorityPermissions;
+    }
+
+    /**
+     * Older builds persisted a synthetic wildcard for users carrying an admin
+     * role.  It was never a checkbox permission and must not survive in an
+     * existing Redis/JWT snapshot after the policy change.
+     */
+    private static Set<String> withoutLegacyAdminWildcard(Set<String> permissions) {
+        if (permissions == null || !permissions.contains("*")) {
+            return permissions == null ? Collections.emptySet() : permissions;
+        }
+        Set<String> sanitized = new HashSet<>(permissions);
+        sanitized.remove("*");
+        return sanitized;
     }
 
     // ── Permission Checking
@@ -473,9 +485,6 @@ public class EffectivePermissionService {
         if (permissions == null || permissions.isEmpty()) {
             return false;
         }
-        if (permissions.contains("*")) {
-            return true;
-        }
 
         String resource = normalize(rawResource);
         String action = normalize(rawAction);
@@ -486,6 +495,18 @@ public class EffectivePermissionService {
         String canonicalRes = canonicalResource(resource);
         Set<String> targetResources = getEquivalentResources(resource);
 
+        // C1/C2 are explicit business authorities. A system-admin wildcard or
+        // resource :manage must not silently grant an approval signature.
+        // This keeps the backend aligned with the checkbox matrix tested by QA.
+        if (isApprovalLevelAction(action)) {
+            // `data` and `kcht` are legacy shared approval keys; they must not
+            // authorize a module through a generic controller fallback.
+            if ("data".equals(resource) || "kcht".equals(resource)) {
+                return false;
+            }
+            return matchesExplicitApprovalLevel(permissions, targetResources, action);
+        }
+
         // 1. Exact, alias, manage or wildcard match across all equivalent resources
         for (String res : targetResources) {
             if (permissions.contains(PermissionConstants.build(res, action))
@@ -495,19 +516,7 @@ public class EffectivePermissionService {
             }
         }
 
-        // 2. Parent domain match (e.g. specialstation, document, data)
-        Set<String> parentDomains = RESOURCE_PARENT_DOMAINS.get(canonicalRes);
-        if (parentDomains != null) {
-            for (String parent : parentDomains) {
-                if (permissions.contains(PermissionConstants.build(parent, action))
-                        || permissions.contains(PermissionConstants.build(parent, ACTION_WILDCARD))
-                        || permissions.contains(PermissionConstants.build(parent, ACTION_MANAGE))) {
-                    return true;
-                }
-            }
-        }
-
-        // 2b. History matching: if action is "history", allow if user has res:history OR res:read (or parent domain history/read)
+        // 2. History matching: an explicit reader of this resource may see its history.
         if (ACTION_HISTORY.equals(action) || "history".equals(action)) {
             for (String res : targetResources) {
                 if (permissions.contains(PermissionConstants.build(res, ACTION_HISTORY))
@@ -517,27 +526,9 @@ public class EffectivePermissionService {
                     return true;
                 }
             }
-            if (parentDomains != null) {
-                for (String parent : parentDomains) {
-                    if (permissions.contains(PermissionConstants.build(parent, ACTION_HISTORY))
-                            || permissions.contains(PermissionConstants.build(parent, ACTION_READ))
-                            || permissions.contains(PermissionConstants.build(parent, ACTION_WILDCARD))
-                            || permissions.contains(PermissionConstants.build(parent, ACTION_MANAGE))) {
-                        return true;
-                    }
-                }
-            }
         }
 
         // 3. Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
-        if (isReadAction(action)) {
-            for (String p : permissions) {
-                if (p != null && isResourceCoveredBy(resourceOf(p), canonicalRes)) {
-                    return true;
-                }
-            }
-        }
-
         // 4. Legacy write match
         boolean isWriteAction = Set.of(ACTION_CREATE, ACTION_UPDATE, ACTION_DELETE).contains(action);
         if (isWriteAction) {
@@ -563,12 +554,6 @@ public class EffectivePermissionService {
                     return true;
                 }
             }
-            if (permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C1))
-                    || permissions.contains(PermissionConstants.build("data", "approvel1"))
-                    || permissions.contains(PermissionConstants.build("data", "approve:c1"))
-                    || permissions.contains(PermissionConstants.build("data", "approve:l1"))) {
-                return true;
-            }
         }
 
         // 6. Approval C2 / L2 matching
@@ -586,12 +571,6 @@ public class EffectivePermissionService {
                     return true;
                 }
             }
-            if (permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C2))
-                    || permissions.contains(PermissionConstants.build("data", "approvel2"))
-                    || permissions.contains(PermissionConstants.build("data", "approve:c2"))
-                    || permissions.contains(PermissionConstants.build("data", "approve:l2"))) {
-                return true;
-            }
         }
 
         // 7. Generic Approval hierarchy matching
@@ -608,11 +587,6 @@ public class EffectivePermissionService {
                         || permissions.contains(PermissionConstants.build(res, "approve:l2"))) {
                     return true;
                 }
-            }
-            if (permissions.contains(PermissionConstants.build("data", ACTION_APPROVE))
-                    || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C1))
-                    || permissions.contains(PermissionConstants.build("data", ACTION_APPROVE_C2))) {
-                return true;
             }
         }
 
@@ -644,6 +618,37 @@ public class EffectivePermissionService {
         }
 
         return false;
+    }
+
+    private boolean isApprovalLevelAction(String action) {
+        return isC1ApprovalAction(action) || isC2ApprovalAction(action);
+    }
+
+    private boolean matchesExplicitApprovalLevel(Set<String> permissions, Set<String> targetResources, String action) {
+        boolean isC1 = isC1ApprovalAction(action);
+        Set<String> acceptedActions = isC1
+                ? Set.of(ACTION_APPROVE_C1, "approvel1", "approve_level1", "approve:c1", "approve:l1", "approve-c1", "approve-l1")
+                : Set.of(ACTION_APPROVE_C2, "approvel2", "approve_level2", "approve:c2", "approve:l2", "approve-c2", "approve-l2");
+
+        for (String resource : targetResources) {
+            for (String acceptedAction : acceptedActions) {
+                if (permissions.contains(PermissionConstants.build(resource, acceptedAction))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isC1ApprovalAction(String action) {
+        return Set.of(ACTION_APPROVE_C1, "approvel1", "approve_level1", "approve:c1", "approve:l1", "approve-c1", "approve-l1")
+                .contains(action);
+    }
+
+    private boolean isC2ApprovalAction(String action) {
+        return Set.of(ACTION_APPROVE_C2, "approvel2", "approve_level2", "approve:c2", "approve:l2", "approve-c2", "approve-l2")
+                .contains(action);
     }
 
     private boolean hasSuperAdminAuthority(Set<String> authorities) {
