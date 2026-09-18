@@ -56,7 +56,7 @@ describe('useKchtPermissions Unit Tests', () => {
       expect(perms.canApproveL2({ approvalStatus: 'APPROVED_LEVEL1' })).toBe(false);
     });
 
-    it('grants full permissions to SUPER_ADMIN', () => {
+    it('requires explicit resource permissions even for SUPER_ADMIN', () => {
       useAuthStore.setState({
         user: {
           id: 'admin1',
@@ -73,18 +73,18 @@ describe('useKchtPermissions Unit Tests', () => {
       const perms = renderKchtHook('vts');
       expect(perms.isAdmin).toBe(true);
       expect(perms.isCucLevel).toBe(true);
-      expect(perms.canRead).toBe(true);
-      expect(perms.canCreate).toBe(true);
-      expect(perms.canViewHistory).toBe(true);
+      expect(perms.canRead).toBe(false);
+      expect(perms.canCreate).toBe(false);
+      expect(perms.canViewHistory).toBe(false);
       expect(perms.canSaveAndApprove).toBe(true);
 
       // Admin can approve even own created record (separation of duty override)
       const ownRecord = { id: 'rec-1', createdBy: 'admin1', approvalStatus: 'PENDING_APPROVAL' };
       expect(perms.canApproveL1(ownRecord)).toBe(true);
 
-      // Rule 11: Even admin CANNOT delete non-DRAFT records!
+      // Even admin must have the exact delete right.
       expect(perms.canDelete({ id: 'rec-1', approvalStatus: 'APPROVED' })).toBe(false);
-      expect(perms.canDelete({ id: 'rec-1', approvalStatus: 'DRAFT' })).toBe(true);
+      expect(perms.canDelete({ id: 'rec-1', approvalStatus: 'DRAFT' })).toBe(false);
     });
   });
 

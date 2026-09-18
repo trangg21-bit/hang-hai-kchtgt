@@ -112,8 +112,6 @@ export function canEditApprovalRecord(
 
   let hasPerm: ((key: string) => boolean) | undefined;
   let resource = '';
-  let extraUpdatePerms: string[] = [];
-  let extraApprovePerms: string[] = [];
 
   if (typeof optionsOrResource === 'string') {
     resource = optionsOrResource;
@@ -121,8 +119,6 @@ export function canEditApprovalRecord(
   } else if (optionsOrResource && typeof optionsOrResource === 'object') {
     hasPerm = optionsOrResource.hasPerm;
     resource = optionsOrResource.resource || '';
-    extraUpdatePerms = optionsOrResource.extraUpdatePerms || [];
-    extraApprovePerms = optionsOrResource.extraApprovePerms || [];
   }
 
   if (typeof hasPerm !== 'function') {
@@ -137,31 +133,20 @@ export function canEditApprovalRecord(
     }
   };
 
-  // Đã duyệt: chỉ người có thẩm quyền phê duyệt, sửa qua "Lưu và phê duyệt" (T12).
+  // Đã duyệt: cần đủ quyền cập nhật và phê duyệt C2. C2 không thay thế quyền cập nhật.
   if (st === 'APPROVED') {
-    const perms = [
-      ...(resource ? [`${resource}:approvec2`] : []),
-      ...extraApprovePerms.filter(isExplicitC2Permission),
-    ];
-    return perms.some(checkPerm);
+    return Boolean(resource)
+      && checkPerm(`${resource}:update`)
+      && checkPerm(`${resource}:approvec2`);
   }
 
-  // Lưu tạm / Bị trả về: người nhập sửa được nếu có quyền cập nhật.
+  // Lưu tạm / Bị trả về: chỉ `<resource>:update` mới cho phép sửa.
   if (isEditableByOwner(st)) {
-    const perms = [
-      ...(resource ? [`${resource}:update`, `${resource}:write`] : ['data:update']),
-      ...extraUpdatePerms,
-    ];
-    return perms.some(checkPerm);
+    return Boolean(resource) && checkPerm(`${resource}:update`);
   }
 
   // Trạng thái lạ: mặc định an toàn là không cho sửa.
   return false;
-}
-
-function isExplicitC2Permission(permission: string): boolean {
-  const normalized = permission.trim().toLowerCase();
-  return /:(approvec2|approvel2|approve:c2|approve:l2|approve-c2|approve-l2|approve_level2)$/.test(normalized);
 }
 
 export interface ApprovalDeletePolicyOptions {
@@ -200,7 +185,6 @@ export function canDeleteApprovalRecord(
 
   let hasPerm: ((key: string) => boolean) | undefined;
   let resource = '';
-  let extraDeletePerms: string[] = [];
 
   if (typeof optionsOrResource === 'string') {
     resource = optionsOrResource;
@@ -208,7 +192,6 @@ export function canDeleteApprovalRecord(
   } else if (optionsOrResource && typeof optionsOrResource === 'object') {
     hasPerm = optionsOrResource.hasPerm;
     resource = optionsOrResource.resource || '';
-    extraDeletePerms = optionsOrResource.extraDeletePerms || [];
   }
 
   if (typeof hasPerm !== 'function') {
@@ -224,11 +207,9 @@ export function canDeleteApprovalRecord(
   };
 
   const perms = [
-    ...(resource ? [`${resource}:delete`, `${resource}:manage`] : []),
-    ...extraDeletePerms,
+    ...(resource ? [`${resource}:delete`] : []),
     // `admin:manage` chỉ là quyền quản trị chức năng, không phải bypass dữ
     // liệu nghiệp vụ. Chỉ `admin:all` mới tương ứng với wildcard của backend.
-    'admin:all',
   ];
   return perms.some(checkPerm);
 }

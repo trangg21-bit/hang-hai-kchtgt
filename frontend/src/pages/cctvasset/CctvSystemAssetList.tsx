@@ -1096,7 +1096,7 @@ export default function CctvSystemAssetList() {
         icon: <EyeOutlined />,
         onClick: () => void openDetail(record),
       },
-      ...(isAssetRecordEditable(record.approvalStatus)
+      ...(perms.canUpdate && isAssetRecordEditable(record.approvalStatus)
         ? [
             {
               key: 'edit',
@@ -1153,7 +1153,7 @@ export default function CctvSystemAssetList() {
         onClick: () => setDeleteTarget(record),
       },
     ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap]);
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap, perms]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(() => {
     if (!perms.canCreate) return [];

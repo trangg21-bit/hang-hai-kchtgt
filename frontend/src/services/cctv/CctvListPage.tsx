@@ -1503,7 +1503,7 @@ const CctvListPage = () => {
 
       const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
 
-      if (hasPerm?.("cctv:read")) {
+      if (hasExplicitPerm("cctv:read")) {
         actions.push({
           key: "view",
           label: "Xem chi tiết",
@@ -1513,7 +1513,7 @@ const CctvListPage = () => {
       }
 
       // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy)
-      if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "cctv" })) {
+      if (canEditApprovalRecord(record.approvalStatus, { hasPerm: hasExplicitPerm, resource: "cctv" })) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
@@ -1549,7 +1549,7 @@ const CctvListPage = () => {
 
       // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + cctv:update / cctv:create → Gửi phê duyệt (submitCctv)
       if (
-        (hasPerm?.("cctv:update") || hasPerm?.("cctv:create")) &&
+        hasExplicitPerm("cctv:update") &&
         (record.approvalStatus === "DRAFT" ||
           record.approvalStatus === "REJECTED_LEVEL1" ||
           record.approvalStatus === "REJECTED_LEVEL2")
@@ -1626,7 +1626,7 @@ const CctvListPage = () => {
       }
 
       // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
-      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: "cctv" })) {
+      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm: hasExplicitPerm, resource: "cctv" })) {
         actions.push({
           key: "delete",
           label: "Xóa",

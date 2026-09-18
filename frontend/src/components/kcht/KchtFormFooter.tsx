@@ -59,6 +59,7 @@ export const KchtFormFooter: React.FC<KchtFormFooterProps> = ({
   // Direct approval is not a substitute for the two-level approval actions.
   // Pending records must be handled from their approval action, not this form.
   const canDirectApproveCurrentRecord =
+    canEditRecord &&
     perms.canSaveAndApprove &&
     (isDraftOrRejected || st === 'APPROVED' || st === 'APPROVED_LEVEL2');
 
