@@ -33,7 +33,12 @@ public enum ApprovalStatus {
 
     @JsonCreator
     public static ApprovalStatus fromString(String name) {
-        if (name == null) return null;
+        if (name == null || name.trim().isEmpty()
+                || "ALL".equalsIgnoreCase(name.trim())
+                || "TẤT CẢ".equalsIgnoreCase(name.trim())
+                || "TAT CA".equalsIgnoreCase(name.trim())) {
+            return null;
+        }
         try {
             if (name.trim().matches("^\\d+$")) {
                 int val = Integer.parseInt(name.trim());

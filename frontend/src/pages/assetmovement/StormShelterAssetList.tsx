@@ -241,9 +241,10 @@ export default function StormShelterAssetList() {
     return countStandardHistoryCards({
       records: filteredHistoryRecords,
       fieldLabels: STORM_SHELTER_ASSET_FIELD_LABELS,
-      resolveUnitName: () => {
-        const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
-        return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+      resolveUnitName: (rec: any) => {
+        const oId = rec?.orgUnitId;
+        if (oId && orgName.has(oId)) return orgName.get(oId)!;
+        return rec?.orgUnitName || rec?.unitName || '';
       },
       formatValue: (fn, raw) => {
         if (isBlankOrDash(raw)) return '';
@@ -865,6 +866,8 @@ export default function StormShelterAssetList() {
     const range = draftFilters.updatedRange;
     setFilters({
       ...draftFilters,
+      assetName: draftFilters.assetName ? draftFilters.assetName.trim() : undefined,
+      assetCode: draftFilters.assetCode ? draftFilters.assetCode.trim() : undefined,
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
     });
@@ -884,7 +887,7 @@ export default function StormShelterAssetList() {
         dataIndex: 'assetName',
         type: TableColumnType.TwoLine,
         subField: 'assetCode',
-        width: 240,
+        width: 260,
         fixed: 'left',
         allowSort: true,
         onClick: (record) => void openDetail(record),
@@ -1344,6 +1347,7 @@ export default function StormShelterAssetList() {
                   allowClear
                   value={historySearch}
                   onChange={e => setHistorySearch(e.target.value)}
+                  onBlur={e => setHistorySearch(e.target.value.trim())}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker
@@ -1388,9 +1392,10 @@ export default function StormShelterAssetList() {
               renderStandardHistoryCards({
                 records: filteredHistoryRecords,
                 fieldLabels: STORM_SHELTER_ASSET_FIELD_LABELS,
-                resolveUnitName: () => {
-                  const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
-                  return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+                resolveUnitName: (rec: any) => {
+                  const oId = rec?.orgUnitId;
+                  if (oId && orgName.has(oId)) return orgName.get(oId)!;
+                  return rec?.orgUnitName || rec?.unitName || '';
                 },
                 formatValue: (fn, raw) => {
                   if (isBlankOrDash(raw)) return '';

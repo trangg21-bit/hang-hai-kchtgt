@@ -299,7 +299,7 @@ export default function CoastalStationList() {
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'stationCode', label: 'Mã đài', dataIndex: 'stationCode' },
-    { key: 'stationName', label: 'Tên đài duyên hải / VTS', dataIndex: 'stationName' },
+    { key: 'stationName', label: 'Tên đài duyên hải / VTS', dataIndex: 'stationName', width: 260 },
     { key: 'frequencyBand', label: 'Dải tần số', dataIndex: 'frequencyBand' },
     { key: 'transmitPower', label: 'Công suất (W)', dataIndex: 'transmitPower' },
     { key: 'locationAddress', label: 'Địa chỉ lắp đặt', dataIndex: 'locationAddress' },

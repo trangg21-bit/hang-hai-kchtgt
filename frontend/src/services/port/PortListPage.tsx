@@ -1790,7 +1790,7 @@ export default function PortListPage() {
   }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus, filterIsDeleted]);
 
   const fetchTabCounts = useCallback(async () => {
-    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'ARCHIVED'];
+    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1'];
     const counts: Record<string, number> = {};
     await Promise.all([
       ...statuses.map(async (status) => {
@@ -1802,8 +1802,9 @@ export default function PortListPage() {
       fetchCangBienList({ isDeleted: true, page: 0, size: 1, orgUnitId: filterOrgUnitId })
         .then(res => { counts['DELETED'] = res?.totalElements ?? 0; })
         .catch(() => { counts['DELETED'] = 0; }),
-      fetchCangBienList({ page: 0, size: 1, orgUnitId: filterOrgUnitId }).then(res => setTotalAll(res?.totalElements ?? 0)).catch(() => { }),
     ]);
+    const subTotal = Object.entries(counts).filter(([k]) => k !== 'all').reduce((sum, [, v]) => sum + v, 0);
+    setTotalAll(subTotal);
     setTabCounts(counts);
   }, [filterOrgUnitId]);
 
@@ -2135,7 +2136,7 @@ export default function PortListPage() {
         key: 'portName',
         label: 'Tên cảng biển',
         dataIndex: 'portName',
-        width: 280,
+        width: 260,
         fixed: 'left' as const,
         ellipsis: false,
         sortable: true,

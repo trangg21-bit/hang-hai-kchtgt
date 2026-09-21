@@ -130,6 +130,7 @@ export default function ShipRepairFacilityList() {
       title: 'Tên cơ sở',
       dataIndex: 'facilityName',
       key: 'facilityName',
+      width: 260,
       render: (val: string) => <span style={{ fontWeight: 700 }}>{val}</span>,
     },
     {

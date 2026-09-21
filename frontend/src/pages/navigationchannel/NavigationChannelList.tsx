@@ -743,7 +743,7 @@ export default function NavigationChannelList() {
     return (
       <div>{groups.map((g, gi) => {
         const rec0 = g.items[0] || {};
-        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+        const orgId = rec0.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
         const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {

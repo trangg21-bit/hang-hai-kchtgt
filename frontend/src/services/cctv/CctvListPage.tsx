@@ -712,7 +712,7 @@ const CctvListPage = () => {
         key: "deviceName",
         label: "Tên / Mã thiết bị",
         dataIndex: "deviceName",
-        width: 300,
+        width: 260,
         fixed: "left" as const,
         ellipsis: false,
         sortOrder: sortOrderFor("deviceName"),

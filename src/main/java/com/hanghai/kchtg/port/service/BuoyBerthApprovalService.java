@@ -9,6 +9,7 @@ import com.hanghai.kchtg.port.dto.buoyberth.HistoryEntry;
 import com.hanghai.kchtg.port.entity.BuoyBerth;
 import com.hanghai.kchtg.port.repository.BuoyBerthRepository;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class BuoyBerthApprovalService {
     private final InfrastructureApprovalService infrastructureApprovalService;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserResolverService userResolverService;
+    private final OrgUnitCacheService orgUnitCacheService;
 
     private BuoyBerth loadForApproval(UUID id) {
         return buoyBerthRepository.findById(id)
@@ -151,7 +153,10 @@ public class BuoyBerthApprovalService {
         } else {
             list = historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.BUOY_BERTH, id);
         }
-        return list.stream().map(this::toHistoryEntry).collect(Collectors.toList());
+        String unitName = (entity.getOrgUnitId() != null && orgUnitCacheService != null)
+                ? orgUnitCacheService.getName(entity.getOrgUnitId())
+                : null;
+        return list.stream().map(h -> toHistoryEntry(h, unitName)).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -167,17 +172,24 @@ public class BuoyBerthApprovalService {
         }
         return java.util.Map.of(
                 "entityType", "BuoyBerth",
-                "changeHistory", list.stream().map(this::toHistoryEntry).collect(Collectors.toList()),
+                "changeHistory", list.stream().map(h -> toHistoryEntry(h, null)).collect(Collectors.toList()),
                 "entityNames", entityNames);
     }
 
-    private HistoryEntry toHistoryEntry(InfrastructureHistory h) {
+    private HistoryEntry toHistoryEntry(InfrastructureHistory h, String unitName) {
         String actorName = h.getApprovedBy() != null ? userResolverService.resolveName(h.getApprovedBy()) : null;
+        if (actorName == null || actorName.isBlank()) {
+            actorName = "";
+        }
         return HistoryEntry.builder()
                 .id(h.getId())
                 .status(h.getStatus() != null ? h.getStatus().getCode() : null)
                 .approvedBy(actorName)
                 .approvedByName(actorName)
+                .changedBy(actorName)
+                .changedByName(actorName)
+                .actor(actorName)
+                .orgUnitName(unitName)
                 .approvedDate(h.getApprovedDate())
                 .changedAt(h.getApprovedDate())
                 .changedField(h.getChangedField())
