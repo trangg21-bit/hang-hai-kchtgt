@@ -82,14 +82,16 @@ public class AnchorageController {
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
-            @RequestParam(required = false) Boolean isDeleted) {
+            @RequestParam(required = false) Boolean isDeleted,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing Anchorages: page={}, size={}, orgUnitId={}, search={}, anchorageCode={}, anchorageName={}, portId={}, status={}, approvalStatus={}, isDeleted={}",
-                page, size, orgUnitId, search, anchorageCode, anchorageName, portId, operationalStatus, approvalStatus, isDeleted);
+                "Listing Anchorages: page={}, size={}, orgUnitId={}, search={}, anchorageCode={}, anchorageName={}, portId={}, status={}, approvalStatus={}, isDeleted={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, anchorageCode, anchorageName, portId, operationalStatus, approvalStatus, isDeleted, sortBy, sortDir);
         Page<AnchorageResponse> result = anchorageService.findAll(
                 page, size, orgUnitId,
                 search, anchorageCode, anchorageName, portId, navigationChannelId, buoyStationId, provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách khu neo đậu thành công", result));
     }
 

@@ -653,10 +653,12 @@ export default function AnchorageListPage() {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
         const items = r.items || [];
-        setWaterwayOptions(items.map(n => ({
-          value: n.id,
-          label: n.channelName || n.channelCode || '',
-        })));
+        setWaterwayOptions(items.map(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          return { value: n.id, label };
+        }));
       })
       .catch(() => {});
   }, []);
@@ -666,7 +668,12 @@ export default function AnchorageListPage() {
     navigationChannelCRUD.search({ page: 0, size: 1000 })
       .then((r) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -793,6 +800,8 @@ export default function AnchorageListPage() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page, pageSize,
+        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
+        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
       let data = r.data || [];
       if (activeTab === 'all') {
@@ -815,7 +824,7 @@ export default function AnchorageListPage() {
   }, [
     orgUnit, nameInput, codeInput, filterPortId, filterNavigationChannelId,
     filterBuoyStationId, filterProvince, filterOperationalStatus,
-    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize,
+    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, sortField, sortOrder,
   ]);
 
   useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
@@ -1220,31 +1229,6 @@ export default function AnchorageListPage() {
     ];
   }, [userMap]);
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'anchorageName') return r.anchorageName ?? '';
-    if (field === 'anchorageCode') return r.anchorageCode ?? '';
-    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
-    if (field === 'navigationChannelId') return (r as any).navigationChannelName || waterwayMap.get(r.navigationChannelId) || r.navigationChannelId || '';
-    if (field === 'buoyStationId') return r.buoyStationName || buoyStationMap.get(r.buoyStationId) || r.buoyStationId || '';
-    if (field === 'provinceId' || field === 'province') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : ((r as any).province || '');
-    if (field === 'operationalStatus') {
-      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      if (isDeletedAnchorage(r)) return 'Đã xóa';
-      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap]);
-
   const renderCellWithTooltip = (
     text: string | null | undefined,
     isBold?: boolean
@@ -1405,21 +1389,6 @@ export default function AnchorageListPage() {
     });
   }, [tabCounts, activeTab, total]);
 
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
-
   return (
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd } as unknown as ThemeToken}>
       <div className="anchorage-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -1542,7 +1511,7 @@ export default function AnchorageListPage() {
             overflow-wrap: break-word;
           }
         `}</style>
-        <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu neo đậu' }]}
+        <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu neo đậu' }]}
           actions={headerActions} />
         <FilterTableLayout
           filterContent={filterContent}
@@ -1558,19 +1527,19 @@ export default function AnchorageListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={sortedDataSource}
+            dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
-            loading={false}
+            loading={isLoading}
             onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              setPage(1);
               if (!o) {
-                setSortField(null);
-                setSortOrder(null);
+                setSortField('updatedAt');
+                setSortOrder('descend');
               } else {
                 setSortField(k);
                 setSortOrder(o === 'asc' ? 'ascend' : 'descend');
               }
-              setPage(1);
             }}
             scroll={{ x: 'max-content' }}
           />

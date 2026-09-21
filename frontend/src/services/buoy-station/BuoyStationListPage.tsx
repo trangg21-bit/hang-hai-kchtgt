@@ -1017,7 +1017,7 @@ export default function BuoyStationListPage() {
       <style>{`
         .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
-        /* ── Cỡ chữ 13.5px chuẩn toàn màn Nhà trạm Phao, tiêu & các popup/drawer con ── */
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Nhà trạm vận hành Phao, tiêu & các popup/drawer con ── */
         .buoy-station-page-wrapper,
         .buoy-station-page-wrapper .ant-table,
         .buoy-station-page-wrapper .ant-table-cell,
@@ -1093,7 +1093,7 @@ export default function BuoyStationListPage() {
         }
       `}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm Phao, tiêu' }]}
+        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm vận hành Phao, tiêu' }]}
         actions={[{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create, onClick: openCreate }]}
       />
       <FilterTableLayout

@@ -489,10 +489,12 @@ export default function StormShelterListPage() {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
         const items = r.items || [];
-        setWaterwayOptions(items.map(n => ({
-          value: n.id,
-          label: n.channelName || n.channelCode || '',
-        })));
+        setWaterwayOptions(items.map(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          return { value: n.id, label };
+        }));
       })
       .catch(() => {});
   }, []);
@@ -502,7 +504,12 @@ export default function StormShelterListPage() {
     navigationChannelCRUD.search({ page: 0, size: 1000 })
       .then((r) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -1387,7 +1394,7 @@ export default function StormShelterListPage() {
           }
         `}</style>
         <ScreenHeader
-          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu tránh, trú bão' }]}
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu tránh, trú bão' }]}
           actions={headerActions}
         />
         <FilterTableLayout

@@ -1,5 +1,5 @@
 // ── VHF Response (matches VhfResponse.java) ─────────────────────────
-// Clone từ services/cctv/types.ts — Quản lý hệ thống thông tin liên lạc VHF
+// Clone từ services/cctv/types.ts — Hệ thống thông tin liên lạc VHF
 
 export interface VhfResponse {
   id: string;

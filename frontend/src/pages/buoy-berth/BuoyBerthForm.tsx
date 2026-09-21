@@ -322,7 +322,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       .finally(() => setLoadingSymbols(false));
   }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — đồng bộ với Quản lý cầu cảng
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — đồng bộ với Cầu cảng
   useEffect(() => {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))

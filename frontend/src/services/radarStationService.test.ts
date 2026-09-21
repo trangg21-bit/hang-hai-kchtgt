@@ -28,7 +28,7 @@ describe('radarStationService Unit Tests', () => {
         {
           id: 'd4b4de83-969d-4481-9bb3-238a83342fd5',
           code: 'RADAR-QN',
-          stationName: 'Trạm Radar Quảng Ninh',
+          stationName: 'Trạm radar Quảng Ninh',
           orgUnitId: '2c18df80-652d-4708-b248-8a9889def744',
         },
       ];
@@ -42,8 +42,8 @@ describe('radarStationService Unit Tests', () => {
       expect(res).toHaveLength(2);
       expect(res[0].name).toBe('Cảng Tân Cảng - Cái Mép');
       expect(res[0].stationName).toBe('Cảng Tân Cảng - Cái Mép');
-      expect(res[1].name).toBe('Trạm Radar Quảng Ninh');
-      expect(res[1].stationName).toBe('Trạm Radar Quảng Ninh');
+      expect(res[1].name).toBe('Trạm radar Quảng Ninh');
+      expect(res[1].stationName).toBe('Trạm radar Quảng Ninh');
     });
 
     it('should pass orgUnitId query parameter when provided', async () => {
@@ -64,7 +64,7 @@ describe('radarStationService Unit Tests', () => {
           data: {
             id: 'radar-1',
             code: 'RADAR-01',
-            stationName: 'Trạm Radar Test',
+            stationName: 'Trạm radar Test',
           },
         },
       });
@@ -72,7 +72,7 @@ describe('radarStationService Unit Tests', () => {
       const res = await radarStationCRUD.getById('radar-1');
       expect(api.get).toHaveBeenCalledWith('/v1/radar-station/radar-1');
       expect(res.id).toBe('radar-1');
-      expect(res.stationName).toBe('Trạm Radar Test');
+      expect(res.stationName).toBe('Trạm radar Test');
     });
   });
 });

@@ -500,8 +500,7 @@ public class BeaconStationService {
             throw new EntityNotFoundException("Đèn biển đã bị xóa");
         }
 
-        // Tọa độ GIS (chuẩn /vts-operation-center): nhận coordinates = WKT từ form;
-        // nếu trống → giữ vị trí spatial hiện có (chỉ đổi khi người dùng chọn vị trí mới).
+        // Tọa độ GIS (chuẩn /vts-operation-center): nhận coordinates = WKT từ form
         String requestedWkt = request.getCoordinates() != null ? request.getCoordinates().trim() : "";
         String existingWkt = null;
         if (entity.getSpatialId() != null) {
@@ -510,10 +509,7 @@ public class BeaconStationService {
                 existingWkt = spatialObjOpt.get().getCoordinates();
             }
         }
-        String wkt = !requestedWkt.isEmpty() ? requestedWkt : existingWkt;
-        GisGeometryType updateGeomType = !requestedWkt.isEmpty()
-                ? resolveGisGeometryType(request.getGeometryType(), requestedWkt)
-                : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
+        boolean hasGeometryType = request.getGeometryType() != null && !request.getGeometryType().trim().isEmpty();
 
         Map<String, String> previousValues = new LinkedHashMap<>();
         if (request.getName() != null && !EntityUpdateUtils.areEqual(entity.getName(), request.getName())) {
@@ -632,24 +628,71 @@ public class BeaconStationService {
             previousValues.put("note", entity.getNote());
             entity.setNote(request.getNote());
         }
-        if (request.getGeometryType() != null && !EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
-            previousValues.put("geometryType", entity.getGeometryType());
-            entity.setGeometryType(request.getGeometryType());
-        }
-        if (request.getMapSymbolId() != null && !EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
-            previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
-            entity.setMapSymbolId(request.getMapSymbolId());
-        }
-        if (request.getCoordinateSystem() != null && !EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
-            previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        }
-        if (request.getDisplayRule() != null && !EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
-            previousValues.put("displayRule", entity.getDisplayRule());
-            entity.setDisplayRule(request.getDisplayRule());
-        }
-        if (!requestedWkt.isEmpty() && !EntityUpdateUtils.areEqual(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
-            previousValues.put("coordinates", existingWkt != null ? existingWkt : "Chưa có");
+        if (hasGeometryType) {
+            String wkt = !requestedWkt.isEmpty() ? requestedWkt : existingWkt;
+            GisGeometryType updateGeomType = !requestedWkt.isEmpty()
+                    ? resolveGisGeometryType(request.getGeometryType(), requestedWkt)
+                    : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
+
+            if (!EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
+                previousValues.put("geometryType", entity.getGeometryType());
+                entity.setGeometryType(request.getGeometryType());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
+                previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
+                entity.setMapSymbolId(request.getMapSymbolId());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
+                previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
+                entity.setCoordinateSystem(request.getCoordinateSystem());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
+                previousValues.put("displayRule", entity.getDisplayRule());
+                entity.setDisplayRule(request.getDisplayRule());
+            }
+            if (!requestedWkt.isEmpty() && !EntityUpdateUtils.areEqual(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
+                previousValues.put("coordinates", existingWkt != null ? existingWkt : "Chưa có");
+            }
+
+            // Sync GIS spatial object (chuẩn /vts-operation-center: tạo khi chưa có, cập nhật WKT/loại hình)
+            if (wkt != null && !wkt.isBlank()) {
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        entity.getSpatialId(),
+                        entity.getName(),
+                        "DENBIEN_" + entity.getCode(),
+                        updateGeomType,
+                        resolveSpatialObjectType(updateGeomType),
+                        wkt, entity.getId(),
+                        InfrastructureType.LIGHTHOUSE);
+                if (entity.getSpatialId() == null) {
+                    entity.setSpatialId(spatialObj.getId());
+                }
+            }
+        } else {
+            // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" bị xóa hoặc trống
+            if (entity.getGeometryType() != null) {
+                previousValues.put("geometryType", entity.getGeometryType());
+                entity.setGeometryType(null);
+            }
+            if (entity.getMapSymbolId() != null) {
+                previousValues.put("mapSymbolId", entity.getMapSymbolId().toString());
+                entity.setMapSymbolId(null);
+            }
+            if (entity.getCoordinateSystem() != null) {
+                previousValues.put("coordinateSystem", String.valueOf(entity.getCoordinateSystem()));
+                entity.setCoordinateSystem(null);
+            }
+            if (entity.getDisplayRule() != null) {
+                previousValues.put("displayRule", entity.getDisplayRule());
+                entity.setDisplayRule(null);
+            }
+            if (entity.getSpatialId() != null) {
+                if (existingWkt != null && !existingWkt.isBlank()) {
+                    previousValues.put("coordinates", existingWkt);
+                }
+                gisSpatialObjectService.delete(entity.getSpatialId());
+                entity.setSpatialId(null);
+            }
         }
 
         boolean wasApproved = isApprovedStatus(entity.getStatus())
@@ -687,22 +730,6 @@ public class BeaconStationService {
         }
 
         entity = beaconStationRepo.save(entity);
-
-        // Sync GIS spatial object (chuẩn /vts-operation-center: tạo khi chưa có, cập nhật WKT/loại hình)
-        if (wkt != null) {
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    entity.getSpatialId(),
-                    entity.getName(),
-                    "DENBIEN_" + entity.getCode(),
-                    updateGeomType,
-                    resolveSpatialObjectType(updateGeomType),
-                    wkt, entity.getId(),
-                    InfrastructureType.LIGHTHOUSE);
-            if (entity.getSpatialId() == null) {
-                entity.setSpatialId(spatialObj.getId());
-                beaconStationRepo.save(entity);
-            }
-        }
 
         // Ghi nhật ký từng trường thay đổi (chuẩn /vts-operation-center)
         if (wasApproved && !previousValues.isEmpty()) {

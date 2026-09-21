@@ -56,7 +56,40 @@ public interface AnchorageRepository extends JpaRepository<Anchorage, UUID> {
     /**
      * Search anchorages with unaccent support on code and name.
      */
-    @Query("SELECT a FROM Anchorage a WHERE (" +
+    @Query(value = "SELECT a FROM Anchorage a " +
+            "LEFT JOIN Port p ON p.id = a.portId " +
+            "LEFT JOIN NavigationChannel nc ON nc.id = a.navigationChannelId " +
+            "LEFT JOIN BuoyBerth bb ON bb.id = a.buoyStationId " +
+            "LEFT JOIN OrgUnit o ON o.id = a.orgUnitId " +
+            "LEFT JOIN Province pv ON pv.id = a.provinceId " +
+            "WHERE (" +
+            "  (:isDeleted = true AND (a.deletedAt IS NOT NULL OR a.deletedBy IS NOT NULL)) " +
+            "  OR (:isDeleted IS NULL AND :approvalStatus IS NULL) " +
+            "  OR (:isDeleted IS NULL AND :approvalStatus IS NOT NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL AND a.approvalStatus = :approvalStatus) " +
+            "  OR (:isDeleted = false AND :approvalStatus IS NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL) " +
+            "  OR (:isDeleted = false AND :approvalStatus IS NOT NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL AND a.approvalStatus = :approvalStatus)" +
+            ") " +
+            "AND (:includeAll = true OR a.orgUnitId IN :orgUnitIds) " +
+            "AND (CAST(:search AS string) IS NULL OR " +
+            "  (CAST(function('immutable_unaccent', LOWER(a.anchorageCode)) AS string) LIKE " +
+            "   CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) " +
+            "  OR CAST(function('immutable_unaccent', LOWER(a.anchorageName)) AS string) LIKE " +
+            "   CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
+            "AND (CAST(:anchorageCode AS string) IS NULL OR " +
+            "  CAST(function('immutable_unaccent', LOWER(a.anchorageCode)) AS string) LIKE " +
+            "  CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:anchorageCode AS string), '%'))) AS string)) " +
+            "AND (CAST(:anchorageName AS string) IS NULL OR " +
+            "  CAST(function('immutable_unaccent', LOWER(a.anchorageName)) AS string) LIKE " +
+            "  CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:anchorageName AS string), '%'))) AS string)) " +
+            "AND (:portId IS NULL OR a.portId = :portId) " +
+            "AND (:navigationChannelId IS NULL OR a.navigationChannelId = :navigationChannelId) " +
+            "AND (:buoyStationId IS NULL OR a.buoyStationId = :buoyStationId) " +
+            "AND (:provinceId IS NULL OR a.provinceId = :provinceId) " +
+            "AND ((:operationalStatusNull = true AND a.operationalStatus IS NULL) OR " +
+            "  (:operationalStatusNull = false AND (:operationalStatus IS NULL OR a.operationalStatus = :operationalStatus))) " +
+            "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR a.updatedAt >= :updatedFrom) " +
+            "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR a.updatedAt <= :updatedTo)",
+            countQuery = "SELECT COUNT(a) FROM Anchorage a WHERE (" +
             "  (:isDeleted = true AND (a.deletedAt IS NOT NULL OR a.deletedBy IS NOT NULL)) " +
             "  OR (:isDeleted IS NULL AND :approvalStatus IS NULL) " +
             "  OR (:isDeleted IS NULL AND :approvalStatus IS NOT NULL AND a.deletedAt IS NULL AND a.deletedBy IS NULL AND a.approvalStatus = :approvalStatus) " +

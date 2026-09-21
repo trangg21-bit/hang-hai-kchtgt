@@ -18,6 +18,9 @@ import com.hanghai.kchtg.scada.repository.ScadaRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +41,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -74,11 +78,14 @@ class ScadaServiceTest {
     private InfrastructureHistoryRepository historyRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private GisSpatialObjectService gisSpatialObjectService;
 
     @InjectMocks
     private ScadaService service;
 
     private Scada entity;
+    private User principal;
 
     @BeforeEach
     void setUp() {
@@ -86,11 +93,12 @@ class ScadaServiceTest {
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
-        when(userRepository.findById(any())).thenReturn(Optional.empty());
+        principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        when(principal.getAllPermissions()).thenReturn(java.util.Set.of("scada:approvec2", "scada:create", "scada:update", "*"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(principal));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
 
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
                         java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
@@ -135,6 +143,12 @@ class ScadaServiceTest {
     void createWithSubmitActionGoesToPending() {
         when(scadaRepository.existsDeviceCodeAnyState("SCA-000001")).thenReturn(false);
         when(scadaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        com.hanghai.kchtg.orgunit.entity.OrgUnit subUnit = mock(com.hanghai.kchtg.orgunit.entity.OrgUnit.class);
+        when(subUnit.getRank()).thenReturn(com.hanghai.kchtg.orgunit.entity.OrgUnitRank.BRANCH);
+        when(subUnit.getParentId()).thenReturn(UUID.randomUUID());
+        when(subUnit.getLevel()).thenReturn(2);
+        when(principal.getOrgUnit()).thenReturn(subUnit);
 
         ScadaResponse result = service.create(createRequest("submit"));
 
@@ -187,6 +201,49 @@ class ScadaServiceTest {
 
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
         verify(changeHistoryService, atLeastOnce()).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(mapSymbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        GisSpatialObject mockSpatial = new GisSpatialObject();
+        mockSpatial.setId(spatialId);
+        mockSpatial.setGeometryType(GisGeometryType.POINT);
+        mockSpatial.setCoordinates("105.123 20.456");
+
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+        when(scadaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(scadaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateScadaRequest req = new UpdateScadaRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống SCADA Vũng Tàu");
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+        req.setMapSymbolId(null);
+        req.setCoordinateSystem(null);
+        req.setDisplayRule(null);
+
+        ScadaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(entity.getSpatialId());
+        assertNull(entity.getMapSymbolId());
+        assertNull(entity.getCoordinateSystem());
+        assertNull(entity.getDisplayRule());
+        assertNull(entity.getObjectType());
+        verify(gisSpatialObjectService).delete(spatialId);
+        assertNull(result.getCoordinates());
+        assertNull(result.getGeometryType());
+        assertNull(result.getMapSymbolId());
     }
 
     @Test
@@ -295,5 +352,74 @@ class ScadaServiceTest {
         service.deleteAttachment(ID, att.getId(), USER_ID);
 
         verify(historyRepository, atLeastOnce()).save(any());
+    }
+
+    @Test
+    void update_clearDetailedLocation_setsFieldToNullAndRecordsHistory() {
+        entity.setDetailedLocation("Cảng Vũng Tàu khu A");
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        when(scadaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(scadaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateScadaRequest req = new UpdateScadaRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống SCADA Vũng Tàu");
+        req.setDetailedLocation(""); // cleared by user
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        ScadaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(entity.getDetailedLocation());
+        verify(changeHistoryService).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_clearMultipleOptionalFields_setsFieldsToNull() {
+        entity.setDetailedLocation("Khu vực 1");
+        entity.setManufacturer("Siemens");
+        entity.setModel("S7-1200");
+        entity.setSpecifications("Specs info");
+        entity.setMaintenanceInformation("Maintenance info");
+        entity.setNote("Ghi chú cũ");
+        entity.setUnitOfMeasure(1);
+        entity.setYearOfUse(2022);
+        entity.setAttachedInfrastructureType(1);
+        entity.setAttachedInfrastructureId(UUID.randomUUID());
+        entity.setProvinceName("Bà Rịa - Vũng Tàu");
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        when(scadaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(scadaRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateScadaRequest req = new UpdateScadaRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống SCADA Vũng Tàu");
+        req.setDetailedLocation(null);
+        req.setManufacturer(null);
+        req.setModel(null);
+        req.setSpecifications(null);
+        req.setMaintenanceInformation(null);
+        req.setNote(null);
+        req.setUnitOfMeasure(null);
+        req.setYearOfUse(null);
+        req.setAttachedInfrastructureType(null);
+        req.setAttachedInfrastructureId(null);
+        req.setProvinceName(null);
+
+        ScadaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(entity.getDetailedLocation());
+        assertNull(entity.getManufacturer());
+        assertNull(entity.getModel());
+        assertNull(entity.getSpecifications());
+        assertNull(entity.getMaintenanceInformation());
+        assertNull(entity.getNote());
+        assertNull(entity.getUnitOfMeasure());
+        assertNull(entity.getYearOfUse());
+        assertNull(entity.getAttachedInfrastructureType());
+        assertNull(entity.getAttachedInfrastructureId());
+        assertNull(entity.getProvinceName());
     }
 }

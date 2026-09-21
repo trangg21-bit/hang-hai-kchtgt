@@ -30,7 +30,7 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
 import { userService } from '../userService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol as MapSymbolType } from '../symbolService';
@@ -100,6 +100,15 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
 
+interface GisSelectionValue {
+  geometryType?: string;
+  symbolId?: string;
+  coordinates?: string;
+}
+
+const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
+  value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
+
 const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
@@ -113,7 +122,7 @@ const OPERATIONAL_STATUS_OPTIONS = [
 
 const ATTACHED_INFRA_TYPE_OPTIONS = [
   { value: 1, label: 'Trung Tâm Điều Hành VTS' },
-  { value: 2, label: 'Trạm Radar' },
+  { value: 2, label: 'Trạm radar' },
 ];
 
 const UNIT_OF_MEASURE_OPTIONS = [
@@ -278,15 +287,15 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   const [orgUnits, setOrgUnits] = useState<Organization[]>([]);
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
-  const [vtsOperationCenters, setVtsOperationCenters] = useState<Array<{ id: string; name?: string; code?: string }>>([]);
-  const [radarStations, setRadarStations] = useState<Array<{ id: string; stationName?: string; code?: string }>>([]);
+  const [vtsOperationCenters, setVtsOperationCenters] = useState<Array<{ id: string; name?: string; code?: string; orgUnitId?: string }>>([]);
+  const [radarStations, setRadarStations] = useState<Array<{ id: string; stationName?: string; code?: string; orgUnitId?: string }>>([]);
 
   const vtsOperationCenterOptions = useMemo(() =>
-    vtsOperationCenters.map(v => ({ label: v.name || v.code || v.id, value: v.id })),
+    vtsOperationCenters.map(v => ({ label: v.name || v.code || v.id, value: v.id, orgUnitId: v.orgUnitId })),
     [vtsOperationCenters]
   );
   const radarStationOptions = useMemo(() =>
-    radarStations.map(r => ({ label: r.stationName || r.code || r.id, value: r.id })),
+    radarStations.map(r => ({ label: r.stationName || r.code || r.id, value: r.id, orgUnitId: r.orgUnitId })),
     [radarStations]
   );
 
@@ -302,7 +311,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalVisible, setGisModalVisible] = useState(false);
   const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
-  const latestGisMapValueRef = useRef<any>(null);
+  const latestGisMapValueRef = useRef<GisSelectionValue | null>(null);
 
   // Attachments state
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
@@ -314,8 +323,8 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const map = new Map<string, string>();
-        (resp.items || []).forEach((u: any) => {
-          if (u.id) map.set(u.id, u.fullName || u.username);
+        (resp.items || []).forEach((u: { id?: string; fullName?: string; username?: string }) => {
+          if (u.id) map.set(u.id, u.fullName || u.username || '');
         });
         setUserMap(map);
       } catch { /* ignore */ }
@@ -325,6 +334,33 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   // Form watchers
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
+  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedOrgUnitId = watchedOrgUnitId ?? form.getFieldValue('orgUnitId');
+
+  // Danh sách ID đơn vị hợp lệ (đơn vị đang chọn và tất cả đơn vị con)
+  const allowedOrgIds = useMemo(() => {
+    if (!selectedOrgUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(orgUnits, String(selectedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [orgUnits, selectedOrgUnitId]);
+
+  // Dropdown Trạm radar lọc theo đơn vị quản lý đã chọn
+  const filteredRadarStationOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return radarStationOptions.filter((r) => {
+      return r.orgUnitId && allowedOrgIds.has(String(r.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, radarStationOptions, selectedOrgUnitId]);
+
+  // Dropdown Trung tâm điều hành VTS lọc theo đơn vị quản lý đã chọn
+  const filteredVtsOperationCenterOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return vtsOperationCenterOptions.filter((c) => {
+      return c.orgUnitId && allowedOrgIds.has(String(c.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, selectedOrgUnitId, vtsOperationCenterOptions]);
 
   /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới */
   const useMaxReached = (name: string, max: number): boolean => {
@@ -345,7 +381,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
 
 
   // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
-  const applyMapSelection = (val: any) => {
+  const applyMapSelection = (val: GisSelectionValue | null | undefined) => {
     if (!val) return;
     latestGisMapValueRef.current = val;
     const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
@@ -547,13 +583,13 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
     if (data.attachedInfrastructureType === 1 && data.attachedInfrastructureId && data.attachedInfrastructureName) {
       setVtsOperationCenters((prev) => {
         if (prev.some((item) => item.id === data.attachedInfrastructureId)) return prev;
-        return [...prev, { id: data.attachedInfrastructureId!, name: data.attachedInfrastructureName! }];
+        return [...prev, { id: data.attachedInfrastructureId!, name: data.attachedInfrastructureName!, orgUnitId: data.orgUnitId || undefined }];
       });
     }
     if (data.attachedInfrastructureType === 2 && data.attachedInfrastructureId && data.attachedInfrastructureName) {
       setRadarStations((prev) => {
         if (prev.some((item) => item.id === data.attachedInfrastructureId)) return prev;
-        return [...prev, { id: data.attachedInfrastructureId!, stationName: data.attachedInfrastructureName! }];
+        return [...prev, { id: data.attachedInfrastructureId!, stationName: data.attachedInfrastructureName!, orgUnitId: data.orgUnitId || undefined }];
       });
     }
 
@@ -723,6 +759,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
 
       const values = form.getFieldsValue(true);
       const geomType = values.geometryType || undefined;
+      const hasGeom = !!geomType;
       const hasCoordinates = coordinateList.length > 0;
 
       if (hasCoordinates && !geomType) {
@@ -742,11 +779,22 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       setGpsError(null);
 
       const validCoords = coordResult.validCoords;
-      const wkt = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+      const wkt = hasGeom && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : null;
 
       // DatePicker year trả về dayjs → payload gửi số năm
       const rawYear = values.yearOfUse;
       const submittedYear = rawYear != null ? (dayjs.isDayjs(rawYear) ? rawYear.year() : Number(rawYear)) : undefined;
+
+      const trimOrNull = (v: unknown): string | null => {
+        if (v == null) return null;
+        const s = String(v).trim();
+        return s === '' ? null : s;
+      };
+      const numOrNull = (v: unknown): number | null => {
+        if (v == null || v === '') return null;
+        const n = Number(v);
+        return Number.isNaN(n) ? null : n;
+      };
 
       onSubmittingChange?.(true);
       try {
@@ -755,29 +803,29 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         if (isEdit && id) {
           const payload: UpdateScadaRequest = {
             id,
-            deviceName: values.deviceName,
-            detailedLocation: values.detailedLocation,
-            manufacturer: values.manufacturer,
-            model: values.model,
-            quantity: values.quantity,
+            deviceName: String(values.deviceName || '').trim(),
+            detailedLocation: trimOrNull(values.detailedLocation),
+            manufacturer: trimOrNull(values.manufacturer),
+            model: trimOrNull(values.model),
+            quantity: numOrNull(values.quantity),
             orgUnitId: values.orgUnitId || null,
             operatingUnitId: values.operatingUnitId || null,
-            provinceName: values.provinceName || null,
-            attachedInfrastructureType: values.attachedInfrastructureType,
+            provinceName: trimOrNull(values.provinceName),
+            attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
             attachedInfrastructureId: values.attachedInfrastructureId || null,
-            unitOfMeasure: values.unitOfMeasure,
-            yearOfUse: submittedYear,
+            unitOfMeasure: numOrNull(values.unitOfMeasure),
+            yearOfUse: submittedYear ?? null,
             operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
-            specifications: values.specifications,
-            maintenanceInformation: values.maintenanceInformation,
-            note: values.note,
-            latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
-            longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
-            mapSymbolId: values.mapSymbolId || null,
-            coordinateSystem: geomType ? values.coordinateSystem : undefined,
-            displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
-            geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
-            coordinates: wkt || undefined,
+            specifications: trimOrNull(values.specifications),
+            maintenanceInformation: trimOrNull(values.maintenanceInformation),
+            note: trimOrNull(values.note),
+            latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
+            longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
+            mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
+            coordinateSystem: hasGeom ? (values.coordinateSystem || null) : null,
+            displayRule: hasGeom ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null) : null,
+            geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+            coordinates: hasGeom && wkt ? wkt : null,
             ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
           };
 
@@ -805,29 +853,29 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           const generatedCode = values.deviceCode || (await generateScadaCode());
           const payload: CreateScadaRequest = {
             deviceCode: generatedCode,
-            deviceName: values.deviceName,
-            detailedLocation: values.detailedLocation,
-            manufacturer: values.manufacturer,
-            model: values.model,
-            quantity: values.quantity ?? 1,
+            deviceName: String(values.deviceName || '').trim(),
+            detailedLocation: trimOrNull(values.detailedLocation),
+            manufacturer: trimOrNull(values.manufacturer),
+            model: trimOrNull(values.model),
+            quantity: numOrNull(values.quantity) ?? 1,
             orgUnitId: values.orgUnitId || null,
             operatingUnitId: values.operatingUnitId || null,
-            provinceName: values.provinceName || null,
-            attachedInfrastructureType: values.attachedInfrastructureType,
+            provinceName: trimOrNull(values.provinceName),
+            attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
             attachedInfrastructureId: values.attachedInfrastructureId || null,
-            unitOfMeasure: values.unitOfMeasure,
-            yearOfUse: submittedYear,
+            unitOfMeasure: numOrNull(values.unitOfMeasure),
+            yearOfUse: submittedYear ?? null,
             operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : '1',
-            specifications: values.specifications,
-            maintenanceInformation: values.maintenanceInformation,
-            note: values.note,
-            latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
-            longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
-            mapSymbolId: values.mapSymbolId || null,
-            coordinateSystem: geomType ? values.coordinateSystem : undefined,
-            displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
-            geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
-            coordinates: wkt || undefined,
+            specifications: trimOrNull(values.specifications),
+            maintenanceInformation: trimOrNull(values.maintenanceInformation),
+            note: trimOrNull(values.note),
+            latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
+            longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
+            mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
+            coordinateSystem: hasGeom ? (values.coordinateSystem || null) : null,
+            displayRule: hasGeom ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null) : null,
+            geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+            coordinates: hasGeom && wkt ? wkt : null,
             action: saveAction === 'DRAFT' ? 'draft' : saveAction === 'SUBMIT' ? 'submit' : 'approve',
           };
 
@@ -921,6 +969,26 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                           showPath
                           disabled={isEdit && !isSystemAdmin}
                           style={{ borderRadius: radiusPill, height: 40 }}
+                          onChange={(val) => {
+                            form.setFieldValue('orgUnitId', val);
+                            const currentAttachedId = form.getFieldValue('attachedInfrastructureId');
+                            if (!val) {
+                              form.setFieldValue('attachedInfrastructureId', undefined);
+                            } else if (currentAttachedId) {
+                              const rawSet = resolveOrgSubtreeIds(orgUnits, String(val));
+                              const normalizedSet = new Set<string>();
+                              rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+
+                              const currentAttachedType = form.getFieldValue('attachedInfrastructureType');
+                              const activeOptions = currentAttachedType === 1 ? vtsOperationCenterOptions : currentAttachedType === 2 ? radarStationOptions : [];
+                              const isValidAttached = activeOptions.some(
+                                (item) => item.value === currentAttachedId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                              );
+                              if (!isValidAttached) {
+                                form.setFieldValue('attachedInfrastructureId', undefined);
+                              }
+                            }
+                          }}
                         />
                       </Form.Item>
                     </Col>
@@ -991,21 +1059,23 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                       >
                         <Select
                           placeholder={
-                            watchedAttachedType === 2
-                              ? 'Chọn trạm Radar'
-                              : watchedAttachedType === 1
-                                ? 'Chọn Trung Tâm Điều Hành VTS'
-                                : 'Chọn loại hạ tầng trước'
+                            !selectedOrgUnitId
+                              ? 'Vui lòng chọn đơn vị quản lý trước'
+                              : watchedAttachedType === 2
+                                ? 'Chọn trạm Radar'
+                                : watchedAttachedType === 1
+                                  ? 'Chọn Trung Tâm Điều Hành VTS'
+                                  : 'Chọn loại hạ tầng trước'
                           }
                           options={
                             watchedAttachedType === 1
-                              ? vtsOperationCenterOptions
+                              ? filteredVtsOperationCenterOptions
                               : watchedAttachedType === 2
-                                ? radarStationOptions
+                                ? filteredRadarStationOptions
                                 : []
                           }
                           loading={watchedAttachedType === 1 ? loadingVtsCenters : watchedAttachedType === 2 ? loadingRadars : false}
-                          disabled={watchedAttachedType !== 1 && watchedAttachedType !== 2}
+                          disabled={!selectedOrgUnitId || (watchedAttachedType !== 1 && watchedAttachedType !== 2)}
                           allowClear
                           showSearch
                           optionFilterProp="label"
@@ -1054,7 +1124,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
 
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
-                      <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
+                      <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }} rules={[ { required: true, message: 'Đơn vị tính là bắt buộc' } ]}>
                         <Select placeholder="Chọn đơn vị tính" options={UNIT_OF_MEASURE_OPTIONS} showSearch optionFilterProp="label" allowClear style={selectStyle} />
                       </Form.Item>
                     </Col>
@@ -1088,7 +1158,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         name="yearOfUse"
                         {...labelProps('Năm đưa vào sử dụng')}
                         style={{ marginBottom: spaceFormField }}
-                        getValueProps={(v: any) => ({
+                        getValueProps={(v: unknown) => ({
                           value:
                             v != null
                               ? dayjs.isDayjs(v)
@@ -1433,18 +1503,18 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             children: (
               <div style={drawerFormScrollStyle}>
                 <InfrastructureAttachmentTab
-                  attachments={uploadedFiles.map((f: any) => ({
+                  attachments={uploadedFiles.map((f) => ({
                     ...f,
-                    id: f.uid || f.id,
-                    fileName: f.name || f.fileName || (f.originFileObj as File)?.name || '—',
-                    fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+                    id: f.uid || (f as unknown as { id?: string }).id || '',
+                    fileName: f.name || (f as unknown as { fileName?: string }).fileName || (f.originFileObj as File)?.name || '—',
+                    fileSize: (f as unknown as { fileSize?: number }).fileSize ?? f.size ?? f.originFileObj?.size,
                     uploadedByName:
-                      f.uploadedByName ||
-                      (f.uploadedBy ? userMap.get(f.uploadedBy) || f.uploadedBy : '') ||
+                      (f as unknown as { uploadedByName?: string }).uploadedByName ||
+                      ((f as unknown as { uploadedBy?: string }).uploadedBy ? userMap.get((f as unknown as { uploadedBy?: string }).uploadedBy!) || (f as unknown as { uploadedBy?: string }).uploadedBy : '') ||
                       currentUser?.fullName ||
                       currentUser?.username ||
                       'Cán bộ quản lý',
-                    uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+                    uploadedDate: (f as unknown as { uploadedDate?: string }).uploadedDate || (f as unknown as { uploadedAt?: string }).uploadedAt || (f as unknown as { createdAt?: string }).createdAt || dayjs().toISOString(),
                   }))}
                   readonly={false}
                   userMap={userMap}
@@ -1463,12 +1533,12 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                         return;
                       }
                     }
-                    setUploadedFiles((prev) => prev.filter((f) => (f.uid || (f as any).id) !== attId));
+                    setUploadedFiles((prev) => prev.filter((f) => f.uid !== attId && (f as unknown as { id?: string }).id !== attId));
                     setExistingFiles((prev) => prev.filter((a) => a.id !== attId));
                   }}
                   onDownload={async (uid, name) => {
-                    const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
-                    const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+                    const fileItem = uploadedFiles.find((x) => x.uid === uid || (x as unknown as { id?: string }).id === uid);
+                    const rawFile = fileItem?.originFileObj || (fileItem as unknown as { file?: File })?.file;
                     if (rawFile) {
                       const url = window.URL.createObjectURL(rawFile);
                       const a = document.createElement('a');
@@ -1532,10 +1602,10 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(watchedGeometryType as 'POINT' | 'LINE' | 'POLYGON') || 'POINT'}
+            defaultGeometryType={normalizeGeometryType(watchedGeometryType)}
             height={520}
             value={{
-              geometryType: (watchedGeometryType as any) || 'POINT',
+              geometryType: normalizeGeometryType(watchedGeometryType),
               coordinates: serializeCoordinatesToWkt(
                 coordinateList
                   .filter((c) => c.latD != null && c.lngD != null)

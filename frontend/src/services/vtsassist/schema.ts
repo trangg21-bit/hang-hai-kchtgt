@@ -14,7 +14,7 @@ export const OPERATIONAL_STATUS_OPTIONS: Array<{ label: string; value: number }>
 
 export const ATTACHED_INFRA_TYPE_OPTIONS: Array<{ label: string; value: number }> = [
   { label: 'TTDH VTS', value: 1 },
-  { label: 'Trạm Radar', value: 2 },
+  { label: 'Trạm radar', value: 2 },
 ];
 
 // ── Create schema ───────────────────────────────────────────────────

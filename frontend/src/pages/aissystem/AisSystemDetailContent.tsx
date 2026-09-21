@@ -500,7 +500,7 @@ export default function AisSystemDetailContent({
                       </span>
                     </div>
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Thuộc TTDH VTS / Trạm Radar</span>
+                      <span className="chk-detail-label sec-col2-label">Thuộc TTDH VTS / Trạm radar</span>
                       <span className="chk-detail-value">
                         {record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || ''}
                       </span>

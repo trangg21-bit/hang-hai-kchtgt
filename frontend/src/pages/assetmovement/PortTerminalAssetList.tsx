@@ -1354,7 +1354,7 @@ function PortTerminalAssetList({
         <style>{`
           .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
-          /* ── Cỡ chữ 13.5px chuẩn toàn màn Quản lý bến cảng & các popup/drawer con ── */
+          /* ── Cỡ chữ 13.5px chuẩn toàn màn Bến cảng & các popup/drawer con ── */
           .berth-page-wrapper,
           .berth-page-wrapper .ant-table,
           .berth-page-wrapper .ant-table-cell,

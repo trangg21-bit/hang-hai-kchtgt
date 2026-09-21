@@ -37,6 +37,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -77,11 +78,14 @@ class CctvServiceTest {
     private InfrastructureHistoryRepository historyRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     @InjectMocks
     private CctvService service;
 
     private Cctv entity;
+    private User principal;
 
     @BeforeEach
     void setUp() {
@@ -89,11 +93,12 @@ class CctvServiceTest {
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
-        when(userRepository.findById(any())).thenReturn(Optional.empty());
+        principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        when(principal.getAllPermissions()).thenReturn(java.util.Set.of("cctv:approvec2", "cctv:create", "cctv:update", "*"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(principal));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
 
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
         // Constructor 3 tham số → authenticated=true để SecurityUtils.getCurrentUserId() trả USER_ID.
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
@@ -140,10 +145,28 @@ class CctvServiceTest {
         when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
         when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+        com.hanghai.kchtg.orgunit.entity.OrgUnit subUnit = mock(com.hanghai.kchtg.orgunit.entity.OrgUnit.class);
+        when(subUnit.getRank()).thenReturn(com.hanghai.kchtg.orgunit.entity.OrgUnitRank.BRANCH);
+        when(subUnit.getParentId()).thenReturn(UUID.randomUUID());
+        when(subUnit.getLevel()).thenReturn(2);
+        when(principal.getOrgUnit()).thenReturn(subUnit);
+
         CctvResponse result = service.create(createRequest("submit"));
 
         assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
         // "Lưu và gửi phê duyệt" khi tạo mới phải ghi nhận thông tin gửi duyệt
+        assertNotNull(result.getSubmittedDate());
+        assertEquals(USER_ID, result.getSubmittedBy());
+    }
+
+    @Test
+    void createWithSubmitAction_DepartmentLevel_GoesToApprovedLevel1() {
+        when(cctvRepository.existsDeviceCodeAnyState("CCTV-001")).thenReturn(false);
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CctvResponse result = service.create(createRequest("submit"));
+
+        assertEquals(ApprovalStatus.APPROVED_LEVEL1, result.getApprovalStatus());
         assertNotNull(result.getSubmittedDate());
         assertEquals(USER_ID, result.getSubmittedBy());
     }
@@ -518,5 +541,142 @@ class CctvServiceTest {
                 org.mockito.ArgumentMatchers.eq(Boolean.TRUE),
                 any(Boolean.class), any(), any(Boolean.class), any(),
                 any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateDraft_clearGeometryType_clearsLocationAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(symbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+
+        CctvResponse result = service.update(req);
+
+        assertNull(result.getSpatialId());
+        assertNull(result.getCoordinates());
+        assertNull(result.getGeometryType());
+        assertNull(result.getMapSymbolId());
+        assertNull(result.getCoordinateSystem());
+        assertNull(result.getDisplayRule());
+        assertNull(entity.getSpatialId());
+        assertNull(entity.getMapSymbolId());
+        assertNull(entity.getCoordinateSystem());
+        assertNull(entity.getDisplayRule());
+        assertNull(entity.getObjectType());
+        verify(gisSpatialObjectService).delete(spatialId);
+    }
+
+    @Test
+    void updateApproved_clearGeometryType_withSaveAndApprove_clearsLocationAndRecordsHistory() {
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(symbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject oldSpatial =
+                new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+        oldSpatial.setId(spatialId);
+        oldSpatial.setCoordinates("POINT(106.68 20.86)");
+        oldSpatial.setGeometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT);
+
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(oldSpatial));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        assertNull(result.getSpatialId());
+        assertNull(result.getCoordinates());
+        assertNull(result.getGeometryType());
+        assertNull(result.getMapSymbolId());
+        verify(gisSpatialObjectService).delete(spatialId);
+        verify(changeHistoryService).insertChangeRecord(
+                org.mockito.ArgumentMatchers.eq("CCTV"),
+                org.mockito.ArgumentMatchers.eq(ID),
+                org.mockito.ArgumentMatchers.eq("coordinates"),
+                org.mockito.ArgumentMatchers.eq("POINT(106.68 20.86)"),
+                org.mockito.ArgumentMatchers.eq("Chưa có"),
+                org.mockito.ArgumentMatchers.anyString());
+        verify(changeHistoryService).insertChangeRecord(
+                org.mockito.ArgumentMatchers.eq("CCTV"),
+                org.mockito.ArgumentMatchers.eq(ID),
+                org.mockito.ArgumentMatchers.eq("geometryType"),
+                org.mockito.ArgumentMatchers.eq("POINT"),
+                org.mockito.ArgumentMatchers.eq("Chưa có"),
+                org.mockito.ArgumentMatchers.anyString());
+        verify(changeHistoryService).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_clearDetailedLocation_setsFieldToNullAndRecordsHistory() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setDetailedLocation("Địa điểm cũ");
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("Camera cảng Hải Phòng");
+        req.setDetailedLocation(null);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse result = service.update(req);
+
+        assertNull(entity.getDetailedLocation());
+        assertNull(result.getDetailedLocation());
+        verify(changeHistoryService).recordChanges(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void update_clearMultipleOptionalFields_setsFieldsToNull() {
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+        entity.setDetailedLocation("Địa điểm cũ");
+        entity.setModel("Model cũ");
+        entity.setManufacturer("Hãng cũ");
+        entity.setNote("Ghi chú cũ");
+        entity.setSpecifications("Thông số cũ");
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(cctvRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateCctvRequest req = new UpdateCctvRequest();
+        req.setId(ID);
+        req.setDeviceName("Camera cảng Hải Phòng");
+        req.setDetailedLocation("");
+        req.setModel("");
+        req.setManufacturer("");
+        req.setNote("");
+        req.setSpecifications("");
+
+        CctvResponse result = service.update(req);
+
+        assertNull(entity.getDetailedLocation());
+        assertNull(entity.getModel());
+        assertNull(entity.getManufacturer());
+        assertNull(entity.getNote());
+        assertNull(entity.getSpecifications());
+        assertNull(result.getDetailedLocation());
     }
 }

@@ -1512,7 +1512,7 @@ export default function DaiTtdhListPage() {
         `}</style>
 
         <ScreenHeader
-          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý đài TTDH' }]}
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Đài TTDH' }]}
           actions={headerActions}
         />
 

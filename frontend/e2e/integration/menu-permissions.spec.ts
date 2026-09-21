@@ -68,13 +68,13 @@ test.describe('Menu & Navigation M-024 v2 (dashboard-first 6 khối)', () => {
     await loginAsAdmin(page);
     await page.goto('/port');
     // Sidebar khối kcht: nhánh Cảng biển mở, con Bến cảng hiển thị
-    await expect(page.getByText('Quản lý cảng biển')).toBeVisible({ timeout: 6000 });
-    await expect(page.getByText('Quản lý bến cảng')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Cảng biển')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText('Bến cảng')).toBeVisible({ timeout: 5000 });
 
     // Đài viễn thông là nhánh root RIÊNG (không nằm dưới Hệ thống VTS)
     await page.goto('/dai-ttdh');
     await expect(page.getByText('Đài viễn thông hàng hải')).toBeVisible({ timeout: 6000 });
-    await expect(page.getByText('Quản lý đài TTDH')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Đài TTDH')).toBeVisible({ timeout: 5000 });
   });
 
   test('T5: Node chưa triển khai (VHF) hiển thị mờ, không điều hướng', async ({ page }) => {

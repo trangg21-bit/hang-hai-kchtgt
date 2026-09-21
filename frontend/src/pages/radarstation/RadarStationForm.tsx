@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Modal,
@@ -45,7 +45,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 
-import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle } from '../../themetokenchk';
+import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle, readonlyInputStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
@@ -172,10 +172,15 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedSeaportId = Form.useWatch('seaportId', form);
+  const editSeaportIdRef = useRef<string | undefined>(undefined);
+  const [codeLoading, setCodeLoading] = useState(false);
   const filteredSeaportOptions = useMemo(() => {
-    if (!selectedOrgUnitId) return seaportOptions;
-    const allowedOrgIds = resolveOrgSubtreeIds(orgOptions, selectedOrgUnitId);
-    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+    if (!selectedOrgUnitId) return [];
+    const rawSet = resolveOrgSubtreeIds(orgOptions, String(selectedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
   }, [orgOptions, seaportOptions, selectedOrgUnitId]);
 
   useEffect(() => {
@@ -254,6 +259,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           const cached = (window.parent as any)?.kchtDetailCache?.[id];
           const data = (cached || await radarStationCRUD.getById(id)) as RadarStationResponse;
           setRecord(data);
+          editSeaportIdRef.current = data.seaportId ?? undefined;
           form.setFieldsValue({
             code: data.code,
             stationName: data.stationName,
@@ -289,8 +295,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       };
       void loadData();
     } else if (isCreateMode) {
-      // Tạo mới: reset form + tự sinh mã radar (RADAR-{seq})
+      // Tạo mới: reset form
       form.resetFields();
+      editSeaportIdRef.current = undefined;
       setRecord(null);
       setHistory([]);
       const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgOptions)
@@ -299,6 +306,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       form.setFieldsValue({
         conditionStatus: '1',
         orgUnitId: currentOrgUnitId,
+        code: undefined,
       });
 
       if (!currentOrgUnitId && !currentUser?.orgUnitId) {
@@ -312,22 +320,37 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           })
           .catch(() => {});
       }
-
-      radarStationCRUD
-        .generateCode()
-        .then((res) => form.setFieldsValue({ code: res?.code || '' }))
-        .catch((err) => console.error('Không sinh được mã trạm radar', err));
     }
   }, [open, isCreateMode, id, isDetailMode, isModalMode, form, loadHistory, refreshAttachments, currentUser, orgOptions]);
+
+  // Tự sinh mã trạm radar khi người dùng chọn Thuộc cảng biển (chuẩn /berth)
+  useEffect(() => {
+    if (isEdit && editSeaportIdRef.current === watchedSeaportId) return;
+    if (!watchedSeaportId) {
+      if (!isEdit) {
+        form.setFieldValue('code', undefined);
+      }
+      return;
+    }
+    if (isEdit) return;
+    setCodeLoading(true);
+    radarStationCRUD.generateCode()
+      .then((r) => {
+        if (r?.code) form.setFieldsValue({ code: r.code });
+      })
+      .catch(() => {})
+      .finally(() => setCodeLoading(false));
+  }, [watchedSeaportId, isEdit, form]);
 
   const handleSubmit = useCallback(async (submitMode: 'save' | 'submit' | 'approve' = 'save') => {
     try {
       const values = await form.validateFields();
 
-      let longitude: number | undefined;
-      let latitude: number | undefined;
+      const hasGeom = !!values.gisLocation?.geometryType;
+      let longitude: number | null = null;
+      let latitude: number | null = null;
       const gis = values.gisLocation;
-      if (gis?.coordinates) {
+      if (hasGeom && gis?.coordinates) {
         const points = parseWktToCoordinates(gis.coordinates);
         if (points.length > 0) {
           longitude = points[0].longitude;
@@ -350,10 +373,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         towerHeight: safeDecimal(values.towerHeight),
         radarRange: safeDecimal(values.radarRange),
         note: values.note?.trim() || undefined,
-        longitude,
-        latitude,
-        geometryType: gis?.geometryType || 'POINT',
-        coordinates: gis?.coordinates || undefined,
+        longitude: hasGeom ? longitude : null,
+        latitude: hasGeom ? latitude : null,
+        geometryType: hasGeom ? (gis?.geometryType || 'POINT') : null,
+        coordinates: hasGeom ? (gis?.coordinates || null) : null,
+        mapIcon: hasGeom && gis?.symbolId ? gis.symbolId : null,
       };
 
       setIsSubmitting(true);
@@ -754,26 +778,6 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     >
       <Row gutter={16}>
         <Col span={12}>
-          <Form.Item label="Mã trạm radar" name="code">
-            <Input disabled placeholder="Tự sinh (RADAR-...)" style={inputStyle} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Tên trạm radar"
-            name="stationName"
-            rules={[
-              { required: true, message: 'Vui lòng nhập tên trạm radar' },
-              { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' },
-            ]}
-          >
-            <Input placeholder="Nhập tên trạm radar" maxLength={255} showCount style={inputStyle} />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col span={12}>
           <Form.Item
             label="Đơn vị quản lý"
             name="orgUnitId"
@@ -788,29 +792,78 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               showSearch
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               onChange={(orgUnitId) => {
+                form.setFieldValue('orgUnitId', orgUnitId);
                 const seaportId = form.getFieldValue('seaportId');
-                const allowedOrgIds = orgUnitId ? resolveOrgSubtreeIds(orgOptions, orgUnitId) : new Set<string>();
-                const isValidSeaport = seaportOptions.some((port) =>
-                  port.id === seaportId && !!port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)),
-                );
-                if (seaportId && !isValidSeaport) form.setFieldValue('seaportId', undefined);
+                if (!orgUnitId) {
+                  form.setFieldValue('seaportId', undefined);
+                  if (!isEdit) {
+                    form.setFieldValue('code', undefined);
+                  }
+                } else if (seaportId) {
+                  const rawSet = resolveOrgSubtreeIds(orgOptions, String(orgUnitId));
+                  const normalizedSet = new Set<string>();
+                  rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                  const isValidSeaport = seaportOptions.some((port) =>
+                    port.id === seaportId && !!port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()),
+                  );
+                  if (!isValidSeaport) {
+                    form.setFieldValue('seaportId', undefined);
+                    if (!isEdit) {
+                      form.setFieldValue('code', undefined);
+                    }
+                  }
+                }
               }}
             />
           </Form.Item>
         </Col>
         <Col span={12}>
-          <Form.Item label="Cảng biển" name="seaportId">
+          <Form.Item
+            label="Thuộc cảng biển"
+            name="seaportId"
+            required
+            rules={[{ required: true, message: 'Thuộc cảng biển là bắt buộc' }]}
+          >
             <Select
-              placeholder="Chọn cảng biển"
+              placeholder={!selectedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+              disabled={!selectedOrgUnitId}
               allowClear
               showSearch
               optionFilterProp="label"
               options={filteredSeaportOptions.map((port) => ({
                 value: port.id,
-                label: port.portCode ? `${port.portCode} - ${port.portName || ''}` : port.portName || port.id,
+                label: port.portCode ? `${port.portCode} - ${port.portName || ''}` : (port.portName || port.id),
               }))}
               style={selectStyle}
             />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col span={12}>
+          <Form.Item
+            label="Mã radar"
+            name="code"
+            tooltip="Mã radar được sinh tự động"
+          >
+            <Input
+              disabled
+              placeholder={codeLoading ? 'Đang sinh mã...' : watchedSeaportId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
+              style={{ ...inputStyle, ...readonlyInputStyle }}
+            />
+          </Form.Item>
+        </Col>
+        <Col span={12}>
+          <Form.Item
+            label="Tên trạm radar"
+            name="stationName"
+            rules={[
+              { required: true, message: 'Vui lòng nhập tên trạm radar' },
+              { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' },
+            ]}
+          >
+            <Input placeholder="Nhập tên trạm radar" maxLength={255} showCount style={inputStyle} />
           </Form.Item>
         </Col>
       </Row>
@@ -1118,7 +1171,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   // ── Trang độc lập (route /radar-station/create | /radar-station/:id) ──
   const breadcrumbs = [
     { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Quản lý trạm radar', onClick: () => navigate('/radar-station') },
+    { title: 'Trạm radar', onClick: () => navigate('/radar-station') },
     { title: isCreateMode ? 'Tạo mới' : isEditMode ? 'Chỉnh sửa' : 'Chi tiết' },
   ];
 

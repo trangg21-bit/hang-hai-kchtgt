@@ -99,11 +99,11 @@ class ShipRepairYardControllerTest {
     @Test
     void testFindAll() {
         Page<ShipRepairYardResponse> page = new PageImpl<>(List.of(response));
-        when(shipRepairYardService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(shipRepairYardService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         ResponseEntity<ApiResponse<Page<ShipRepairYardResponse>>> result = controller.findAll(
-                0, 20, null, null, null, null, null, null, null, null, null, null, null);
+                0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());

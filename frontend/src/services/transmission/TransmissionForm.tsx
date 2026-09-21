@@ -28,7 +28,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -97,7 +97,7 @@ const sectionTitleStyle: React.CSSProperties = {
 
 const ATTACHED_INFRA_TYPE_OPTIONS = [
   { value: 1, label: 'Trung Tâm Điều Hành VTS' },
-  { value: 2, label: 'Trạm Radar' },
+  { value: 2, label: 'Trạm radar' },
 ];
 
 const GEOMETRY_TYPE_OPTIONS = [
@@ -278,6 +278,8 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
+  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedOrgUnitId = watchedOrgUnitId ?? form.getFieldValue('orgUnitId');
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
 
   /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới */
@@ -300,9 +302,34 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
-  const [radarStations, setRadarStations] = useState<Array<{ value: string; label: string }>>([]);
-  const [vtsCenters, setVtsCenters] = useState<Array<{ value: string; label: string }>>([]);
+  const [radarStations, setRadarStations] = useState<Array<{ value: string; label: string; orgUnitId?: string }>>([]);
+  const [vtsCenters, setVtsCenters] = useState<Array<{ value: string; label: string; orgUnitId?: string }>>([]);
   const [loadingAttached, setLoadingAttached] = useState(false);
+
+  // Danh sách ID đơn vị hợp lệ (đơn vị đang chọn và tất cả đơn vị con)
+  const allowedOrgIds = useMemo(() => {
+    if (!selectedOrgUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(orgUnits, String(selectedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [orgUnits, selectedOrgUnitId]);
+
+  // Dropdown Trạm radar lọc theo đơn vị quản lý đã chọn
+  const filteredRadarStations = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return radarStations.filter((r) => {
+      return r.orgUnitId && allowedOrgIds.has(String(r.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, radarStations, selectedOrgUnitId]);
+
+  // Dropdown Trung tâm điều hành VTS lọc theo đơn vị quản lý đã chọn
+  const filteredVtsCenters = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return vtsCenters.filter((c) => {
+      return c.orgUnitId && allowedOrgIds.has(String(c.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, selectedOrgUnitId, vtsCenters]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
@@ -354,15 +381,17 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         const radars = radarRes.data?.data || [];
         const centers = vtsRes.data?.data || [];
         setRadarStations(
-          (Array.isArray(radars) ? radars : []).map((s: { id: string; stationName?: string; code?: string }) => ({
+          (Array.isArray(radars) ? radars : []).map((s: { id: string; stationName?: string; code?: string; orgUnitId?: string }) => ({
             value: s.id,
             label: s.stationName || s.code || s.id,
+            orgUnitId: s.orgUnitId,
           })),
         );
         setVtsCenters(
-          (Array.isArray(centers) ? centers : []).map((s: { id: string; name?: string; code?: string }) => ({
+          (Array.isArray(centers) ? centers : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
             value: s.id,
             label: s.name || s.code || s.id,
+            orgUnitId: s.orgUnitId,
           })),
         );
       })
@@ -483,6 +512,19 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         coordinateSystem: (data.geometryType || data.coordinates) ? (data.coordinateSystem ?? 1) : undefined,
         displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
       });
+
+      if (data.attachedInfrastructureType === 1 && data.attachedInfrastructureId && data.attachedInfrastructureName) {
+        setVtsCenters((prev) => {
+          if (prev.some((item) => item.value === data.attachedInfrastructureId)) return prev;
+          return [...prev, { value: data.attachedInfrastructureId!, label: data.attachedInfrastructureName!, orgUnitId: data.orgUnitId || undefined }];
+        });
+      }
+      if (data.attachedInfrastructureType === 2 && data.attachedInfrastructureId && data.attachedInfrastructureName) {
+        setRadarStations((prev) => {
+          if (prev.some((item) => item.value === data.attachedInfrastructureId)) return prev;
+          return [...prev, { value: data.attachedInfrastructureId!, label: data.attachedInfrastructureName!, orgUnitId: data.orgUnitId || undefined }];
+        });
+      }
     };
 
     if (initialData) {
@@ -708,11 +750,11 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           specifications: values.specifications ? String(values.specifications).trim() : undefined,
           maintenanceInformation: values.maintenanceInformation ? String(values.maintenanceInformation).trim() : undefined,
           note: values.note ? String(values.note).trim() : undefined,
-          geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
-          mapSymbolId: values.mapSymbolId || undefined,
-          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
-          coordinates: coordinatesWkt || undefined,
-          displayRule: geomType ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : undefined) : undefined,
+          geometryType: geomType || null,
+          mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
+          coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+          coordinates: geomType ? (coordinatesWkt || null) : null,
+          displayRule: geomType && values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null,
         };
 
         let targetId = id;
@@ -820,6 +862,26 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     allowClear
                     showPath
                     style={{ borderRadius: radiusPill, height: 40 }}
+                    onChange={(val) => {
+                      form.setFieldValue('orgUnitId', val);
+                      const currentAttachedId = form.getFieldValue('attachedInfrastructureId');
+                      if (!val) {
+                        form.setFieldValue('attachedInfrastructureId', undefined);
+                      } else if (currentAttachedId) {
+                        const rawSet = resolveOrgSubtreeIds(orgUnits, String(val));
+                        const normalizedSet = new Set<string>();
+                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+
+                        const currentAttachedType = form.getFieldValue('attachedInfrastructureType');
+                        const activeOptions = currentAttachedType === 1 ? vtsCenters : currentAttachedType === 2 ? radarStations : [];
+                        const isValidAttached = activeOptions.some(
+                          (item) => item.value === currentAttachedId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                        );
+                        if (!isValidAttached) {
+                          form.setFieldValue('attachedInfrastructureId', undefined);
+                        }
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -877,21 +939,23 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                 <Form.Item name="attachedInfrastructureId" {...labelProps('Thuộc hạ tầng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Hạ tầng phụ thuộc là bắt buộc' }]}>
                   <Select
                     placeholder={
-                      watchedAttachedType === 1
-                        ? 'Chọn Trung Tâm Điều Hành VTS'
-                        : watchedAttachedType === 2
-                          ? 'Chọn Trạm Radar...'
-                          : 'Chọn loại hạ tầng trước'
+                      !selectedOrgUnitId
+                        ? 'Vui lòng chọn đơn vị quản lý trước'
+                        : watchedAttachedType === 1
+                          ? 'Chọn Trung Tâm Điều Hành VTS'
+                          : watchedAttachedType === 2
+                            ? 'Chọn Trạm radar...'
+                            : 'Chọn loại hạ tầng trước'
                     }
                     options={
                       watchedAttachedType === 1
-                        ? vtsCenters
+                        ? filteredVtsCenters
                         : watchedAttachedType === 2
-                          ? radarStations
+                          ? filteredRadarStations
                           : []
                     }
                     loading={loadingAttached}
-                    disabled={watchedAttachedType !== 1 && watchedAttachedType !== 2}
+                    disabled={!selectedOrgUnitId || (watchedAttachedType !== 1 && watchedAttachedType !== 2)}
                     allowClear
                     showSearch
                     optionFilterProp="label"

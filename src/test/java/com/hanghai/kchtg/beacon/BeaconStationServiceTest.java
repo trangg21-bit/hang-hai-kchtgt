@@ -538,6 +538,57 @@ class BeaconStationServiceTest {
 
             assertThat(result.getCode()).isEqualTo("DEN-001");
         }
+
+        @Test
+        @DisplayName("update with geometryType cleared — clears all location fields and deletes spatial object")
+        void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+            UUID id = UUID.randomUUID();
+            UUID spatialId = UUID.randomUUID();
+            UUID symbolId = UUID.randomUUID();
+
+            BeaconStation entity = makeEntity(id, "APPROVED_L2");
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            entity.setApprovalLevel(2);
+            entity.setGeometryType("POINT");
+            entity.setSpatialId(spatialId);
+            entity.setMapSymbolId(symbolId);
+            entity.setCoordinateSystem(1);
+            entity.setDisplayRule("Độ, phút, giây (DMS)");
+
+            GisSpatialObject spatial = new GisSpatialObject();
+            spatial.setId(spatialId);
+            spatial.setCoordinates("POINT (106.7 20.8)");
+            when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatial));
+
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateBeaconStationRequest request = UpdateBeaconStationRequest.builder()
+                    .name(entity.getName())
+                    .geometryType(null)
+                    .coordinates(null)
+                    .mapSymbolId(null)
+                    .coordinateSystem(null)
+                    .displayRule(null)
+                    .build();
+
+            BeaconStationResponse result = service.update(id, request);
+
+            assertThat(result.getGeometryType()).isNull();
+            assertThat(result.getMapSymbolId()).isNull();
+            assertThat(result.getCoordinateSystem()).isNull();
+            assertThat(result.getDisplayRule()).isNull();
+            assertThat(result.getCoordinates()).isNull();
+
+            verify(gisSpatialObjectService).delete(spatialId);
+            verify(beaconStationRepo, atLeastOnce()).save(beaconStationCaptor.capture());
+            BeaconStation saved = beaconStationCaptor.getValue();
+            assertThat(saved.getSpatialId()).isNull();
+            assertThat(saved.getGeometryType()).isNull();
+            assertThat(saved.getMapSymbolId()).isNull();
+            assertThat(saved.getCoordinateSystem()).isNull();
+            assertThat(saved.getDisplayRule()).isNull();
+        }
     }
 
     // ─────── DELETE TESTS ──────────────────────────────────────────

@@ -1,6 +1,6 @@
 /**
  * Công năng khai thác (operationalFunction) — nguồn dữ liệu dùng chung duy nhất.
- * Áp dụng cho module Quản lý cầu cảng (Pier) và các module KCHT dùng chung danh mục này.
+ * Áp dụng cho module Cầu cảng (Pier) và các module KCHT dùng chung danh mục này.
  *
  * Quy ước lưu trữ: cột/field `operationalFunction` giữ kiểu String và lưu MÃ ổn định
  * tiếng Anh (value). Nhãn tiếng Việt hiển thị qua map — KHÔNG hardcode chuỗi tiếng Việt

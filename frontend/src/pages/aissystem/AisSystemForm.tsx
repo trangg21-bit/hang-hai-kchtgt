@@ -575,7 +575,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       options: filteredOpCenters.map((c) => ({ value: `op_${c.id}`, rawId: c.id, type: 'op', label: c.name })),
     },
     {
-      label: 'Trạm Radar',
+      label: 'Trạm radar',
       options: filteredRadarStations.map((r) => ({ value: `radar_${r.id}`, rawId: r.id, type: 'radar', label: r.name })),
     },
   ], [filteredOpCenters, filteredRadarStations]);
@@ -992,12 +992,12 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                           <Col span={12}>
                             <Form.Item
                               name="locationId"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm Radar</span>}
-                              rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm Radar' }]}
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm radar</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm radar' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
-                                placeholder="Chọn TTDH VTS hoặc Trạm Radar"
+                                placeholder="Chọn TTDH VTS hoặc Trạm radar"
                                 allowClear
                                 showSearch
                                 filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}

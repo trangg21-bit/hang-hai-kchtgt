@@ -43,7 +43,7 @@ const INFRA_TYPE_OPTIONS = [
   // Hệ thống VTS & phân hệ kỹ thuật
   { value: 'vts_system', label: 'Hệ thống VTS' },
   { value: 'vts_operation_center', label: 'Trung tâm điều hành VTS' },
-  { value: 'radar_station', label: 'Trạm Radar' },
+  { value: 'radar_station', label: 'Trạm radar' },
   { value: 'ais_system', label: 'Hệ thống trạm bờ AIS' },
   { value: 'cctv', label: 'Hệ thống camera giám sát CCTV' },
   { value: 'scada', label: 'Hệ thống điều khiển SCADA' },

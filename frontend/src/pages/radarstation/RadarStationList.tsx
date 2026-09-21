@@ -352,7 +352,7 @@ const DEFAULT_GIS_SYMBOLS = [
   { id: '2', code: 'SYM-INMARSAT', name: 'Đài thông tin vệ tinh Inmarsat', image: '' },
   { id: '3', code: 'SYM-COASTAL', name: 'Đài thông tin duyên hải', image: '' },
   { id: '4', code: 'SYM-AIS', name: 'Trạm bờ AIS', image: '' },
-  { id: '5', code: 'SYM-RADAR', name: 'Trạm Radar hàng hải', image: '' },
+  { id: '5', code: 'SYM-RADAR', name: 'Trạm radar hàng hải', image: '' },
   { id: '6', code: 'SYM-BUOY', name: 'Phao báo hiệu hàng hải', image: '' },
   { id: '7', code: 'SYM-BEACON', name: 'Trạm đèn biển (Hải đăng)', image: '' },
   { id: '8', code: 'SYM-PORT', name: 'Cảng biển / Bến cảng', image: '' },
@@ -928,6 +928,27 @@ export default function RadarStationList() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('');
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần ở backend) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   // ── Pagination ──────────────────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -946,9 +967,11 @@ export default function RadarStationList() {
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
 
   const filteredSeaportOptions = useMemo(() => {
-    if (!filterOrgUnitId) return seaportOptions;
-    const allowedOrgIds = resolveOrgSubtreeIds(orgOptions, filterOrgUnitId);
-    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+    if (!filterOrgUnitId || filterOrgUnitId === '__all__') return seaportOptions;
+    const rawSet = resolveOrgSubtreeIds(orgOptions, String(filterOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
   }, [seaportOptions, orgOptions, filterOrgUnitId]);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
@@ -967,13 +990,18 @@ export default function RadarStationList() {
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
   const createFormOrgUnitId = Form.useWatch('orgUnitId', createForm);
+  const watchedSeaportId = Form.useWatch('seaportId', createForm);
+  const editSeaportIdRef = useRef<string | undefined>(undefined);
+  const [codeLoading, setCodeLoading] = useState(false);
   const watchedGeometryType = Form.useWatch('geometryType', createForm);
   const [geometryTypeState, setGeometryTypeState] = useState<string>('');
   const effectiveGeom = watchedGeometryType || geometryTypeState;
   const filteredFormSeaportOptions = useMemo(() => {
-    if (!createFormOrgUnitId) return seaportOptions;
-    const allowedOrgIds = resolveOrgSubtreeIds(orgOptions, createFormOrgUnitId);
-    return seaportOptions.filter((port) => port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)));
+    if (!createFormOrgUnitId) return [];
+    const rawSet = resolveOrgSubtreeIds(orgOptions, String(createFormOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
   }, [createFormOrgUnitId, orgOptions, seaportOptions]);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [gisFormModalOpen, setGisFormModalOpen] = useState(false);
@@ -1413,6 +1441,8 @@ export default function RadarStationList() {
         approvalStatus: TAB_QUERY_MAP[activeTab],
         page,
         size: pageSize,
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : undefined,
       });
       setDataSource(res.items);
       setTotal(res.total);
@@ -1426,7 +1456,7 @@ export default function RadarStationList() {
     filterStationName, filterCode, filterOrgUnitId, filterSeaportId,
     filterVtsSystemId, filterVtsOperationCenterId,
     filterProvinceId, filterConditionStatus, filterUpdatedFrom, filterUpdatedTo,
-    activeTab, page, pageSize,
+    activeTab, page, pageSize, sortField, sortOrder,
   ]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
@@ -1453,6 +1483,8 @@ export default function RadarStationList() {
     setFilterConditionStatus(undefined);
     setFilterUpdatedFrom('');
     setFilterUpdatedTo('');
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setActiveTab('');
     setPage(1);
   }, []);
@@ -1491,14 +1523,15 @@ export default function RadarStationList() {
     setActiveTabKey('general');
     setUploadedFiles([]);
     setPreviewCode('');
-    radarStationCRUD.generateCode()
-      .then((r) => setPreviewCode(r.code || ''))
-      .catch(() => setPreviewCode(''));
+    editSeaportIdRef.current = undefined;
+    createForm.setFieldsValue({ code: undefined });
     setDrawerVisible(true);
   }, [createForm, currentUser, orgOptions]);
 
   const openEditDrawer = useCallback((record: RadarStationResponse) => {
     setEditingRecord(record);
+    editSeaportIdRef.current = record.seaportId ?? undefined;
+    setPreviewCode(record.code || '');
     setIsDetailMode(false);
     setDetailRecord(null);
     setActiveTabKey('general');
@@ -1529,6 +1562,7 @@ export default function RadarStationList() {
       setGpsError(null);
     }
     createForm.setFieldsValue({
+      code: record.code,
       stationName: record.stationName,
       location: record.location,
       orgUnitId: record.orgUnitId,
@@ -1583,6 +1617,30 @@ export default function RadarStationList() {
       })
       .catch(() => { /* ignore */ });
   }, [createForm, userOptions, userMap]);
+
+  // Tự sinh mã trạm radar khi người dùng chọn Thuộc cảng biển (chuẩn /berth)
+  useEffect(() => {
+    if (editingRecord && editSeaportIdRef.current === watchedSeaportId) return;
+    if (!watchedSeaportId) {
+      if (!editingRecord) {
+        setPreviewCode('');
+        createForm.setFieldValue('code', undefined);
+      }
+      return;
+    }
+    if (editingRecord) return;
+    setCodeLoading(true);
+    radarStationCRUD.generateCode()
+      .then((r) => {
+        const c = r?.code || '';
+        setPreviewCode(c);
+        if (c) createForm.setFieldsValue({ code: c });
+      })
+      .catch(() => {
+        setPreviewCode('');
+      })
+      .finally(() => setCodeLoading(false));
+  }, [watchedSeaportId, editingRecord, createForm]);
 
   const openDetailDrawer = useCallback(async (record: RadarStationResponse) => {
     setDetailRecord(record);
@@ -1824,8 +1882,9 @@ export default function RadarStationList() {
       const values = await createForm.validateFields();
 
       // Tọa độ GIS: kiểm tra tính đầy đủ và hợp lệ dạng DMS (chuẩn /berth).
-      const currentMapIcon = values.mapIcon || createForm.getFieldValue('mapIcon');
-      const geom = values.geometryType || createForm.getFieldValue('geometryType') || geometryTypeState || undefined;
+      const hasGeom = !!values.geometryType;
+      const currentMapIcon = hasGeom ? (values.mapIcon || createForm.getFieldValue('mapIcon')) : null;
+      const geom = hasGeom ? (values.geometryType || createForm.getFieldValue('geometryType') || geometryTypeState || null) : null;
       if (hasLocation && !currentMapIcon) {
         toast.error('Vui lòng chọn biểu tượng bản đồ');
         setActiveTabKey('location');
@@ -1838,11 +1897,11 @@ export default function RadarStationList() {
         setSubmitting(false);
         return;
       }
-      let longitude: number | undefined;
-      let latitude: number | undefined;
-      let coordinates: string | undefined;
+      let longitude: number | null = null;
+      let latitude: number | null = null;
+      let coordinates: string | null = null;
 
-      if (geom) {
+      if (hasGeom && geom) {
         const coordResult = validateDmsCoordinates(coordinateList, geom);
         if (!coordResult.valid) {
           const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
@@ -1875,11 +1934,11 @@ export default function RadarStationList() {
         towerHeight: safeDecimal(values.towerHeight),
         radarRange: safeDecimal(values.radarRange),
         note: values.note?.trim() || undefined,
-        longitude,
-        latitude,
-        geometryType: geom,
-        coordinates: coordinates || undefined,
-        mapIcon: currentMapIcon || undefined,
+        longitude: hasGeom ? longitude : null,
+        latitude: hasGeom ? latitude : null,
+        geometryType: hasGeom ? (geom as 'POINT' | 'LINE' | 'POLYGON') : null,
+        coordinates: hasGeom ? coordinates : null,
+        mapIcon: hasGeom && currentMapIcon ? currentMapIcon : null,
         action: mode === 'approve' ? 'approve' : mode === 'submit' ? 'submit' : 'draft',
         approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
       };
@@ -2055,6 +2114,7 @@ export default function RadarStationList() {
     },
     {
       key: 'stationName', label: 'Tên / Mã trạm radar', dataIndex: 'stationName', width: 300, fixed: 'left' as const,
+      sortOrder: sortOrderFor('stationName'),
       cellTitle: (record: RadarStationResponse) => record.stationName || '',
       render: (name: string | undefined, record: RadarStationResponse) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2085,31 +2145,37 @@ export default function RadarStationList() {
     },
     {
       key: 'orgUnitName', label: 'Đơn vị quản lý', dataIndex: 'orgUnitName', width: 240,
+      sortOrder: sortOrderFor('orgUnitName'),
       cellTitle: (record: RadarStationResponse) => record.orgUnitName || '',
       render: (v: string | undefined) => renderCellWithTooltip(v, true),
     },
     {
       key: 'seaportName', label: 'Thuộc cảng biển', dataIndex: 'seaportName', width: 220, ellipsis: true,
+      sortOrder: sortOrderFor('seaportName'),
       cellTitle: (record: RadarStationResponse) => record.seaportName || '',
       render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'vtsSystemName', label: 'Hệ thống VTS', dataIndex: 'vtsSystemName', width: 230, ellipsis: true,
+      sortable: false,
       cellTitle: (record: RadarStationResponse) => record.vtsSystemName || '',
       render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'vtsOperationCenterName', label: 'Trung tâm điều hành VTS', dataIndex: 'vtsOperationCenterName', width: 330, ellipsis: true,
+      sortable: false,
       cellTitle: (record: RadarStationResponse) => record.vtsOperationCenterName || '',
       render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'operatingUnitName', label: 'Đơn vị khai thác', dataIndex: 'operatingUnitName', width: 180, ellipsis: true,
+      sortable: false,
       cellTitle: (record: RadarStationResponse) => record.operatingUnitName || '',
       render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'provinceName', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceName', width: 220, ellipsis: true,
+      sortOrder: sortOrderFor('provinceName'),
       cellTitle: (record: RadarStationResponse) => record.provinceName || getProvinceLabel(record.provinceId) || '',
       render: (v: string | undefined, record: RadarStationResponse) => {
         const val = v || getProvinceLabel(record.provinceId);
@@ -2118,15 +2184,18 @@ export default function RadarStationList() {
     },
     {
       key: 'unitOfMeasure', label: 'Đơn vị tính', dataIndex: 'unitOfMeasure', width: 128, align: 'center' as const,
+      sortOrder: sortOrderFor('unitOfMeasure'),
       cellTitle: (record: RadarStationResponse) => record.unitOfMeasure || '',
       render: (v: string | undefined) => renderCellWithTooltip(v),
     },
     {
       key: 'quantity', label: 'Số lượng', dataIndex: 'quantity', width: 114, align: 'center' as const,
+      sortOrder: sortOrderFor('quantity'),
       render: (v: number | null | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? String(v) : null}</span>,
     },
     {
       key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 210,
+      sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
         const s = CONDITION_STATUS_STYLE_MAP[v];
         return s
@@ -2136,6 +2205,7 @@ export default function RadarStationList() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
+      sortOrder: sortOrderFor('status'),
       render: (status: string, record: RadarStationResponse) => {
         if (isRecordDeleted(record)) {
           return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
@@ -2147,7 +2217,8 @@ export default function RadarStationList() {
       },
     },
     {
-      key: 'updatedBy', label: 'Cán bộ cập nhật', dataIndex: 'updatedBy', width: 240, ellipsis: true,
+      key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 240, ellipsis: true,
+      sortOrder: sortOrderFor('updatedByName'),
       cellTitle: (record: RadarStationResponse) => record.updatedByName || record.createdByName || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.updatedByName || record.createdByName || null;
@@ -2165,7 +2236,8 @@ export default function RadarStationList() {
       },
     },
     {
-      key: 'submittedForApprovalBy', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedForApprovalBy', width: 300, ellipsis: true,
+      key: 'submittedByName', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedByName', width: 300, ellipsis: true,
+      sortOrder: sortOrderFor('submittedByName'),
       cellTitle: (record: RadarStationResponse) => record.submittedByName || record.createdByName || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.submittedByName || record.createdByName || null;
@@ -2183,7 +2255,8 @@ export default function RadarStationList() {
       },
     },
     {
-      key: 'approverLevel1', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1', width: 430, ellipsis: true,
+      key: 'approverLevel1Name', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1Name', width: 430, ellipsis: true,
+      sortOrder: sortOrderFor('approverLevel1Name'),
       cellTitle: (record: RadarStationResponse) => record.approverLevel1Name || record.approverLevel1 || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.approverLevel1Name || record.approverLevel1 || null;
@@ -2201,7 +2274,8 @@ export default function RadarStationList() {
       },
     },
     {
-      key: 'approverLevel2', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'approverLevel2', width: 330, ellipsis: true,
+      key: 'approverLevel2Name', label: 'Cán bộ phê duyệt cấp Cục', dataIndex: 'approverLevel2Name', width: 330, ellipsis: true,
+      sortOrder: sortOrderFor('approverLevel2Name'),
       cellTitle: (record: RadarStationResponse) => record.approverLevel2Name || record.approverLevel2 || '',
       render: (_v: string | undefined, record: RadarStationResponse) => {
         const name = record.approverLevel2Name || record.approverLevel2 || null;
@@ -2218,7 +2292,7 @@ export default function RadarStationList() {
         );
       },
     },
-  ], [page, pageSize, openDetailDrawer]);
+  ], [page, pageSize, openDetailDrawer, sortOrderFor]);
 
   const tableData = useMemo(
     () => dataSource.map((item, idx) => ({ ...item, _rowIndex: (page - 1) * pageSize + idx + 1 })),
@@ -3549,7 +3623,7 @@ export default function RadarStationList() {
       `}</style>
 
       <ScreenHeader
-        breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Quản lý trạm radar' }]}
+        breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Trạm radar' }]}
         actions={headerActions}
       />
 
@@ -3571,6 +3645,7 @@ export default function RadarStationList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 'max-content' }}
+          onSort={handleSort}
         />
         <Pagination
           total={total}
@@ -3691,31 +3766,6 @@ export default function RadarStationList() {
                         </div>
                         <Row gutter={[24, 0]}>
                           <Col span={12}>
-                            <Form.Item {...labelProps('Mã radar')} style={{ marginBottom: spaceFormField }}>
-                              <Input
-                                disabled
-                                value={editingRecord ? (editingRecord.code || '') : previewCode}
-                                placeholder="Mã tự sinh tự động"
-                                style={readonlyInputStyle}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="stationName"
-                              {...labelProps('Tên trạm radar')}
-                              required
-                              style={{ marginBottom: spaceFormField }}
-                              validateStatus={atMax.stationName ? 'error' : undefined}
-                              help={atMax.stationName ? 'Đã đạt tối đa 255 ký tự' : undefined}
-                              rules={[{ required: true, message: 'Vui lòng nhập tên trạm radar' }, { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' }]}
-                            >
-                              <Input placeholder="Nhập tên trạm radar" maxLength={255} showCount style={inputStyle} />
-                            </Form.Item>
-                          </Col>
-                        </Row>
-                        <Row gutter={[24, 0]}>
-                          <Col span={12}>
                             <Form.Item
                               name="orgUnitId"
                               {...labelProps('Đơn vị quản lý')}
@@ -3731,26 +3781,82 @@ export default function RadarStationList() {
                                 showSearch
                                 style={selectStyle}
                                 onChange={(orgUnitId) => {
+                                  createForm.setFieldValue('orgUnitId', orgUnitId);
                                   const seaportId = createForm.getFieldValue('seaportId');
-                                  const allowedOrgIds = orgUnitId ? resolveOrgSubtreeIds(orgOptions, orgUnitId) : new Set<string>();
-                                  const isValidSeaport = seaportOptions.some((port) =>
-                                    port.id === seaportId && !!port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId)),
-                                  );
-                                  if (seaportId && !isValidSeaport) createForm.setFieldValue('seaportId', undefined);
+                                  if (!orgUnitId) {
+                                    createForm.setFieldValue('seaportId', undefined);
+                                    if (!editingRecord) {
+                                      setPreviewCode('');
+                                      createForm.setFieldValue('code', undefined);
+                                    }
+                                  } else if (seaportId) {
+                                    const rawSet = resolveOrgSubtreeIds(orgOptions, String(orgUnitId));
+                                    const normalizedSet = new Set<string>();
+                                    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                                    const isValidSeaport = seaportOptions.some((port) =>
+                                      port.id === seaportId && !!port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()),
+                                    );
+                                    if (!isValidSeaport) {
+                                      createForm.setFieldValue('seaportId', undefined);
+                                      if (!editingRecord) {
+                                        setPreviewCode('');
+                                        createForm.setFieldValue('code', undefined);
+                                      }
+                                    }
+                                  }
                                 }}
                               />
                             </Form.Item>
                           </Col>
                           <Col span={12}>
-                            <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
+                            <Form.Item
+                              name="seaportId"
+                              {...labelProps('Thuộc cảng biển')}
+                              required
+                              style={{ marginBottom: spaceFormField }}
+                              rules={[{ required: true, message: 'Thuộc cảng biển là bắt buộc' }]}
+                            >
                               <Select
-                                placeholder="Chọn cảng biển..."
+                                placeholder={!createFormOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+                                disabled={!createFormOrgUnitId}
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                options={filteredFormSeaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
+                                options={filteredFormSeaportOptions.map((p) => ({
+                                  value: p.id,
+                                  label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),
+                                }))}
                                 style={selectStyle}
                               />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                        <Row gutter={[24, 0]}>
+                          <Col span={12}>
+                            <Form.Item
+                              name="code"
+                              {...labelProps('Mã radar')}
+                              style={{ marginBottom: spaceFormField }}
+                              tooltip="Mã radar được sinh tự động"
+                            >
+                              <Input
+                                disabled
+                                placeholder={codeLoading ? 'Đang sinh mã...' : (watchedSeaportId || previewCode) ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
+                                style={readonlyInputStyle}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="stationName"
+                              {...labelProps('Tên trạm radar')}
+                              required
+                              style={{ marginBottom: spaceFormField }}
+                              validateStatus={atMax.stationName ? 'error' : undefined}
+                              help={atMax.stationName ? 'Đã đạt tối đa 255 ký tự' : undefined}
+                              rules={[{ required: true, message: 'Vui lòng nhập tên trạm radar' }, { max: 255, message: 'Tên trạm radar tối đa 255 ký tự' }]}
+                            >
+                              <Input placeholder="Nhập tên trạm radar" maxLength={255} showCount style={inputStyle} />
                             </Form.Item>
                           </Col>
                         </Row>

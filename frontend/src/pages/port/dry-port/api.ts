@@ -30,6 +30,8 @@ export async function fetchDryPortList(params: DryPortFilterParams): Promise<Dry
     approvalStatus: params.approvalStatus || undefined,
     updatedFrom: params.updatedFrom,
     updatedTo: params.updatedTo,
+    sortBy: params.sortBy,
+    sortDir: params.sortDir,
   };
 
   Object.keys(query).forEach((key) => {

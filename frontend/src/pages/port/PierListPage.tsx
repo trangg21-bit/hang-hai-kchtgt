@@ -600,7 +600,16 @@ export default function PierListPage() {
 
   useEffect(() => {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => { const m = new Map<string, string>(); r.items.forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); }); setWaterwayMap(m); })
+      .then((r) => {
+        const m = new Map<string, string>();
+        r.items.forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
+        setWaterwayMap(m);
+      })
       .catch(() => {});
   }, []);
 
@@ -1187,7 +1196,7 @@ export default function PierListPage() {
           overflow-wrap: break-word;
         }
       `}</style>
-      <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cầu cảng' }]}
+      <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cầu cảng' }]}
         actions={headerActions} />
       <FilterTableLayout filterContent={filterContent}
         statusTabs={TAB_STATUS_LIST.map(t => ({ key: t.key, label: t.label, color: t.color, count: tabCounts[t.key] ?? 0, active: activeTab === t.key }))}

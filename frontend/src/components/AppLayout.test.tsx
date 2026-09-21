@@ -67,14 +67,14 @@ const gatedMenu: MenuProps['items'] = [
     children: [
       {
         key: 'port-parent',
-        label: 'Quản lý cảng biển',
+        label: 'Cảng biển',
         children: [
           {
             key: 'berth-parent',
-            label: 'Quản lý bến cảng',
-            children: [{ key: '/pier', label: 'Quản lý cầu cảng' }],
+            label: 'Bến cảng',
+            children: [{ key: '/pier', label: 'Cầu cảng' }],
           },
-          { key: '/dry-port', label: 'Quản lý cảng cạn' },
+          { key: '/dry-port', label: 'Cảng cạn' },
         ],
       },
       { key: '/water-zone', label: 'Quản lý vùng nước' },
@@ -193,8 +193,8 @@ describe('filterMenuByQuery', () => {
     const noPier: MenuProps['items'] = [
       {
         key: 'port-parent',
-        label: 'Quản lý cảng biển',
-        children: [{ key: '/dry-port', label: 'Quản lý cảng cạn' }],
+        label: 'Cảng biển',
+        children: [{ key: '/dry-port', label: 'Cảng cạn' }],
       },
     ];
     expect(collectKeys(filterMenuByQuery(noPier, 'cầu cảng'))).toEqual([]);
@@ -206,7 +206,7 @@ describe('filterMenuByQuery', () => {
       {
         key: 'react-node-parent',
         label: React.createElement('span', null, 'ZZZ-ONLY-HERE'),
-        children: [{ key: '/pier', label: 'Quản lý cầu cảng' }],
+        children: [{ key: '/pier', label: 'Cầu cảng' }],
       },
       {
         key: 'undefined-label',

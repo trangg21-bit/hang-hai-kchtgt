@@ -87,9 +87,11 @@ export interface DryPortFilterParams {
   portStatus?: number;
   transportCorridor?: string;
   approvalStatus?: string;
-  updatedFrom?: string;
-  updatedTo?: string;
-}
+    updatedFrom?: string;
+    updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
+  }
 
 export interface CreateDryPortRequest {
   saveAction?: string;

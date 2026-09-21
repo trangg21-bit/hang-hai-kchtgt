@@ -251,6 +251,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   useEffect(() => { api.get('/common/options/operating-units').then(r => { const list = r.data?.data; if (Array.isArray(list) && list.length) setOperatingOrgs(list); }).catch(() => {}); }, []);
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [loadingWaterways, setLoadingWaterways] = useState(false);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
@@ -276,12 +277,37 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
 
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — không dùng GIS LineObject (đồng bộ chuẩn Cầu cảng)
-  useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
-      .catch(() => {});
-  }, []);
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt thuộc đơn vị quản lý
+  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
+    if (!orgUnitId) {
+      setWaterwayOptions([]);
+      return;
+    }
+    setLoadingWaterways(true);
+    try {
+      const r = await navigationChannelCRUD.search({
+        orgUnitId,
+        approvalStatus: 'APPROVED',
+        page: 0,
+        size: 1000,
+      });
+      const options = (r.items || []).map((n) => {
+        const code = n.channelCode?.trim();
+        const name = n.channelName?.trim();
+        const label = code && name ? `${code} - ${name}` : (code || name || '');
+        return { value: n.id, label };
+      });
+      setWaterwayOptions(options);
+      const currentWaterwayId = form.getFieldValue('waterwayId');
+      if (currentWaterwayId && !options.some((o) => o.value === currentWaterwayId)) {
+        form.setFieldsValue({ waterwayId: undefined });
+      }
+    } catch {
+      setWaterwayOptions([]);
+    } finally {
+      setLoadingWaterways(false);
+    }
+  }, [form]);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -299,13 +325,18 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   useEffect(() => {
     if (!watchedOrgUnitId) {
       setPortOptions([]);
+      setWaterwayOptions([]);
       return;
     }
     if (!isEdit || !form.getFieldValue('portId')) {
       form.setFieldsValue({ portId: undefined, berthCode: undefined });
     }
+    if (!isEdit || !form.getFieldValue('waterwayId')) {
+      form.setFieldsValue({ waterwayId: undefined });
+    }
     loadPortOptions(watchedOrgUnitId);
-  }, [watchedOrgUnitId]);
+    loadWaterwayOptions(watchedOrgUnitId);
+  }, [watchedOrgUnitId, isEdit, form, loadWaterwayOptions]);
 
   useEffect(() => { if (!watchedPortId || (isEdit && editPortIdRef.current === watchedPortId)) return; setBerthCodeLoading(true); api.get('/v1/berths/generate-code', { params: { portId: watchedPortId } }).then(r => { const c = r.data?.data?.berthCode ?? r.data?.data?.portCode ?? r.data?.data; if (c) form.setFieldsValue({ berthCode: c }); }).catch(() => {}).finally(() => setBerthCodeLoading(false)); }, [watchedPortId]);
 
@@ -342,7 +373,12 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           const lngDms = ddToDms(c.longitude);
           return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
         }) : data.latitude != null ? (() => { const latDms = ddToDms(Number(data.latitude)); const lngDms = ddToDms(Number(data.longitude)); return [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]; })() : []);
-        if (data.orgUnitId) await loadPortOptions(data.orgUnitId);
+        if (data.orgUnitId) {
+          await Promise.all([
+            loadPortOptions(data.orgUnitId),
+            loadWaterwayOptions(data.orgUnitId),
+          ]);
+        }
         try {
           const fr = await api.get(`/v1/berths/${id}/attachments`, { params: { page: 0, size: 50 } });
           const files = fr.data?.data || [];
@@ -596,7 +632,17 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
               </Col>
               <Col span={12}>
                 <Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+                  <Select
+                    placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải...'}
+                    options={waterwayOptions}
+                    loading={loadingWaterways}
+                    disabled={!watchedOrgUnitId}
+                    showSearch
+                    allowClear
+                    optionFilterProp="label"
+                    notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc đơn vị quản lý'}
+                    style={selectStyle}
+                  />
                 </Form.Item>
               </Col>
             </Row>

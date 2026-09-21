@@ -42,12 +42,12 @@ describe('Ánh xạ trường và giá trị lịch sử Phụ trợ VTS (VtsAss
 
   it('dịch loại hạ tầng và thuộc hạ tầng VTS/Radar', () => {
     const vtsMap = new Map<string, string>([['vts-1', 'TTDH VTS Hải Phòng']]);
-    const radarMap = new Map<string, string>([['rad-1', 'Trạm Radar Hòn Dáu']]);
+    const radarMap = new Map<string, string>([['rad-1', 'Trạm radar Hòn Dáu']]);
 
     expect(historyFieldValue('attachedInfrastructureType', '1')).toBe('TTDH VTS');
-    expect(historyFieldValue('attachedInfrastructureType', '2')).toBe('Trạm Radar');
+    expect(historyFieldValue('attachedInfrastructureType', '2')).toBe('Trạm radar');
     expect(historyFieldValue('attachedInfrastructureId', 'vts-1', undefined, undefined, vtsMap, radarMap)).toBe('TTDH VTS Hải Phòng');
-    expect(historyFieldValue('attachedInfrastructureId', 'rad-1', undefined, undefined, vtsMap, radarMap)).toBe('Trạm Radar Hòn Dáu');
+    expect(historyFieldValue('attachedInfrastructureId', 'rad-1', undefined, undefined, vtsMap, radarMap)).toBe('Trạm radar Hòn Dáu');
   });
 
   it('dịch loại đối tượng và hệ quy chiếu', () => {

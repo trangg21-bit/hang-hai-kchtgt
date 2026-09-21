@@ -583,7 +583,7 @@ export default function BuoyBerthList() {
         setSymbolImageMap(imgMap);
       } catch { console.error('Failed to load symbols'); }
     })();
-    // ── Thuộc luồng hàng hải (cùng nguồn options như form và Quản lý cầu cảng) ──
+    // ── Thuộc luồng hàng hải (cùng nguồn options như form và Cầu cảng) ──
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
       .catch(() => {});
@@ -1473,7 +1473,7 @@ export default function BuoyBerthList() {
         .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
       `}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến phao' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Bến phao' }]}
         actions={headerActions}
       />
 

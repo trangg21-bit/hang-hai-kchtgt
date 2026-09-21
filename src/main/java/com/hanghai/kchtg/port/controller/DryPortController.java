@@ -88,12 +88,14 @@ public class DryPortController {
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) String transportCorridor) {
+            @RequestParam(required = false) String transportCorridor,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, name={}, status={}, approvalStatus={}, region={}, portStatus={}, updatedFrom={}, updatedTo={}, code={}, transportCorridor={}",
-                page, size, orgUnitId, provinceId, search, name, status, approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor);
+                "Listing DryPorts: page={}, size={}, orgUnitId={}, provinceId={}, search={}, name={}, status={}, approvalStatus={}, region={}, portStatus={}, updatedFrom={}, updatedTo={}, code={}, transportCorridor={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, provinceId, search, name, status, approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor, sortBy, sortDir);
         Page<DryPortResponse> result = dryPortService.findAll(page, size, orgUnitId, provinceId, search, name, status,
-                approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor);
+                approvalStatus, region, portStatus, updatedFrom, updatedTo, code, transportCorridor, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng cạn thành công", result));
     }
 

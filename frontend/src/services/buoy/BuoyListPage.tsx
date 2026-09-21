@@ -1673,7 +1673,7 @@ export default function BuoyListPage() {
       <style>{`
         .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
-        /* ── Cỡ chữ 13.5px chuẩn toàn màn Quản lý Phao, tiêu & các popup/drawer con ── */
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Phao, tiêu & các popup/drawer con ── */
         .buoy-page-wrapper,
         .buoy-page-wrapper .ant-table,
         .buoy-page-wrapper .ant-table-cell,
@@ -1751,7 +1751,7 @@ export default function BuoyListPage() {
       {!isEmbeddedAction ? (
         <>
           <ScreenHeader
-            breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý Phao, tiêu' }]}
+            breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Phao, tiêu' }]}
             actions={headerActions}
           />
 

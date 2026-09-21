@@ -36,7 +36,7 @@ const fontSizeMd = 13.5;
 const KCHT_TYPE_OPTIONS = [
   'Bến cảng', 'Bến phao', 'Cầu cảng', 'Cơ sở sửa chữa, đóng tàu', 'Khu chuyển tải',
   'Đèn biển và nhà trạm gắn liền với đèn biển', 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ',
-  'Luồng hàng hải', 'Khu neo đậu', 'Nhà trạm quản lý vận hành Phao, tiêu', 'Trạm Radar',
+  'Luồng hàng hải', 'Khu neo đậu', 'Nhà trạm quản lý vận hành Phao, tiêu', 'Trạm radar',
   'Khu tránh, trú bão', 'Trung tâm điều hành VTS', 'Hệ thống thông tin liên lạc VHF', 'Hệ thống VTS',
 ].map((label) => ({ value: label, label }));
 

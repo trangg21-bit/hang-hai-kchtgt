@@ -267,7 +267,6 @@ public class RadarStationService {
         applyIfChanged("towerHeight", entity.getTowerHeight(), request.getTowerHeight(), entity::setTowerHeight, previousValues);
         applyIfChanged("radarRange", entity.getRadarRange(), request.getRadarRange(), entity::setRadarRange, previousValues);
         applyIfChanged("note", entity.getNote(), request.getNote() != null ? request.getNote().trim() : null, entity::setNote, previousValues);
-        applyIfChanged("mapIcon", entity.getMapIcon(), request.getMapIcon() != null ? request.getMapIcon().trim() : null, entity::setMapIcon, previousValues);
 
         String oldCoord = entity.getSpatialId() != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
         GisGeometryType oldGeom = null;
@@ -279,11 +278,50 @@ public class RadarStationService {
         if (newCoord == null && request.getLongitude() != null && request.getLatitude() != null) {
             newCoord = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
-if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
-            previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
-        }
-        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeom)) {
-            previousValues.put("geometryType", oldGeom != null ? oldGeom.name() : "Chưa có");
+
+        boolean hasGeometryType = request.getGeometryType() != null;
+        boolean hasCoordinates = newCoord != null && !newCoord.trim().isEmpty();
+
+        if (hasGeometryType && hasCoordinates) {
+            applyIfChanged("mapIcon", entity.getMapIcon(), request.getMapIcon() != null ? request.getMapIcon().trim() : null, entity::setMapIcon, previousValues);
+
+            if (!WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
+                previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
+            }
+            if (!Objects.equals(request.getGeometryType(), oldGeom)) {
+                previousValues.put("geometryType", oldGeom != null ? oldGeom.name() : "Chưa có");
+            }
+
+            GisGeometryType geomType = request.getGeometryType();
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
+            UUID refId = entity.getId();
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    entity.getSpatialId(),
+                    entity.getStationName(),
+                    "RADAR_" + entity.getId(),
+                    geomType,
+                    objType,
+                    newCoord,
+                    refId,
+                    InfrastructureType.RADAR_STATION_LEGACY
+            );
+            entity.setSpatialId(spatialObj.getId());
+        } else {
+            // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
+            if (oldGeom != null) {
+                previousValues.put("geometryType", oldGeom.name());
+            }
+            if (oldCoord != null && !oldCoord.isBlank()) {
+                previousValues.put("coordinates", oldCoord);
+            }
+            if (entity.getMapIcon() != null) {
+                previousValues.put("mapIcon", entity.getMapIcon());
+                entity.setMapIcon(null);
+            }
+            if (entity.getSpatialId() != null) {
+                gisSpatialObjectService.delete(entity.getSpatialId());
+                entity.setSpatialId(null);
+            }
         }
 
         if (wasApproved) {
@@ -292,26 +330,6 @@ if (newCoord != null && !WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)
         }
 
         RadarStation saved = repository.save(entity);
-
-        if (newCoord != null) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
-            GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
-            UUID refId = saved.getId();
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    saved.getSpatialId(),
-                    saved.getStationName(),
-                    "RADAR_" + saved.getId(),
-                    geomType,
-                    objType,
-                    newCoord,
-                    refId,
-                    InfrastructureType.RADAR_STATION_LEGACY
-            );
-            if (saved.getSpatialId() == null) {
-                saved.setSpatialId(spatialObj.getId());
-                saved = repository.save(saved);
-            }
-        }
 
         if (wasApproved && !previousValues.isEmpty()) {
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {

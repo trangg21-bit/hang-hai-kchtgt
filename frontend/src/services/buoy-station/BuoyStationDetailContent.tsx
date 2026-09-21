@@ -42,7 +42,7 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
 };
 
 
-// Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Quản lý bến cảng
+// Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Bến cảng
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
   border: '1px solid #e2e8f0',

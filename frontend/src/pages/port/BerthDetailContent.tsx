@@ -23,7 +23,6 @@ import {
 
 const fontSizeMd = 13.5;
 const spaceMd = 12;
-const spaceFormField = 12;
 import type { Berth } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { pierCRUD } from '../../services/portService';
@@ -139,7 +138,14 @@ export default function BerthDetailContent({
     if (!r.waterwayId) return;
     if (waterwayMap?.has(r.waterwayId)) return;
     navigationChannelCRUD.getById(r.waterwayId)
-      .then((ch) => { if (ch?.channelName || ch?.channelCode) setResolvedWaterway(ch.channelName || ch.channelCode); })
+      .then((ch) => {
+        if (ch) {
+          const code = ch.channelCode?.trim();
+          const name = ch.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          if (label) setResolvedWaterway(label);
+        }
+      })
       .catch(() => {});
   }, [r.waterwayId, waterwayMap]);
 

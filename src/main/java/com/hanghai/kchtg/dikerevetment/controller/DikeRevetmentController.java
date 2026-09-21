@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -104,8 +105,42 @@ public class DikeRevetmentController {
         return ResponseEntity.ok(ApiResponse.success(service.findAll(page, size)));
     }
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "code", "dikeRevetmentName", "location", "dikeRevetmentType", "seaportId",
+            "operatingUnitId", "length", "crestElevation", "commissioningDate",
+            "constructionDate", "lastMaintenanceYear", "height", "surfaceMaterial",
+            "status", "orgUnitId", "provinceId", "approvalStatus", "submittedAt",
+            "approvedDateLevel1", "approvedDateLevel2", "createdAt", "updatedAt"
+    );
+
+    public static Sort resolveSort(String sortBy, String sortOrder) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return Sort.by(Sort.Direction.DESC, "updatedAt");
+        }
+        String field = sortBy.trim();
+        if ("updatedByName".equalsIgnoreCase(field)) {
+            field = "updatedAt";
+        } else if ("orgUnitName".equalsIgnoreCase(field)) {
+            field = "orgUnitId";
+        } else if ("seaportName".equalsIgnoreCase(field)) {
+            field = "seaportId";
+        } else if ("submittedByName".equalsIgnoreCase(field)) {
+            field = "submittedAt";
+        } else if ("approvedByNameLevel1".equalsIgnoreCase(field)) {
+            field = "approvedDateLevel1";
+        } else if ("approvedByNameLevel2".equalsIgnoreCase(field)) {
+            field = "approvedDateLevel2";
+        }
+
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            return Sort.by(Sort.Direction.DESC, "updatedAt");
+        }
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(direction, field);
+    }
+
     @GetMapping("/search-paged")
-    @PreAuthorize("@auth.check(authentication, 'dikerevetment:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'dikerevetment:manage', 'dikerevetment:read', 'data:read')")
     public ResponseEntity<ApiResponse<Page<DikeRevetmentResponse>>> searchPaged(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String keyword,
@@ -126,7 +161,7 @@ public class DikeRevetmentController {
             @RequestParam(defaultValue = "updatedAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortOrder) {
         try {
-            Sort sort = Sort.by(Sort.Direction.fromString(sortOrder), sortBy);
+            Sort sort = resolveSort(sortBy, sortOrder);
             PageRequest pageable = PageRequest.of(page, size, sort);
             Page<DikeRevetmentResponse> responses = service.searchPaged(
                     orgUnitId, keyword, dikeRevetmentName, seaportId, dikeRevetmentType, conditionStatus,

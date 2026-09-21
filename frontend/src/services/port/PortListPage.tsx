@@ -2407,7 +2407,7 @@ export default function PortListPage() {
             }
           `}</style>
           <ScreenHeader
-            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cảng biển' }]}
+            breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cảng biển' }]}
             actions={[
               hasPerm?.('Port:create')
                 ? {

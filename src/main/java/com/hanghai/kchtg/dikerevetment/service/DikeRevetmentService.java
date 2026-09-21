@@ -373,25 +373,19 @@ public class DikeRevetmentService {
         applyIfChanged("status", dr.getStatus(), req.getStatus(), dr::setStatus, previousValues);
         applyIfChanged("note", dr.getNote(), req.getNote(), dr::setNote, previousValues);
         applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues);
-        applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
+        boolean hasGeometryType = req.getGeometryType() != null;
+        boolean hasCoordinates = req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty();
 
-        if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()
-                && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
-            previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
-        }
-        if (req.getGeometryType() != null && req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()
-                && !Objects.equals(req.getGeometryType(), oldGeometryType)) {
-            previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
-        }
+        if (hasGeometryType && hasCoordinates) {
+            applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
 
-        if (wasApproved) {
-            dr.setApprovalStatus(ApprovalStatus.APPROVED);
-        }
+            if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
+                previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+            }
+            if (!Objects.equals(req.getGeometryType(), oldGeometryType)) {
+                previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+            }
 
-        dr.setUpdatedBy(userId);
-        DikeRevetment saved = repo.save(dr);
-
-        if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
             GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -400,13 +394,35 @@ public class DikeRevetmentService {
                     dr.getCode(),
                     geomType,
                     objType,
-                    req.getCoordinates(),
+                    req.getCoordinates().trim(),
                     dr.getId(),
                     InfrastructureType.DIKE_REVETMENT
             );
-            saved.setSpatialId(spatialObj.getId());
-            saved = repo.save(saved);
+            dr.setSpatialId(spatialObj.getId());
+        } else {
+            // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
+            if (oldGeometryType != null) {
+                previousValues.put("geometryType", oldGeometryType.name());
+            }
+            if (oldCoordinates != null && !oldCoordinates.isBlank()) {
+                previousValues.put("coordinates", oldCoordinates);
+            }
+            if (dr.getSymbolId() != null) {
+                previousValues.put("symbolId", dr.getSymbolId().toString());
+                dr.setSymbolId(null);
+            }
+            if (dr.getSpatialId() != null) {
+                gisSpatialObjectService.delete(dr.getSpatialId());
+                dr.setSpatialId(null);
+            }
         }
+
+        if (wasApproved) {
+            dr.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
+
+        dr.setUpdatedBy(userId);
+        DikeRevetment saved = repo.save(dr);
 
         // Chuẩn /vts-operation-center: mỗi trường thay đổi = 1 dòng history (tên trường + giá trị cũ/mới)
         if (wasApproved && !previousValues.isEmpty()) {

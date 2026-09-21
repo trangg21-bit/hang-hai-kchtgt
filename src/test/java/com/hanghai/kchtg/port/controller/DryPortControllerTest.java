@@ -96,11 +96,11 @@ class DryPortControllerTest {
     @Test
     void testFindAll() {
         Page<DryPortResponse> page = new PageImpl<>(List.of(response));
-        when(dryPortService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(dryPortService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         ResponseEntity<ApiResponse<Page<DryPortResponse>>> result = controller.findAll(
-                0, 20, null, null, null, null, null, null, null, null, null, null, null, null);
+                0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());

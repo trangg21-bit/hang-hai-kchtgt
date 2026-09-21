@@ -150,7 +150,7 @@ export const PERMISSIONS = {
   },
 
 
-  /** Trạm Radar (M-003) */
+  /** Trạm radar (M-003) */
   RADARSTATION: {
     MANAGE: 'radarstation:manage',
     READ: 'radarstation:read',
@@ -445,14 +445,14 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.DIKEREVETMENT.APPROVE_C1, title: 'Duyệt Đê chắn sóng C1' },
       { key: PERMISSIONS.DIKEREVETMENT.APPROVE_C2, title: 'Duyệt Đê chắn sóng C2' },
       { key: PERMISSIONS.DIKEREVETMENT.HISTORY, title: 'Lịch sử Đê chắn sóng' },
-      { key: PERMISSIONS.RADARSTATION.MANAGE, title: 'Quản lý Trạm Radar' },
-      { key: PERMISSIONS.RADARSTATION.READ, title: 'Xem Trạm Radar' },
-      { key: PERMISSIONS.RADARSTATION.CREATE, title: 'Thêm Trạm Radar' },
-      { key: PERMISSIONS.RADARSTATION.UPDATE, title: 'Sửa Trạm Radar' },
-      { key: PERMISSIONS.RADARSTATION.DELETE, title: 'Xóa Trạm Radar' },
-      { key: PERMISSIONS.RADARSTATION.APPROVE_C1, title: 'Duyệt Trạm Radar C1' },
-      { key: PERMISSIONS.RADARSTATION.APPROVE_C2, title: 'Duyệt Trạm Radar C2' },
-      { key: PERMISSIONS.RADARSTATION.HISTORY, title: 'Lịch sử Trạm Radar' },
+      { key: PERMISSIONS.RADARSTATION.MANAGE, title: 'Quản lý Trạm radar' },
+      { key: PERMISSIONS.RADARSTATION.READ, title: 'Xem Trạm radar' },
+      { key: PERMISSIONS.RADARSTATION.CREATE, title: 'Thêm Trạm radar' },
+      { key: PERMISSIONS.RADARSTATION.UPDATE, title: 'Sửa Trạm radar' },
+      { key: PERMISSIONS.RADARSTATION.DELETE, title: 'Xóa Trạm radar' },
+      { key: PERMISSIONS.RADARSTATION.APPROVE_C1, title: 'Duyệt Trạm radar C1' },
+      { key: PERMISSIONS.RADARSTATION.APPROVE_C2, title: 'Duyệt Trạm radar C2' },
+      { key: PERMISSIONS.RADARSTATION.HISTORY, title: 'Lịch sử Trạm radar' },
       { key: PERMISSIONS.SHIPREPAIRFACILITY.MANAGE, title: 'Quản lý CS sửa chữa' },
       { key: PERMISSIONS.SHIPREPAIRFACILITY.READ, title: 'Xem CS sửa chữa' },
       { key: PERMISSIONS.SHIPREPAIRFACILITY.CREATE, title: 'Thêm CS sửa chữa' },

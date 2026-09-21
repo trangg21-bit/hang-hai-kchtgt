@@ -78,15 +78,18 @@ public class ShipRepairYardController {
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing ShipRepairYards: page={}, size={}, orgUnitId={}, search={}, shipRepairYardCode={}, shipRepairYardName={}, portId={}, pierId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, shipRepairYardCode, shipRepairYardName, portId, pierId, operationalStatus, approvalStatus);
+                "Listing ShipRepairYards: page={}, size={}, orgUnitId={}, search={}, shipRepairYardCode={}, shipRepairYardName={}, portId={}, pierId={}, status={}, approvalStatus={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, shipRepairYardCode, shipRepairYardName, portId, pierId, operationalStatus, approvalStatus, sortBy, sortDir);
         Page<ShipRepairYardResponse> result = shipRepairYardService.findAll(
                 page, size, orgUnitId,
                 search, shipRepairYardCode, shipRepairYardName, portId, pierId,
                 provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo,
+                sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cơ sở sửa chữa, đóng tàu thành công", result));
     }
 
