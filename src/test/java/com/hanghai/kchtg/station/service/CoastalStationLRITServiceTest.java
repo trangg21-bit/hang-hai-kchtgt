@@ -58,6 +58,8 @@ class CoastalStationLRITServiceTest {
     @Mock
     private OperatingOrganizationRepository operatingOrganizationRepository;
     @Mock
+    private OperatingOrganizationLookup operatingOrganizationLookup;
+    @Mock
     private UserRepository userRepository;
     @Mock
     private GisSpatialObjectService gisSpatialObjectService;
@@ -99,7 +101,7 @@ class CoastalStationLRITServiceTest {
     void keepsHistoryEmptyUntilFinalApproval() {
         UUID stationId = UUID.randomUUID();
         CoastalStationLRIT station = station(stationId, null, ApprovalStatus.DRAFT);
-        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
+        when(repository.findById(stationId)).thenReturn(Optional.of(station));
 
         assertThat(service.getHistory(stationId)).isEmpty();
         verifyNoInteractions(historyService);
@@ -183,7 +185,7 @@ class CoastalStationLRITServiceTest {
         CoastalStationLRIT station = station(stationId, null, ApprovalStatus.PENDING_APPROVAL);
         station.setApproverLevel1(null);
 
-        when(repository.findByIdAndDeletedAtIsNull(stationId)).thenReturn(Optional.of(station));
+        when(repository.findById(stationId)).thenReturn(Optional.of(station));
         when(repository.save(station)).thenReturn(station);
 
         CoastalStationLRIT approved = service.approveLevel2(stationId);

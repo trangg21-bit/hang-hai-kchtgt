@@ -384,58 +384,33 @@ public class DryPortService {
                 // opUnit is plain text
             }
         }
-        if (opOrgId != null)
-            entity.setOperatingOrgId(opOrgId);
-        if (opUnit != null)
-            entity.setOperatingUnit(opUnit);
-        if (request.getRegion() != null)
-            entity.setRegion(request.getRegion());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getTransportCorridor() != null)
-            entity.setTransportCorridor(request.getTransportCorridor());
-        if (request.getArea() != null)
-            entity.setArea(request.getArea());
-        if (request.getWarehouseArea() != null)
-            entity.setWarehouseArea(request.getWarehouseArea());
-        if (request.getYardArea() != null)
-            entity.setYardArea(request.getYardArea());
-        if (request.getTeuCapacity() != null)
-            entity.setTeuCapacity(request.getTeuCapacity());
-        if (request.getConnectionMode() != null)
-            entity.setConnectionMode(request.getConnectionMode());
-        if (request.getPortStatus() != null)
-            entity.setPortStatus(request.getPortStatus());
+        entity.setOperatingOrgId(opOrgId);
+        entity.setOperatingUnit(opUnit);
+        entity.setRegion(request.getRegion());
+        entity.setDetailedLocation(request.getDetailedLocation());
+        entity.setTransportCorridor(request.getTransportCorridor());
+        entity.setArea(request.getArea());
+        entity.setWarehouseArea(request.getWarehouseArea());
+        entity.setYardArea(request.getYardArea());
+        entity.setTeuCapacity(request.getTeuCapacity());
+        entity.setConnectionMode(request.getConnectionMode());
+        entity.setPortStatus(request.getPortStatus());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getRemarks() != null)
-            entity.setRemarks(request.getRemarks());
+        entity.setRemarks(request.getRemarks());
         // Announcement
-        if (request.getAnnouncementTime() != null)
-            entity.setAnnouncementTime(request.getAnnouncementTime());
-        if (request.getAnnouncementDecisionNumber() != null)
-            entity.setAnnouncementDecisionNumber(request.getAnnouncementDecisionNumber());
-        if (request.getAnnouncementDecisionDate() != null)
-            entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
-        if (request.getAnnouncementOrg() != null)
-            entity.setAnnouncementOrg(request.getAnnouncementOrg());
+        entity.setAnnouncementTime(request.getAnnouncementTime());
+        entity.setAnnouncementDecisionNumber(request.getAnnouncementDecisionNumber());
+        entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
+        entity.setAnnouncementOrg(request.getAnnouncementOrg());
         // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
-        if (request.getOpeningAnnouncementDate() != null)
-            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
-        else if (request.getAnnouncementDecisionDate() != null)
-            entity.setOpeningAnnouncementDate(request.getAnnouncementDecisionDate());
-        if (request.getOpeningDecision() != null)
-            entity.setOpeningDecision(request.getOpeningDecision());
-        else if (request.getAnnouncementDecisionNumber() != null)
-            entity.setOpeningDecision(request.getAnnouncementDecisionNumber());
-        if (request.getInvestmentAgreementDoc() != null)
-            entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
+        entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate() != null ? request.getOpeningAnnouncementDate() : request.getAnnouncementDecisionDate());
+        entity.setOpeningDecision(request.getOpeningDecision() != null ? request.getOpeningDecision() : request.getAnnouncementDecisionNumber());
+        entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
         // GIS
         entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
 
         // Set approval status
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();

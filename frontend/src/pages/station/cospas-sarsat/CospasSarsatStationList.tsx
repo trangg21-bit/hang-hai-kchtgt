@@ -621,7 +621,7 @@ export default function CospasSarsatStationList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 260,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -1190,6 +1190,9 @@ export default function CospasSarsatStationList() {
             const fn = String(fieldName || '').toLowerCase();
             if (fn.includes('condition') || fn.includes('tinhtrang') || fn === 'tinhtranghoatdong') {
               return themeTokenChk.getVtsConditionStatusLabel(value);
+            }
+            if (fn.includes('operatingorg') || fn.includes('khai thac') || fn.includes('khaithac')) {
+              return getOperatingOrgName(String(value), String(value));
             }
             return String(value);
           }}

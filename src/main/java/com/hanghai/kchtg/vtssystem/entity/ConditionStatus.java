@@ -21,29 +21,35 @@ public enum ConditionStatus {
         String upper = name.toUpperCase().trim();
         switch (upper) {
             case "0":
-            case "CHUA_KHAI_THAC":
-            case "CHUA_HOAT_DONG":
-            case "NOT_YET_OPERATIONAL":
-                return NOT_YET_OPERATIONAL;
-            case "1":
             case "DANG_KHAI_THAC":
             case "DANG_HOAT_DONG":
             case "ACTIVE":
             case "OPERATIONAL":
                 return OPERATIONAL;
-            case "2":
+            case "1":
             case "DUNG_KHAI_THAC":
             case "DUNG_HOAT_DONG":
+            case "INACTIVE":
+            case "STOPPED":
+                return STOPPED;
+            case "2":
+            case "BAO_TRI":
+            case "DANG_BAO_TRI":
+            case "MAINTENANCE":
+                return MAINTENANCE;
+            case "3":
+            case "DANG_XAY_DUNG":
+            case "UNDER_CONSTRUCTION":
+                return UNDER_CONSTRUCTION;
+            case "4":
+            case "CHUA_KHAI_THAC":
+            case "CHUA_HOAT_DONG":
+            case "NOT_YET_OPERATIONAL":
+                return NOT_YET_OPERATIONAL;
+            case "5":
             case "TAM_DUNG":
             case "SUSPENDED":
                 return SUSPENDED;
-            case "STOPPED":
-            case "INACTIVE":
-                return STOPPED;
-            case "MAINTENANCE":
-                return MAINTENANCE;
-            case "UNDER_CONSTRUCTION":
-                return UNDER_CONSTRUCTION;
             default:
                 try {
                     return ConditionStatus.valueOf(upper);

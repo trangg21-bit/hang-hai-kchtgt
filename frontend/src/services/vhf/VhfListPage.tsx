@@ -90,6 +90,8 @@ import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "
 import toast from "../../components/ToastNotification";
 import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { usePermissionStore } from "../../store/permissionStore";
+import { useAuthStore } from "../../store/authStore";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
@@ -679,9 +681,11 @@ const VhfListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
   const canSaveAndApprove = useMemo(() => {
-    return Boolean(hasPerm?.('vhf:approvec2'));
-  }, [hasPerm]);
+    return checkCanSaveAndApprove('vhf', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  }, [hasPerm, currentUser, isAdmin]);
 
   const [selectedRecord, setSelectedRecord] = useState<VhfResponse | null>(null);
   const vhfFormRef = useRef<VhfFormRef>(null);

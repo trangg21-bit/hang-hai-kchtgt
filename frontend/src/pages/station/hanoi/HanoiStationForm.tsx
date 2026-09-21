@@ -42,6 +42,7 @@ import {
   spaceXs,
   textAreaStyle,
 } from '../../../themetokenchk';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
@@ -159,7 +160,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationhaiphong', hasPerm, currentUser) || checkCanSaveAndApprove('ttxltt', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const canCreate = hasPerm('coastalstationhaiphong:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
@@ -634,7 +635,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       else if (action === 'approve') actionParam = 'APPROVE';
 
       const payload: CreateHanoiStationRequest = {
-        code: values.code,
+        code: values.code?.trim(),
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
@@ -949,7 +950,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               name="locationAddress"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
@@ -968,7 +969,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               name="services"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}

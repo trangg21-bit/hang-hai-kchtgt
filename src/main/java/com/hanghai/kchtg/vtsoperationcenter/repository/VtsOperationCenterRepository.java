@@ -73,7 +73,8 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION))
-          AND ((:approvalStatus IS NULL AND t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
+          AND (:approvalStatus IS NULL
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
                OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
                     t.approvalStatus = :approvalStatus
                     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)

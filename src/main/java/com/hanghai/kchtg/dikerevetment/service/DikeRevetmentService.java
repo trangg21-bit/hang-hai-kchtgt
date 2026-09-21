@@ -176,9 +176,6 @@ public class DikeRevetmentService {
     public DikeRevetmentResponse getById(UUID id) {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
-        if (dr.getDeletedAt() != null || dr.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
-            throw new RuntimeException("Đê kè đã bị xóa hoặc lưu trữ");
-        }
         return toResponse(dr);
     }
 
@@ -359,7 +356,9 @@ public class DikeRevetmentService {
         Map<String, String> previousValues = new LinkedHashMap<>();
         applyIfChanged("dikeRevetmentName", dr.getDikeRevetmentName(), req.getDikeRevetmentName(), dr::setDikeRevetmentName, previousValues);
         applyIfChanged("dikeRevetmentType", dr.getDikeRevetmentType(), req.getDikeRevetmentType(), dr::setDikeRevetmentType, previousValues);
-        applyIfChanged("location", dr.getLocation(), req.getLocation(), dr::setLocation, previousValues);
+        if (req.getLocation() != null && !req.getLocation().trim().isEmpty()) {
+            applyIfChanged("location", dr.getLocation(), req.getLocation().trim(), dr::setLocation, previousValues);
+        }
         applyIfChanged("locationDetail", dr.getLocationDetail(), req.getLocationDetail(), dr::setLocationDetail, previousValues);
         applyIfChanged("seaportId", dr.getSeaportId(), req.getSeaportId(), dr::setSeaportId, previousValues);
         applyIfChanged("operatingUnitId", dr.getOperatingUnitId(), req.getOperatingUnitId(), dr::setOperatingUnitId, previousValues);
@@ -372,7 +371,9 @@ public class DikeRevetmentService {
         applyIfChanged("surfaceMaterial", dr.getSurfaceMaterial(), req.getSurfaceMaterial(), dr::setSurfaceMaterial, previousValues);
         applyIfChanged("status", dr.getStatus(), req.getStatus(), dr::setStatus, previousValues);
         applyIfChanged("note", dr.getNote(), req.getNote(), dr::setNote, previousValues);
-        applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues);
+        if (req.getOrgUnitId() != null) {
+            applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues);
+        }
         applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
 
         if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()
@@ -860,7 +861,6 @@ public class DikeRevetmentService {
 
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
             Map<String, String> previousValues) {
-        if (newVal == null) return; // null = không gửi trường này khi update
         if (EntityUpdateUtils.areEqual(oldVal, newVal)) return; // giá trị không đổi
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
@@ -1132,7 +1132,7 @@ public class DikeRevetmentService {
                 .note(dr.getNote())
                 .orgUnitId(dr.getOrgUnitId())
                 .orgUnitName(orgUnitName)
-                .approvalStatus(dr.getApprovalStatus())
+                .approvalStatus(dr.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : dr.getApprovalStatus())
                 .isApprovedLevel1(dr.getApprovedDateLevel1() != null)
                 .approverLevel1(dr.getApproverLevel1())
                 .approvedByNameLevel1(approverNameLevel1)

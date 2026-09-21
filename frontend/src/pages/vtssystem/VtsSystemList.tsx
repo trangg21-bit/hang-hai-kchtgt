@@ -27,6 +27,7 @@ import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
+import { useAuthStore } from '../../store/authStore';
 
 const fontSizeMd = 13.5;
 
@@ -664,7 +665,7 @@ export default function VtsSystemList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 260,
       ellipsis: false,
       sortable: true,
       sorter: serverSideSorter,
@@ -695,7 +696,7 @@ export default function VtsSystemList() {
       sortOrder: sortOrderFor('updatedByName'),
       render: (val: string, record: VtsSystemResponse) => {
         const name = val || record.updatedByName || record.createdByName || '—';
-        const date = record.updatedDate || record.createdDate;
+        const date = record.updatedDate || (record as any).updatedAt || record.createdDate || (record as any).createdAt;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             <div

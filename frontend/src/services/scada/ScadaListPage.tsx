@@ -39,6 +39,7 @@ import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import {
     ddToDms,
     parseWktToCoordinates,
@@ -532,7 +533,8 @@ const ScadaListPage = () => {
   const actionTypeRef = useRef<ScadaSaveAction>('DRAFT');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("scada:approvec2");
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('scada', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // Submissions
   const [submitModalOpen, setSubmitModalOpen] = useState(false);

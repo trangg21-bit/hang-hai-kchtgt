@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -37,7 +38,7 @@ public class DaiTtdhController {
     private final DaiTtdhApprovalService daiTtdhApprovalService;
 
     @PostMapping
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:create')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:create')")
     public ResponseEntity<ApiResponse<DaiTtdhResponse>> create(
             @Valid @RequestBody CreateDaiTtdhRequest request) {
         log.info("Creating DaiTtdh: name={}", request.getDaiTtdhName());
@@ -46,7 +47,7 @@ public class DaiTtdhController {
     }
 
     @GetMapping("/generate-code")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:create')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:create')")
     public ResponseEntity<ApiResponse<java.util.Map<String, String>>> generateCode() {
         log.info("Generating dai TTDH code");
         String code = daiTtdhService.generateDaiTtdhCode();
@@ -54,7 +55,7 @@ public class DaiTtdhController {
     }
 
     @GetMapping("/{id}")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:read')")
     public ResponseEntity<ApiResponse<DaiTtdhResponse>> getById(@PathVariable UUID id) {
         log.info("Getting DaiTtdh by id={}", id);
         DaiTtdhResponse response = daiTtdhService.getById(id);
@@ -62,7 +63,7 @@ public class DaiTtdhController {
     }
 
     @GetMapping
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:read')")
     public ResponseEntity<ApiResponse<Page<DaiTtdhResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -86,13 +87,14 @@ public class DaiTtdhController {
     }
 
     @GetMapping("/options")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> getOptions() {
         java.util.List<java.util.Map<String, Object>> options = daiTtdhService.getOptions();
         return ResponseEntity.ok(ApiResponse.success("Lấy danh mục đài TTDH thành công", options));
     }
 
     @PutMapping
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'daittdh:update', 'daittdh:approvec2')")
     public ResponseEntity<ApiResponse<DaiTtdhResponse>> update(
             @Valid @RequestBody UpdateDaiTtdhRequest request) {
         log.info("Updating DaiTtdh: id={}", request.getId());
@@ -101,7 +103,7 @@ public class DaiTtdhController {
     }
 
     @DeleteMapping("/{id}")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:delete')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
         log.info("Soft-deleting DaiTtdh: id={}", id);
         daiTtdhService.softDelete(id);
@@ -109,7 +111,7 @@ public class DaiTtdhController {
     }
 
     @PostMapping("/{id}/approve")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'daittdh:approvec1', 'daittdh:approvec2')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable UUID id,
             @Valid @RequestBody ApproveRequest request,
@@ -120,7 +122,7 @@ public class DaiTtdhController {
     }
 
     @PostMapping("/{id}/reject")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:approve')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'daittdh:approvec1', 'daittdh:approvec2')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable UUID id,
             @Valid @RequestBody RejectRequest request,
@@ -131,7 +133,7 @@ public class DaiTtdhController {
     }
 
     @GetMapping("/history/all")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:history')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:history')")
     public ResponseEntity<ApiResponse<Object>> getAllHistory() {
         log.info("Getting all DaiTtdh history");
         Object history = daiTtdhApprovalService.getAllHistory();
@@ -139,7 +141,7 @@ public class DaiTtdhController {
     }
 
     @GetMapping("/{id}/history")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:history')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         log.info("Getting DaiTtdh history: id={}", id);
         Object history = daiTtdhApprovalService.getHistory(id);
@@ -149,7 +151,7 @@ public class DaiTtdhController {
     // ── Attachment endpoints ─────────────────────────────────────────────
 
     @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'daittdh:update', 'daittdh:create', 'daittdh:approvec2')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
             @PathVariable UUID id,
             @RequestParam("files") List<MultipartFile> files,
@@ -165,14 +167,14 @@ public class DaiTtdhController {
     }
 
     @GetMapping("/{id}/attachments")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:read')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.check(authentication, 'daittdh:read')")
     public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
         List<AttachmentDto> result = daiTtdhService.listAttachments("DAI_TTDH", id);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách file đính kèm thành công", result));
     }
 
     @DeleteMapping("/{id}/attachments/{attId}")
-    // @PreAuthorize("@auth.check(authentication, 'daittdh:update')")  // TAM THOI COMMENT DE GỠ CHẶN PHÂN QUYỀN (chuẩn Khu neo đậu)
+    @PreAuthorize("@auth.checkAny(authentication, 'daittdh:update', 'daittdh:approvec2')")
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,

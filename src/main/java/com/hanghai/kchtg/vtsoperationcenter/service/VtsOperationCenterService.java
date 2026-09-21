@@ -272,27 +272,49 @@ public class VtsOperationCenterService {
 
         if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
             previousValues.put(VtsOperationCenterRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
+        } else if (request.isFieldPresent("coordinates") && request.getCoordinates() == null && oldCoordinates != null) {
+            previousValues.put(VtsOperationCenterRequest.Fields.coordinates, oldCoordinates);
         }
         if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType(), oldGeometryType)) {
             previousValues.put(VtsOperationCenterRequest.Fields.geometryType, oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+        } else if (request.isFieldPresent("geometryType") && request.getGeometryType() == null && oldGeometryType != null) {
+            previousValues.put(VtsOperationCenterRequest.Fields.geometryType, oldGeometryType.name());
         }
 
         if (request.isFieldPresent("vtsSystemId") && request.getVtsSystemId() == null) {
+            if (entity.getVtsSystemId() != null) {
+                previousValues.put(VtsOperationCenter.Fields.vtsSystemId, String.valueOf(entity.getVtsSystemId()));
+            }
             entity.setVtsSystemId(null);
         }
         if (request.isFieldPresent("portId") && request.getPortId() == null) {
+            if (entity.getPortId() != null) {
+                previousValues.put(VtsOperationCenter.Fields.portId, String.valueOf(entity.getPortId()));
+            }
             entity.setPortId(null);
         }
         if (request.isFieldPresent("detailedLocation") && request.getDetailedLocation() == null) {
+            if (entity.getDetailedLocation() != null && !entity.getDetailedLocation().isBlank()) {
+                previousValues.put(VtsOperationCenter.Fields.detailedLocation, entity.getDetailedLocation());
+            }
             entity.setDetailedLocation(null);
         }
         if (request.isFieldPresent("coverage") && request.getCoverage() == null) {
+            if (entity.getCoverage() != null && !entity.getCoverage().isBlank()) {
+                previousValues.put(VtsOperationCenter.Fields.coverage, entity.getCoverage());
+            }
             entity.setCoverage(null);
         }
         if (request.isFieldPresent("note") && request.getNote() == null) {
+            if (entity.getNote() != null && !entity.getNote().isBlank()) {
+                previousValues.put(VtsOperationCenter.Fields.note, entity.getNote());
+            }
             entity.setNote(null);
         }
         if (request.isFieldPresent("symbolId") && request.getSymbolId() == null) {
+            if (entity.getSymbolId() != null) {
+                previousValues.put(VtsOperationCenter.Fields.symbolId, String.valueOf(entity.getSymbolId()));
+            }
             entity.setSymbolId(null);
         }
         if (request.isFieldPresent("spatialId") && request.getSpatialId() == null
@@ -360,6 +382,9 @@ public class VtsOperationCenterService {
                     rawNew = request.getGeometryType() != null ? request.getGeometryType().name() : null;
                 }
                 String newVal = formatDisplayValue(field, rawNew != null ? String.valueOf(rawNew) : null);
+                if (Objects.equals(oldVal, newVal)) {
+                    continue;
+                }
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(saved.getId())
                         .refType(InfrastructureType.VTS_OPERATION_CENTER)
@@ -423,7 +448,7 @@ public class VtsOperationCenterService {
 
     @Transactional(readOnly = true)
     public VtsOperationCenterResponse getById(UUID id) {
-        VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
+        VtsOperationCenter entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
         validateAllowedOrgUnit(entity.getOrgUnitId());
         return toResponse(entity);
@@ -674,7 +699,7 @@ public class VtsOperationCenterService {
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate) {
-        VtsOperationCenter parent = repository.findByIdAndDeletedAtIsNull(id)
+        VtsOperationCenter parent = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
         validateAllowedOrgUnit(parent.getOrgUnitId());
 
@@ -824,7 +849,7 @@ public class VtsOperationCenterService {
 
     @Transactional(readOnly = true)
     public List<VtsSystemAttachmentResponse> listAttachments(UUID id) {
-        VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
+        VtsOperationCenter entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
         validateAllowedOrgUnit(entity.getOrgUnitId());
         return loadAttachments(id);
@@ -932,7 +957,7 @@ public class VtsOperationCenterService {
 
     
     public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
-        VtsOperationCenter entity = repository.findByIdAndDeletedAtIsNull(id)
+        VtsOperationCenter entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Trung tâm điều hành VTS không tồn tại"));
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
@@ -1161,8 +1186,8 @@ public class VtsOperationCenterService {
                 .symbolName(symbolName)
                 .symbolCode(symbolCode)
                 .symbolImage(symbolImage)
-                .approvalStatus(entity.getApprovalStatus())
-                .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
+                .approvalStatusLabel((entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()) != null ? (entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()).getLabel() : null)
                 .approverLevel1(entity.getApproverLevel1())
                 .approverLevel1Name(approver1Name)
                 .approvedDateLevel1(entity.getApprovedDateLevel1())
@@ -1243,8 +1268,8 @@ public class VtsOperationCenterService {
                 .detailedLocation(entity.getDetailedLocation())
                 .coverage(entity.getCoverage())
                 .conditionStatus(entity.getConditionStatus())
-                .approvalStatus(entity.getApprovalStatus())
-                .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
+                .approvalStatusLabel((entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()) != null ? (entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()).getLabel() : null)
                 .submittedAt(entity.getSubmittedAt())
                 .submittedBy(entity.getSubmittedBy())
                 .submittedByName(submitterName)

@@ -74,6 +74,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { ShipRepairYard } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import ShipRepairYardForm from './ShipRepairYardForm';
@@ -320,6 +321,11 @@ export const HISTORY_FIELD_ORDER = [
 export default function ShipRepairYardList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const authUser = useAuthStore((s) => s.user);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove =
+    checkCanSaveAndApprove('shiprepairyard', hasPerm, authUser) ||
+    checkCanSaveAndApprove('shiprepairfacility', hasPerm, authUser) ||
+    (isAdmin && isCucLevelUser(authUser));
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
@@ -1541,7 +1547,7 @@ export default function ShipRepairYardList() {
             {(() => {
               const st = !editShipRepairYardId ? 'DRAFT' : (editBaseStatus ? String(editBaseStatus).toUpperCase() : 'DRAFT');
               if (st === 'APPROVED') {
-                return (
+                return canSaveAndApprove ? (
                   <Button
                     htmlType="button"
                     type="primary"
@@ -1551,7 +1557,7 @@ export default function ShipRepairYardList() {
                   >
                     Lưu và phê duyệt
                   </Button>
-                );
+                ) : null;
               }
               if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'TU_CHOI') {
                 return (
@@ -1585,15 +1591,17 @@ export default function ShipRepairYardList() {
                   >
                     Lưu và gửi phê duyệt
                   </Button>
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
-                    loading={submitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
+                  {canSaveAndApprove && (
+                    <Button
+                      htmlType="button"
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
+                      loading={submitting && actionType === 'approve'}
+                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                    >
+                      Lưu và phê duyệt
+                    </Button>
+                  )}
                 </>
               );
             })()}

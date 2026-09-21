@@ -780,6 +780,17 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
                   />
                 </Form.Item>
               </Col>
+            </Row>
+            <Row gutter={[24, 0]}>
+              <Col span={12}>
+                <Form.Item
+                  name="detailedLocation"
+                  {...labelProps('Địa điểm chi tiết')}
+                  style={{ marginBottom: spaceFormField }}
+                >
+                  <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
+                </Form.Item>
+              </Col>
               <Col span={12}>
                 <Form.Item
                   name="servicesProvided"
@@ -796,17 +807,6 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
                     style={{ borderRadius: radiusPill }}
                     maxTagCount="responsive"
                   />
-                </Form.Item>
-              </Col>
-            </Row>
-            <Row gutter={[24, 0]}>
-              <Col span={24}>
-                <Form.Item
-                  name="detailedLocation"
-                  {...labelProps('Địa điểm chi tiết')}
-                  style={{ marginBottom: spaceFormField }}
-                >
-                  <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
             </Row>

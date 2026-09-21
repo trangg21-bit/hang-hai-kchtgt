@@ -167,35 +167,22 @@ public class ShipRepairYardService {
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
         }
-        if (request.getPierId() != null)
-            entity.setPierId(request.getPierId());
-        if (request.getProvinceId() != null)
-            entity.setProvinceId(request.getProvinceId());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
+        entity.setPierId(request.getPierId());
+        entity.setProvinceId(request.getProvinceId());
+        entity.setDetailedLocation(request.getDetailedLocation());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getUsageFunction() != null)
-            entity.setUsageFunction(request.getUsageFunction());
-        if (request.getWorkshopArea() != null)
-            entity.setWorkshopArea(request.getWorkshopArea());
-        if (request.getVesselType() != null)
-            entity.setVesselType(request.getVesselType());
-        if (request.getVesselDwt() != null)
-            entity.setVesselDwt(request.getVesselDwt());
-        if (request.getBusinessType() != null)
-            entity.setBusinessType(request.getBusinessType());
-        if (request.getActivity() != null)
-            entity.setActivity(request.getActivity());
-        if (request.getSlipwayCount() != null)
-            entity.setSlipwayCount(request.getSlipwayCount());
-        if (request.getRemarks() != null)
-            entity.setRemarks(request.getRemarks());
+        entity.setUsageFunction(request.getUsageFunction());
+        entity.setWorkshopArea(request.getWorkshopArea());
+        entity.setVesselType(request.getVesselType());
+        entity.setVesselDwt(request.getVesselDwt());
+        entity.setBusinessType(request.getBusinessType());
+        entity.setActivity(request.getActivity());
+        entity.setSlipwayCount(request.getSlipwayCount());
+        entity.setRemarks(request.getRemarks());
         entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
 
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);

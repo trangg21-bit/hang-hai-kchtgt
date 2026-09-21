@@ -166,11 +166,12 @@ export const renderServicesBadges = (services?: string[] | string) => {
               alignItems: 'center',
               padding: '2px 10px',
               borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
+              fontSize: '12px',
+              fontWeight: 500,
               background: '#eef3fb',
               border: '1px solid #c6d9f5',
               color: colors.sidebarBg,
+              whiteSpace: 'nowrap',
             }}
           >
             {label}
@@ -189,9 +190,10 @@ const formatPersonDisplayName = (name?: string | null, fallbackName?: string | n
 };
 
 export const getOperatingOrgName = (idOrCode?: string | null, name?: string | null): string => {
-  if (name && name.trim()) return name;
+  if (name && name.trim() && !/^[0-9a-fA-F-]{36}$/.test(name)) return name;
   if (!idOrCode) return '—';
   const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === idOrCode || o.code === idOrCode);
+  return found ? found.name : (/^[0-9a-fA-F-]{36}$/.test(idOrCode) ? '—' : idOrCode);
 };
 
 const HanoiStationDetailStyles = React.memo(() => (
@@ -453,12 +455,12 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
                     </div>
 
                     <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label sec-col1-label">Địa điểm chi tiết</span>
+                      <span className="chk-detail-label sec-full-label">Địa điểm chi tiết</span>
                       <span className="chk-detail-value">{record.locationAddress || '—'}</span>
                     </div>
 
                     <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label sec-col1-label">Dịch vụ cung cấp</span>
+                      <span className="chk-detail-label sec-full-label">Dịch vụ cung cấp</span>
                       <span className="chk-detail-value">{renderServicesBadges(record.services || record.servicesProvided)}</span>
                     </div>
 

@@ -37,6 +37,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -510,6 +511,10 @@ export default function DaiTtdhListPage() {
 
   // ── Tab counts ──────────────────────────────────────────────────
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+
+  // ── Permission ──────────────────────────────────────────────────
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('daittdh', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
 
   // ── Drawer state: Hợp nhất Create & Edit (Chuẩn PierListPage) ──
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -1596,7 +1601,7 @@ export default function DaiTtdhListPage() {
               {(() => {
                 const st = !editDaiTtdhId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
                 if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-                  return (
+                  return canSaveAndApprove ? (
                     <Button
                       htmlType="button"
                       type="primary"
@@ -1606,7 +1611,7 @@ export default function DaiTtdhListPage() {
                     >
                       Lưu và phê duyệt
                     </Button>
-                  );
+                  ) : null;
                 }
                 if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
                   return (
@@ -1621,7 +1626,7 @@ export default function DaiTtdhListPage() {
                     </Button>
                   );
                 }
-                // Thêm mới hoặc Lưu tạm (DRAFT): đủ 3 nút chuẩn Bến cảng / Cầu cảng
+                // Thêm mới hoặc Lưu tạm (DRAFT)
                 return (
                   <>
                     <Button
@@ -1641,15 +1646,17 @@ export default function DaiTtdhListPage() {
                     >
                       Lưu và gửi phê duyệt
                     </Button>
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('approve'); daiTtdhFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        htmlType="button"
+                        type="primary"
+                        onClick={() => { setActionType('approve'); daiTtdhFormRef.current?.submit('APPROVED'); }}
+                        loading={submitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
                   </>
                 );
               })()}

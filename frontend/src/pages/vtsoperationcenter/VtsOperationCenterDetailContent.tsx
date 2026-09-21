@@ -785,18 +785,21 @@ export default function VtsOperationCenterDetailContent({
                       {
                         label: 'Loại đối tượng',
                         value:
-                          ({
-                            POINT: 'Đối tượng điểm',
-                            LINE: 'Đối tượng đường',
-                            POLYGON: 'Đối tượng vùng',
-                          } as Record<string, string>)[record?.geometryType || ''] ||
-                          record?.geometryType ||
-                          'Đối tượng điểm',
+                          coordinates.length === 0
+                            ? '—'
+                            : (({
+                                POINT: 'Đối tượng điểm',
+                                LINE: 'Đối tượng đường',
+                                POLYGON: 'Đối tượng vùng',
+                              } as Record<string, string>)[record?.geometryType || ''] ||
+                              record?.geometryType ||
+                              'Đối tượng điểm'),
                       },
                       {
                         label: 'Biểu tượng',
                         value: (() => {
                           const symId = record?.symbolId || '';
+                          if (!symId && coordinates.length === 0) return '—';
                           const sym = symbols.find(
                             (s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId))
                           );
@@ -824,15 +827,17 @@ export default function VtsOperationCenterDetailContent({
                       {
                         label: 'Hệ quy chiếu',
                         value:
-                          record?.coordinateSystem === 1
-                            ? 'WGS-84'
-                            : record?.coordinateSystem === 2
-                              ? 'VN-2000'
-                              : (record?.coordinateSystem ? String(record?.coordinateSystem) : 'WGS-84'),
+                          coordinates.length === 0
+                            ? '—'
+                            : (record?.coordinateSystem === 1
+                                ? 'WGS-84'
+                                : record?.coordinateSystem === 2
+                                  ? 'VN-2000'
+                                  : (record?.coordinateSystem ? String(record?.coordinateSystem) : 'WGS-84')),
                       },
                       {
                         label: 'Quy tắc hiển thị',
-                        value: 'Độ, phút, giây (DMS)',
+                        value: coordinates.length === 0 ? '—' : 'Độ, phút, giây (DMS)',
                       },
                     ].map((row, i) => (
                       <div key={i} className="chk-detail-row">
@@ -848,8 +853,9 @@ export default function VtsOperationCenterDetailContent({
                     Tọa độ GPS ({coordinates.length})
                   </span>
                   <Button
-                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    icon={<EnvironmentOutlined style={{ color: coordinates.length === 0 ? textTertiary : actionPrimary }} />}
                     onClick={() => setMapModalOpen(true)}
+                    disabled={coordinates.length === 0}
                     style={{
                       ...outlineButtonStyle,
                       height: 32,
@@ -858,6 +864,8 @@ export default function VtsOperationCenterDetailContent({
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
+                      opacity: coordinates.length === 0 ? 0.6 : 1,
+                      cursor: coordinates.length === 0 ? 'not-allowed' : 'pointer',
                     }}
                   >
                     Xem vị trí trên bản đồ

@@ -48,6 +48,7 @@ import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -265,7 +266,8 @@ export default function InmarsatStationForm({
     required,
   });
 
-  const canApproveL2 = hasPerm('coastalstationinmarsat:approvec2');
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationinmarsat', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const canCreate = hasPerm('coastalstationinmarsat:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
@@ -665,17 +667,17 @@ export default function InmarsatStationForm({
     }
 
     const payload = {
-      code: values.code,
-      name: values.name,
+      code: values.code?.trim(),
+      name: values.name?.trim(),
       orgUnitId: values.orgUnitId,
       operatingOrgId: values.operatingOrgId,
       provinceId: values.provinceId != null && values.provinceId !== '' ? Number(values.provinceId) : undefined,
       conditionStatus: values.conditionStatus,
-      locationDetail: values.locationDetail ?? null,
+      locationDetail: values.locationDetail?.trim() ?? null,
       services: typeof values.services === 'string' ? values.services : (values.services?.length ? JSON.stringify(values.services) : null),
-      coverageZone: values.coverageZone ?? null,
-      frequency: values.frequency ?? null,
-      notes: values.notes ?? null,
+      coverageZone: values.coverageZone?.trim() ?? null,
+      frequency: values.frequency?.trim() ?? null,
+      notes: values.notes?.trim() ?? null,
       geometryType: geomType ?? null,
       symbolId: values.symbolId ?? null,
       coordinateSystem: geomType ? (values.coordinateSystem || 'WGS-84') : null,

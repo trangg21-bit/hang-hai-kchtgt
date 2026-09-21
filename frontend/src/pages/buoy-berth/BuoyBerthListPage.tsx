@@ -74,6 +74,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { BuoyBerth } from '../../types/port';
 import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import AnchorageDetailContent from '../anchorage/AnchorageDetailContent';
@@ -308,6 +309,8 @@ export default function BuoyBerthList() {
 
   const authUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('buoyberth', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   // ── Filter state ─────────────────────────────────────────────────
@@ -1534,7 +1537,7 @@ export default function BuoyBerthList() {
         footer={<div style={drawerFooterStyle}>{(() => {
           const st = !editBuoyBerthId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
           if (st === 'APPROVED') {
-            return (
+            return canSaveAndApprove ? (
               <Button
                 htmlType="button"
                 type="primary"
@@ -1544,7 +1547,7 @@ export default function BuoyBerthList() {
               >
                 Lưu và phê duyệt
               </Button>
-            );
+            ) : null;
           }
           if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
             return (
@@ -1579,15 +1582,17 @@ export default function BuoyBerthList() {
               >
                 Lưu và gửi phê duyệt
               </Button>
-              <Button
-                htmlType="button"
-                type="primary"
-                onClick={() => { setActionType('approve'); buoyBerthFormRef.current?.submit('APPROVED'); }}
-                loading={submitting && actionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-              >
-                Lưu và phê duyệt
-              </Button>
+              {canSaveAndApprove && (
+                <Button
+                  htmlType="button"
+                  type="primary"
+                  onClick={() => { setActionType('approve'); buoyBerthFormRef.current?.submit('APPROVED'); }}
+                  loading={submitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                >
+                  Lưu và phê duyệt
+                </Button>
+              )}
             </>
           );
         })()}</div>}

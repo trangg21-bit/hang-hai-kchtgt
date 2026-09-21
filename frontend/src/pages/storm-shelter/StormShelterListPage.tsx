@@ -68,6 +68,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { StormShelterArea } from '../../types/port';
 import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterDetailContent from './StormShelterDetailContent';
@@ -357,6 +358,8 @@ export default function StormShelterListPage() {
 
   const authUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('stormshelter', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
@@ -1444,11 +1447,11 @@ export default function StormShelterListPage() {
           footer={<div style={drawerFooterStyle}>{(() => {
             const st = !editStormShelterId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
             if (st === 'APPROVED') {
-              return (
+              return canSaveAndApprove ? (
                 <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); stormShelterFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
-              );
+              ) : null;
             }
             if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
               return (
@@ -1465,9 +1468,11 @@ export default function StormShelterListPage() {
                 <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); stormShelterFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
-                <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); stormShelterFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                  Lưu và phê duyệt
-                </Button>
+                {canSaveAndApprove && (
+                  <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); stormShelterFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             );
           })()}</div>}

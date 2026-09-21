@@ -35,6 +35,41 @@ export interface KchtRecordLike {
   [key: string]: unknown;
 }
 
+export function isCucLevelUser(currentUser: any): boolean {
+  if (!currentUser) return false;
+  const orgCode = String(currentUser?.orgUnitCode || '').toUpperCase().trim();
+  const orgName = String(currentUser?.orgUnitName || '').toLowerCase().trim();
+  const userUnitType = String(currentUser?.unitType || '').toUpperCase().trim();
+
+  // 1. Cấp Bộ (G17)
+  const isMinistryRoot =
+    orgCode === MINISTRY_ROOT_CODE ||
+    currentUser?.orgUnitId === MINISTRY_ROOT_ID;
+
+  // 2. Cấp Cục Hàng hải Việt Nam (Mã G17.43)
+  const isCucMaritime = orgCode === 'G17.43' || (!orgCode.startsWith('G17.43.') && orgCode === 'G17.43');
+
+  // 3. Tên đơn vị chứa "cục hàng hải"
+  const hasCucName = orgName.includes('cục hàng hải');
+
+  // 4. Giữ tương thích ngược với unitType nếu có
+  const hasCucUnitType = Boolean(
+    userUnitType &&
+    ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)
+  );
+
+  return isMinistryRoot || isCucMaritime || hasCucName || hasCucUnitType;
+}
+
+export function checkCanSaveAndApprove(
+  resource: string,
+  hasPerm: (perm: string) => boolean,
+  currentUser: any
+): boolean {
+  if (!isCucLevelUser(currentUser)) return false;
+  return Boolean(hasPerm(`${resource}:approvec2`));
+}
+
 export function useKchtPermissions(
   resource: string,
   options: UseKchtPermissionsOptions = {}
@@ -57,23 +92,13 @@ export function useKchtPermissions(
   );
 
   const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = useMemo(() => {
-    const hasCucUnitType = Boolean(
-      userUnitType &&
-      ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)
-    );
-    const isMinistryRoot =
-      currentUser?.orgUnitCode === MINISTRY_ROOT_CODE ||
-      currentUser?.orgUnitId === MINISTRY_ROOT_ID;
-    // Nhóm duyệt trung ương gồm Cục và đơn vị gốc G17 phía trên Cục. Backend
-    // cũng coi admin không gán đơn vị là cấp cao nhất; không suy diễn mọi
-    // admin:all ở đơn vị cấp dưới thành cấp Cục.
-    return hasCucUnitType || isMinistryRoot;
-  }, [currentUser?.orgUnitCode, currentUser?.orgUnitId, userUnitType]);
+  const isCucLevel = useMemo(() => isCucLevelUser(currentUser), [currentUser]);
 
   const isCangVuLevel = useMemo(() => {
-    return Boolean(userUnitType && ['CVHH', 'CANG_VU'].includes(userUnitType));
-  }, [userUnitType]);
+    const orgName = String(currentUser?.orgUnitName || '').toLowerCase().trim();
+    const hasCvName = orgName.includes('cảng vụ') || orgName.includes('chi cục');
+    return Boolean((userUnitType && ['CVHH', 'CANG_VU'].includes(userUnitType)) || hasCvName);
+  }, [userUnitType, currentUser?.orgUnitName]);
 
   const currentUserId = currentUser?.userId || currentUser?.id || '';
 

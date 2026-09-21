@@ -69,6 +69,7 @@ import {
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import {
     approveDryPort,
@@ -346,6 +347,8 @@ export default function DryPortListPage() {
     && !!linkedRecordId;
   const hasPerm = usePermissionStore((s) => s.hasPermission);
   const { user: authUser } = useAuthStore();
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('dryport', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [activeTab, setActiveTab] = useState('all');
@@ -1480,14 +1483,27 @@ export default function DryPortListPage() {
               <Button
                 type="primary"
                 onClick={() => {
-                  setActionType('approve');
-                  createFormRef.current?.submit('SAVE_AND_APPROVE');
+                  setActionType('submit');
+                  createFormRef.current?.submit('SUBMIT');
                 }}
-                loading={submitting && actionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                loading={submitting && actionType === 'submit'}
+                style={primaryButtonStyle}
               >
-                Lưu và phê duyệt
+                Lưu và gửi phê duyệt
               </Button>
+              {canSaveAndApprove && (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    setActionType('approve');
+                    createFormRef.current?.submit('SAVE_AND_APPROVE');
+                  }}
+                  loading={submitting && actionType === 'approve'}
+                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                >
+                  Lưu và phê duyệt
+                </Button>
+              )}
             </div>
           }
           styles={{
@@ -1528,29 +1544,77 @@ export default function DryPortListPage() {
           }}
           footer={
             <div style={drawerFooterStyle}>
-              {!(editingRecord?.approvalStatus === 'APPROVED' || editingRecord?.approvalStatus === 'APPROVED_LEVEL2') && (
-                <Button
-                  onClick={() => {
-                    setActionType('draft');
-                    updateFormRef.current?.submit('DRAFT');
-                  }}
-                  loading={submitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-              )}
-              <Button
-                type="primary"
-                onClick={() => {
-                  setActionType('approve');
-                  updateFormRef.current?.submit('SAVE_AND_APPROVE');
-                }}
-                loading={submitting && actionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-              >
-                Lưu và phê duyệt
-              </Button>
+              {(() => {
+                const st = editingRecord?.approvalStatus ? String(editingRecord.approvalStatus).toUpperCase() : 'DRAFT';
+                if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
+                  return canSaveAndApprove ? (
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        setActionType('approve');
+                        updateFormRef.current?.submit('SAVE_AND_APPROVE');
+                      }}
+                      loading={submitting && actionType === 'approve'}
+                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                    >
+                      Lưu và phê duyệt
+                    </Button>
+                  ) : null;
+                }
+                if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
+                  return (
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        setActionType('submit');
+                        updateFormRef.current?.submit('SUBMIT');
+                      }}
+                      loading={submitting && actionType === 'submit'}
+                      style={primaryButtonStyle}
+                    >
+                      Lưu và gửi phê duyệt
+                    </Button>
+                  );
+                }
+                return (
+                  <>
+                    <Button
+                      onClick={() => {
+                        setActionType('draft');
+                        updateFormRef.current?.submit('DRAFT');
+                      }}
+                      loading={submitting && actionType === 'draft'}
+                      style={outlineButtonStyle}
+                    >
+                      Lưu tạm
+                    </Button>
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        setActionType('submit');
+                        updateFormRef.current?.submit('SUBMIT');
+                      }}
+                      loading={submitting && actionType === 'submit'}
+                      style={primaryButtonStyle}
+                    >
+                      Lưu và gửi phê duyệt
+                    </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        type="primary"
+                        onClick={() => {
+                          setActionType('approve');
+                          updateFormRef.current?.submit('SAVE_AND_APPROVE');
+                        }}
+                        loading={submitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           }
           styles={{

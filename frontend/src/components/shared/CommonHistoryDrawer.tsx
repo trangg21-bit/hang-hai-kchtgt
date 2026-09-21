@@ -37,6 +37,7 @@ import {
   statusBadgeStyle,
   getConditionStatusColor,
   getConditionStatusLabel,
+  getVtsConditionStatusLabel,
   historyGroupGridStyle,
   historyTimeStyle,
   historyMetaRowStyle,
@@ -59,6 +60,7 @@ import {
   isServicesProvidedHistoryField,
   getServicesProvidedHistoryDelta,
 } from '../../utils/serviceHistoryDelta';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 
 export interface HistoryChangeItem {
   field: string;
@@ -584,13 +586,13 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
     else if (rawUpper === 'REJECTED' || rawUpper === 'REJECTED_LEVEL1' || rawUpper === 'REJECTED_LEVEL2') displayVal = 'Từ chối';
     else if (rawUpper === 'ARCHIVED') displayVal = 'Đã lưu trữ';
   } else if (normKey.includes('conditionstatus') || normKey.includes('tinh trang')) {
-    if (rawUpper === 'OPERATIONAL') displayVal = 'Đang hoạt động';
-    else if (rawUpper === 'DANG_KHAI_THAC') displayVal = 'Đang khai thác/vận hành';
-    else if (rawUpper === 'STOPPED') displayVal = 'Dừng hoạt động';
-    else if (rawUpper === 'SUSPENDED' || rawUpper === 'DUNG_KHAI_THAC') displayVal = 'Dừng khai thác/vận hành';
-    else if (rawUpper === 'NOT_YET_OPERATIONAL' || rawUpper === 'CHUA_KHAI_THAC') displayVal = 'Chưa khai thác/vận hành';
+    if (rawUpper === 'OPERATIONAL' || rawUpper === 'DANG_KHAI_THAC' || rawUpper === 'DANG_HOAT_DONG' || rawUpper === '1' || rawUpper === '0') displayVal = 'Đang khai thác/vận hành';
+    else if (rawUpper === 'STOPPED' || rawUpper === 'DUNG_HOAT_DONG' || rawUpper === 'SUSPENDED' || rawUpper === 'DUNG_KHAI_THAC' || rawUpper === 'TAM_DUNG') displayVal = 'Dừng khai thác/vận hành';
+    else if (rawUpper === 'NOT_YET_OPERATIONAL' || rawUpper === 'CHUA_KHAI_THAC' || rawUpper === 'CHUA_HOAT_DONG') displayVal = 'Chưa khai thác/vận hành';
     else if (rawUpper === 'MAINTENANCE') displayVal = 'Đang bảo trì';
     else if (rawUpper === 'UNDER_CONSTRUCTION') displayVal = 'Đang xây dựng';
+    else if (displayVal === 'Đang hoạt động') displayVal = 'Đang khai thác/vận hành';
+    else if (displayVal === 'Dừng hoạt động') displayVal = 'Dừng khai thác/vận hành';
   } else if (val.trim() === 'true' || val.trim() === 'TRUE') {
     displayVal = 'Có';
   } else if (val.trim() === 'false' || val.trim() === 'FALSE') {
@@ -1503,7 +1505,12 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       if (provName) return provName;
     }
     if (fLower.includes('condition') || fLower.includes('tinhtrang') || fLower === 'tinhtranghoatdong') {
-      return getConditionStatusLabel(val);
+      return getVtsConditionStatusLabel(val) || getConditionStatusLabel(val);
+    }
+    if (fLower.includes('operatingorg') || fLower.includes('khai thac') || fLower.includes('khaithac')) {
+      const sVal = String(val).trim();
+      const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
+      if (found) return found.name;
     }
     if (fLower.includes('date') || fLower.includes('ngay') || fLower.includes('startdate') || fLower.includes('time') || fLower.includes('thoigian')) {
       const sVal = String(val).trim();
@@ -2006,7 +2013,26 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               return renderCoordinatesDisplay(str);
                             }
 
+                            const isServicesField = isServicesProvidedHistoryField(change.field)
+                              || normLabel.includes('dich vu') || normField.includes('services');
+
+                            if (str.includes('\n')) {
+                              const items = str.split(/[\r\n]+/).map((s) => s.trim()).filter(Boolean);
+                              if (items.length > 0) {
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                                    {items.map((item, idx) => (
+                                      <div key={idx} style={{ color: isOld ? textSecondary : textPrimary, fontWeight: isOld ? 400 : fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                        {item}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                            }
+
                             const isMultiItemField = isAttachmentField(change.field) || isZoneField(change.field)
+                              || isServicesField
                               || normLabel.includes('dinh kem') || normLabel.includes('vung') || normLabel.includes('danh sach')
                               || normLabel.includes('list') || normField.includes('attachments') || normField.includes('zones');
 

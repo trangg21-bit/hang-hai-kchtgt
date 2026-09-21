@@ -533,11 +533,11 @@ public class PortService {
                 .build();
 
         // Update mutable fields — code (portCode) is immutable
-        if (request.getPortName() != null) entity.setPortName(request.getPortName());
-        if (request.getProvince() != null) entity.setProvince(request.getProvince());
+        if (request.getPortName() != null && !request.getPortName().isBlank()) entity.setPortName(request.getPortName());
+        entity.setProvince(request.getProvince());
 
-        if (request.getArea() != null) entity.setArea(request.getArea());
-        if (request.getMaxVesselCapacity() != null) entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
+        entity.setArea(request.getArea());
+        entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
         if (request.getOrgUnitId() != null) {
             UUID oldOrgUnitId = entity.getOrgUnitId();
             entity.setOrgUnitId(request.getOrgUnitId());
@@ -556,9 +556,11 @@ public class PortService {
                 });
             }
         }
-        if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
-        if (request.getMapSymbolId() != null) entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
+        entity.setPortGroup(request.getPortGroup());
+        entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getOperationalStatus() != null) {
+            entity.setOperationalStatus(request.getOperationalStatus());
+        }
         ApprovalStatus previousApprovalStatus = preImage.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
@@ -570,28 +572,28 @@ public class PortService {
         }
 
         // Update extended fields
-        if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getPortClass() != null) entity.setPortClass(request.getPortClass());
-        if (request.getCoordinateSystem() != null) entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null) entity.setDisplayRule(request.getDisplayRule());
+        entity.setDetailedLocation(request.getDetailedLocation());
+        entity.setPortClass(request.getPortClass());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
 
         // Update zobjDataSub fields
-        if (request.getWaterAreaScope() != null) entity.setWaterAreaScope(request.getWaterAreaScope());
-        if (request.getTotalBerths() != null) entity.setTotalBerths(request.getTotalBerths());
-        if (request.getTotalAnchoragesTransshipment() != null) entity.setTotalAnchoragesTransshipment(request.getTotalAnchoragesTransshipment());
-        if (request.getTotalPublicChannels() != null) entity.setTotalPublicChannels(request.getTotalPublicChannels());
-        if (request.getTotalDedicatedChannels() != null) entity.setTotalDedicatedChannels(request.getTotalDedicatedChannels());
-        if (request.getTotalPublicChannelLength() != null) entity.setTotalPublicChannelLength(request.getTotalPublicChannelLength());
-        if (request.getTotalDedicatedChannelLength() != null) entity.setTotalDedicatedChannelLength(request.getTotalDedicatedChannelLength());
-        if (request.getTotalBuoysBeacons() != null) entity.setTotalBuoysBeacons(request.getTotalBuoysBeacons());
-        if (request.getTotalDikes() != null) entity.setTotalDikes(request.getTotalDikes());
-        if (request.getTotalDikeLength() != null) entity.setTotalDikeLength(request.getTotalDikeLength());
-        if (request.getTotalLighthouses() != null) entity.setTotalLighthouses(request.getTotalLighthouses());
-        if (request.getBuoyBerthCount() != null) entity.setBuoyBerthCount(request.getBuoyBerthCount());
-        if (request.getAnchorageCount() != null) entity.setAnchorageCount(request.getAnchorageCount());
-        if (request.getTransshipmentCount() != null) entity.setTransshipmentCount(request.getTransshipmentCount());
-        if (request.getOtherWaterAreas() != null) entity.setOtherWaterAreas(request.getOtherWaterAreas());
-        if (request.getRemarks() != null) entity.setRemarks(request.getRemarks());
+        entity.setWaterAreaScope(request.getWaterAreaScope());
+        entity.setTotalBerths(request.getTotalBerths());
+        entity.setTotalAnchoragesTransshipment(request.getTotalAnchoragesTransshipment());
+        entity.setTotalPublicChannels(request.getTotalPublicChannels());
+        entity.setTotalDedicatedChannels(request.getTotalDedicatedChannels());
+        entity.setTotalPublicChannelLength(request.getTotalPublicChannelLength());
+        entity.setTotalDedicatedChannelLength(request.getTotalDedicatedChannelLength());
+        entity.setTotalBuoysBeacons(request.getTotalBuoysBeacons());
+        entity.setTotalDikes(request.getTotalDikes());
+        entity.setTotalDikeLength(request.getTotalDikeLength());
+        entity.setTotalLighthouses(request.getTotalLighthouses());
+        entity.setBuoyBerthCount(request.getBuoyBerthCount());
+        entity.setAnchorageCount(request.getAnchorageCount());
+        entity.setTransshipmentCount(request.getTransshipmentCount());
+        entity.setOtherWaterAreas(request.getOtherWaterAreas());
+        entity.setRemarks(request.getRemarks());
 
         // ── Handle PortInfrastructure list (replace) ──────────────────
         String oldInfraSummary = null;

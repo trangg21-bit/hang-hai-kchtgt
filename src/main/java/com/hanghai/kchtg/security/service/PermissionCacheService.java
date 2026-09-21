@@ -31,7 +31,7 @@ public class PermissionCacheService {
     private UserSecurityCacheService userSecurityCacheService;
 
     @Autowired
-    public PermissionCacheService(RedisTemplate<String, String> redisTemplate,
+    public PermissionCacheService(@org.springframework.lang.Nullable RedisTemplate<String, String> redisTemplate,
                                    UserRepository userRepository,
                                    @org.springframework.lang.Nullable com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
@@ -39,7 +39,7 @@ public class PermissionCacheService {
         this.objectMapper = objectMapper != null ? objectMapper : new com.fasterxml.jackson.databind.ObjectMapper();
     }
 
-    public PermissionCacheService(RedisTemplate<String, String> redisTemplate, UserRepository userRepository) {
+    public PermissionCacheService(@org.springframework.lang.Nullable RedisTemplate<String, String> redisTemplate, UserRepository userRepository) {
         this(redisTemplate, userRepository, new com.fasterxml.jackson.databind.ObjectMapper());
     }
 
@@ -55,7 +55,7 @@ public class PermissionCacheService {
      * @param permissions Tập hợp các permission codes
      */
     public void cachePermissions(UUID userId, Set<String> permissions) {
-        if (userId == null) return;
+        if (userId == null || redisTemplate == null) return;
         try {
             String key = CACHE_KEY_PREFIX + userId;
             String json;
@@ -77,7 +77,7 @@ public class PermissionCacheService {
      * @return Tập hợp các permission codes (có thể là rỗng), hoặc null nếu không có trong cache (cache miss).
      */
     public Set<String> getPermissionsFromCache(UUID userId) {
-        if (userId == null) return null;
+        if (userId == null || redisTemplate == null) return null;
         try {
             String key = CACHE_KEY_PREFIX + userId;
             String json = redisTemplate.opsForValue().get(key);
@@ -149,11 +149,13 @@ public class PermissionCacheService {
         if (userSecurityCacheService != null) {
             userSecurityCacheService.evictDirect(userId);
         }
-        try {
-            String key = CACHE_KEY_PREFIX + userId;
-            redisTemplate.delete(key);
-        } catch (RuntimeException e) {
-            log.warn("Redis unavailable, skipping cache invalidation for user {}: {}", userId, e.getMessage());
+        if (redisTemplate != null) {
+            try {
+                String key = CACHE_KEY_PREFIX + userId;
+                redisTemplate.delete(key);
+            } catch (RuntimeException e) {
+                log.warn("Redis unavailable, skipping cache invalidation for user {}: {}", userId, e.getMessage());
+            }
         }
     }
 

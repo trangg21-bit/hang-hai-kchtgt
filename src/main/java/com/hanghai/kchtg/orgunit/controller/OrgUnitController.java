@@ -77,7 +77,7 @@ public class OrgUnitController {
      *
      * <p>
      * Query params: page (default 0), size (default 20, max 100),
-     * sortBy (name|code|type|level), sortDir (asc|desc)
+     * sortBy (name|code|rank|level), sortDir (asc|desc)
      * </p>
      */
     @GetMapping

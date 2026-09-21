@@ -527,31 +527,31 @@ public class BeaconStationService {
             previousValues.put("type", entity.getType());
             entity.setType(request.getType());
         }
-        if (request.getTowerColor() != null && !EntityUpdateUtils.areEqual(entity.getTowerColor(), request.getTowerColor())) {
+        if (!EntityUpdateUtils.areEqual(entity.getTowerColor(), request.getTowerColor())) {
             previousValues.put("towerColor", entity.getTowerColor());
             entity.setTowerColor(request.getTowerColor());
         }
-        if (request.getPrimaryLightModel() != null && !EntityUpdateUtils.areEqual(entity.getPrimaryLightModel(), request.getPrimaryLightModel())) {
+        if (!EntityUpdateUtils.areEqual(entity.getPrimaryLightModel(), request.getPrimaryLightModel())) {
             previousValues.put("primaryLightModel", entity.getPrimaryLightModel());
             entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
-        if (request.getBackupLightModel() != null && !EntityUpdateUtils.areEqual(entity.getBackupLightModel(), request.getBackupLightModel())) {
+        if (!EntityUpdateUtils.areEqual(entity.getBackupLightModel(), request.getBackupLightModel())) {
             previousValues.put("backupLightModel", entity.getBackupLightModel());
             entity.setBackupLightModel(request.getBackupLightModel());
         }
-        if (request.getLightRange() != null && !EntityUpdateUtils.areEqual(entity.getLightRange(), request.getLightRange())) {
+        if (!EntityUpdateUtils.areEqual(entity.getLightRange(), request.getLightRange())) {
             previousValues.put("lightRange", entity.getLightRange() != null ? String.valueOf(entity.getLightRange()) : null);
             entity.setLightRange(request.getLightRange());
         }
-        if (request.getArea() != null && !EntityUpdateUtils.areEqual(entity.getArea(), request.getArea())) {
+        if (!EntityUpdateUtils.areEqual(entity.getArea(), request.getArea())) {
             previousValues.put("area", entity.getArea() != null ? String.valueOf(entity.getArea()) : null);
             entity.setArea(request.getArea());
         }
-        if (request.getLocation() != null && !EntityUpdateUtils.areEqual(entity.getLocation(), request.getLocation())) {
+        if (!EntityUpdateUtils.areEqual(entity.getLocation(), request.getLocation())) {
             previousValues.put("location", entity.getLocation());
             entity.setLocation(request.getLocation());
         }
-        if (request.getDetailedLocation() != null && !EntityUpdateUtils.areEqual(entity.getDetailedLocation(), request.getDetailedLocation())) {
+        if (!EntityUpdateUtils.areEqual(entity.getDetailedLocation(), request.getDetailedLocation())) {
             previousValues.put("detailedLocation", entity.getDetailedLocation());
             entity.setDetailedLocation(request.getDetailedLocation());
         }
@@ -564,19 +564,19 @@ public class BeaconStationService {
             previousValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
             entity.setProvinceId(request.getProvinceId());
         }
-        if (request.getSeaportId() != null && !EntityUpdateUtils.areEqual(entity.getSeaportId(), request.getSeaportId())) {
+        if (!EntityUpdateUtils.areEqual(entity.getSeaportId(), request.getSeaportId())) {
             previousValues.put("seaportId", entity.getSeaportId() != null ? entity.getSeaportId().toString() : null);
             entity.setSeaportId(request.getSeaportId());
         }
-        if (request.getOperator() != null && !EntityUpdateUtils.areEqual(entity.getOperator(), request.getOperator())) {
+        if (!EntityUpdateUtils.areEqual(entity.getOperator(), request.getOperator())) {
             previousValues.put("operator", entity.getOperator());
             entity.setOperator(request.getOperator());
         }
-        if (request.getLastRepairDate() != null && !EntityUpdateUtils.areEqual(entity.getLastRepairDate(), request.getLastRepairDate())) {
+        if (!EntityUpdateUtils.areEqual(entity.getLastRepairDate(), request.getLastRepairDate())) {
             previousValues.put("lastRepairDate", entity.getLastRepairDate() != null ? entity.getLastRepairDate().toString() : null);
             entity.setLastRepairDate(request.getLastRepairDate());
         }
-        if (request.getCommissionedDate() != null && !EntityUpdateUtils.areEqual(entity.getCommissionedDate(), request.getCommissionedDate())) {
+        if (!EntityUpdateUtils.areEqual(entity.getCommissionedDate(), request.getCommissionedDate())) {
             previousValues.put("commissionedDate", entity.getCommissionedDate() != null ? entity.getCommissionedDate().toString() : null);
             entity.setCommissionedDate(request.getCommissionedDate());
         }
@@ -584,35 +584,35 @@ public class BeaconStationService {
             previousValues.put("isActive", entity.getIsActive() != null ? String.valueOf(entity.getIsActive()) : null);
             entity.setIsActive(request.getIsActive());
         }
-        if (request.getShape() != null && !EntityUpdateUtils.areEqual(entity.getShape(), request.getShape())) {
+        if (!EntityUpdateUtils.areEqual(entity.getShape(), request.getShape())) {
             previousValues.put("shape", entity.getShape());
             entity.setShape(request.getShape());
         }
-        if (request.getStructure() != null && !EntityUpdateUtils.areEqual(entity.getStructure(), request.getStructure())) {
+        if (!EntityUpdateUtils.areEqual(entity.getStructure(), request.getStructure())) {
             previousValues.put("structure", entity.getStructure());
             entity.setStructure(request.getStructure());
         }
-        if (request.getTowerHeight() != null && !EntityUpdateUtils.areEqual(entity.getTowerHeight(), request.getTowerHeight())) {
+        if (!EntityUpdateUtils.areEqual(entity.getTowerHeight(), request.getTowerHeight())) {
             previousValues.put("towerHeight", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : null);
             entity.setTowerHeight(request.getTowerHeight());
         }
-        if (request.getLightHeight() != null && !EntityUpdateUtils.areEqual(entity.getLightHeight(), request.getLightHeight())) {
+        if (!EntityUpdateUtils.areEqual(entity.getLightHeight(), request.getLightHeight())) {
             previousValues.put("lightHeight", entity.getLightHeight() != null ? String.valueOf(entity.getLightHeight()) : null);
             entity.setLightHeight(request.getLightHeight());
         }
-        if (request.getGeographicRange() != null && !EntityUpdateUtils.areEqual(entity.getGeographicRange(), request.getGeographicRange())) {
+        if (!EntityUpdateUtils.areEqual(entity.getGeographicRange(), request.getGeographicRange())) {
             previousValues.put("geographicRange", entity.getGeographicRange());
             entity.setGeographicRange(request.getGeographicRange());
         }
-        if (request.getPowerSupply() != null && !EntityUpdateUtils.areEqual(entity.getPowerSupply(), request.getPowerSupply())) {
+        if (!EntityUpdateUtils.areEqual(entity.getPowerSupply(), request.getPowerSupply())) {
             previousValues.put("powerSupply", entity.getPowerSupply());
             entity.setPowerSupply(request.getPowerSupply());
         }
-        if (request.getStaffCount() != null && !EntityUpdateUtils.areEqual(entity.getStaffCount(), request.getStaffCount())) {
+        if (!EntityUpdateUtils.areEqual(entity.getStaffCount(), request.getStaffCount())) {
             previousValues.put("staffCount", entity.getStaffCount() != null ? String.valueOf(entity.getStaffCount()) : null);
             entity.setStaffCount(request.getStaffCount());
         }
-        if (request.getStationArea() != null && !EntityUpdateUtils.areEqual(entity.getStationArea(), request.getStationArea())) {
+        if (!EntityUpdateUtils.areEqual(entity.getStationArea(), request.getStationArea())) {
             previousValues.put("stationArea", entity.getStationArea() != null ? String.valueOf(entity.getStationArea()) : null);
             entity.setStationArea(request.getStationArea());
         }
@@ -620,31 +620,31 @@ public class BeaconStationService {
             previousValues.put("operationalStatus", entity.getOperationalStatus() != null ? String.valueOf(entity.getOperationalStatus()) : null);
             entity.setOperationalStatus(request.getOperationalStatus());
         }
-        if (request.getRegion() != null && !EntityUpdateUtils.areEqual(entity.getRegion(), request.getRegion())) {
+        if (!EntityUpdateUtils.areEqual(entity.getRegion(), request.getRegion())) {
             previousValues.put("region", entity.getRegion());
             entity.setRegion(request.getRegion());
         }
-        if (request.getIdentifyingFeature() != null && !EntityUpdateUtils.areEqual(entity.getIdentifyingFeature(), request.getIdentifyingFeature())) {
+        if (!EntityUpdateUtils.areEqual(entity.getIdentifyingFeature(), request.getIdentifyingFeature())) {
             previousValues.put("identifyingFeature", entity.getIdentifyingFeature());
             entity.setIdentifyingFeature(request.getIdentifyingFeature());
         }
-        if (request.getNote() != null && !EntityUpdateUtils.areEqual(entity.getNote(), request.getNote())) {
+        if (!EntityUpdateUtils.areEqual(entity.getNote(), request.getNote())) {
             previousValues.put("note", entity.getNote());
             entity.setNote(request.getNote());
         }
-        if (request.getGeometryType() != null && !EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
+        if (!EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
             previousValues.put("geometryType", entity.getGeometryType());
             entity.setGeometryType(request.getGeometryType());
         }
-        if (request.getMapSymbolId() != null && !EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
+        if (!EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
             previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
             entity.setMapSymbolId(request.getMapSymbolId());
         }
-        if (request.getCoordinateSystem() != null && !EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
+        if (!EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
             previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
             entity.setCoordinateSystem(request.getCoordinateSystem());
         }
-        if (request.getDisplayRule() != null && !EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
+        if (!EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
             previousValues.put("displayRule", entity.getDisplayRule());
             entity.setDisplayRule(request.getDisplayRule());
         }

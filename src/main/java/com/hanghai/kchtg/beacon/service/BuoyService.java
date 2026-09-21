@@ -382,42 +382,27 @@ public class BuoyService {
         }
         String wkt = buildBuoyWkt(request.getCoordinates(), currentLon, currentLat);
 
-        if (request.getColor() != null)
-            entity.setColor(request.getColor());
-        if (request.getShape() != null)
-            entity.setShape(request.getShape());
-        if (request.getLightCharacteristic() != null) {
-            entity.setLightCharacteristic(request.getLightCharacteristic());
-        }
-        if (request.getRange() != null)
-            entity.setRange(request.getRange());
-        if (request.getDescription() != null)
-            entity.setDescription(request.getDescription());
+        entity.setColor(request.getColor());
+        entity.setShape(request.getShape());
+        entity.setLightCharacteristic(request.getLightCharacteristic());
+        entity.setRange(request.getRange());
+        entity.setDescription(request.getDescription());
         java.util.UUID updateUnitId = request.getOrgUnitId() != null ? request.getOrgUnitId() : request.getUnitId();
         if (updateUnitId != null) {
             entity.setUnitId(updateUnitId);
             entity.setOrgUnitId(updateUnitId);
         }
-        if (request.getNavigationChannelId() != null) {
-            entity.setNavigationChannelId(request.getNavigationChannelId());
-        }
-        if (request.getLastInspectionDate() != null) {
-            entity.setLastInspectionDate(request.getLastInspectionDate());
-        }
+        entity.setNavigationChannelId(request.getNavigationChannelId());
+        entity.setLastInspectionDate(request.getLastInspectionDate());
         if (request.getIsActive() != null)
             entity.setIsActive(request.getIsActive());
-        if (request.getGeometryType() != null)
-            entity.setGeometryType(request.getGeometryType());
-        if (request.getMapSymbolId() != null)
-            entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        entity.setGeometryType(request.getGeometryType());
+        entity.setMapSymbolId(request.getMapSymbolId());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
 
         // Các trường bổ sung theo đặc tả CSV 'QL Phao tiêu' (form chỉnh sửa)
-        if (request.getBuoyStationId() != null)
-            entity.setBuoyStationId(request.getBuoyStationId());
+        entity.setBuoyStationId(request.getBuoyStationId());
         // Mã phao, tiêu sinh lại khi đổi nhà trạm QLVH — vẫn đảm bảo duy nhất (BR-001)
         if (request.getCode() != null && !request.getCode().trim().isEmpty()
                 && !request.getCode().trim().equals(entity.getCode())) {
@@ -427,48 +412,27 @@ public class BuoyService {
             }
             entity.setCode(newCode);
         }
-        if (request.getClassification() != null)
-            entity.setClassification(request.getClassification());
-        if (request.getClassificationBuoy() != null)
-            entity.setClassificationBuoy(request.getClassificationBuoy());
-        if (request.getClassificationMark() != null)
-            entity.setClassificationMark(request.getClassificationMark());
-        if (request.getProvinceId() != null)
-            entity.setProvinceId(request.getProvinceId());
-        if (request.getLocationDetail() != null)
-            entity.setLocationDetail(request.getLocationDetail());
-        if (request.getCondition() != null)
-            entity.setCondition(request.getCondition());
-        if (request.getStructure() != null)
-            entity.setStructure(request.getStructure());
-        if (request.getArea() != null)
-            entity.setArea(request.getArea());
-        if (request.getBodyHeight() != null)
-            entity.setBodyHeight(request.getBodyHeight());
-        if (request.getDiameter() != null)
-            entity.setDiameter(request.getDiameter());
-        if (request.getBeaconLight() != null)
-            entity.setBeaconLight(request.getBeaconLight());
-        if (request.getTowerHeight() != null)
-            entity.setTowerHeight(request.getTowerHeight());
-        if (request.getLightHeight() != null)
-            entity.setLightHeight(request.getLightHeight());
-        if (request.getLightModel() != null)
-            entity.setLightModel(request.getLightModel());
-        if (request.getTowerColor() != null)
-            entity.setTowerColor(request.getTowerColor());
-        if (request.getPowerSupply() != null)
-            entity.setPowerSupply(request.getPowerSupply());
-        if (request.getCommissionedDate() != null)
-            entity.setCommissionedDate(request.getCommissionedDate());
-        if (request.getLastRepairDate() != null)
-            entity.setLastRepairDate(request.getLastRepairDate());
-        if (request.getLightColor() != null)
-            entity.setLightColor(request.getLightColor());
-        if (request.getFlashType() != null)
-            entity.setFlashType(request.getFlashType());
-        if (request.getPeriod() != null)
-            entity.setPeriod(request.getPeriod());
+        entity.setClassification(request.getClassification());
+        entity.setClassificationBuoy(request.getClassificationBuoy());
+        entity.setClassificationMark(request.getClassificationMark());
+        entity.setProvinceId(request.getProvinceId());
+        entity.setLocationDetail(request.getLocationDetail());
+        entity.setCondition(request.getCondition());
+        entity.setStructure(request.getStructure());
+        entity.setArea(request.getArea());
+        entity.setBodyHeight(request.getBodyHeight());
+        entity.setDiameter(request.getDiameter());
+        entity.setBeaconLight(request.getBeaconLight());
+        entity.setTowerHeight(request.getTowerHeight());
+        entity.setLightHeight(request.getLightHeight());
+        entity.setLightModel(request.getLightModel());
+        entity.setTowerColor(request.getTowerColor());
+        entity.setPowerSupply(request.getPowerSupply());
+        entity.setCommissionedDate(request.getCommissionedDate());
+        entity.setLastRepairDate(request.getLastRepairDate());
+        entity.setLightColor(request.getLightColor());
+        entity.setFlashType(request.getFlashType());
+        entity.setPeriod(request.getPeriod());
 
         boolean wasApproved = isApprovedStatus(entity.getStatus())
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED

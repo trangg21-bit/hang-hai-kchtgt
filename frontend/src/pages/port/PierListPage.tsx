@@ -34,6 +34,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -377,7 +378,10 @@ export default function PierListPage() {
   const isEmbeddedAction = window.self !== window.top
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
+  const currentUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('pier', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
   const [pierNameInput, setPierNameInput] = useState('');
@@ -1215,13 +1219,13 @@ export default function PierListPage() {
         footer={<div style={drawerFooterStyle}>{(() => {
           const st = !editPierId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
           if (st === 'APPROVED') {
-            return <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>;
+            return canSaveAndApprove ? <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button> : null;
           }
           if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
             return <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>;
           }
-          // Lưu tạm hoặc tạo mới: 3 nút.
-          return <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button></>;
+          // Lưu tạm hoặc tạo mới
+          return <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>{canSaveAndApprove && <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}</>;
         })()}</div>}
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">

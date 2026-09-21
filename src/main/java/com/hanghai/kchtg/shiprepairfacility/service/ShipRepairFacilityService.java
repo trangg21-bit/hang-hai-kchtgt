@@ -89,9 +89,6 @@ public class ShipRepairFacilityService {
     public ShipRepairFacilityResponse getById(UUID id) {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
-        if (entity.getDeletedAt() != null) {
-            throw new RuntimeException("Cơ sở sửa chữa, đóng tàu đã bị xóa với ID: " + id);
-        }
         return toResponse(entity);
     }
 
@@ -124,46 +121,42 @@ public class ShipRepairFacilityService {
         }
 
         java.util.Map<String, String> previousValues = new java.util.LinkedHashMap<>();
-        if (request.getFacilityName() != null
-                && !java.util.Objects.equals(request.getFacilityName(), entity.getFacilityName()))
+        if (request.getFacilityName() != null && !java.util.Objects.equals(request.getFacilityName(), entity.getFacilityName())) {
             previousValues.put("facilityName", entity.getFacilityName());
-        if (request.getAddress() != null && !java.util.Objects.equals(request.getAddress(), entity.getAddress()))
-            previousValues.put("address", entity.getAddress());
-        if (request.getProvinceId() != null
-                && !Objects.equals(request.getProvinceId(), entity.getProvinceId()))
-            previousValues.put("provinceId", String.valueOf(entity.getProvinceId()));
-        if (request.getPhone() != null && !java.util.Objects.equals(request.getPhone(), entity.getPhone()))
-            previousValues.put("phone", entity.getPhone());
-        if (request.getEmail() != null && !java.util.Objects.equals(request.getEmail(), entity.getEmail()))
-            previousValues.put("email", entity.getEmail());
-        if (request.getFacilityType() != null
-                && !java.util.Objects.equals(request.getFacilityType(), entity.getFacilityType()))
-            previousValues.put("facilityType", String.valueOf(entity.getFacilityType()));
-        if (request.getCapacity() != null && !java.util.Objects.equals(request.getCapacity(), entity.getCapacity()))
-            previousValues.put("capacity", entity.getCapacity());
-        if (request.getAuthority() != null && !java.util.Objects.equals(request.getAuthority(), entity.getAuthority()))
-            previousValues.put("authority", entity.getAuthority());
-        if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId()))
-            previousValues.put("orgUnitId", String.valueOf(entity.getOrgUnitId()));
-
-        if (request.getFacilityName() != null)
             entity.setFacilityName(request.getFacilityName());
-        if (request.getAddress() != null)
+        }
+        if (!java.util.Objects.equals(request.getAddress(), entity.getAddress())) {
+            previousValues.put("address", entity.getAddress() != null ? entity.getAddress() : "Chưa có");
             entity.setAddress(request.getAddress());
-        if (request.getProvinceId() != null)
+        }
+        if (!Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+            previousValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "Chưa có");
             entity.setProvinceId(request.getProvinceId());
-        if (request.getPhone() != null)
+        }
+        if (!java.util.Objects.equals(request.getPhone(), entity.getPhone())) {
+            previousValues.put("phone", entity.getPhone() != null ? entity.getPhone() : "Chưa có");
             entity.setPhone(request.getPhone());
-        if (request.getEmail() != null)
+        }
+        if (!java.util.Objects.equals(request.getEmail(), entity.getEmail())) {
+            previousValues.put("email", entity.getEmail() != null ? entity.getEmail() : "Chưa có");
             entity.setEmail(request.getEmail());
-        if (request.getFacilityType() != null)
+        }
+        if (!java.util.Objects.equals(request.getFacilityType(), entity.getFacilityType())) {
+            previousValues.put("facilityType", entity.getFacilityType() != null ? String.valueOf(entity.getFacilityType()) : "Chưa có");
             entity.setFacilityType(request.getFacilityType());
-        if (request.getCapacity() != null)
+        }
+        if (!java.util.Objects.equals(request.getCapacity(), entity.getCapacity())) {
+            previousValues.put("capacity", entity.getCapacity() != null ? entity.getCapacity() : "Chưa có");
             entity.setCapacity(request.getCapacity());
-        if (request.getAuthority() != null)
+        }
+        if (!java.util.Objects.equals(request.getAuthority(), entity.getAuthority())) {
+            previousValues.put("authority", entity.getAuthority() != null ? entity.getAuthority() : "Chưa có");
             entity.setAuthority(request.getAuthority());
-        if (request.getOrgUnitId() != null)
+        }
+        if (request.getOrgUnitId() != null && !java.util.Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
+            previousValues.put("orgUnitId", entity.getOrgUnitId() != null ? String.valueOf(entity.getOrgUnitId()) : "Chưa có");
             entity.setOrgUnitId(request.getOrgUnitId());
+        }
 
         String oldCoord = null;
         GisGeometryType oldGeom = null;
@@ -535,15 +528,15 @@ public class ShipRepairFacilityService {
 
     private String currentFieldValue(ShipRepairFacility entity, String field) {
         return switch (field) {
-            case "facilityName" -> String.valueOf(entity.getFacilityName());
-            case "facilityType" -> String.valueOf(entity.getFacilityType());
-            case "address" -> String.valueOf(entity.getAddress());
-            case "phone" -> String.valueOf(entity.getPhone());
-            case "email" -> String.valueOf(entity.getEmail());
-            case "capacity" -> String.valueOf(entity.getCapacity());
-            case "authority" -> String.valueOf(entity.getAuthority());
-            case "orgUnitId" -> String.valueOf(entity.getOrgUnitId());
-            case "provinceId" -> String.valueOf(entity.getProvinceId());
+            case "facilityName" -> entity.getFacilityName();
+            case "facilityType" -> entity.getFacilityType() != null ? entity.getFacilityType().name() : null;
+            case "address" -> entity.getAddress();
+            case "phone" -> entity.getPhone();
+            case "email" -> entity.getEmail();
+            case "capacity" -> entity.getCapacity();
+            case "authority" -> entity.getAuthority();
+            case "orgUnitId" -> entity.getOrgUnitId() != null ? entity.getOrgUnitId().toString() : null;
+            case "provinceId" -> entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null;
             default -> "";
         };
     }

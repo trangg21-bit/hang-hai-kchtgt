@@ -169,6 +169,7 @@ api.interceptors.response.use(
     const isSilentForbiddenPath =
       error.config?.url?.includes('/org-units/') ||
       error.config?.url?.includes('/api/symbols') ||
+      error.config?.url?.includes('/options') ||
       error.config?.url?.includes('/vts-operation-center/options') ||
       error.config?.url?.includes('/radar-station') ||
       error.config?.url?.includes('/permissions') ||

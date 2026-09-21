@@ -287,13 +287,13 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Operational permission does not implicitly grant read/view/search")
-    void implicitReadIsNotGrantedFromOperationalPermissions() {
+    @DisplayName("Operational permission implicitly grants read/view/search on the same resource")
+    void implicitReadIsGrantedFromOperationalPermissions() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vts:approvec1"));
 
-        assertFalse(service.checkPermission(userId, "vts:read"));
-        assertFalse(service.checkPermission(userId, "vts:view"));
-        assertFalse(service.checkPermission(userId, "vts:search"));
+        assertTrue(service.checkPermission(userId, "vts:read"));
+        assertTrue(service.checkPermission(userId, "vts:view"));
+        assertTrue(service.checkPermission(userId, "vts:search"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
         assertFalse(service.checkPermission(userId, "vts:create"));
     }
@@ -315,9 +315,9 @@ class EffectivePermissionServiceTest {
     void canonicalResourceMapping_vtsAndVtssystem() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vtssystem:update"));
 
-        // Has update on vtssystem -> matches vts:update
+        // Has update on vtssystem -> matches vts:update and implicitly grants vts:read
         assertTrue(service.checkPermission(userId, "vts:update"));
-        assertFalse(service.checkPermission(userId, "vts:read"));
+        assertTrue(service.checkPermission(userId, "vts:read"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
     }
 

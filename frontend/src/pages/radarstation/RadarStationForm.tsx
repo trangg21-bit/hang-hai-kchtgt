@@ -38,6 +38,7 @@ import {
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
@@ -134,6 +135,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -1068,7 +1071,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                     <Button onClick={() => handleSubmit('submit')} loading={isSubmitting} style={outlineButtonStyle}>
                       Lưu và gửi phê duyệt
                     </Button>
-                    {hasPerm('radarstation:approvec2') && (
+                    {canSaveAndApprove && (
                       <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
                         Lưu và phê duyệt
                       </Button>
@@ -1084,7 +1087,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 <Button type="primary" onClick={() => handleSubmit('submit')} loading={isSubmitting} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
-                {hasPerm('radarstation:approvec2') && (
+                {canSaveAndApprove && (
                   <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
                     Lưu và phê duyệt
                   </Button>
@@ -1149,7 +1152,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                     <Button style={outlineButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
                       Lưu và gửi phê duyệt
                     </Button>
-                    {hasPerm('radarstation:approvec2') && (
+                    {canSaveAndApprove && (
                       <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
                         Lưu và phê duyệt
                       </Button>
@@ -1165,7 +1168,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
                   Lưu và gửi phê duyệt
                 </Button>
-                {hasPerm('radarstation:approvec2') && (
+                {canSaveAndApprove && (
                   <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
                     Lưu và phê duyệt
                   </Button>

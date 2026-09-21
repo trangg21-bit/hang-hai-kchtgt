@@ -549,32 +549,45 @@ export default function VtsSystemForm({
 
   const operatingUnitOptions = useMemo(() => {
     const list: Array<{ value: string; label: string }> = [];
-    const seen = new Set<string>();
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const seenCodes = new Set<string>();
+
+    const addOption = (id?: string | null, name?: string | null, code?: string | null) => {
+      if (!id || !name) return;
+      const strId = String(id).trim();
+      const normName = name.trim().toLowerCase();
+      const normCode = code ? code.trim().toLowerCase() : '';
+
+      if (seenIds.has(strId)) return;
+      if (normCode && seenCodes.has(normCode)) return;
+      if (seenNames.has(normName)) return;
+
+      seenIds.add(strId);
+      if (normCode) seenCodes.add(normCode);
+      seenNames.add(normName);
+
+      list.push({
+        value: strId,
+        label: code ? `${code} - ${name}` : name,
+      });
+    };
 
     if (Array.isArray(organizations)) {
       organizations.forEach((o) => {
-        if (o.id && o.name && !seen.has(String(o.id))) {
-          seen.add(String(o.id));
-          list.push({ value: String(o.id), label: o.code ? `${o.code} - ${o.name}` : o.name });
-        }
+        addOption(o.id, o.name, o.code);
       });
     }
 
     if (Array.isArray(operatingOrganizations)) {
       operatingOrganizations.forEach((o) => {
-        if (o.id && o.name && !seen.has(String(o.id))) {
-          seen.add(String(o.id));
-          list.push({ value: String(o.id), label: o.code ? `${o.code} - ${o.name}` : o.name });
-        }
+        addOption(o.id, o.name, o.code);
       });
     }
 
-    if (record?.operatingOrgId && !seen.has(String(record.operatingOrgId))) {
-      seen.add(String(record.operatingOrgId));
-      list.push({
-        value: String(record.operatingOrgId),
-        label: record.operatingOrgName || (record as any).operatingUnitName || 'Đơn vị vận hành',
-      });
+    if (record?.operatingOrgId) {
+      const curName = record.operatingOrgName || (record as any).operatingUnitName || 'Đơn vị vận hành';
+      addOption(String(record.operatingOrgId), curName, (record as any).operatingOrgCode);
     }
 
     return list;

@@ -35,6 +35,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -364,6 +365,8 @@ export default function TransferAreaListPage() {
 
   const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('transferarea', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
   const [nameInput, setNameInput] = useState('');
@@ -1659,7 +1662,7 @@ export default function TransferAreaListPage() {
               {(() => {
                 const st = !editTransferAreaId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
                 if (st === 'APPROVED') {
-                  return (
+                  return canSaveAndApprove ? (
                     <Button
                       htmlType="button"
                       type="primary"
@@ -1669,7 +1672,7 @@ export default function TransferAreaListPage() {
                     >
                       Lưu và phê duyệt
                     </Button>
-                  );
+                  ) : null;
                 }
                 if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
                   return (
@@ -1703,15 +1706,17 @@ export default function TransferAreaListPage() {
                     >
                       Lưu và gửi phê duyệt
                     </Button>
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        htmlType="button"
+                        type="primary"
+                        onClick={() => { setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }}
+                        loading={submitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
                   </>
                 );
               })()}

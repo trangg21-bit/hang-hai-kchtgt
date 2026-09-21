@@ -139,6 +139,44 @@ class VtsOperationCenterServiceTest {
     }
 
     @Test
+    void testCreateSuccess_WithoutVtsSystemIdAndPortId() {
+        VtsOperationCenterRequest reqNoParent = VtsOperationCenterRequest.builder()
+                .code("TT-000002")
+                .name("Trung tâm VTS Độc lập")
+                .vtsSystemId(null)
+                .portId(null)
+                .orgUnitId(ORG_UNIT_ID)
+                .provinceId(1)
+                .detailedLocation("Số 2 Hoàng Diệu")
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .build();
+
+        VtsOperationCenter entityNoParent = VtsOperationCenter.builder()
+                .id(UUID.randomUUID())
+                .code("TT-000002")
+                .name("Trung tâm VTS Độc lập")
+                .vtsSystemId(null)
+                .portId(null)
+                .orgUnitId(ORG_UNIT_ID)
+                .provinceId(1)
+                .conditionStatus(ConditionStatus.OPERATIONAL)
+                .approvalStatus(ApprovalStatus.DRAFT)
+                .build();
+
+        when(repository.existsByCodeAndDeletedAtIsNull("TT-000002")).thenReturn(false);
+        when(repository.save(any())).thenReturn(entityNoParent);
+
+        VtsOperationCenterResponse res = service.create(reqNoParent, USER_ID);
+
+        assertNotNull(res);
+        assertEquals("TT-000002", res.getCode());
+        assertNull(res.getVtsSystemId());
+        assertNull(res.getPortId());
+        verify(repository).save(any(VtsOperationCenter.class));
+    }
+
+
+    @Test
     void testCreateDuplicateCodeThrowsException() {
         when(repository.existsByCodeAndDeletedAtIsNull("TT-000001")).thenReturn(true);
 
@@ -148,7 +186,7 @@ class VtsOperationCenterServiceTest {
 
     @Test
     void testGetByIdSuccess() {
-        when(repository.findByIdAndDeletedAtIsNull(CENTER_ID)).thenReturn(Optional.of(entity));
+        when(repository.findById(CENTER_ID)).thenReturn(Optional.of(entity));
 
         VtsOperationCenterResponse response = service.getById(CENTER_ID);
 
@@ -168,6 +206,29 @@ class VtsOperationCenterServiceTest {
 
         assertNotNull(response);
         verify(repository).save(entity);
+    }
+
+    @Test
+    void testUpdate_WhenClearingNullableFields_SavesHistoryForApprovedEntity() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setVtsSystemId(VTS_SYSTEM_ID);
+        UUID portId = UUID.randomUUID();
+        entity.setPortId(portId);
+        when(repository.findByIdAndDeletedAtIsNull(CENTER_ID)).thenReturn(Optional.of(entity));
+        when(repository.existsByCodeAndIdNotAndDeletedAtIsNull("TT-000001", CENTER_ID)).thenReturn(false);
+        when(repository.save(any())).thenReturn(entity);
+        when(portCacheService.getName(portId)).thenReturn("Cảng Hải Phòng");
+
+        request.setVtsSystemId(null);
+        request.setPortId(null);
+        request.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VtsOperationCenterResponse response = service.update(CENTER_ID, request, USER_ID);
+
+        assertNotNull(response);
+        assertNull(entity.getVtsSystemId());
+        assertNull(entity.getPortId());
+        verify(historyRepository, atLeast(2)).save(any(com.hanghai.kchtg.common.entity.InfrastructureHistory.class));
     }
 
     @Test

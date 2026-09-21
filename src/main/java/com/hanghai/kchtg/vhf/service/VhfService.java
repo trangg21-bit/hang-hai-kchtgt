@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.vhf.service;
 
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.common.util.WktCoordinateUtils;
 
 import com.hanghai.kchtg.vhf.dto.VhfResponse;
@@ -451,7 +452,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
   }
 
   private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter, Map<String, String> previousValues) {
-    if (newValue == null || EntityUpdateUtils.areEqual(oldValue, newValue)) {
+    if (EntityUpdateUtils.areEqual(oldValue, newValue)) {
       return;
     }
     previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");

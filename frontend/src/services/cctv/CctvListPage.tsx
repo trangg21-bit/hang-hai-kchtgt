@@ -63,6 +63,7 @@ import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { useAuthStore } from "../../store/authStore";
 import EmptyState from "../../components/EmptyState";
@@ -526,7 +527,8 @@ const CctvListPage = () => {
   const [updateForm] = Form.useForm();
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("cctv:approvec2");
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('cctv', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // Map-linked view: GIS mở page trong iframe (?action=edit|detail&id=...) — khi đóng
   // drawer phải báo parent (bản đồ) đóng modal KCHT. (Khôi phục định nghĩa từ a05fbe7a)

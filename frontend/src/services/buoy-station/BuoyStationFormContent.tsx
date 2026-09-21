@@ -30,7 +30,7 @@ import {
   outlineButtonStyle, primaryButtonStyle, fontSizeLg,
   spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary,
   spaceSm, spaceXs, fontWeightBold, fontSizeSm, surfaceCard,
-  DRAWER_TABLE_SCROLL_Y,
+  DRAWER_TABLE_SCROLL_Y, textAreaStyle,
 } from '../../themetokenchk';
 
 const buoyStationFormFontSizeMd = 13.5;
@@ -589,7 +589,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
           <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
-          <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}><Input placeholder="Nhập ghi chú" maxLength={2000} showCount style={inputStyle} /></Form.Item></Col>
+          <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}><Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} /></Form.Item></Col>
         </Row>
       </div>
     </div>) },

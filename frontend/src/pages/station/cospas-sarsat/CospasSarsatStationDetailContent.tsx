@@ -366,11 +366,12 @@ export const renderServicesBadges = (services?: string[] | string) => {
               alignItems: 'center',
               padding: '2px 10px',
               borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
+              fontSize: '12px',
+              fontWeight: 500,
               background: '#eef3fb',
               border: '1px solid #c6d9f5',
               color: colors.sidebarBg,
+              whiteSpace: 'nowrap',
             }}
           >
             {label}

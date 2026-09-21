@@ -35,6 +35,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -388,6 +389,8 @@ export default function AnchorageListPage() {
     && !!linkedRecordId;
   const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('anchorage', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
 
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
@@ -1593,11 +1596,11 @@ export default function AnchorageListPage() {
           footer={<div style={drawerFooterStyle}>{(() => {
             const st = !editAnchorageId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
             if (st === 'APPROVED') {
-              return (
+              return canSaveAndApprove ? (
                 <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); anchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
-              );
+              ) : null;
             }
             if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
               return (
@@ -1614,9 +1617,11 @@ export default function AnchorageListPage() {
                 <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); anchorageFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
-                <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); anchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                  Lưu và phê duyệt
-                </Button>
+                {canSaveAndApprove && (
+                  <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); anchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             );
           })()}</div>}

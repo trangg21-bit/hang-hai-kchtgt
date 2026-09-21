@@ -17,7 +17,7 @@ import {
   radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, borderDefault,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
   primaryButtonStyle, outlineButtonStyle,
-  DRAWER_TABLE_SCROLL_Y,
+  DRAWER_TABLE_SCROLL_Y, textAreaStyle,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -566,7 +566,7 @@ export default function BuoyFormContent({
             <Row gutter={[24, 0]}>
               <Col span={24}>
                 <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập Kết cấu" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>

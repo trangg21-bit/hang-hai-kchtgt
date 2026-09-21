@@ -47,6 +47,7 @@ import * as themeTokenChk from "../../themetokenchk";
 import { cellSubtitleStyle, cellTitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
@@ -566,7 +567,8 @@ const TransmissionListPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2");
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('transmission', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // Modal bản đồ GIS xem chi tiết
   const [mapScope, setMapScope] = useState<'detail' | null>(null);

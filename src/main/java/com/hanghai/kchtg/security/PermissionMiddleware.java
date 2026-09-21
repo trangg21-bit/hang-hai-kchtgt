@@ -204,6 +204,9 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (("asset".equals(validSegments.get(0)) || "stations".equals(validSegments.get(0))) && validSegments.size() > 1) {
             return normalizeResource(validSegments.get(1));
         }
+        if (("coastal-stations".equals(validSegments.get(0)) || "coastalstation".equals(validSegments.get(0))) && validSegments.size() > 1) {
+            return normalizeResource("coastalstation" + validSegments.get(1));
+        }
         return normalizeResource(validSegments.get(0));
     }
 

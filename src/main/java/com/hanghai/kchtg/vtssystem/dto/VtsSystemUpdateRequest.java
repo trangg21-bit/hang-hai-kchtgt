@@ -29,6 +29,8 @@ public class VtsSystemUpdateRequest {
     @NotNull(message = "Đơn vị chủ quản không được để trống")
     private UUID owningOrgId;
     private UUID operatingOrgId;
+    @JsonIgnore
+    private boolean operatingOrgIdPresent;
     private UUID portId;
     @JsonIgnore
     private boolean portIdPresent;
@@ -36,13 +38,23 @@ public class VtsSystemUpdateRequest {
     @jakarta.validation.constraints.Size(max = 50, message = "Mã hệ thống VTS tối đa 50 ký tự")
     private String code;
     private Integer provinceId;
+    @JsonIgnore
+    private boolean provinceIdPresent;
     private String address;
+    @JsonIgnore
+    private boolean addressPresent;
     private String maritimeNotice;
+    @JsonIgnore
+    private boolean maritimeNoticePresent;
     private LocalDate operationStartDate;
     @JsonIgnore
     private boolean operationStartDatePresent;
     private String scope;
+    @JsonIgnore
+    private boolean scopePresent;
     private String note;
+    @JsonIgnore
+    private boolean notePresent;
 
     private GisGeometryType geometryType;
     private String coordinates;
@@ -55,8 +67,38 @@ public class VtsSystemUpdateRequest {
         this.portIdPresent = true;
     }
 
+    public void setOperatingOrgId(UUID operatingOrgId) {
+        this.operatingOrgId = operatingOrgId;
+        this.operatingOrgIdPresent = true;
+    }
+
+    public void setProvinceId(Integer provinceId) {
+        this.provinceId = provinceId;
+        this.provinceIdPresent = true;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+        this.addressPresent = true;
+    }
+
+    public void setMaritimeNotice(String maritimeNotice) {
+        this.maritimeNotice = maritimeNotice;
+        this.maritimeNoticePresent = true;
+    }
+
     public void setOperationStartDate(LocalDate operationStartDate) {
         this.operationStartDate = operationStartDate;
         this.operationStartDatePresent = true;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+        this.scopePresent = true;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+        this.notePresent = true;
     }
 }

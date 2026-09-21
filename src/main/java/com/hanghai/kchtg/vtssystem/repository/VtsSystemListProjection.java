@@ -33,6 +33,12 @@ public interface VtsSystemListProjection {
 
     LocalDateTime getUpdatedDate();
 
+    LocalDateTime getCreatedDate();
+
+    LocalDateTime getUpdatedAt();
+
+    LocalDateTime getCreatedAt();
+
     UUID getUpdatedBy();
 
     UUID getOwningOrgId();

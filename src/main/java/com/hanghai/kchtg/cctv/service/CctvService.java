@@ -605,7 +605,7 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
 
   private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
       Map<String, String> previousValues) {
-    if (newVal == null || EntityUpdateUtils.areEqual(oldVal, newVal)) {
+    if (EntityUpdateUtils.areEqual(oldVal, newVal)) {
       return;
     }
     previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");

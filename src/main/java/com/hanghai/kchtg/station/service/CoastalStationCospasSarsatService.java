@@ -52,6 +52,7 @@ public class CoastalStationCospasSarsatService {
     private final OrgUnitCacheService orgUnitCacheService;
     private final UserRepository userRepository;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
+    private final OperatingOrganizationLookup operatingOrganizationLookup;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final InfrastructureAttachmentRepository attachmentRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
@@ -280,9 +281,15 @@ public class CoastalStationCospasSarsatService {
 
     private String resolveOperatingOrgName(UUID operatingOrgId) {
         if (operatingOrgId == null) return null;
+        if (operatingOrganizationLookup != null) {
+            return operatingOrganizationLookup.resolveName(operatingOrgId);
+        }
         return operatingOrganizationRepository.findById(operatingOrgId)
                 .map(OperatingOrganization::getName)
-                .orElseGet(() -> orgUnitCacheService.getName(operatingOrgId));
+                .orElseGet(() -> {
+                    String name = orgUnitCacheService.getName(operatingOrgId);
+                    return name != null ? name : operatingOrgId.toString();
+                });
     }
 
     private String formatConditionStatusDisplay(ConditionStatus conditionStatus) {
@@ -326,56 +333,57 @@ public class CoastalStationCospasSarsatService {
                 String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
                 oldValues.put("Đơn vị quản lý", oldName != null ? oldName : null);
             }
-            if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
+            if (!Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
                 String oldName = resolveOperatingOrgName(entity.getOperatingOrgId());
                 oldValues.put("Đơn vị khai thác", oldName != null ? oldName : null);
             }
-            if (request.getFrequency() != null && !Objects.equals(request.getFrequency(), entity.getFrequency())) {
+            if (!Objects.equals(request.getFrequency(), entity.getFrequency())) {
                 oldValues.put("Tần số", entity.getFrequency());
             }
-            if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
+            if (!Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
                 oldValues.put("Vùng phủ sóng", entity.getCoverageArea());
             }
-            if (request.getBeaconProtocol() != null && !Objects.equals(request.getBeaconProtocol(), entity.getBeaconProtocol())) {
+            if (!Objects.equals(request.getBeaconProtocol(), entity.getBeaconProtocol())) {
                 oldValues.put("Giao thức phát", entity.getBeaconProtocol());
             }
-            if (request.getEmergencyChannel() != null && !Objects.equals(request.getEmergencyChannel(), entity.getEmergencyChannel())) {
+            if (!Objects.equals(request.getEmergencyChannel(), entity.getEmergencyChannel())) {
                 oldValues.put("Kênh khẩn cấp", entity.getEmergencyChannel());
             }
-            if (request.getAntennaType() != null && !Objects.equals(request.getAntennaType(), entity.getAntennaType())) {
+            if (!Objects.equals(request.getAntennaType(), entity.getAntennaType())) {
                 oldValues.put("Loại anten", entity.getAntennaType());
             }
-            if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+            if (!Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
                 oldValues.put("Địa điểm chi tiết", entity.getLocationAddress());
             }
-            if (request.getContactPerson() != null && !Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
+            if (!Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
                 oldValues.put("Người liên hệ", entity.getContactPerson());
             }
-            if (request.getContactPhone() != null && !Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
+            if (!Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
                 oldValues.put("Số điện thoại liên hệ", entity.getContactPhone());
             }
-            if (request.getSignalRange() != null && !Objects.equals(request.getSignalRange(), entity.getSignalRange())) {
+            if (!Objects.equals(request.getSignalRange(), entity.getSignalRange())) {
                 oldValues.put("Cự ly tín hiệu", String.valueOf(entity.getSignalRange()));
             }
-            if (request.getOperatingMode() != null && !Objects.equals(request.getOperatingMode(), entity.getOperatingMode())) {
+            if (!Objects.equals(request.getOperatingMode(), entity.getOperatingMode())) {
                 oldValues.put("Chế độ hoạt động", entity.getOperatingMode());
             }
-            if (request.getEffectiveServicesProvided() != null && !Objects.equals(request.getEffectiveServicesProvided(), entity.getServicesProvided())) {
+            if (!Objects.equals(request.getEffectiveServicesProvided(), entity.getServicesProvided())) {
                 oldValues.put("Dịch vụ cung cấp", entity.getServicesProvided());
             }
             if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
                 oldValues.put("Tình trạng", formatConditionStatusDisplay(entity.getConditionStatus()));
             }
-            if (request.getEffectiveNote() != null && !Objects.equals(request.getEffectiveNote(), entity.getNote())) {
+            if (!Objects.equals(request.getEffectiveNote(), entity.getNote())) {
                 oldValues.put("Ghi chú", entity.getNote());
             }
-            if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+            if (!Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
                 oldValues.put("Địa điểm (Tỉnh/Thành phố)", formatProvinceDisplay(entity.getProvinceId()));
             }
-            if (request.getEffectiveCoordinateReferenceSystem() != null && !Objects.equals(request.getEffectiveCoordinateReferenceSystem(), entity.getCoordinateReferenceSystem())) {
+            String effCRS = request.getEffectiveCoordinateReferenceSystem() != null ? request.getEffectiveCoordinateReferenceSystem() : request.getCoordinateReferenceSystem();
+            if (!Objects.equals(effCRS, entity.getCoordinateReferenceSystem())) {
                 oldValues.put("Hệ quy chiếu", entity.getCoordinateReferenceSystem());
             }
-            if (request.getSymbolId() != null && !Objects.equals(request.getSymbolId(), entity.getSymbolId())) {
+            if (!Objects.equals(request.getSymbolId(), entity.getSymbolId())) {
                 String oldSym = entity.getSymbolId() != null && gisSpatialObjectService != null
                         ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString())
                         : (entity.getSymbolId() != null ? entity.getSymbolId().toString() : "—");
@@ -388,32 +396,30 @@ public class CoastalStationCospasSarsatService {
             }
         }
 
-        if (request.getEffectiveName() != null) entity.setName(request.getEffectiveName());
+        if (request.getEffectiveName() != null && !request.getEffectiveName().isBlank()) entity.setName(request.getEffectiveName().trim());
         if (request.getEffectiveOrgUnitId() != null) entity.setOrgUnitId(request.getEffectiveOrgUnitId());
-        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
+        entity.setProvinceId(request.getProvinceId());
         if (request.getConditionStatus() != null) entity.setConditionStatus(request.getConditionStatus());
-        if (request.getOperatingOrgId() != null) entity.setOperatingOrgId(request.getOperatingOrgId());
-        if (request.getOwningOrgId() != null) entity.setOwningOrgId(request.getOwningOrgId());
-        if (request.getSymbolId() != null) entity.setSymbolId(request.getSymbolId());
-        if (request.getCoordinateReferenceSystem() != null) entity.setCoordinateReferenceSystem(request.getCoordinateReferenceSystem());
-        if (request.getEffectiveCoordinateReferenceSystem() != null) entity.setCoordinateReferenceSystem(request.getEffectiveCoordinateReferenceSystem());
+        entity.setOperatingOrgId(request.getOperatingOrgId());
+        entity.setOwningOrgId(request.getOwningOrgId());
+        entity.setSymbolId(request.getSymbolId());
+        String effectiveCRS = request.getEffectiveCoordinateReferenceSystem() != null ? request.getEffectiveCoordinateReferenceSystem() : request.getCoordinateReferenceSystem();
+        entity.setCoordinateReferenceSystem(effectiveCRS);
         if (request.getSpatialId() != null) entity.setSpatialId(request.getSpatialId());
-        if (request.getEffectiveNote() != null) {
-            entity.setNote(request.getEffectiveNote());
-            entity.setDescription(request.getEffectiveNote());
-        }
+        entity.setNote(request.getEffectiveNote());
+        entity.setDescription(request.getEffectiveNote());
 
-        if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
-        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
-        if (request.getBeaconProtocol() != null) entity.setBeaconProtocol(request.getBeaconProtocol());
-        if (request.getEmergencyChannel() != null) entity.setEmergencyChannel(request.getEmergencyChannel());
-        if (request.getAntennaType() != null) entity.setAntennaType(request.getAntennaType());
-        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
-        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
-        if (request.getSignalRange() != null) entity.setSignalRange(request.getSignalRange());
-        if (request.getOperatingMode() != null) entity.setOperatingMode(request.getOperatingMode());
-        if (request.getEffectiveServicesProvided() != null) entity.setServicesProvided(request.getEffectiveServicesProvided());
+        entity.setFrequency(request.getFrequency());
+        entity.setCoverageArea(request.getCoverageArea());
+        entity.setBeaconProtocol(request.getBeaconProtocol());
+        entity.setEmergencyChannel(request.getEmergencyChannel());
+        entity.setAntennaType(request.getAntennaType());
+        entity.setLocationAddress(request.getLocationAddress());
+        entity.setContactPerson(request.getContactPerson());
+        entity.setContactPhone(request.getContactPhone());
+        entity.setSignalRange(request.getSignalRange());
+        entity.setOperatingMode(request.getOperatingMode());
+        entity.setServicesProvided(request.getEffectiveServicesProvided());
 
         String effectiveCoords = request.getEffectiveCoordinates();
         if (effectiveCoords != null && gisSpatialObjectService != null) {
@@ -622,6 +628,10 @@ public class CoastalStationCospasSarsatService {
                 ? org.springframework.data.domain.PageRequest.of(page, pageSize)
                 : org.springframework.data.domain.Pageable.unpaged();
 
+        String managementOrgUnitName = entity.getOrgUnitId() != null
+                ? orgUnitCacheService.getName(entity.getOrgUnitId())
+                : null;
+
         return historyService.getHistory(
                 InfrastructureType.COSPAS_SARSAT_STATION, entity.getId(), code,
                 null,
@@ -639,7 +649,9 @@ public class CoastalStationCospasSarsatService {
                     r.setNewValue(h.getNewValue());
                     r.setDescription(h.getPreviousValue() != null && h.getNewValue() != null ? null : h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
-                    r.setOrgUnitName(h.getOrgUnitName());
+                    r.setOrgUnitName(h.getOrgUnitName() != null && !h.getOrgUnitName().isBlank()
+                            ? h.getOrgUnitName()
+                            : managementOrgUnitName);
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })

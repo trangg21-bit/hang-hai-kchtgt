@@ -289,6 +289,11 @@ public class AisSystemService {
             throw new IllegalArgumentException("Mã thiết bị AIS '" + request.getCode() + "' đã được sử dụng");
         }
 
+        Map<String, String> previousValues = new LinkedHashMap<>();
+
+        UUID oldVtsOpCenterId = entity.getVtsOperationCenterId();
+        UUID oldRadarStationId = entity.getRadarStationId();
+
         boolean locationProvided = request.isFieldPresent("vtsOperationCenterId")
                 || request.isFieldPresent("radarStationId")
                 || request.getVtsOperationCenterId() != null
@@ -321,9 +326,14 @@ public class AisSystemService {
                 entity.setVtsOperationCenterId(null);
                 entity.setRadarStationId(null);
             }
-        }
 
-        Map<String, String> previousValues = new LinkedHashMap<>();
+            if (!Objects.equals(oldVtsOpCenterId, entity.getVtsOperationCenterId())) {
+                previousValues.put(AisSystem.Fields.vtsOperationCenterId, oldVtsOpCenterId != null ? oldVtsOpCenterId.toString() : "Chưa có");
+            }
+            if (!Objects.equals(oldRadarStationId, entity.getRadarStationId())) {
+                previousValues.put(AisSystem.Fields.radarStationId, oldRadarStationId != null ? oldRadarStationId.toString() : "Chưa có");
+            }
+        }
 
         String oldCoordinates = null;
         GisGeometryType oldGeometryType = null;
@@ -360,15 +370,42 @@ public class AisSystemService {
                 AisSystemRequest.Fields.radarStationId,
                 AisSystemRequest.Fields.symbolId);
 
-        if (request.isFieldPresent("provinceId") && request.getProvinceId() == null) entity.setProvinceId(null);
-        if (request.isFieldPresent("operatingOrgId") && request.getOperatingOrgId() == null) entity.setOperatingOrgId(null);
-        if (request.isFieldPresent("detailedLocation") && request.getDetailedLocation() == null) entity.setDetailedLocation(null);
-        if (request.isFieldPresent("model") && request.getModel() == null) entity.setModel(null);
-        if (request.isFieldPresent("specifications") && request.getSpecifications() == null) entity.setSpecifications(null);
-        if (request.isFieldPresent("manufacturer") && request.getManufacturer() == null) entity.setManufacturer(null);
-        if (request.isFieldPresent("commissioningYear") && request.getCommissioningYear() == null) entity.setCommissioningYear(null);
-        if (request.isFieldPresent("maintenanceInfo") && request.getMaintenanceInfo() == null) entity.setMaintenanceInfo(null);
-        if (request.isFieldPresent("note") && request.getNote() == null) entity.setNote(null);
+        if (request.isFieldPresent("provinceId") && request.getProvinceId() == null && entity.getProvinceId() != null) {
+            previousValues.put(BaseApprovableEntity.Fields.provinceId, String.valueOf(entity.getProvinceId()));
+            entity.setProvinceId(null);
+        }
+        if (request.isFieldPresent("operatingOrgId") && request.getOperatingOrgId() == null && entity.getOperatingOrgId() != null) {
+            previousValues.put(AisSystem.Fields.operatingOrgId, String.valueOf(entity.getOperatingOrgId()));
+            entity.setOperatingOrgId(null);
+        }
+        if (request.isFieldPresent("detailedLocation") && (request.getDetailedLocation() == null || request.getDetailedLocation().trim().isEmpty()) && entity.getDetailedLocation() != null) {
+            previousValues.put(AisSystem.Fields.detailedLocation, entity.getDetailedLocation());
+            entity.setDetailedLocation(null);
+        }
+        if (request.isFieldPresent("model") && (request.getModel() == null || request.getModel().trim().isEmpty()) && entity.getModel() != null) {
+            previousValues.put(AisSystem.Fields.model, entity.getModel());
+            entity.setModel(null);
+        }
+        if (request.isFieldPresent("specifications") && (request.getSpecifications() == null || request.getSpecifications().trim().isEmpty()) && entity.getSpecifications() != null) {
+            previousValues.put(AisSystem.Fields.specifications, entity.getSpecifications());
+            entity.setSpecifications(null);
+        }
+        if (request.isFieldPresent("manufacturer") && (request.getManufacturer() == null || request.getManufacturer().trim().isEmpty()) && entity.getManufacturer() != null) {
+            previousValues.put(AisSystem.Fields.manufacturer, entity.getManufacturer());
+            entity.setManufacturer(null);
+        }
+        if (request.isFieldPresent("commissioningYear") && request.getCommissioningYear() == null && entity.getCommissioningYear() != null) {
+            previousValues.put(AisSystem.Fields.commissioningYear, String.valueOf(entity.getCommissioningYear()));
+            entity.setCommissioningYear(null);
+        }
+        if (request.isFieldPresent("maintenanceInfo") && (request.getMaintenanceInfo() == null || request.getMaintenanceInfo().trim().isEmpty()) && entity.getMaintenanceInfo() != null) {
+            previousValues.put(AisSystem.Fields.maintenanceInfo, entity.getMaintenanceInfo());
+            entity.setMaintenanceInfo(null);
+        }
+        if (request.isFieldPresent("note") && (request.getNote() == null || request.getNote().trim().isEmpty()) && entity.getNote() != null) {
+            previousValues.put(AisSystem.Fields.note, entity.getNote());
+            entity.setNote(null);
+        }
 
         if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
             previousValues.put(AisSystemRequest.Fields.coordinates, oldCoordinates != null ? oldCoordinates : "Chưa có");
@@ -449,7 +486,7 @@ public class AisSystemService {
                         .status(InfrastructureHistoryStatus.UPDATED)
                         .approvedBy(userId)
                         .approvedDate(now)
-                        .changedField(field)
+                        .changedField(getFieldDisplayName(field))
                         .previousValue(oldVal)
                         .newValue(newVal)
                         .build());
@@ -513,7 +550,7 @@ public class AisSystemService {
 
     @Transactional(readOnly = true)
     public AisSystemResponse getById(UUID id) {
-        AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
+        AisSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
         validateAllowedOrgUnit(entity.getOrgUnitId());
         return toResponse(entity);
@@ -865,7 +902,7 @@ public class AisSystemService {
     @Transactional(readOnly = true)
     public List<HistoryEntry> getHistory(UUID id, Integer page, Integer pageSize, String keyword,
             LocalDateTime fromDate, LocalDateTime toDate) {
-        AisSystem parent = repository.findByIdAndDeletedAtIsNull(id)
+        AisSystem parent = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
         validateAllowedOrgUnit(parent.getOrgUnitId());
 
@@ -1007,7 +1044,7 @@ public class AisSystemService {
 
     @Transactional(readOnly = true)
     public List<VtsSystemAttachmentResponse> listAttachments(UUID id) {
-        AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
+        AisSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
         validateAllowedOrgUnit(entity.getOrgUnitId());
         return loadAttachments(id);
@@ -1103,7 +1140,7 @@ public class AisSystemService {
     }
 
     public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
-        AisSystem entity = repository.findByIdAndDeletedAtIsNull(id)
+        AisSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Hệ thống AIS không tồn tại"));
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
@@ -1381,8 +1418,8 @@ public class AisSystemService {
                 .geometryType(geometryType)
                 .coordinates(coordinates)
                 .symbolId(symbolId)
-                .approvalStatus(entity.getApprovalStatus())
-                .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
+                .approvalStatusLabel((entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()) != null ? (entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()).getLabel() : null)
                 .submittedAt(entity.getSubmittedAt())
                 .submittedBy(entity.getSubmittedBy())
                 .submittedByName(submittedByName)
@@ -1486,8 +1523,8 @@ public class AisSystemService {
                 .manufacturer(entity.getManufacturer())
                 .commissioningYear(entity.getCommissioningYear())
                 .conditionStatus(entity.getConditionStatus())
-                .approvalStatus(entity.getApprovalStatus())
-                .approvalStatusLabel(entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : null)
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
+                .approvalStatusLabel((entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()) != null ? (entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus()).getLabel() : null)
                 .submittedAt(entity.getSubmittedAt())
                 .submittedBy(entity.getSubmittedBy())
                 .submittedByName(submittedByName)

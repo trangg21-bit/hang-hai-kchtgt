@@ -59,6 +59,7 @@ import { usePermissionStore, type PermissionState } from '../../store/permission
 import { useAuthStore } from '../../store/authStore';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DetailTable from '../../components/shared/DetailTable';
@@ -906,6 +907,8 @@ function renderCoordinatesDisplay(val: string | null) {
 export default function RadarStationList() {
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const isInIframe = window.self !== window.top;
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -3605,16 +3608,18 @@ export default function RadarStationList() {
           isDetailMode ? null : editingRecord ? (
             // Ca sử dụng 8 (approval-2-level-spec.md 3.9) — bộ nút chân form theo trạng thái hồ sơ:
             editingRecord.approvalStatus === 'APPROVED' ? (
-              <div style={drawerFooterStyle}>
-                <Button
-                  type="primary"
-                  onClick={() => handleSubmit('approve')}
-                  loading={submitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              </div>
+              canSaveAndApprove ? (
+                <div style={drawerFooterStyle}>
+                  <Button
+                    type="primary"
+                    onClick={() => handleSubmit('approve')}
+                    loading={submitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
+                  </Button>
+                </div>
+              ) : null
             ) : (
               <div style={drawerFooterStyle}>
                 <Button
@@ -3632,6 +3637,16 @@ export default function RadarStationList() {
                     style={primaryButtonStyle}
                   >
                     Lưu và gửi phê duyệt
+                  </Button>
+                )}
+                {canSaveAndApprove && (
+                  <Button
+                    type="primary"
+                    onClick={() => handleSubmit('approve')}
+                    loading={submitting && actionType === 'approve'}
+                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                  >
+                    Lưu và phê duyệt
                   </Button>
                 )}
               </div>
@@ -3653,7 +3668,7 @@ export default function RadarStationList() {
               >
                 Lưu và gửi phê duyệt
               </Button>
-              {hasPerm('radarstation:approvec2') && (
+              {canSaveAndApprove && (
                 <Button
                   type="primary"
                   onClick={() => handleSubmit('approve')}

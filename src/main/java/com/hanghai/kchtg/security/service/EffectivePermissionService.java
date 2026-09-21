@@ -563,7 +563,20 @@ public class EffectivePermissionService {
             }
         }
 
-        // 3. Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
+        // 3. Implicit Read: Có bất kỳ quyền thao tác nào trên resource thì mặc định có quyền xem (read/view/search)
+        // để người dùng có thể tải bảng danh sách và mở trang thực hiện thao tác nghiệp vụ được giao
+        if (isReadAction(action)) {
+            for (String perm : permissions) {
+                int sep = perm.indexOf(':');
+                if (sep > 0) {
+                    String pRes = perm.substring(0, sep).trim().toLowerCase(Locale.ROOT);
+                    if (targetResources.contains(pRes) || targetResources.contains(normalize(pRes))) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         // 4. Legacy write match
         boolean isWriteAction = Set.of(ACTION_CREATE, ACTION_UPDATE, ACTION_DELETE).contains(action);
         if (isWriteAction) {

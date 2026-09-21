@@ -142,7 +142,7 @@ public class VtsSystemService {
         this.orgUnitScopeService = orgUnitScopeService;
     }
 
-    @Autowired
+    @Autowired(required = false)
     public void setPermissionCacheService(PermissionCacheService permissionCacheService) {
         this.permissionCacheService = permissionCacheService;
     }
@@ -1172,12 +1172,42 @@ public class VtsSystemService {
             previousValues.put(VtsSystem.Fields.portId, String.valueOf(entity.getPortId()));
             entity.setPortId(null);
         }
+        if (request.isOperatingOrgIdPresent() && request.getOperatingOrgId() == null && entity.getOperatingOrgId() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.operatingOrgId);
+            previousValues.put(VtsSystem.Fields.operatingOrgId, String.valueOf(entity.getOperatingOrgId()));
+            entity.setOperatingOrgId(null);
+        }
+        if (request.isProvinceIdPresent() && request.getProvinceId() == null && entity.getProvinceId() != null) {
+            FieldVisibilityContext.assertWritable(BaseApprovableEntity.Fields.provinceId);
+            previousValues.put(BaseApprovableEntity.Fields.provinceId, String.valueOf(entity.getProvinceId()));
+            entity.setProvinceId(null);
+        }
         if (request.isOperationStartDatePresent()
                 && request.getOperationStartDate() == null
                 && entity.getOperationStartDate() != null) {
             FieldVisibilityContext.assertWritable(VtsSystem.Fields.operationStartDate);
             previousValues.put(VtsSystem.Fields.operationStartDate, String.valueOf(entity.getOperationStartDate()));
             entity.setOperationStartDate(null);
+        }
+        if (request.isAddressPresent() && (request.getAddress() == null || request.getAddress().trim().isEmpty()) && entity.getAddress() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.address);
+            previousValues.put(VtsSystem.Fields.address, entity.getAddress());
+            entity.setAddress(null);
+        }
+        if (request.isMaritimeNoticePresent() && (request.getMaritimeNotice() == null || request.getMaritimeNotice().trim().isEmpty()) && entity.getMaritimeNotice() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.maritimeNotice);
+            previousValues.put(VtsSystem.Fields.maritimeNotice, entity.getMaritimeNotice());
+            entity.setMaritimeNotice(null);
+        }
+        if (request.isScopePresent() && (request.getScope() == null || request.getScope().trim().isEmpty()) && entity.getScope() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.scope);
+            previousValues.put(VtsSystem.Fields.scope, entity.getScope());
+            entity.setScope(null);
+        }
+        if (request.isNotePresent() && (request.getNote() == null || request.getNote().trim().isEmpty()) && entity.getNote() != null) {
+            FieldVisibilityContext.assertWritable(VtsSystem.Fields.note);
+            previousValues.put(VtsSystem.Fields.note, entity.getNote());
+            entity.setNote(null);
         }
 
         String oldCoordinates = null;
@@ -1966,6 +1996,15 @@ public class VtsSystemService {
             operatingOrgName = operatingOrgNameMap.get(item.getOperatingOrgId());
         }
 
+        if (updatedByName == null && createdByName != null) {
+            updatedByName = createdByName;
+        }
+
+        LocalDateTime updatedDate = item.getUpdatedDate();
+        if (updatedDate == null) {
+            updatedDate = item.getCreatedDate();
+        }
+
         return VtsSystemListItemResponse.builder()
                 .id(item.getId())
                 .code(item.getCode())
@@ -1979,7 +2018,10 @@ public class VtsSystemService {
                 .approverLevel1(approverLevel1)
                 .createdBy(createdBy)
                 .createdByName(createdByName)
-                .updatedDate(item.getUpdatedDate())
+                .updatedDate(updatedDate)
+                .createdDate(item.getCreatedDate())
+                .updatedAt(item.getUpdatedAt())
+                .createdAt(item.getCreatedAt())
                 .updatedByName(updatedByName)
                 .owningOrgId(item.getOwningOrgId())
                 .owningOrgName(orgUnitCacheService.getName(item.getOwningOrgId()))
@@ -2126,7 +2168,7 @@ public class VtsSystemService {
     }
 
     private String formatDisplayValue(String field, String rawValue) {
-        if (rawValue == null || rawValue.isEmpty())
+        if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue))
             return "";
         if (BaseApprovableEntity.Fields.orgUnitId.equals(field)
                 || VtsSystem.Fields.owningOrgId.equals(field)
@@ -2234,31 +2276,31 @@ public class VtsSystemService {
         if (field == null || entity == null)
             return "";
         if (VtsSystem.Fields.systemName.equals(field))
-            return String.valueOf(entity.getSystemName());
+            return entity.getSystemName() != null ? entity.getSystemName() : "";
         if (VtsSystem.Fields.conditionStatus.equals(field))
-            return String.valueOf(entity.getConditionStatus());
+            return entity.getConditionStatus() != null ? String.valueOf(entity.getConditionStatus()) : "";
         if (BaseApprovableEntity.Fields.orgUnitId.equals(field))
-            return String.valueOf(entity.getOrgUnitId());
+            return entity.getOrgUnitId() != null ? String.valueOf(entity.getOrgUnitId()) : "";
         if (VtsSystem.Fields.owningOrgId.equals(field))
-            return String.valueOf(entity.getOwningOrgId());
+            return entity.getOwningOrgId() != null ? String.valueOf(entity.getOwningOrgId()) : "";
         if (VtsSystem.Fields.operatingOrgId.equals(field))
-            return String.valueOf(entity.getOperatingOrgId());
+            return entity.getOperatingOrgId() != null ? String.valueOf(entity.getOperatingOrgId()) : "";
         if (VtsSystem.Fields.portId.equals(field))
-            return String.valueOf(entity.getPortId());
+            return entity.getPortId() != null ? String.valueOf(entity.getPortId()) : "";
         if (VtsSystem.Fields.code.equals(field))
-            return String.valueOf(entity.getCode());
+            return entity.getCode() != null ? entity.getCode() : "";
         if (BaseApprovableEntity.Fields.provinceId.equals(field) || "province".equals(field))
-            return String.valueOf(entity.getProvinceId());
+            return entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : "";
         if (VtsSystem.Fields.address.equals(field))
-            return String.valueOf(entity.getAddress());
+            return entity.getAddress() != null ? entity.getAddress() : "";
         if (VtsSystem.Fields.maritimeNotice.equals(field))
-            return String.valueOf(entity.getMaritimeNotice());
+            return entity.getMaritimeNotice() != null ? entity.getMaritimeNotice() : "";
         if (VtsSystem.Fields.operationStartDate.equals(field))
-            return String.valueOf(entity.getOperationStartDate());
+            return entity.getOperationStartDate() != null ? String.valueOf(entity.getOperationStartDate()) : "";
         if (VtsSystem.Fields.scope.equals(field))
-            return String.valueOf(entity.getScope());
+            return entity.getScope() != null ? entity.getScope() : "";
         if (VtsSystem.Fields.note.equals(field))
-            return String.valueOf(entity.getNote());
+            return entity.getNote() != null ? entity.getNote() : "";
         if (VtsSystem.Fields.zones.equals(field) || "zones".equals(field)) {
             return formatZones(entity.getZones());
         }

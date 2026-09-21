@@ -234,6 +234,7 @@ class VtsSystemRepositoryTest {
                 ApprovalStatus.APPROVED, null, null, org.springframework.data.domain.PageRequest.of(0, 20));
 
         assertEquals(2, result.getTotalElements());
+        assertNotNull(result.getContent().get(0).getUpdatedDate(), "updatedDate must not be null in searchList projection");
     }
 
     @Test

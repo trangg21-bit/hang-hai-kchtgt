@@ -28,6 +28,54 @@ public final class EntityUpdateUtils {
      * @param ignoreFields   Danh sách các trường cần bỏ qua (VD: "zones",
      *                       "coordinates", "geometryType")
      */
+    /**
+     * Tự động quét tất cả các thuộc tính từ DTO và copy sang Entity (kể cả khi giá trị là null).
+     * Đồng thời tự động phát hiện thay đổi và ghi nhận giá trị cũ vào previousValues map.
+     */
+    public static <R, E> void copyProperties(
+            R request,
+            E entity,
+            Map<String, String> previousValues,
+            String... ignoreFields) {
+        if (request == null || entity == null) {
+            return;
+        }
+
+        Set<String> ignores = ignoreFields != null && ignoreFields.length > 0
+                ? new HashSet<>(Arrays.asList(ignoreFields))
+                : Collections.emptySet();
+
+        Class<?> reqClass = request.getClass();
+        Class<?> entityClass = entity.getClass();
+
+        for (Field reqField : reqClass.getDeclaredFields()) {
+            String name = reqField.getName();
+            if (ignores.contains(name) || Modifier.isStatic(reqField.getModifiers())) {
+                continue;
+            }
+
+            reqField.setAccessible(true);
+            try {
+                Object newValue = reqField.get(request);
+
+                Field entityField = findField(entityClass, name);
+                if (entityField != null) {
+                    entityField.setAccessible(true);
+                    Object oldValue = entityField.get(entity);
+
+                    if (!areEqual(oldValue, newValue)) {
+                        com.hanghai.kchtg.fieldvisibility.FieldVisibilityContext.assertWritable(name);
+                        if (previousValues != null) {
+                            previousValues.put(name, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
+                        }
+                        entityField.set(entity, newValue);
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     public static <R, E> void copyPropertiesIfPresent(
             R request,
             E entity,

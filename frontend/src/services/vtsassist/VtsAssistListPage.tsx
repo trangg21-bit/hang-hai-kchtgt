@@ -110,6 +110,7 @@ import {
 } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import {
     ddToDms,
     dmsToDd,
@@ -1153,7 +1154,8 @@ const VtsAssistListPage = () => {
   const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("vtsassist:approvec2");
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('vtsassist', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);

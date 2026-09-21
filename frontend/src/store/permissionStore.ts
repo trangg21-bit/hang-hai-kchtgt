@@ -15,13 +15,18 @@ const LEGACY_ROUTE_FALLBACK_RESOURCES = new Set([
 const KCHT_RESOURCE_CANONICALS = new Set([
   'port', 'berth', 'pier', 'buoyberth', 'anchorage', 'transferarea', 'stormshelter', 'dryport',
   'waterzone', 'waterarea', 'navigationchannel', 'dikerevetment', 'shiprepairfacility', 'radarstation',
-  'lighthouse', 'buoy', 'vts', 'vtsoperationcenter', 'vtsassist', 'aissystem', 'cctv', 'scada',
+  'beaconstation', 'lighthouse', 'buoy', 'vts', 'vtsoperationcenter', 'vtsassist', 'aissystem', 'cctv', 'scada',
   'transmission', 'vhf', 'daittdh', 'ttxltt', 'coastalstation', 'specialstation', 'station',
-  'coastalstationinmarsat', 'cospassarsat', 'coastalstationhaiphong', 'lrit', 'asset', 'infraasset',
-  'assetincrease', 'assetdecrease', 'assetexploitation', 'movementrequest', 'inventoryasset',
-  'inventoryplan', 'inventoryreport', 'approvalrecord', 'processingrecord', 'maintenanceplan',
-  'operationplan', 'incident', 'gispoint', 'pointobject', 'gisline', 'lineobject', 'gispolygon',
-  'polygonobject',
+  'coastalstationinmarsat', 'coastalstationcospassarsat', 'coastalstationhaiphong', 'coastalstationlrit',
+  'lrit', 'cospassarsat', 'inmarsat',
+  'berthasset', 'pierasset', 'buoyberthasset', 'anchorageasset', 'transferareaasset', 'stormshelterasset',
+  'dryportasset', 'channelasset', 'dikerevetmentasset', 'buoyasset', 'lighthouseasset', 'radarasset',
+  'vtsasset', 'vtsassistasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vhfasset',
+  'daittdhasset', 'inmarsatasset', 'cospassarsatasset', 'lritasset', 'ttxlttasset',
+  'asset', 'infraasset', 'assetincrease', 'assetdecrease', 'assetexploitation', 'movementrequest',
+  'inventoryasset', 'inventoryplan', 'inventoryreport', 'approvalrecord', 'processingrecord',
+  'maintenanceplan', 'operationplan', 'incident', 'gispoint', 'pointobject', 'gisline', 'lineobject',
+  'gispolygon', 'polygonobject',
 ]);
 
 export interface PermissionState {
@@ -34,40 +39,16 @@ export interface PermissionState {
 }
 
 export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
-  // Maritime infrastructure assets
-  berthasset: 'berth',
-  transferareaasset: 'transferarea',
-  stormshelterasset: 'stormshelter',
-  buoyberthasset: 'buoyberth',
-  pierasset: 'pier',
-  anchorageasset: 'anchorage',
-  anchoragearea: 'anchorage',
-  lighthouseasset: 'lighthouse',
-  beaconstation: 'lighthouse',
-  beaconlight: 'lighthouse',
-  lighthousestation: 'lighthouse',
-  dikerevetmentasset: 'dikerevetment',
-  buoyasset: 'buoy',
-  buoystation: 'buoy',
-  channelasset: 'navigationchannel',
-  channel: 'navigationchannel',
-  dryportasset: 'dryport',
-  lritasset: 'lrit',
-  coastalstationlrit: 'lrit',
-  cospassarsatasset: 'cospassarsat',
-  coastalstationcospassarsat: 'cospassarsat',
-  vtsasset: 'vts',
+  // Aliases for coastal stations & maritime infrastructure (true synonyms only)
   vtssystem: 'vts',
-  radarasset: 'radarstation',
   tramradar: 'radarstation',
-  aisasset: 'aissystem',
-  cctvasset: 'cctv',
-  scadaasset: 'scada',
-  transmissionasset: 'transmission',
-  vtsassistasset: 'vtsassist',
-  vhfasset: 'vhf',
-  daittdhasset: 'daittdh',
-  inmarsatasset: 'inmarsat',
+  anchoragearea: 'anchorage',
+  channel: 'navigationchannel',
+  beaconlight: 'beaconstation',
+  lighthousestation: 'beaconstation',
+  lighthouse: 'beaconstation',
+  buoystation: 'buoy',
+  ttxltt: 'coastalstationhaiphong',
 
   // System & shared resources
   interconnect: 'connection',
@@ -77,73 +58,41 @@ export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
 };
 
 export const EQUIVALENT_RESOURCES_MAP: Record<string, string[]> = {
+  vts: ['vts', 'vtssystem'],
+  vtssystem: ['vts', 'vtssystem'],
+  dryport: ['dryport', 'dryportasset'],
+  dryportasset: ['dryport', 'dryportasset'],
   berth: ['berth', 'berthasset'],
   berthasset: ['berth', 'berthasset'],
+  pier: ['pier', 'pierasset'],
+  pierasset: ['pier', 'pierasset'],
+  buoyberth: ['buoyberth', 'buoyberthasset'],
+  buoyberthasset: ['buoyberth', 'buoyberthasset'],
   transferarea: ['transferarea', 'transferareaasset'],
   transferareaasset: ['transferarea', 'transferareaasset'],
   stormshelter: ['stormshelter', 'stormshelterasset'],
   stormshelterasset: ['stormshelter', 'stormshelterasset'],
-  buoyberth: ['buoyberth', 'buoyberthasset'],
-  buoyberthasset: ['buoyberth', 'buoyberthasset'],
-  pier: ['pier', 'pierasset'],
-  pierasset: ['pier', 'pierasset'],
-  anchorage: ['anchorage', 'anchorageasset'],
-  anchorageasset: ['anchorage', 'anchorageasset'],
-  lighthouse: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
-  lighthouseasset: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
-  beaconstation: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
-  beaconlight: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
-  lighthousestation: ['lighthouse', 'lighthouseasset', 'beaconstation', 'beaconlight', 'lighthousestation'],
-  dikerevetment: ['dikerevetment', 'dikerevetmentasset'],
-  dikerevetmentasset: ['dikerevetment', 'dikerevetmentasset'],
-  buoy: ['buoy', 'buoyasset', 'buoystation'],
-  buoyasset: ['buoy', 'buoyasset', 'buoystation'],
-  buoystation: ['buoy', 'buoyasset', 'buoystation'],
-  navigationchannel: ['navigationchannel', 'channel', 'channelasset'],
-  channel: ['navigationchannel', 'channel', 'channelasset'],
-  channelasset: ['navigationchannel', 'channel', 'channelasset'],
-  dryport: ['dryport', 'dryportasset'],
-  dryportasset: ['dryport', 'dryportasset'],
-  lrit: ['lrit', 'lritasset', 'coastalstationlrit'],
-  lritasset: ['lrit', 'lritasset', 'coastalstationlrit'],
-  coastalstationlrit: ['lrit', 'lritasset', 'coastalstationlrit'],
-  coastalstationinmarsat: ['coastalstationinmarsat'],
-  cospassarsat: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
-  cospassarsatasset: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
-  coastalstationcospassarsat: ['cospassarsat', 'cospassarsatasset', 'coastalstationcospassarsat'],
-  ttxlttasset: ['ttxlttasset'],
-  coastalstationhaiphong: ['coastalstationhaiphong'],
-  vts: ['vts', 'vtsasset', 'vtssystem'],
-  vtsasset: ['vts', 'vtsasset', 'vtssystem'],
-  vtssystem: ['vts', 'vtsasset', 'vtssystem'],
-  radarstation: ['radarstation', 'radarasset', 'tramradar'],
-  radarasset: ['radarstation', 'radarasset', 'tramradar'],
-  tramradar: ['radarstation', 'radarasset', 'tramradar'],
-  aissystem: ['aissystem', 'aisasset'],
-  aisasset: ['aissystem', 'aisasset'],
-  cctv: ['cctv', 'cctvasset'],
-  cctvasset: ['cctv', 'cctvasset'],
-  scada: ['scada', 'scadaasset'],
-  scadaasset: ['scada', 'scadaasset'],
-  transmission: ['transmission', 'transmissionasset'],
-  transmissionasset: ['transmission', 'transmissionasset'],
-  vtsassist: ['vtsassist', 'vtsassistasset'],
-  vtsassistasset: ['vtsassist', 'vtsassistasset'],
-  vhf: ['vhf', 'vhfasset'],
-  vhfasset: ['vhf', 'vhfasset'],
-  daittdh: ['daittdh', 'daittdhasset'],
-  daittdhasset: ['daittdh', 'daittdhasset'],
-  inmarsat: ['inmarsat', 'inmarsatasset'],
-  inmarsatasset: ['inmarsat', 'inmarsatasset'],
-  group: ['group', 'groupmember'],
-  groupmember: ['group', 'groupmember'],
-  connection: ['connection', 'interconnect'],
-  interconnect: ['connection', 'interconnect'],
+  radarstation: ['radarstation', 'tramradar'],
+  tramradar: ['radarstation', 'tramradar'],
+  beaconstation: ['beaconstation', 'beaconlight', 'lighthousestation', 'lighthouse'],
+  beaconlight: ['beaconstation', 'beaconlight', 'lighthousestation', 'lighthouse'],
+  lighthousestation: ['beaconstation', 'beaconlight', 'lighthousestation', 'lighthouse'],
+  lighthouse: ['beaconstation', 'beaconlight', 'lighthousestation', 'lighthouse'],
+  buoy: ['buoy', 'buoystation'],
+  buoystation: ['buoy', 'buoystation'],
+  navigationchannel: ['navigationchannel', 'channel'],
+  channel: ['navigationchannel', 'channel'],
+  coastalstationhaiphong: ['coastalstationhaiphong', 'ttxltt'],
+  ttxltt: ['coastalstationhaiphong', 'ttxltt'],
   shiprepairfacility: ['shiprepairfacility', 'shiprepair', 'shiprepairyard'],
   shiprepair: ['shiprepairfacility', 'shiprepair', 'shiprepairyard'],
   shiprepairyard: ['shiprepairfacility', 'shiprepair', 'shiprepairyard'],
   port: ['port', 'seaport'],
   seaport: ['port', 'seaport'],
+  connection: ['connection', 'interconnect'],
+  interconnect: ['connection', 'interconnect'],
+  group: ['group', 'groupmember'],
+  groupmember: ['group', 'groupmember'],
 };
 
 export function getEquivalentPermissionKeys(key: string): string[] {
@@ -172,51 +121,51 @@ export function getEquivalentPermissionKeys(key: string): string[] {
 }
 
 const RESOURCE_PARENT_DOMAINS: Record<string, string[]> = {
-  vtsasset: ['vts', 'vtssystem'],
-  radarasset: ['radarstation', 'tramradar'],
-  aisasset: ['aissystem'],
-  cctv: ['infraasset', 'vts', 'data'],
-  cctvasset: ['cctv', 'infraasset', 'vts', 'data'],
-  scada: ['infraasset', 'vts', 'data'],
-  scadaasset: ['scada', 'infraasset', 'vts', 'data'],
-  transmission: ['infraasset', 'vts', 'data'],
-  transmissionasset: ['transmission', 'infraasset', 'vts', 'data'],
-  vtsassist: ['infraasset', 'vts', 'data'],
-  vtsassistasset: ['vtsassist', 'infraasset', 'vts', 'data'],
-  shiprepairyard: ['shiprepairfacility', 'infraasset', 'port', 'data'],
-  shiprepairfacility: ['infraasset', 'port', 'data'],
-  shiprepair: ['shiprepairfacility', 'infraasset', 'port', 'data'],
-  vhfasset: ['vhf'],
-  daittdhasset: ['daittdh', 'coastalstation'],
-  coastalstationasset: ['coastalstation', 'specialstation', 'station'],
-  berthasset: ['berth'],
-  transferareaasset: ['transferarea'],
-  transferarea: ['infraasset', 'port', 'data'],
+  vtsasset: ['infraasset'],
+  radarasset: ['infraasset'],
+  aisasset: ['infraasset'],
+  cctv: ['infraasset', 'data'],
+  cctvasset: ['infraasset'],
+  scada: ['infraasset', 'data'],
+  scadaasset: ['infraasset'],
+  transmission: ['infraasset', 'data'],
+  transmissionasset: ['infraasset'],
+  vtsassist: ['infraasset', 'data'],
+  vtsassistasset: ['infraasset'],
+  shiprepairyard: ['shiprepairfacility', 'infraasset', 'data'],
+  shiprepairfacility: ['infraasset', 'data'],
+  shiprepair: ['shiprepairfacility', 'infraasset', 'data'],
+  vhfasset: ['infraasset'],
+  daittdhasset: ['coastalstationasset', 'stationasset'],
+  coastalstationasset: ['stationasset'],
+  berthasset: ['infraasset'],
+  transferareaasset: ['infraasset'],
+  transferarea: ['infraasset', 'data'],
 
-  stormshelterasset: ['stormshelter'],
-  buoyberthasset: ['buoyberth'],
-  pierasset: ['pier'],
-  anchorage: ['infraasset', 'port', 'data'],
-  anchorageasset: ['anchorage', 'infraasset', 'port', 'data'],
-  lighthouseasset: ['lighthouse', 'beaconstation'],
-  dikerevetmentasset: ['dikerevetment'],
-  buoyasset: ['buoy'],
-  channelasset: ['navigationchannel', 'channel'],
-  dryportasset: ['dryport', 'infraasset', 'port', 'data'],
-  dryport: ['infraasset', 'dryportasset', 'port', 'data'],
+  stormshelterasset: ['infraasset'],
+  buoyberthasset: ['infraasset'],
+  pierasset: ['infraasset'],
+  anchorage: ['infraasset', 'data'],
+  anchorageasset: ['infraasset'],
+  lighthouseasset: ['infraasset'],
+  dikerevetmentasset: ['infraasset'],
+  buoyasset: ['infraasset'],
+  channelasset: ['infraasset'],
+  dryportasset: ['infraasset'],
+  dryport: ['infraasset', 'data'],
 
-  lritasset: ['lrit', 'coastalstationlrit', 'specialstation', 'coastalstation', 'station'],
+  lritasset: ['stationasset'],
   lrit: ['specialstation', 'coastalstation', 'station'],
-  cospassarsatasset: ['cospassarsat', 'coastalstationcospassarsat', 'specialstation', 'coastalstation', 'station'],
+  cospassarsatasset: ['stationasset'],
   cospassarsat: ['specialstation', 'coastalstation', 'station'],
-  ttxlttasset: [],
+  ttxlttasset: ['stationasset'],
   coastalstationinmarsat: [],
-  inmarsatasset: ['inmarsat', 'specialstation', 'coastalstation', 'station'],
+  inmarsatasset: ['stationasset'],
   inmarsat: ['specialstation', 'coastalstation', 'station'],
   daittdh: ['coastalstation'],
-  coastalstationlrit: ['specialstation', 'coastalstation', 'station'],
-  coastalstationhaiphong: ['specialstation', 'coastalstation', 'station'],
-  coastalstationcospassarsat: ['specialstation', 'coastalstation', 'station'],
+  coastalstationlrit: [],
+  coastalstationhaiphong: [],
+  coastalstationcospassarsat: [],
   portplanning: ['document'],
   planningadjustment: ['document'],
   operationplan: ['document'],
@@ -325,14 +274,16 @@ export function hasPermissionFromList(
     if (requestedResource === 'data' || requestedResource === 'kcht') {
       return false;
     }
-    return permissions.has(normalizedKey);
+    const eqKeys = getEquivalentPermissionKeys(normalizedKey);
+    return eqKeys.some((k) => permissions.has(k));
   }
 
   // History is an independently assigned business permission.  It must not
   // be inherited from :read, :manage, parent resources, or legacy aliases.
   if (requestedAction === 'history') {
+    const candidateKeys = new Set(getEquivalentPermissionKeys(normalizedKey));
     return (grantedPermissions || []).some(
-      (permission) => normalizePermissionKey(permission?.trim() || '') === normalizedKey,
+      (permission) => candidateKeys.has(normalizePermissionKey(permission?.trim() || '')),
     );
   }
 
@@ -379,12 +330,20 @@ export function hasPermissionFromList(
     }
   }
 
-  // Implicit Read: Chỉ áp dụng cho xem menu/trang/tuyến đường khi không yêu cầu explicitOnly
-  if (!isKchtResource && !options?.explicitOnly && (action === 'read' || action === 'view' || action === 'search')) {
+  // Implicit Read: Cho phép xem menu/trang/danh sách khi người dùng có bất kỳ quyền thao tác nào trên tài nguyên
+  if (!options?.explicitOnly && (action === 'read' || action === 'view' || action === 'search')) {
+    const candidateKeys = getEquivalentPermissionKeys(normalizedKey);
+    const candidateResources = new Set(candidateKeys.map((k) => k.split(':', 2)[0]));
     for (const p of permissions) {
-      const pRes = p.split(':', 2)[0];
-      if (isResourceCoveredBy(pRes, resource)) {
-        return true;
+      const [pRes, pAct] = p.split(':', 2);
+      if (candidateResources.has(pRes)) {
+        if (['create', 'update', 'delete', 'approvec1', 'approvec2', 'history', 'write', 'read', 'view', 'search', 'manage', '*'].includes(pAct)) {
+          return true;
+        }
+      } else if (isResourceCoveredBy(pRes, resource)) {
+        if (['read', 'view', 'search', 'manage', '*'].includes(pAct)) {
+          return true;
+        }
       }
     }
   }
@@ -405,8 +364,8 @@ export function hasPermissionFromList(
 }
 
 /**
- * Chỉ kiểm tra mã quyền được gán trực tiếp. Không cho `*`, `admin:all`,
- * `:manage`, quyền cha hay alias tài nguyên trở thành quyền duyệt ngầm.
+ * Chỉ kiểm tra mã quyền được gán trực tiếp (hỗ trợ alias tài nguyên tương đương).
+ * Không cho `*`, `admin:all`, `:manage`, quyền cha hay domain cha trở thành quyền duyệt ngầm.
  * Dùng cho C1/C2 vì hai thao tác này phải hiện đúng theo checkbox phân quyền.
  */
 export function hasExplicitPermissionFromList(
@@ -416,8 +375,9 @@ export function hasExplicitPermissionFromList(
   const normalizedKey = normalizePermissionKey(key);
   if (!normalizedKey) return false;
 
+  const candidateKeys = new Set(getEquivalentPermissionKeys(normalizedKey));
   return (grantedPermissions || []).some(
-    (permission) => normalizePermissionKey(permission?.trim() || '') === normalizedKey,
+    (permission) => candidateKeys.has(normalizePermissionKey(permission?.trim() || '')),
   );
 }
 
@@ -459,7 +419,7 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
     );
     return normalizedKeys
       .filter((permission) => equivalentResources.has(permission.split(':', 1)[0]))
-      .some((permission) => get().hasPermission(permission, { explicitOnly: true }));
+      .some((permission) => get().hasPermission(permission));
   },
 
   hasAllPermissions: (keys: string[]) => {
