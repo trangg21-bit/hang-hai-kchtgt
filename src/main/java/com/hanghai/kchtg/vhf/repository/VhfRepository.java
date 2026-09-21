@@ -9,6 +9,8 @@ import java.util.Collection;
 import com.hanghai.kchtg.vhf.entity.Vhf;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.vhf.dto.VhfOptionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -54,7 +56,9 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
     @Query("SELECT v FROM Vhf v WHERE v.deletedAt IS NULL ORDER BY v.deviceName ASC")
     List<Vhf> findAllActiveForCache();
 
-    @Query("SELECT v FROM Vhf v WHERE " +
+    @Query(value = "SELECT v FROM Vhf v " +
+            "LEFT JOIN OrgUnit o ON o.id = v.orgUnitId " +
+            "LEFT JOIN Port p ON p.id = v.seaportId WHERE " +
             "(:isDeleted IS NULL OR (:isDeleted = true AND (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND v.deletedAt IS NULL AND v.deletedBy IS NULL AND v.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "AND (:includeAll = true OR v.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR v.orgUnitId IN :filterOrgUnitIds) " +
@@ -69,7 +73,23 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
             "AND (CAST(:provinceId AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.provinceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:provinceId AS string), '%'))) AS string)) " +
             "AND (:attachedInfrastructureType IS NULL OR v.attachedInfrastructureType = :attachedInfrastructureType) " +
             "AND (:attachedInfrastructureId IS NULL OR v.attachedInfrastructureId = :attachedInfrastructureId) " +
-            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))")
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))",
+            countQuery = "SELECT COUNT(v) FROM Vhf v WHERE " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND v.deletedAt IS NULL AND v.deletedBy IS NULL AND v.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+            "AND (:includeAll = true OR v.orgUnitId IN :orgUnitIds) " +
+            "AND (:filterEnabled = false OR v.orgUnitId IN :filterOrgUnitIds) " +
+            "AND (:seaportId IS NULL OR v.seaportId = :seaportId) " +
+            "AND (CAST(:deviceCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string)) " +
+            "AND (CAST(:deviceName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceName AS string), '%'))) AS string)) " +
+            "AND (:operationalStatus IS NULL OR v.operationalStatus = :operationalStatus) " +
+            "AND (:approvalStatus IS NULL OR v.approvalStatus = :approvalStatus OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 AND v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED) OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)) " +
+            "AND (:yearOfUse IS NULL OR v.yearOfUse = :yearOfUse) " +
+            "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR v.updatedAt >= :updatedFrom) " +
+            "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR v.updatedAt <= :updatedTo) " +
+            "AND (CAST(:provinceId AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.provinceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:provinceId AS string), '%'))) AS string)) " +
+            "AND (:attachedInfrastructureType IS NULL OR v.attachedInfrastructureType = :attachedInfrastructureType) " +
+            "AND (:attachedInfrastructureId IS NULL OR v.attachedInfrastructureId = :attachedInfrastructureId) " +
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))")
     Page<Vhf> searchVhf(
             @Param("isDeleted") Boolean isDeleted,
             @Param("includeAll") boolean includeAll,

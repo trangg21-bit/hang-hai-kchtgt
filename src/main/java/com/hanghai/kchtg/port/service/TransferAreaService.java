@@ -199,11 +199,18 @@ public class TransferAreaService {
             entity.setActivityStartDate(request.getActivityStartDate());
         if (request.getActivityEndDate() != null)
             entity.setActivityEndDate(request.getActivityEndDate());
-        entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        boolean hasGeometryType = request.getGeometryType() != null;
+        boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
+
+        if (hasGeometryType && hasCoordinates) {
+            entity.setMapSymbolId(request.getMapSymbolId());
+            entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
+            entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
+        } else {
+            entity.setMapSymbolId(null);
+            entity.setCoordinateSystem(null);
+            entity.setDisplayRule(null);
+        }
 
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
@@ -244,21 +251,30 @@ public class TransferAreaService {
 
         // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
-            if (coordinates != null && !coordinates.trim().isEmpty()) {
+            if (hasGeometryType && hasCoordinates) {
                 GisGeometryType geomType = request.getGeometryType() != null
                         ? request.getGeometryType() : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
                             geometryTypeLabel(geomType), actorId);
+                }
+            } else if (oldWkt != null || oldGeomType != null) {
+                if (oldWkt != null && !oldWkt.trim().isEmpty()) {
+                    changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Tọa độ GIS",
+                            oldWkt.trim(), "Chưa có", actorId);
+                }
+                if (oldGeomType != null) {
+                    changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Loại đối tượng GIS",
+                            geometryTypeLabel(oldGeomType), "Chưa có", actorId);
                 }
             }
 
@@ -292,11 +308,29 @@ public class TransferAreaService {
                                               UUID portId, Integer provinceId, String operationalFunctions,
                                               String operationalStatus, String approvalStatus,
                                               String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, search, transferAreaCode, transferAreaName,
+                portId, provinceId, operationalFunctions, operationalStatus, approvalStatus, updatedFrom, updatedTo, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<TransferAreaResponse> findAll(int page, int size, UUID orgUnitId,
+                                              String search, String transferAreaCode, String transferAreaName,
+                                              UUID portId, Integer provinceId, String operationalFunctions,
+                                              String operationalStatus, String approvalStatus,
+                                              String updatedFrom, String updatedTo,
+                                              String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                        Sort.Order.desc(EntityFields.CREATED_AT),
-                        Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                Sort.Order.desc(EntityFields.CREATED_AT),
+                Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
@@ -357,6 +391,47 @@ public class TransferAreaService {
         }
         evictAfterCommit();
         log.info("Soft-deleted TransferArea [{}] code={}", entity.getId(), entity.getTransferAreaCode());
+    }
+
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null) return null;
+        switch (sortBy.trim()) {
+            case "transferAreaCode":
+            case "code":
+                return "transferAreaCode";
+            case "transferAreaName":
+            case "name":
+                return "transferAreaName";
+            case "portId":
+                return "portId";
+            case "provinceId":
+                return "provinceId";
+            case "operationalFunctions":
+                return "operationalFunctions";
+            case "operationalStatus":
+                return "operationalStatus";
+            case "approvalStatus":
+                return "approvalStatus";
+            case "orgUnitId":
+                return "orgUnitId";
+            case "area":
+                return "area";
+            case "maxVesselDWT":
+            case "maxVesselDwt":
+                return "maxVesselDWT";
+            case "submittedForApprovalAt":
+                return "submittedForApprovalAt";
+            case "portAuthorityApprovedAt":
+                return "portAuthorityApprovedAt";
+            case "departmentApprovedAt":
+                return "departmentApprovedAt";
+            case "createdAt":
+                return "createdAt";
+            case "updatedAt":
+                return "updatedAt";
+            default:
+                return null;
+        }
     }
 
     public String generateTransferAreaCode(UUID portId) {
@@ -676,16 +751,22 @@ public class TransferAreaService {
         if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
             wkt = "POINT(" + longitude + " " + latitude + ")";
         }
-        if (wkt != null && !wkt.trim().isEmpty()) {
-            GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
+        if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
+            GisGeometryType geomType = geometryType;
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(), saved.getTransferAreaName(), "TRANSFER_AREA_" + saved.getTransferAreaCode(),
                     geomType, GisSpatialObjectType.POLYGON_TRANSSHIPMENT, wkt, saved.getId(),
                     InfrastructureType.TRANSSHIPMENT_AREA);
             saved.setSpatialId(spatialObj.getId());
             transferAreaRepository.saveAndFlush(saved);
-        } else if (saved.getSpatialId() != null) {
-            gisSpatialObjectService.delete(saved.getSpatialId());
+        } else {
+            if (saved.getSpatialId() != null) {
+                gisSpatialObjectService.delete(saved.getSpatialId());
+            }
+            if (saved.getId() != null) {
+                gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.TRANSSHIPMENT_AREA)
+                        .ifPresent(sp -> gisSpatialObjectService.delete(sp.getId()));
+            }
             saved.setSpatialId(null);
             transferAreaRepository.saveAndFlush(saved);
         }

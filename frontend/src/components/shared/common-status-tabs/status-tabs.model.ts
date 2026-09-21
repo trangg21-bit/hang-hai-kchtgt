@@ -51,7 +51,7 @@ export interface CommonStatusTabsProps {
 }
 
 /**
- * Danh sách 8 tab trạng thái phê duyệt chuẩn hệ thống Hàng hải KCHTGT (chuẩn Quản lý khu neo đậu)
+ * Danh sách 8 tab trạng thái phê duyệt chuẩn hệ thống Hàng hải KCHTGT (chuẩn Khu neo đậu)
  * 1. Tất cả (#0E6FD6)
  * 2. Lưu tạm (#93A3B3)
  * 3. Chờ phê duyệt cấp Cảng vụ/Chi cục (#204E9C)

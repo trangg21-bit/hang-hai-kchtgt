@@ -338,6 +338,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
   const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingWaterways, setLoadingWaterways] = useState(false);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
@@ -478,11 +479,36 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   }, []);
 
   // Load waterways
-  useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
-      .catch(() => {});
-  }, []);
+  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
+    if (!orgUnitId) {
+      setWaterwayOptions([]);
+      return;
+    }
+    setLoadingWaterways(true);
+    try {
+      const r = await navigationChannelCRUD.search({
+        orgUnitId,
+        approvalStatus: 'APPROVED',
+        page: 0,
+        size: 1000,
+      });
+      const options = (r.items || []).map((n) => {
+        const code = n.channelCode?.trim();
+        const name = n.channelName?.trim();
+        const label = code && name ? `${code} - ${name}` : (code || name || '');
+        return { value: n.id, label };
+      });
+      setWaterwayOptions(options);
+      const currentWaterwayId = form.getFieldValue('navigationChannelId');
+      if (currentWaterwayId && !options.some((o) => o.value === currentWaterwayId)) {
+        form.setFieldsValue({ navigationChannelId: undefined });
+      }
+    } catch {
+      setWaterwayOptions([]);
+    } finally {
+      setLoadingWaterways(false);
+    }
+  }, [form]);
 
   // Load buoy stations
   useEffect(() => {
@@ -495,8 +521,10 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   useEffect(() => {
     if (!watchedOrgUnitId) {
       setPortOptions([]);
+      setWaterwayOptions([]);
       return;
     }
+    loadWaterwayOptions(watchedOrgUnitId);
     (async () => {
       setLoadingPorts(true);
       try {
@@ -505,7 +533,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       } catch { /* silent */ }
       finally { setLoadingPorts(false); }
     })();
-  }, [watchedOrgUnitId]);
+  }, [watchedOrgUnitId, loadWaterwayOptions]);
 
   // Auto-generate code when portId selected (for create mode)
   useEffect(() => {
@@ -590,6 +618,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
           setCoordinateList([]);
         }
 
+        if (d.orgUnitId) loadWaterwayOptions(d.orgUnitId);
         form.setFieldsValue({
           orgUnitId: d.orgUnitId,
           portId: d.portId,
@@ -1211,7 +1240,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+                  <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải...'} options={waterwayOptions} loading={loadingWaterways} disabled={!watchedOrgUnitId} showSearch allowClear optionFilterProp="label" notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc đơn vị quản lý'} style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>

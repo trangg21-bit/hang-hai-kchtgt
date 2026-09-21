@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.cctv.dto.CctvOptionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -68,7 +69,23 @@ public interface CctvRepository extends JpaRepository<Cctv, UUID> {
     @Query("SELECT c FROM Cctv c WHERE c.deletedAt IS NULL ORDER BY c.deviceName ASC")
     List<Cctv> findAllActiveForCache();
 
-    @Query("SELECT c FROM Cctv c WHERE " +
+    @Query(value = "SELECT c FROM Cctv c " +
+            "LEFT JOIN OrgUnit o ON o.id = c.orgUnitId WHERE " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (c.deletedAt IS NOT NULL OR c.deletedBy IS NOT NULL)) OR (:isDeleted = false AND c.deletedAt IS NULL AND c.deletedBy IS NULL)) " +
+            "AND (:includeAll = true OR c.orgUnitId IN :orgUnitIds) " +
+            "AND (:filterEnabled = false OR c.orgUnitId IN :filterOrgUnitIds) " +
+            "AND (CAST(:deviceCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string)) " +
+            "AND (CAST(:deviceName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceName AS string), '%'))) AS string)) " +
+            "AND (:operationalStatus IS NULL OR c.operationalStatus = :operationalStatus) " +
+            "AND (:approvalStatus IS NULL OR c.approvalStatus = :approvalStatus) " +
+            "AND (:yearOfUse IS NULL OR c.yearOfUse = :yearOfUse) " +
+            "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR c.updatedAt >= :updatedFrom) " +
+            "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR c.updatedAt <= :updatedTo) " +
+            "AND (CAST(:provinceId AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(c.provinceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:provinceId AS string), '%'))) AS string)) " +
+            "AND (:attachedInfrastructureType IS NULL OR c.attachedInfrastructureType = :attachedInfrastructureType) " +
+            "AND (:attachedInfrastructureId IS NULL OR c.attachedInfrastructureId = :attachedInfrastructureId) " +
+            "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(c.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(c.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)))",
+            countQuery = "SELECT COUNT(c) FROM Cctv c WHERE " +
             "(:isDeleted IS NULL OR (:isDeleted = true AND (c.deletedAt IS NOT NULL OR c.deletedBy IS NOT NULL)) OR (:isDeleted = false AND c.deletedAt IS NULL AND c.deletedBy IS NULL)) " +
             "AND (:includeAll = true OR c.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR c.orgUnitId IN :filterOrgUnitIds) " +

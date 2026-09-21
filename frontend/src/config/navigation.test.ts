@@ -98,7 +98,7 @@ const MATRIX_28_KEYS = [
   '/dry-port', // Cảng cạn
   '/vts-system', // Hệ thống VTS
   '/vts-operation-center', // Trung tâm điều hành VTS
-  '/radar-station', // Trạm Radar
+  '/radar-station', // Trạm radar
   '/ais-system', // Hệ thống AIS
   '/cctv', // Hệ thống CCTV
   '/scada', // Hệ thống SCADA
@@ -168,11 +168,11 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     expect(byKey.get('/pier')?.ancestors).toEqual(['/port', '/berth']);
     // Luồng hàng hải → Bến phao
     expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/navigation-channel']);
-    // Luồng hàng hải → Quản lý hệ thống thông tin liên lạc VHF
+    // Luồng hàng hải → Hệ thống thông tin liên lạc VHF
     expect(byKey.get('/vhf')?.ancestors).toEqual(['/navigation-channel']);
     // Luồng hàng hải → Nhà trạm phao tiêu → Phao tiêu
     expect(byKey.get('/buoys')?.ancestors).toEqual(['/navigation-channel', '/buoy-station']);
-    // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS, Trạm Radar (cùng cấp con trực tiếp của /vts-system)
+    // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS, Trạm radar (cùng cấp con trực tiếp của /vts-system)
     expect(byKey.get('/vts-operation-center')?.ancestors).toEqual(['/vts-system']);
     expect(byKey.get('/radar-station')?.ancestors).toEqual(['/vts-system']);
     expect(byKey.get('/dai-ttdh')?.ancestors).toEqual(['kcht-vienthong']);
@@ -513,7 +513,7 @@ describe('navigation.searchNavGroups — lọc 6 khối landing (R-2..R-7)', () 
   });
 
   it('matches a group via a deep child label inside group.tree', () => {
-    // '/pier' — Quản lý cầu cảng (kcht), '/asset/pier' — Tài sản cầu cảng (asset), và nhóm report có biểu mẫu đăng ký bến/cầu cảng
+    // '/pier' — Cầu cảng (kcht), '/asset/pier' — Tài sản cầu cảng (asset), và nhóm report có biểu mẫu đăng ký bến/cầu cảng
     const hits = searchNavGroups('cau cang', NAV_GROUPS);
     expect(hits.map((g) => g.id)).toEqual(['kcht', 'asset', 'report']);
     expect(searchNavGroups('cầu cảng', NAV_GROUPS).map((g) => g.id)).toEqual(['kcht', 'asset', 'report']);

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -30,7 +30,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService } from '../../services/organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { beaconStationCRUD } from '../../services/beaconService';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
@@ -249,11 +249,30 @@ export default forwardRef(function BeaconStationForm(
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
+  const watchedUnitId = Form.useWatch('unitId', form);
+  const selectedUnitId = watchedUnitId ?? form.getFieldValue('unitId');
+  const watchedSeaportId = Form.useWatch('seaportId', form);
+  const editSeaportIdRef = useRef<string | undefined>(undefined);
 
   const [internalOrganizations, setInternalOrganizations] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const organizations = propOrganizations && propOrganizations.length > 0 ? propOrganizations : internalOrganizations;
-  const [seaports, setSeaports] = useState<Array<{ id: string; portName?: string; portCode?: string }>>([]);
+  const [seaports, setSeaports] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
+
+  const allowedOrgIds = useMemo(() => {
+    if (!selectedUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(organizations, String(selectedUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [organizations, selectedUnitId]);
+
+  const filteredSeaportOptions = useMemo(() => {
+    if (!selectedUnitId || allowedOrgIds.size === 0) return [];
+    return seaports.filter((port) => {
+      return port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, seaports, selectedUnitId]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
@@ -280,9 +299,26 @@ export default forwardRef(function BeaconStationForm(
         .finally(() => setLoadingOrgs(false));
     }
 
-    portCRUD.findAll()
-      .then((r) => setSeaports((r as any)?.data || r || []))
-      .catch(() => {});
+    api.get('/common/options/ports').then((res) => {
+      const data = res.data?.data;
+      if (Array.isArray(data) && data.length > 0) {
+        setSeaports(data);
+      } else {
+        api.get('/v1/ports?size=1000').then((r) => {
+          const list = r.data?.data?.content || r.data?.data || [];
+          if (Array.isArray(list)) {
+            setSeaports(list.map((p: any) => ({
+              id: p.id,
+              portName: p.portName || p.name || '',
+              portCode: p.portCode || p.code,
+              orgUnitId: p.orgUnitId,
+            })));
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {
+      portCRUD.getOptions().then((opts) => setSeaports(opts || [])).catch(() => {});
+    });
 
     symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
       .then((r) => setSymbols(r.data || []))
@@ -298,17 +334,9 @@ export default forwardRef(function BeaconStationForm(
       .catch(() => {});
   }, [propOrganizations]);
 
-  // Set default code & unit for create mode
+  // Set default unit for create mode
   useEffect(() => {
     if (!isEdit) {
-      setCodeLoading(true);
-      beaconStationCRUD.generateCode()
-        .then((code) => {
-          if (code) form.setFieldsValue({ code });
-        })
-        .catch(() => {})
-        .finally(() => setCodeLoading(false));
-
       // Mặc định đơn vị quản lý theo tài khoản người dùng đang tạo bản ghi mới
       const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
         || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
@@ -328,12 +356,32 @@ export default forwardRef(function BeaconStationForm(
     }
   }, [isEdit, form, currentUser, organizations]);
 
+  // Tự sinh mã đèn biển khi người dùng chọn Thuộc cảng biển (chuẩn /berth)
+  useEffect(() => {
+    if (isEdit && editSeaportIdRef.current === watchedSeaportId) return;
+    if (!watchedSeaportId) {
+      if (!isEdit) {
+        form.setFieldValue('code', undefined);
+      }
+      return;
+    }
+    if (isEdit) return;
+    setCodeLoading(true);
+    beaconStationCRUD.generateCode()
+      .then((code) => {
+        if (code) form.setFieldsValue({ code });
+      })
+      .catch(() => {})
+      .finally(() => setCodeLoading(false));
+  }, [watchedSeaportId, isEdit, form]);
+
   // Load data for edit mode
   useEffect(() => {
     if (!isEdit || !id) return;
     (async () => {
       try {
         const record = initialData || await beaconStationCRUD.findById(id);
+        editSeaportIdRef.current = record.seaportId ?? undefined;
         const seedCoords = record.coordinates ? parseWktToCoordinates(record.coordinates) : [];
         const initialCoords = seedCoords.length > 0
           ? seedCoords
@@ -585,7 +633,10 @@ export default forwardRef(function BeaconStationForm(
       return;
     }
     const validCoords = coordResult.validCoords;
-    const coordinatesWkt = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
+    const hasGeom = !!values.geometryType;
+    const coordinatesWkt = hasGeom && validCoords.length > 0
+      ? serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT')
+      : null;
 
     setSubmitting(true);
     onSubmittingChange?.(true);
@@ -623,13 +674,13 @@ export default forwardRef(function BeaconStationForm(
         region: values.region,
         identifyingFeature: values.identifyingFeature,
         note: values.note,
-        geometryType: values.geometryType || undefined,
-        mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule || undefined,
-        coordinates: coordinatesWkt || undefined,
-        latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
-        longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
+        geometryType: hasGeom ? values.geometryType : null,
+        mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
+        coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+        displayRule: hasGeom && values.displayRule ? values.displayRule : null,
+        coordinates: hasGeom && coordinatesWkt ? coordinatesWkt : null,
+        latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
+        longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
       };
 
       Object.keys(payload).forEach((k) => {
@@ -706,17 +757,44 @@ export default forwardRef(function BeaconStationForm(
                     loading={loadingOrgs}
                     disabled={isEdit && !isSystemAdmin}
                     treeDefaultExpandAll={false}
+                    onChange={(val) => {
+                      form.setFieldValue('unitId', val);
+                      const currentSeaportId = form.getFieldValue('seaportId');
+                      if (!val) {
+                        form.setFieldValue('seaportId', undefined);
+                      } else if (currentSeaportId) {
+                        const rawSet = resolveOrgSubtreeIds(organizations, String(val));
+                        const normalizedSet = new Set<string>();
+                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                        const isValid = seaports.some(
+                          (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
+                        );
+                        if (!isValid) {
+                          form.setFieldValue('seaportId', undefined);
+                        }
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="seaportId"
+                  {...labelProps('Thuộc cảng biển')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Thuộc cảng biển là bắt buộc' }]}
+                >
                   <Select
-                    placeholder="Chọn cảng biển..."
+                    placeholder={!selectedUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+                    disabled={!selectedUnitId}
                     allowClear
                     showSearch
                     optionFilterProp="label"
-                    options={seaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
+                    options={filteredSeaportOptions.map((p) => ({
+                      value: p.id,
+                      label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),
+                    }))}
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -724,8 +802,17 @@ export default forwardRef(function BeaconStationForm(
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="code" {...labelProps('Mã đèn biển')} style={{ marginBottom: spaceFormField }} tooltip="Mã đèn biển được sinh tự động">
-                  <Input disabled placeholder={codeLoading ? 'Đang sinh mã...' : 'Mã tự sinh (DBNT-XXXXXX)'} style={readonlyInputStyle} />
+                <Form.Item
+                  name="code"
+                  {...labelProps('Mã đèn biển')}
+                  style={{ marginBottom: spaceFormField }}
+                  tooltip="Mã đèn biển được sinh tự động"
+                >
+                  <Input
+                    disabled
+                    placeholder={codeLoading ? 'Đang sinh mã...' : watchedSeaportId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
+                    style={readonlyInputStyle}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>

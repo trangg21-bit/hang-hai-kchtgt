@@ -83,6 +83,7 @@ import {
   primaryButtonStyle,
   radiusMd,
   radiusPill,
+  readonlyInputStyle,
   requiredMarkStyle,
   selectStyle,
   spaceFormField,
@@ -596,6 +597,27 @@ export default function DikeRevetmentList() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState('');
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>('updatedByName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField('updatedByName');
+      setSortOrder('desc');
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   // ── Pagination ──────────────────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -613,7 +635,7 @@ export default function DikeRevetmentList() {
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
-  const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string }[]>([]);
+  const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }[]>([]);
 
   // ── GIS form state (chuẩn màn /port) ─────────────────────────────
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
@@ -658,6 +680,8 @@ export default function DikeRevetmentList() {
   const [createForm] = Form.useForm();
   const createGeometryType = Form.useWatch('geometryType', createForm);
   const createOrgUnitId = Form.useWatch('orgUnitId', createForm);
+  const watchedSeaportId = Form.useWatch('seaportId', createForm);
+  const editSeaportIdRef = useRef<string | undefined>(undefined);
 
   const useMaxReached = (name: string, max: number): boolean => {
     const raw = Form.useWatch(name, createForm) ?? '';
@@ -672,15 +696,19 @@ export default function DikeRevetmentList() {
   };
 
   const filteredSeaports = useMemo(() => {
-    if (!createOrgUnitId) return seaports;
-    const allowedOrgIds = resolveOrgSubtreeIds(organizations, String(createOrgUnitId));
-    return seaports.filter((p: any) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
+    if (!createOrgUnitId) return [];
+    const rawSet = resolveOrgSubtreeIds(organizations, String(createOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaports.filter((p: any) => p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()));
   }, [seaports, organizations, createOrgUnitId]);
 
   const filteredFilterSeaports = useMemo(() => {
-    if (!filterUnitId) return seaports;
-    const allowedOrgIds = resolveOrgSubtreeIds(organizations, String(filterUnitId));
-    return seaports.filter((p: any) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
+    if (!filterUnitId || filterUnitId === '__all__') return seaports;
+    const rawSet = resolveOrgSubtreeIds(organizations, String(filterUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaports.filter((p: any) => p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()));
   }, [seaports, organizations, filterUnitId]);
   // Chống race khi đóng/mở drawer nhanh trong lúc getById nạp chi tiết (chuẩn /vts-operation-center)
   const editOpenSeqRef = useRef(0);
@@ -912,10 +940,26 @@ export default function DikeRevetmentList() {
   }, [currentUser]);
 
   useEffect(() => {
-    (async () => {
-      const list = await portCRUD.getOptions();
-      setSeaports(list || []);
-    })();
+    api.get('/common/options/ports').then((res) => {
+      const data = res.data?.data;
+      if (Array.isArray(data) && data.length > 0) {
+        setSeaports(data);
+      } else {
+        api.get('/v1/ports?size=1000').then((r) => {
+          const list = r.data?.data?.content || r.data?.data || [];
+          if (Array.isArray(list)) {
+            setSeaports(list.map((p: any) => ({
+              id: p.id,
+              portName: p.portName || p.name || '',
+              portCode: p.portCode || p.code,
+              orgUnitId: p.orgUnitId,
+            })));
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {
+      portCRUD.getOptions().then((opts) => setSeaports(opts || [])).catch(() => {});
+    });
   }, []);
 
   // Load symbols for GIS tab (chuẩn /port)
@@ -950,6 +994,8 @@ export default function DikeRevetmentList() {
         commissioningYear: filterCommissioningYear,
         updatedFrom: filterUpdatedRange?.[0] ? filterUpdatedRange[0].format('YYYY-MM-DD') : undefined,
         updatedTo: filterUpdatedRange?.[1] ? filterUpdatedRange[1].format('YYYY-MM-DD') : undefined,
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : 'DESC',
       });
       const items = activeTab === ''
         ? (res.items || []).filter((item) => !isDikeRevetmentDeleted(item))
@@ -961,7 +1007,7 @@ export default function DikeRevetmentList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterName, filterCode, filterSeaportId, filterLocation, filterType, filterStatusVal, filterUnitId, filterCommissioningYear, filterUpdatedRange, activeTab]);
+  }, [page, pageSize, filterName, filterCode, filterSeaportId, filterLocation, filterType, filterStatusVal, filterUnitId, filterCommissioningYear, filterUpdatedRange, activeTab, sortField, sortOrder]);
 
   useEffect(() => {
     if (orgUnitReady) void fetchData();
@@ -985,35 +1031,30 @@ export default function DikeRevetmentList() {
     const results = await Promise.allSettled(
       STATUS_TAB_LIST.map((tab) =>
         dikeRevetmentCRUD.search({
-          page: 0,
+          page: 1,
           size: 1,
           approvalStatus: TAB_QUERY_MAP[tab.key],
           isDeleted: tab.key === 'ARCHIVED' ? true : (tab.key === '' ? false : undefined),
           ...filterScope,
         })
-      ),
+      )
     );
     const counts: Record<string, number> = {};
-    STATUS_TAB_LIST.forEach((tab, idx) => {
-      if (results[idx].status === 'fulfilled') {
-        counts[tab.key] = (results[idx] as PromiseFulfilledResult<any>).value?.total || 0;
-      } else {
-        counts[tab.key] = 0;
+    results.forEach((res, i) => {
+      if (res.status === 'fulfilled') {
+        counts[STATUS_TAB_LIST[i].key] = res.value.total;
       }
     });
-    const sumChildCounts = STATUS_TAB_LIST.filter((t) => t.key !== '' && t.key !== 'ARCHIVED').reduce((acc, t) => acc + (counts[t.key] || 0), 0);
-    if (sumChildCounts > 0 && (!counts[''] || counts[''] < sumChildCounts)) {
-      counts[''] = sumChildCounts;
-    }
     setTabCounts(counts);
-  }, [filterUnitId, filterCode, filterName, filterSeaportId, filterLocation, filterType, filterStatusVal, filterCommissioningYear, filterUpdatedRange]);
+  }, [filterName, filterCode, filterSeaportId, filterLocation, filterType, filterStatusVal, filterUnitId, filterCommissioningYear, filterUpdatedRange]);
 
   useEffect(() => {
     if (orgUnitReady) void fetchTabCounts();
   }, [fetchTabCounts, orgUnitReady]);
 
-  const statusTabs = useMemo(() =>
-    STATUS_TAB_LIST.map((tab) => ({
+  // Tab items: đồng bộ số lượng tức thì trên tab active bằng state total
+  const statusTabs = useMemo(
+    () => STATUS_TAB_LIST.map((tab) => ({
       ...tab,
       count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? (tab.key === '' ? total : 0)),
       active: activeTab === tab.key,
@@ -1050,6 +1091,8 @@ export default function DikeRevetmentList() {
     setFilterUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterCommissioningYear(undefined);
     setFilterUpdatedRange(null);
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setActiveTab('');
     setPage(1);
   };
@@ -1062,11 +1105,13 @@ export default function DikeRevetmentList() {
     }
     editOpenSeqRef.current += 1;
     setEditingRecord(null);
+    editSeaportIdRef.current = undefined;
     setDetailRecord(null);
     setIsDetailMode(false);
     createForm.resetFields();
     createForm.setFieldsValue({
       status: '2',
+      code: undefined,
     });
     setCoordinateList([]);
     setGpsError(null);
@@ -1074,21 +1119,6 @@ export default function DikeRevetmentList() {
     setPendingDeletedAttachments([]);
     setActiveTabKey('general');
     setDrawerVisible(true);
-    // Auto-generate mã đê kè mới (chuẩn /port)
-    setCodeLoading(true);
-    (async () => {
-      try {
-        const res = await api.get('/v1/dike-revetment/generate-code');
-        const code: string | undefined = res.data?.data?.code;
-        if (code) {
-          createForm.setFieldsValue({ code });
-        }
-      } catch {
-        // không chặn mở form nếu sinh mã lỗi
-      } finally {
-        setCodeLoading(false);
-      }
-    })();
     // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
     const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, organizations)
       || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
@@ -1118,6 +1148,7 @@ export default function DikeRevetmentList() {
     editOpenSeqRef.current += 1;
     const seq = editOpenSeqRef.current;
     setEditingRecord(record);
+    editSeaportIdRef.current = record.seaportId ?? undefined;
     setDetailRecord(null);
     setIsDetailMode(false);
     createForm.setFieldsValue({
@@ -1200,6 +1231,32 @@ export default function DikeRevetmentList() {
     })();
   }, [createForm]);
 
+  // Tự sinh mã đê kè khi người dùng chọn Thuộc cảng biển (chuẩn /berth, /vhf, /beacon-stations)
+  useEffect(() => {
+    if (editingRecord && editSeaportIdRef.current === watchedSeaportId) return;
+    if (!watchedSeaportId) {
+      if (!editingRecord) {
+        createForm.setFieldValue('code', undefined);
+      }
+      return;
+    }
+    if (editingRecord) return;
+    setCodeLoading(true);
+    (async () => {
+      try {
+        const res = await api.get('/v1/dike-revetment/generate-code');
+        const code: string | undefined = res.data?.data?.code;
+        if (code) {
+          createForm.setFieldsValue({ code });
+        }
+      } catch {
+        // không chặn nếu sinh mã lỗi
+      } finally {
+        setCodeLoading(false);
+      }
+    })();
+  }, [watchedSeaportId, editingRecord, createForm]);
+
   const openDetailDrawer = useCallback(async (record: DikeRevetmentResponse) => {
     if (!hasPerm?.('dikerevetment:read')) {
       message.warning('Bạn không có quyền xem chi tiết công trình đê kè');
@@ -1253,8 +1310,11 @@ export default function DikeRevetmentList() {
         setActiveTabKey('gis');
         return;
       }
+      const hasGeom = !!values.geometryType;
       const validCoords = coordResult.validCoords;
-      const coordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'LINE');
+      const coordinates = hasGeom && validCoords.length > 0
+        ? serializeCoordinatesToWkt(validCoords, values.geometryType || 'LINE')
+        : null;
       setSubmitting(true);
       const payload: CreateDikeRevetmentRequest = {
         dikeRevetmentType: values.dikeRevetmentType,
@@ -1284,9 +1344,9 @@ export default function DikeRevetmentList() {
         status: values.status,
         orgUnitId: values.orgUnitId,
         code: values.code,
-        geometryType: values.geometryType,
-        coordinates,
-        symbolId: values.symbolId,
+        geometryType: hasGeom ? values.geometryType : null,
+        coordinates: hasGeom ? coordinates : null,
+        symbolId: hasGeom && values.symbolId ? values.symbolId : null,
       };
       if (values.note !== undefined) {
         (payload as any).note = values.note;
@@ -2084,6 +2144,7 @@ export default function DikeRevetmentList() {
       dataIndex: 'dikeRevetmentName',
       width: 350,
       fixed: 'left' as const,
+      sortOrder: sortOrderFor('dikeRevetmentName'),
       cellTitle: (record: DikeRevetmentResponse) => record.dikeRevetmentName || '',
       render: (_: any, record: DikeRevetmentResponse) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -2122,6 +2183,7 @@ export default function DikeRevetmentList() {
       label: 'Đơn vị quản lý',
       dataIndex: 'orgUnitName',
       width: 260,
+      sortOrder: sortOrderFor('orgUnitName'),
       cellTitle: (record: DikeRevetmentResponse) => record.orgUnitName || '',
       render: (val: string | undefined) => renderCellWithTooltip(val, true),
     },
@@ -2130,6 +2192,7 @@ export default function DikeRevetmentList() {
       label: 'Thuộc cảng biển',
       dataIndex: 'seaportName',
       width: 170,
+      sortOrder: sortOrderFor('seaportName'),
       cellTitle: (record: DikeRevetmentResponse) => record.seaportName || '',
       render: (val: string | undefined) => renderCellWithTooltip(val),
     },
@@ -2138,6 +2201,7 @@ export default function DikeRevetmentList() {
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'location',
       width: 190,
+      sortOrder: sortOrderFor('location'),
       cellTitle: (record: DikeRevetmentResponse) => record.location || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -2146,6 +2210,7 @@ export default function DikeRevetmentList() {
       label: 'Loại kết cấu công trình',
       dataIndex: 'dikeRevetmentType',
       width: 220,
+      sortOrder: sortOrderFor('dikeRevetmentType'),
       cellTitle: (record: DikeRevetmentResponse) => DIKE_REVETMENT_TYPE_MAP[record.dikeRevetmentType] || record.dikeRevetmentType || '',
       render: (val: string) => renderCellWithTooltip(DIKE_REVETMENT_TYPE_MAP[val] || val || null),
     },
@@ -2154,6 +2219,7 @@ export default function DikeRevetmentList() {
       label: 'Tình trạng',
       dataIndex: 'status',
       width: 220,
+      sortOrder: sortOrderFor('status'),
       render: (val: string) => {
         if (!val) return '';
         const st = OPERATIONAL_STATUS_STYLE_MAP[val];
@@ -2166,6 +2232,7 @@ export default function DikeRevetmentList() {
       dataIndex: 'commissioningDate',
       width: 240,
       align: 'center' as const,
+      sortOrder: sortOrderFor('commissioningDate'),
       render: (val: string) => formatYear(val),
     },
     {
@@ -2173,6 +2240,7 @@ export default function DikeRevetmentList() {
       label: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
       width: 300,
+      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: string, record: DikeRevetmentResponse) => {
         if (isDikeRevetmentDeleted(record)) {
           return (
@@ -2194,6 +2262,7 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
       width: 210,
+      sortOrder: sortOrderFor('updatedByName'),
       cellTitle: (record: DikeRevetmentResponse) => record.updatedByName || '',
       render: (val: string, record: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
@@ -2213,6 +2282,7 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ gửi phê duyệt',
       dataIndex: 'submittedByName',
       width: 230,
+      sortOrder: sortOrderFor('submittedByName'),
       cellTitle: (record: DikeRevetmentResponse) => record.submittedByName || '',
       render: (val: string, record: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
@@ -2232,6 +2302,7 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
       dataIndex: 'approvedByNameLevel1',
       width: 260,
+      sortOrder: sortOrderFor('approvedByNameLevel1'),
       cellTitle: (record: DikeRevetmentResponse) => record.approvedByNameLevel1 || '',
       render: (v: string, r: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
@@ -2251,6 +2322,7 @@ export default function DikeRevetmentList() {
       label: 'Cán bộ phê duyệt cấp Cục',
       dataIndex: 'approvedByNameLevel2',
       width: 240,
+      sortOrder: sortOrderFor('approvedByNameLevel2'),
       cellTitle: (record: DikeRevetmentResponse) => record.approvedByNameLevel2 || '',
       render: (v: string, r: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
@@ -2265,7 +2337,7 @@ export default function DikeRevetmentList() {
         </div>
       ),
     },
-  ], [page, pageSize, openDetailDrawer, isElevatedOrg, hasPerm]);
+  ], [page, pageSize, openDetailDrawer, isElevatedOrg, hasPerm, sortOrderFor]);
 
   const rowActions = useCallback((record: DikeRevetmentResponse) => {
     const actions: any[] = [];
@@ -3116,7 +3188,7 @@ export default function DikeRevetmentList() {
       `}</style>
 
       <ScreenHeader
-        breadcrumb={[{ label: 'Quản lý KCHTGT' }, { label: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' }]}
+        breadcrumb={[{ label: 'Quản lý KCHTGT' }, { label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' }]}
         actions={[
           hasPerm?.('dikerevetment:create')
             ? { key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary' as const, onClick: openCreateDrawer }
@@ -3143,6 +3215,7 @@ export default function DikeRevetmentList() {
           rowActions={rowActions}
           scroll={{ x: 'max-content' }}
           loading={false}
+          onSort={handleSort}
           emptyState={<EmptyState description="Không có dữ liệu đê/kè nào phù hợp với bộ lọc" />}
         />
         <Pagination
@@ -3243,18 +3316,50 @@ export default function DikeRevetmentList() {
                                   placeholder="Chọn đơn vị quản lý..."
                                   disabled={!!editingRecord && !isElevatedOrg}
                                   style={selectStyle}
-                                  onChange={() => createForm.setFieldsValue({ seaportId: undefined })}
+                                  onChange={(val) => {
+                                    createForm.setFieldValue('orgUnitId', val);
+                                    const currentSeaportId = createForm.getFieldValue('seaportId');
+                                    if (!val) {
+                                      createForm.setFieldValue('seaportId', undefined);
+                                      if (!editingRecord) {
+                                        createForm.setFieldValue('code', undefined);
+                                      }
+                                    } else if (currentSeaportId) {
+                                      const rawSet = resolveOrgSubtreeIds(organizations, String(val));
+                                      const normalizedSet = new Set<string>();
+                                      rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                                      const isValid = seaports.some(
+                                        (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase())
+                                      );
+                                      if (!isValid) {
+                                        createForm.setFieldValue('seaportId', undefined);
+                                        if (!editingRecord) {
+                                          createForm.setFieldValue('code', undefined);
+                                        }
+                                      }
+                                    }
+                                  }}
                                 />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
-                              <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={formFieldStyle}>
+                              <Form.Item
+                                name="seaportId"
+                                {...labelProps('Thuộc cảng biển')}
+                                required
+                                style={formFieldStyle}
+                                rules={[{ required: true, message: 'Thuộc cảng biển là bắt buộc' }]}
+                              >
                                 <Select
-                                  placeholder="Chọn cảng biển..."
+                                  placeholder={!createOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+                                  disabled={!createOrgUnitId}
                                   allowClear
                                   showSearch
                                   optionFilterProp="label"
-                                  options={filteredSeaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
+                                  options={filteredSeaports.map((p) => ({
+                                    value: p.id,
+                                    label: p.portCode ? `${p.portCode} - ${p.portName || p.id}` : (p.portName || p.id),
+                                  }))}
                                   style={selectStyle}
                                 />
                               </Form.Item>
@@ -3266,13 +3371,13 @@ export default function DikeRevetmentList() {
                                 name="code"
                                 {...labelProps('Mã đê kè')}
                                 style={formFieldStyle}
-                                tooltip="Mã đê kè được sinh tự động, không thể chỉnh sửa"
+                                tooltip="Mã đê kè được sinh tự động"
                               >
                                 <Input
                                   disabled
-                                  placeholder={codeLoading ? 'Đang sinh mã...' : 'Mã tự sinh'}
+                                  placeholder={codeLoading ? 'Đang sinh mã...' : watchedSeaportId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
                                   maxLength={50}
-                                  style={{ ...inputStyle, color: textTertiary, cursor: 'not-allowed' }}
+                                  style={{ ...inputStyle, ...readonlyInputStyle, cursor: 'not-allowed' }}
                                 />
                               </Form.Item>
                             </Col>

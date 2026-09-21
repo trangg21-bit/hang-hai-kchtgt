@@ -17,7 +17,7 @@ import {
 import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
 import { parseNumber5, getValueFromEvent5, integer5Rule } from '../../utils/numberRuleHelper';
 
-// Clone từ services/cctv/CctvFormContent.tsx — Quản lý hệ thống thông tin liên lạc VHF
+// Clone từ services/cctv/CctvFormContent.tsx — Hệ thống thông tin liên lạc VHF
 
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 0, label: 'Chưa khai thác/vận hành' },

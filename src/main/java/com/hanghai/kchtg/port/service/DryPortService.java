@@ -80,6 +80,48 @@ public class DryPortService {
 
     // ── GENERATE CODE ───────────────────────────────────────────
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null) return null;
+        switch (sortBy.trim()) {
+            case "dryPortCode":
+            case "code":
+                return "dryPortCode";
+            case "dryPortName":
+            case "name":
+                return "dryPortName";
+            case "orgUnitId":
+                return "orgUnitId";
+            case "provinceId":
+                return "provinceId";
+            case "region":
+                return "region";
+            case "portStatus":
+                return "portStatus";
+            case "operationalStatus":
+                return "operationalStatus";
+            case "approvalStatus":
+                return "approvalStatus";
+            case "transportCorridor":
+                return "transportCorridor";
+            case "area":
+                return "area";
+            case "teuCapacity":
+                return "teuCapacity";
+            case "submittedForApprovalAt":
+                return "submittedForApprovalAt";
+            case "portAuthorityApprovedAt":
+                return "portAuthorityApprovedAt";
+            case "departmentApprovedAt":
+                return "departmentApprovedAt";
+            case "createdAt":
+                return "createdAt";
+            case "updatedAt":
+                return "updatedAt";
+            default:
+                return null;
+        }
+    }
+
     /**
      * Sinh mã cảng cạn tự động theo định dạng CC-XXXXXX (6 số).
      */
@@ -269,9 +311,25 @@ public class DryPortService {
     public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
             String search, String name, String status, String approvalStatus, String region, Integer portStatus,
             String updatedFrom, String updatedTo, String code, String transportCorridor) {
+        return findAll(page, size, orgUnitId, provinceId, search, name, status, approvalStatus, region, portStatus,
+                updatedFrom, updatedTo, code, transportCorridor, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DryPortResponse> findAll(int page, int size, UUID orgUnitId, Integer provinceId,
+            String search, String name, String status, String approvalStatus, String region, Integer portStatus,
+            String updatedFrom, String updatedTo, String code, String transportCorridor,
+            String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         LocalDateTime updatedFromDt = null;
@@ -430,12 +488,26 @@ public class DryPortService {
             entity.setOpeningDecision(request.getAnnouncementDecisionNumber());
         if (request.getInvestmentAgreementDoc() != null)
             entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
+
+        String coordinates = request.getCoordinates();
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
+                && request.getLatitude() != null) {
+            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+
+        boolean hasGeometryType = request.getGeometryType() != null;
+        boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
+
         // GIS
-        entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        if (hasGeometryType && hasCoordinates) {
+            entity.setMapSymbolId(request.getMapSymbolId());
+            entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
+            entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
+        } else {
+            entity.setMapSymbolId(null);
+            entity.setCoordinateSystem(null);
+            entity.setDisplayRule(null);
+        }
 
         // Set approval status
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
@@ -463,27 +535,20 @@ public class DryPortService {
         UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
-        // Spatial sync
-        String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
-                && request.getLatitude() != null) {
-            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        // Lấy tọa độ + loại hình cũ (WKT) từ pre-image (snapshot) trước khi
+        // createOrUpdate ghi đè spatial object (chuẩn PortService update).
+        GisGeometryType oldGeomType = null;
+        String oldWkt = null;
+        if (snapshot.getSpatialId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findById(snapshot.getSpatialId())
+                    .orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+            }
         }
 
-        if (coordinates != null && !coordinates.trim().isEmpty()) {
-            // Lấy tọa độ + loại hình cũ (WKT) từ pre-image (snapshot) trước khi
-            // createOrUpdate ghi đè spatial object (chuẩn PortService update).
-            GisGeometryType oldGeomType = null;
-            String oldWkt = null;
-            if (snapshot.getSpatialId() != null) {
-                GisSpatialObject oldSpatial = gisSpatialObjectService.findById(snapshot.getSpatialId())
-                        .orElse(null);
-                if (oldSpatial != null) {
-                    oldWkt = oldSpatial.getCoordinates();
-                    oldGeomType = oldSpatial.getGeometryType();
-                }
-            }
-
+        if (hasGeometryType && hasCoordinates) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
                     : GisGeometryType.POINT;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
@@ -516,10 +581,27 @@ public class DryPortService {
                             geometryTypeLabel(geomType), actorId);
                 }
             }
-        } else if (saved.getSpatialId() != null) {
-            gisSpatialObjectService.delete(saved.getSpatialId());
-            saved.setSpatialId(null);
-            saved = dryPortRepository.saveAndFlush(saved);
+        } else {
+            if (saved.getSpatialId() != null) {
+                gisSpatialObjectService.delete(saved.getSpatialId());
+                saved.setSpatialId(null);
+                saved = dryPortRepository.save(saved);
+            }
+            if (saved.getId() != null) {
+                gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.DRY_PORT)
+                        .ifPresent(sp -> gisSpatialObjectService.delete(sp.getId()));
+            }
+
+            if (wasApproved && (oldWkt != null || oldGeomType != null)) {
+                if (oldWkt != null && !oldWkt.trim().isEmpty()) {
+                    changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Tọa độ GIS",
+                            oldWkt.trim(), "Chưa có", actorId);
+                }
+                if (oldGeomType != null) {
+                    changeHistoryService.insertChangeRecord("DryPort", saved.getId(), "Loại đối tượng GIS",
+                            geometryTypeLabel(oldGeomType), "Chưa có", actorId);
+                }
+            }
         }
 
         if (wasApproved) {

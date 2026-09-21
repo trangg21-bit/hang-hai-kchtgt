@@ -153,7 +153,7 @@ export const spaceXxl = 48;
 
 // Font size
 export const fontSizeSm = 11;
-export const fontSizeMd = 13.5;   // Cỡ chữ chuẩn 13.5px toàn hệ thống theo mẫu Quản lý bến cảng
+export const fontSizeMd = 13.5;   // Cỡ chữ chuẩn 13.5px toàn hệ thống theo mẫu Bến cảng
 export const fontSizeLg = 15;
 export const fontSizeXl = 16;   // fs-4 1.25rem
 export const fontSizeHeading = 22;

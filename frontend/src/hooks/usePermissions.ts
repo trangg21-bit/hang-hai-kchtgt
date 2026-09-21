@@ -156,7 +156,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   shiprepair: 'Quản lý Cơ sở sửa chữa & đóng tàu',
   shiprepairfacility: 'Quản lý Cơ sở sửa chữa & đóng tàu',
   shiprepairyard: 'Quản lý Cơ sở sửa chữa, đóng tàu',
-  radarstation: 'Quản lý Trạm Radar',
+  radarstation: 'Quản lý Trạm radar',
   vts: 'Quản lý Hệ thống VTS',
   vtsoperationcenter: 'Quản lý Trung tâm điều hành VTS',
   vtsassist: 'Quản lý Hệ thống phụ trợ VTS',

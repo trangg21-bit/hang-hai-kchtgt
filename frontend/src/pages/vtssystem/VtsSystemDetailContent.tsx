@@ -224,7 +224,7 @@ export default function VtsSystemDetailContent({
     return () => { mounted = false; };
   }, [selectedRecord?.id]);
 
-  // Lazy load KCHT khác thuộc hệ thống VTS (Trung tâm điều hành & Trạm Radar) — chỉ tải khi vào tab
+  // Lazy load KCHT khác thuộc hệ thống VTS (Trung tâm điều hành & Trạm radar) — chỉ tải khi vào tab
   const [infraLoaded, setInfraLoaded] = useState(false);
 
   const loadChildInfra = async () => {
@@ -258,7 +258,7 @@ export default function VtsSystemDetailContent({
         id: x.id,
         infraName: x.stationName || x.name || x.code || '',
         infraType: 'RADAR_STATION',
-        typeLabel: 'Trạm Radar VTS',
+        typeLabel: 'Trạm radar VTS',
         raw: x,
       }));
       setLoadedInfra([...opList, ...radarList]);
@@ -905,7 +905,7 @@ export default function VtsSystemDetailContent({
                     onChange={(val) => setInfraTypeFilter(val || '')}
                     options={[
                       { value: 'VTS_OPERATION_CENTER', label: 'Trung tâm điều hành VTS' },
-                      { value: 'RADAR_STATION', label: 'Trạm Radar VTS' },
+                      { value: 'RADAR_STATION', label: 'Trạm radar VTS' },
                     ]}
                     style={{ width: 260, borderRadius: radiusPill, height: 32 }}
                   />
@@ -934,7 +934,7 @@ export default function VtsSystemDetailContent({
                             color: actionPrimary,
                           }}
                         >
-                          {rec.typeLabel || (rec.infraType === 'VTS_OPERATION_CENTER' ? 'Trung tâm điều hành VTS' : 'Trạm Radar VTS')}
+                          {rec.typeLabel || (rec.infraType === 'VTS_OPERATION_CENTER' ? 'Trung tâm điều hành VTS' : 'Trạm radar VTS')}
                         </span>
                       ),
                     },

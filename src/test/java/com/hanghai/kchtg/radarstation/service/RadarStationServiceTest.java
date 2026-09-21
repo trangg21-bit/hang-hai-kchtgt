@@ -9,6 +9,7 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -213,6 +214,48 @@ class RadarStationServiceTest {
                 UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         verify(repository, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("update when geometryType is cleared - should clear all location fields and delete spatial object")
+    void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapIcon("radar_symbol_01");
+
+        GisSpatialObject spatial = new GisSpatialObject();
+        spatial.setId(spatialId);
+        spatial.setGeometryType(GisGeometryType.POINT);
+        spatial.setCoordinates("POINT (106.7 20.8)");
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatial));
+
+        RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                .stationName(entity.getStationName())
+                .geometryType(null)
+                .coordinates(null)
+                .mapIcon(null)
+                .longitude(null)
+                .latitude(null)
+                .build();
+
+        RadarStationResponse response = service.update(TEST_ID, updateReq,
+                UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertNull(response.getGeometryType());
+        assertNull(response.getCoordinates());
+        assertNull(response.getMapIcon());
+        assertNull(response.getSpatialId());
+        assertNull(response.getLongitude());
+        assertNull(response.getLatitude());
+
+        assertNull(entity.getSpatialId());
+        assertNull(entity.getMapIcon());
+
+        verify(gisSpatialObjectService).delete(spatialId);
+        verify(repository, atLeastOnce()).save(entity);
     }
 
     @Test

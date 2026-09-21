@@ -641,6 +641,8 @@ export default function DryPortListPage() {
         updatedTo: filterUpdatedTo,
         transportCorridor: filterTransportCorridor ? filterTransportCorridor.trim() : undefined,
         approvalStatus: TAB_QUERY_MAP[activeTab],
+        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
+        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -649,7 +651,7 @@ export default function DryPortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab]);
+  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab, sortField, sortOrder]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
@@ -856,31 +858,6 @@ export default function DryPortListPage() {
 
 
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'approvalStatus') {
-      if (isDryPortDeleted(r)) return 'Đã xóa';
-      return trangThaiPheDuyetBadge(r.approvalStatus).label || r.approvalStatus || '';
-    }
-    if (field === 'portStatus') return r.portStatus ?? 0;
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'dryPortName') return r.dryPortName ?? '';
-    if (field === 'dryPortCode') return r.dryPortCode ?? '';
-    if (field === 'orgUnitName' || field === 'orgUnitId') return r.orgUnitName || orgMap.get(r.orgUnitId) || '';
-    if (field === 'operatingUnit') {
-      return r?.operatingOrgName
-        || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === r.operatingUnit || o.id === (r as any)?.operatingOrgId)?.name
-        || r.operatingUnit
-        || '';
-    }
-    if (field === 'region') return r.region ?? '';
-    if (field === 'transportCorridor') return r.transportCorridor ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : '';
-    return r[field] ?? '';
-  }, [orgMap]);
-
   const renderCellWithTooltip = (
     text: string | null | undefined,
     isBold?: boolean
@@ -1070,21 +1047,6 @@ export default function DryPortListPage() {
       sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
   }, [page, pageSize, userMap, openDetailModal, activeTab, sortField, sortOrder]);
-
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'sequenceNo' || sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
 
   const rowActions = useCallback((record: DryPort) => {
     const isArchived = isDryPortDeleted(record);
@@ -1396,7 +1358,7 @@ export default function DryPortListPage() {
         `}</style>
 
         <ScreenHeader
-          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Quản lý cảng cạn' }]}
+          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Cảng cạn' }]}
           actions={headerActions}
         />
         <FilterTableLayout
@@ -1416,19 +1378,19 @@ export default function DryPortListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={sortedDataSource}
+            dataSource={dataSource}
             loading={isLoading}
             rowKey="id"
             rowActions={rowActions}
             onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              setPage(1);
               if (!o) {
-                setSortField(undefined);
-                setSortOrder(undefined);
+                setSortField('updatedAt');
+                setSortOrder('descend');
               } else {
                 setSortField(k);
                 setSortOrder(o === 'asc' ? 'ascend' : 'descend');
               }
-              setPage(1);
             }}
             scroll={{ x: 'max-content' }}
           />

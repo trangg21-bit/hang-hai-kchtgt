@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isVhfDeleted } from './vhf/VhfListPage';
+import { operationalStatusBadge } from './vhf/schema';
 
 describe('VHF Status Filter and Tab Counts (/vhf)', () => {
   describe('isVhfDeleted helper', () => {
@@ -89,6 +90,35 @@ describe('VHF Status Filter and Tab Counts (/vhf)', () => {
         : records;
 
       expect(filtered.length).toBe(2);
+    });
+  });
+
+  describe('operationalStatusBadge helper', () => {
+    it('handles numeric status values correctly', () => {
+      expect(operationalStatusBadge(0).label).toBe('Chưa khai thác/vận hành');
+      expect(operationalStatusBadge(1).label).toBe('Đang khai thác/vận hành');
+      expect(operationalStatusBadge(2).label).toBe('Dừng khai thác/vận hành');
+    });
+
+    it('handles string numeric values correctly', () => {
+      expect(operationalStatusBadge('0').label).toBe('Chưa khai thác/vận hành');
+      expect(operationalStatusBadge('1').label).toBe('Đang khai thác/vận hành');
+      expect(operationalStatusBadge('2').label).toBe('Dừng khai thác/vận hành');
+    });
+
+    it('handles backend OperationalStatus enum string values without producing NaN', () => {
+      expect(operationalStatusBadge('OPERATIONAL').label).toBe('Đang khai thác/vận hành');
+      expect(operationalStatusBadge('ACTIVE').label).toBe('Đang khai thác/vận hành');
+      expect(operationalStatusBadge('NOT_YET_OPERATIONAL').label).toBe('Chưa khai thác/vận hành');
+      expect(operationalStatusBadge('SUSPENDED').label).toBe('Dừng khai thác/vận hành');
+      expect(operationalStatusBadge('INACTIVE').label).toBe('Dừng khai thác/vận hành');
+      expect(operationalStatusBadge('operational').label).toBe('Đang khai thác/vận hành');
+    });
+
+    it('handles null, undefined and empty string gracefully', () => {
+      expect(operationalStatusBadge(null).label).toBe('—');
+      expect(operationalStatusBadge(undefined).label).toBe('—');
+      expect(operationalStatusBadge('').label).toBe('—');
     });
   });
 });

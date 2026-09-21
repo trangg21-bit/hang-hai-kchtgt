@@ -76,7 +76,7 @@ export const CommonStatusTabs: React.FC<CommonStatusTabsProps> = ({
       }));
     }
 
-    // Tính toán số lượng theo 8 tab chuẩn (chuẩn Quản lý khu neo đậu)
+    // Tính toán số lượng theo 8 tab chuẩn (chuẩn Khu neo đậu)
     const draftCount = (computedCounts.DRAFT || 0) + (computedCounts.NHAP || 0);
     const pendingApprovalCount =
       (computedCounts.PENDING_APPROVAL || 0) +
@@ -105,7 +105,7 @@ export const CommonStatusTabs: React.FC<CommonStatusTabsProps> = ({
     const finalRejectedL1 = rejectedLevel1Count + (rejectedLevel2Count === 0 ? rejectedGenericCount : 0);
     const finalRejectedL2 = rejectedLevel2Count;
 
-    // Bắt buộc theo chuẩn Quản lý khu neo đậu: Tất cả = tổng các tab con (Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối C1 + Từ chối C2 + Đã xóa)
+    // Bắt buộc theo chuẩn Khu neo đậu: Tất cả = tổng các tab con (Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối C1 + Từ chối C2 + Đã xóa)
     // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã duyệt + Từ chối + Đã xóa
     const sumChildCounts =
       draftCount +

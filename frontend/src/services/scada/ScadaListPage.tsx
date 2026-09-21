@@ -33,7 +33,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
@@ -316,6 +316,27 @@ const ScadaListPage = () => {
     updatedTo: "" as string,
   });
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần ở backend) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(0);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
@@ -401,12 +422,12 @@ const ScadaListPage = () => {
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
     { label: 'Trung Tâm Điều Hành VTS', value: 1 },
-    { label: 'Trạm Radar', value: 2 },
+    { label: 'Trạm radar', value: 2 },
   ];
 
   // Radar station options for dependent dropdown
   const [radarStationOptions, setRadarStationOptions] = useState<
-    { label: string; value: string }[]
+    { label: string; value: string; orgUnitId?: string }[]
   >([]);
   const [loadingRadars, setLoadingRadars] = useState(false);
 
@@ -416,9 +437,10 @@ const ScadaListPage = () => {
       const res = await api.get("/common/options/radar-stations");
       const items = res.data?.data;
       setRadarStationOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string; orgUnitId?: string }) => ({
           label: s.stationName || s.code || s.id,
           value: s.id,
+          orgUnitId: s.orgUnitId,
         }))
       );
     } catch (error) {
@@ -435,7 +457,7 @@ const ScadaListPage = () => {
 
   // VTS Operation Center options for dependent dropdown (Thuộc TTDH VTS — loại 1)
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<
-    { label: string; value: string }[]
+    { label: string; value: string; orgUnitId?: string }[]
   >([]);
   const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
 
@@ -445,9 +467,10 @@ const ScadaListPage = () => {
       const res = await api.get("/common/options/vts-operation-centers");
       const items = res.data?.data;
       setVtsOperationCenterOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
           label: s.name || s.code || s.id,
           value: s.id,
+          orgUnitId: s.orgUnitId,
         }))
       );
     } catch (error) {
@@ -461,6 +484,22 @@ const ScadaListPage = () => {
   useEffect(() => {
     fetchVtsOperationCenters();
   }, [fetchVtsOperationCenters]);
+
+  const filteredFilterRadarStationOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return radarStationOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return radarStationOptions.filter((r) => r.orgUnitId && normalizedSet.has(String(r.orgUnitId).toLowerCase()));
+  }, [radarStationOptions, orgUnitOptions, filterValues.orgUnitId]);
+
+  const filteredFilterVtsOperationCenterOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return vtsOperationCenterOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && normalizedSet.has(String(c.orgUnitId).toLowerCase()));
+  }, [vtsOperationCenterOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<ScadaResponse | null>(
@@ -677,6 +716,7 @@ const ScadaListPage = () => {
         width: 300,
         fixed: "left" as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("deviceName"),
         cellTitle: (record: ScadaResponse) => record.deviceName || '',
         render: (val: string, record: ScadaResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -716,14 +756,16 @@ const ScadaListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
+        sortOrder: sortOrderFor("orgUnitName"),
         cellTitle: (record: ScadaResponse) => record.orgUnitName || '',
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
-        label: "Thuộc TTDH VTS/Trạm Radar",
+        label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
+        sortable: false,
         cellTitle: (record: ScadaResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -732,6 +774,7 @@ const ScadaListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
+        sortable: false,
         cellTitle: (record: ScadaResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -741,6 +784,7 @@ const ScadaListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
+        sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: ScadaResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -750,6 +794,7 @@ const ScadaListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
+        sortOrder: sortOrderFor("unitOfMeasure"),
         cellTitle: (record: ScadaResponse) => (record.unitOfMeasure != null ? formatUnitOfMeasure(record.unitOfMeasure) : '') || '',
         render: (val: number) => renderCellWithTooltip(formatUnitOfMeasure(val)),
       },
@@ -760,6 +805,7 @@ const ScadaListPage = () => {
         width: 120,
         type: "number" as const,
         align: 'center' as const,
+        sortOrder: sortOrderFor("quantity"),
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -774,6 +820,7 @@ const ScadaListPage = () => {
         type: "mono" as const,
         align: 'center' as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("yearOfUse"),
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
@@ -784,6 +831,7 @@ const ScadaListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
+        sortOrder: sortOrderFor("operationalStatus"),
         render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
@@ -808,6 +856,7 @@ const ScadaListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
+        sortOrder: sortOrderFor("approvalStatus"),
         render: (val: string, record: ScadaResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy);
           return renderApprovalBadge(val, isDeleted);
@@ -818,36 +867,40 @@ const ScadaListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
+        sortOrder: sortOrderFor("updatedByName"),
         cellTitle: (record: ScadaResponse) => record.updatedByName || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
-        key: "submittedInfo",
+        key: "submittedByName",
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        sortOrder: sortOrderFor("submittedByName"),
         cellTitle: (record: ScadaResponse) => record.submittedByName || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
-        key: "approvedLevel1Info",
+        key: "approverLevel1Name",
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        sortOrder: sortOrderFor("approverLevel1Name"),
         cellTitle: (record: ScadaResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
-        key: "approvedLevel2Info",
+        key: "approverLevel2Name",
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        sortOrder: sortOrderFor("approverLevel2Name"),
         cellTitle: (record: ScadaResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: ScadaResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, openDetailRecord, hasPerm]
+    [page, pageSize, openDetailRecord, hasPerm, sortOrderFor]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1720,8 +1773,8 @@ const ScadaListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: "updatedAt",
-        sortOrder: "desc",
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -1732,7 +1785,7 @@ const ScadaListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   useEffect(() => {
@@ -1826,6 +1879,8 @@ const ScadaListPage = () => {
       updatedFrom: "",
       updatedTo: "",
     });
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setPage(0);
   }, []);
 
@@ -1957,7 +2012,7 @@ const ScadaListPage = () => {
         .scada-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track { background: #f1f5f9 !important; border-radius: 999px !important; }
         .scada-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb { background: #cbd5e1 !important; border-radius: 999px !important; }
         .scada-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
-        /* ── Breadcrumb title (màn /scada): "Trang chủ" 14px, "Quản lý hệ thống SCADA" 16px —
+        /* ── Breadcrumb title (màn /scada): "Trang chủ" 14px, "Hệ thống SCADA" 16px —
            khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
         .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span,
         .scada-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link,
@@ -2135,7 +2190,7 @@ const ScadaListPage = () => {
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
-          { label: "Quản lý hệ thống SCADA", path: "/scada" },
+          { label: "Hệ thống SCADA", path: "/scada" },
         ]}
         actions={[
           hasPerm?.("scada:create")
@@ -2207,12 +2262,27 @@ const ScadaListPage = () => {
                 treeDefaultExpandAll={false}
                 showSearch
                 value={filterValues.orgUnitId || undefined}
-                onChange={(val) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    orgUnitId: (val as string) || "",
-                  }))
-                }
+                onChange={(val) => {
+                  const nextOrg = (val as string) || "";
+                  setFilterValues((prev) => {
+                    let nextAttached = prev.attachedInfraId;
+                    if (nextAttached && nextOrg && nextOrg !== '__all__') {
+                      const rawSet = resolveOrgSubtreeIds(orgUnitOptions, nextOrg);
+                      const normalizedSet = new Set<string>();
+                      rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                      const activeOptions = prev.attachedInfraType === 1 ? vtsOperationCenterOptions : prev.attachedInfraType === 2 ? radarStationOptions : [];
+                      const validAttached = activeOptions.some(
+                        (item) => item.value === prev.attachedInfraId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                      );
+                      if (!validAttached) nextAttached = "";
+                    }
+                    return {
+                      ...prev,
+                      orgUnitId: nextOrg,
+                      attachedInfraId: nextAttached,
+                    };
+                  });
+                }}
                 loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
@@ -2280,7 +2350,7 @@ const ScadaListPage = () => {
                         attachedInfraId: val ?? "",
                       }))
                     }
-                    options={filterValues.attachedInfraType === 1 ? vtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? radarStationOptions : []}
+                    options={filterValues.attachedInfraType === 1 ? filteredFilterVtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? filteredFilterRadarStationOptions : []}
                     loading={filterValues.attachedInfraType === 1 ? loadingVtsCenters : filterValues.attachedInfraType === 2 ? loadingRadars : false}
                     disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
@@ -2425,6 +2495,7 @@ const ScadaListPage = () => {
               dataSource={data}
               rowKey="id"
               loading={isLoading}
+              onSort={handleSort}
               scroll={{ x: 'max-content' }}
               rowActions={rowActions}
               locale={{
@@ -2490,7 +2561,7 @@ const ScadaListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
                             { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderScadaStatusBadge(st) : null; })() },

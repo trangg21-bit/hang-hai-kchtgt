@@ -552,7 +552,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
           if (upperWkt.startsWith('POLYGON')) geomType = 'POLYGON';
           else if (upperWkt.startsWith('LINESTRING')) geomType = 'LINE';
           else geomType = 'POINT';
-        } else if (!geomType && (d.latitude != null || d.longitude != null || d.mapSymbolId)) {
+        } else if (!geomType && d.latitude != null && d.longitude != null) {
           geomType = 'POINT';
         }
 
@@ -1012,10 +1012,11 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       }
     }
 
-    const validCoords = vals.geometryType
+    const hasGeom = !!vals.geometryType;
+    const validCoords = hasGeom
       ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
       : [];
-    const wktCoordinates = vals.geometryType && validCoords.length > 0
+    const wktCoordinates = hasGeom && validCoords.length > 0
       ? serializeCoordinatesToWkt(
           validCoords.map((c) => ({
             latitude: dmToDd(c.latD, c.latM, c.latS),
@@ -1023,7 +1024,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
           })),
           vals.geometryType || 'POINT'
         )
-      : undefined;
+      : null;
 
     onSubmittingChange?.(true);
     try {
@@ -1074,13 +1075,13 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         investmentAgreement: vals.investmentAgreement?.trim() || undefined,
         activityStartDate: vals.activityStartDate ? dayjs(vals.activityStartDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
         activityEndDate: vals.activityEndDate ? dayjs(vals.activityEndDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        geometryType: vals.geometryType || undefined,
-        mapSymbolId: vals.mapSymbolId || undefined,
-        coordinateSystem: vals.coordinateSystem != null ? Number(vals.coordinateSystem) : undefined,
-        displayRule: vals.geometryType ? 1 : undefined,
-        latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
-        longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
-        coordinates: wktCoordinates || undefined,
+        geometryType: hasGeom ? vals.geometryType : null,
+        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : null,
+        coordinateSystem: hasGeom ? (vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null) : null,
+        displayRule: hasGeom ? 1 : null,
+        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : null,
+        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : null,
+        coordinates: hasGeom ? (wktCoordinates || null) : null,
         mooringWaterAreas: mooringPayload,
       };
 

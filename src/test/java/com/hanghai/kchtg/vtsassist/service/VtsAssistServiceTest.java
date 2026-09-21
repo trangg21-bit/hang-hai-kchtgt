@@ -33,11 +33,15 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -91,12 +95,13 @@ class VtsAssistServiceTest {
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
-        when(userRepository.findById(any())).thenReturn(Optional.empty());
+        User principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        when(principal.getAllPermissions()).thenReturn(java.util.Set.of("vtsassist:approvec2", "vtsassist:create", "vtsassist:update", "*"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(principal));
         when(userResolverService.resolveName(any())).thenReturn("Cán bộ");
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
 
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
                         java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
@@ -166,6 +171,49 @@ class VtsAssistServiceTest {
 
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
         verify(changeHistoryService, atLeastOnce()).recordChanges(eq("VTS_ASSIST"), eq(ID.toString()), any(), any(), any());
+    }
+
+    @Test
+    void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(mapSymbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        GisSpatialObject mockSpatial = new GisSpatialObject();
+        mockSpatial.setId(spatialId);
+        mockSpatial.setGeometryType(GisGeometryType.POINT);
+        mockSpatial.setCoordinates("105.123 20.456");
+
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+        when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vtsAssistRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVtsAssistRequest req = new UpdateVtsAssistRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống phụ trợ VTS");
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+        req.setMapSymbolId(null);
+        req.setCoordinateSystem(null);
+        req.setDisplayRule(null);
+
+        VtsAssistResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(entity.getSpatialId());
+        assertNull(entity.getMapSymbolId());
+        assertNull(entity.getCoordinateSystem());
+        assertNull(entity.getDisplayRule());
+        assertNull(entity.getObjectType());
+        verify(gisSpatialObjectService).delete(spatialId);
+        assertNull(result.getCoordinates());
+        assertNull(result.getGeometryType());
+        assertNull(result.getMapSymbolId());
     }
 
     @Test

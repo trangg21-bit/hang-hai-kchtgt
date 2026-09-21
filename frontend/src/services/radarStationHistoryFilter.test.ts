@@ -90,8 +90,8 @@ describe('RadarStation History Filter Logic (/radar-station)', () => {
   });
 
   it('filters out identical strings and whitespace', () => {
-    expect(isMeaningfulChange('Tên trạm radar', 'Trạm Radar Hải Phòng', 'Trạm Radar Hải Phòng')).toBe(false);
-    expect(isMeaningfulChange('Tên trạm radar', '  Trạm Radar Hải Phòng  ', 'Trạm Radar Hải Phòng')).toBe(false);
+    expect(isMeaningfulChange('Tên trạm radar', 'Trạm radar Hải Phòng', 'Trạm radar Hải Phòng')).toBe(false);
+    expect(isMeaningfulChange('Tên trạm radar', '  Trạm radar Hải Phòng  ', 'Trạm radar Hải Phòng')).toBe(false);
     expect(isMeaningfulChange('Ghi chú', null, '')).toBe(false);
     expect(isMeaningfulChange('Vùng phủ sóng', 'Toàn bộ luồng', 'Toàn bộ luồng')).toBe(false);
   });

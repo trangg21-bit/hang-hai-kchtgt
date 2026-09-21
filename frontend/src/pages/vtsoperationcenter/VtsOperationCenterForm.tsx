@@ -52,7 +52,7 @@ export const DEFAULT_GIS_SYMBOLS = [
   { id: '2', code: 'SYM-INMARSAT', name: 'Đài thông tin vệ tinh Inmarsat', image: '' },
   { id: '3', code: 'SYM-COASTAL', name: 'Đài thông tin duyên hải', image: '' },
   { id: '4', code: 'SYM-AIS', name: 'Trạm bờ AIS', image: '' },
-  { id: '5', code: 'SYM-RADAR', name: 'Trạm Radar hàng hải', image: '' },
+  { id: '5', code: 'SYM-RADAR', name: 'Trạm radar hàng hải', image: '' },
   { id: '6', code: 'SYM-BUOY', name: 'Phao báo hiệu hàng hải', image: '' },
   { id: '7', code: 'SYM-BEACON', name: 'Trạm đèn biển (Hải đăng)', image: '' },
   { id: '8', code: 'SYM-PORT', name: 'Cảng biển / Bến cảng', image: '' },

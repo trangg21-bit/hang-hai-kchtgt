@@ -145,10 +145,25 @@ public class ShipRepairYardService {
                 oldGeomType = oldSpatial.getGeometryType();
             }
         }
+        if (oldWkt == null && entity.getId() != null) {
+            GisSpatialObject oldSpatial = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.SHIP_REPAIR_YARD)
+                    .or(() -> gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.SHIP_REPAIR_FACILITY))
+                    .orElse(null);
+            if (oldSpatial != null) {
+                oldWkt = oldSpatial.getCoordinates();
+                oldGeomType = oldSpatial.getGeometryType();
+                if (entity.getSpatialId() == null) {
+                    entity.setSpatialId(oldSpatial.getId());
+                }
+            }
+        }
+
+        boolean shouldClearLocation = request.getGeometryType() == null
+                || (request.getCoordinates() != null && request.getCoordinates().trim().isEmpty());
 
         String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
-                && request.getLatitude() != null) {
+        if (!shouldClearLocation && (coordinates == null || coordinates.trim().isEmpty())
+                && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
@@ -191,11 +206,17 @@ public class ShipRepairYardService {
             entity.setSlipwayCount(request.getSlipwayCount());
         if (request.getRemarks() != null)
             entity.setRemarks(request.getRemarks());
-        entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        if (shouldClearLocation) {
+            entity.setMapSymbolId(null);
+            entity.setCoordinateSystem(null);
+            entity.setDisplayRule(null);
+        } else {
+            entity.setMapSymbolId(request.getMapSymbolId());
+            if (request.getCoordinateSystem() != null)
+                entity.setCoordinateSystem(request.getCoordinateSystem());
+            if (request.getDisplayRule() != null)
+                entity.setDisplayRule(request.getDisplayRule());
+        }
 
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
@@ -214,7 +235,16 @@ public class ShipRepairYardService {
         // null → drawer hiện "—".
         if (wasApproved) {
             UUID actorId = currentActorId();
-            if (coordinates != null && !coordinates.trim().isEmpty()) {
+            if (shouldClearLocation) {
+                if (oldWkt != null && !oldWkt.trim().isEmpty()) {
+                    saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, "Tọa độ GIS",
+                            oldWkt.trim(), null, null, actorId);
+                }
+                if (oldGeomType != null) {
+                    saveShipRepairYardHistoryRow(saved.getId(), InfrastructureHistoryStatus.UPDATED, "Loại đối tượng GIS",
+                            geometryTypeLabel(oldGeomType), null, null, actorId);
+                }
+            } else if (coordinates != null && !coordinates.trim().isEmpty()) {
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 GisGeometryType geomType = request.getGeometryType() != null
@@ -254,9 +284,29 @@ public class ShipRepairYardService {
                                                 Integer provinceId,
                                                 String operationalStatus, String approvalStatus,
                                                 String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, search, shipRepairYardCode, shipRepairYardName,
+                portId, pierId, provinceId, operationalStatus, approvalStatus, updatedFrom, updatedTo, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ShipRepairYardResponse> findAll(int page, int size, UUID orgUnitId,
+                                                String search, String shipRepairYardCode, String shipRepairYardName,
+                                                UUID portId, UUID pierId,
+                                                Integer provinceId,
+                                                String operationalStatus, String approvalStatus,
+                                                String updatedFrom, String updatedTo,
+                                                String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
@@ -306,6 +356,56 @@ public class ShipRepairYardService {
         }
         evictAfterCommit();
         log.info("Soft-deleted ShipRepairYard [{}] code={}", entity.getId(), entity.getShipRepairYardCode());
+    }
+
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null) return null;
+        switch (sortBy.trim()) {
+            case "shipRepairYardCode":
+            case "code":
+                return "shipRepairYardCode";
+            case "shipRepairYardName":
+            case "name":
+                return "shipRepairYardName";
+            case "portId":
+                return "portId";
+            case "pierId":
+                return "pierId";
+            case "orgUnitId":
+                return "orgUnitId";
+            case "provinceId":
+                return "provinceId";
+            case "operationalStatus":
+                return "operationalStatus";
+            case "approvalStatus":
+                return "approvalStatus";
+            case "usageFunction":
+                return "usageFunction";
+            case "workshopArea":
+                return "workshopArea";
+            case "vesselType":
+                return "vesselType";
+            case "vesselDwt":
+                return "vesselDwt";
+            case "businessType":
+                return "businessType";
+            case "activity":
+                return "activity";
+            case "slipwayCount":
+                return "slipwayCount";
+            case "submittedForApprovalAt":
+                return "submittedForApprovalAt";
+            case "portAuthorityApprovedAt":
+                return "portAuthorityApprovedAt";
+            case "departmentApprovedAt":
+                return "departmentApprovedAt";
+            case "createdAt":
+                return "createdAt";
+            case "updatedAt":
+                return "updatedAt";
+            default:
+                return null;
+        }
     }
 
     public String generateShipRepairYardCode(UUID portId) {
@@ -794,20 +894,36 @@ public class ShipRepairYardService {
 
     private void persistGis(ShipRepairYard saved, GisGeometryType geometryType, String coordinates,
                             BigDecimal longitude, BigDecimal latitude) {
-        String wkt = coordinates;
-        if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
-            wkt = "POINT(" + longitude + " " + latitude + ")";
+        boolean shouldClear = geometryType == null
+                || ((coordinates == null || coordinates.trim().isEmpty()) && (longitude == null || latitude == null));
+
+        if (!shouldClear) {
+            String wkt = coordinates;
+            if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
+                wkt = "POINT(" + longitude + " " + latitude + ")";
+            }
+            if (wkt != null && !wkt.trim().isEmpty()) {
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        saved.getSpatialId(), saved.getShipRepairYardName(), "SHIP_REPAIR_YARD_" + saved.getShipRepairYardCode(),
+                        geometryType, GisSpatialObjectType.POLYGON_SHIP_REPAIR_YARD, wkt, saved.getId(),
+                        InfrastructureType.SHIP_REPAIR_YARD);
+                saved.setSpatialId(spatialObj.getId());
+                shipRepairYardRepository.saveAndFlush(saved);
+                return;
+            }
         }
-        if (wkt != null && !wkt.trim().isEmpty()) {
-            GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    saved.getSpatialId(), saved.getShipRepairYardName(), "SHIP_REPAIR_YARD_" + saved.getShipRepairYardCode(),
-                    geomType, GisSpatialObjectType.POLYGON_SHIP_REPAIR_YARD, wkt, saved.getId(),
-                    InfrastructureType.SHIP_REPAIR_YARD);
-            saved.setSpatialId(spatialObj.getId());
-            shipRepairYardRepository.saveAndFlush(saved);
-        } else if (saved.getSpatialId() != null) {
-            gisSpatialObjectService.delete(saved.getSpatialId());
+
+        UUID spatialIdToDelete = saved.getSpatialId();
+        if (spatialIdToDelete == null && saved.getId() != null) {
+            spatialIdToDelete = gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.SHIP_REPAIR_YARD)
+                    .or(() -> gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.SHIP_REPAIR_FACILITY))
+                    .map(GisSpatialObject::getId)
+                    .orElse(null);
+        }
+        if (spatialIdToDelete != null) {
+            gisSpatialObjectService.delete(spatialIdToDelete);
+        }
+        if (saved.getSpatialId() != null) {
             saved.setSpatialId(null);
             shipRepairYardRepository.saveAndFlush(saved);
         }

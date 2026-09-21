@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -89,12 +90,13 @@ class TransmissionServiceTest {
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
-        when(userRepository.findById(any())).thenReturn(Optional.empty());
+        User principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        when(principal.getAllPermissions()).thenReturn(java.util.Set.of("transmission:approvec2", "transmission:create", "transmission:update", "*"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(principal));
         when(userResolverService.resolveName(any())).thenReturn("Cán bộ");
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
 
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
                         java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
@@ -332,5 +334,92 @@ class TransmissionServiceTest {
 
         verify(attachmentRepository).delete(att);
         verify(historyRepository).save(any());
+    }
+
+    @Test
+    void updateDraft_clearGeometryType_clearsLocationAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(symbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        when(transmissionRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(transmissionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateTransmissionRequest req = new UpdateTransmissionRequest();
+        req.setId(ID);
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+
+        TransmissionResponse result = service.update(req);
+
+        assertNull(result.getSpatialId());
+        assertNull(result.getCoordinates());
+        assertNull(result.getGeometryType());
+        assertNull(result.getMapSymbolId());
+        assertNull(result.getCoordinateSystem());
+        assertNull(result.getDisplayRule());
+        assertNull(entity.getSpatialId());
+        assertNull(entity.getMapSymbolId());
+        assertNull(entity.getCoordinateSystem());
+        assertNull(entity.getDisplayRule());
+        assertNull(entity.getObjectType());
+        verify(gisSpatialObjectService).delete(spatialId);
+    }
+
+    @Test
+    void updateApproved_clearGeometryType_withSaveAndApprove_clearsLocationAndRecordsHistory() {
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(symbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject oldSpatial =
+                new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+        oldSpatial.setId(spatialId);
+        oldSpatial.setCoordinates("POINT(106.68 20.86)");
+        oldSpatial.setGeometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT);
+
+        when(transmissionRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(transmissionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(oldSpatial));
+
+        UpdateTransmissionRequest req = new UpdateTransmissionRequest();
+        req.setId(ID);
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        TransmissionResponse result = service.update(req);
+
+        assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
+        assertNull(result.getSpatialId());
+        assertNull(result.getCoordinates());
+        assertNull(result.getGeometryType());
+        assertNull(result.getMapSymbolId());
+        verify(gisSpatialObjectService).delete(spatialId);
+        verify(changeHistoryService).insertChangeRecord(
+                org.mockito.ArgumentMatchers.eq("TRANSMISSION"),
+                org.mockito.ArgumentMatchers.eq(ID),
+                org.mockito.ArgumentMatchers.eq("coordinates"),
+                org.mockito.ArgumentMatchers.eq("POINT(106.68 20.86)"),
+                org.mockito.ArgumentMatchers.eq("Chưa có"),
+                org.mockito.ArgumentMatchers.anyString());
+        verify(changeHistoryService).insertChangeRecord(
+                org.mockito.ArgumentMatchers.eq("TRANSMISSION"),
+                org.mockito.ArgumentMatchers.eq(ID),
+                org.mockito.ArgumentMatchers.eq("geometryType"),
+                org.mockito.ArgumentMatchers.eq("POINT"),
+                org.mockito.ArgumentMatchers.eq("Chưa có"),
+                org.mockito.ArgumentMatchers.anyString());
+        verify(changeHistoryService).recordChanges(any(), any(), any(), any(), any());
     }
 }

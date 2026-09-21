@@ -56,6 +56,8 @@ export const beaconStationCRUD = {
     updatedTo?: string;
     page?: number;
     pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
   }): Promise<PaginatedResponse<BeaconStation>> {
     const sp = buildSearchParams({
       name: params?.name,
@@ -77,6 +79,8 @@ export const beaconStationCRUD = {
       updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : 0,
       size: params?.pageSize || 20,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
     });
     const res = await api.get(`/beacon-stations/search-paged?${sp}`);
     const pageData = res.data.data;

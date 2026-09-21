@@ -103,11 +103,11 @@ class TransferAreaControllerTest {
     @Test
     void testFindAll() {
         Page<TransferAreaResponse> page = new PageImpl<>(List.of(response));
-        when(transferAreaService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(transferAreaService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         ResponseEntity<ApiResponse<Page<TransferAreaResponse>>> result = controller.findAll(
-                0, 20, null, null, null, null, null, null, null, null, null, null, null);
+                0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());

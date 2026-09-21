@@ -402,7 +402,7 @@ export function AisSystemList() {
       options: filteredOpCenters.map((c) => ({ value: `op_${c.id}`, rawId: c.id, type: 'op', label: c.name })),
     },
     {
-      label: 'Trạm Radar',
+      label: 'Trạm radar',
       options: filteredRadarStations.map((r) => ({ value: `radar_${r.id}`, rawId: r.id, type: 'radar', label: r.name })),
     },
   ], [filteredOpCenters, filteredRadarStations]);
@@ -749,7 +749,7 @@ export function AisSystemList() {
     },
     {
       key: 'vtsOperationCenterName',
-      label: 'Thuộc TTDH VTS / Trạm Radar',
+      label: 'Thuộc TTDH VTS / Trạm radar',
       dataIndex: 'vtsOperationCenterName',
       width: 290,
       ellipsis: false,
@@ -1091,9 +1091,9 @@ export function AisSystemList() {
               {filterCollapsed && (
                 <>
                   <div style={{ marginBottom: 12 }}>
-                    <div style={filterLabelStyle}>Thuộc TTDH VTS / Trạm Radar</div>
+                    <div style={filterLabelStyle}>Thuộc TTDH VTS / Trạm radar</div>
                     <Select
-                      placeholder="Chọn TTDH / Trạm Radar"
+                      placeholder="Chọn TTDH / Trạm radar"
                       allowClear
                       showSearch
                       filterOption={(input, option) =>

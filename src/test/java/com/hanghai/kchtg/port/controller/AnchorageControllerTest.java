@@ -103,11 +103,11 @@ class AnchorageControllerTest {
     @Test
     void testFindAll() {
         Page<AnchorageResponse> page = new PageImpl<>(List.of(response));
-        when(anchorageService.findAll(anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(anchorageService.findAll(anyInt(), anyInt(), nullable(UUID.class), nullable(String.class), nullable(String.class), nullable(String.class), nullable(UUID.class), nullable(UUID.class), nullable(UUID.class), nullable(Integer.class), nullable(String.class), nullable(String.class), nullable(String.class), nullable(String.class), nullable(Boolean.class), nullable(String.class), nullable(String.class)))
                 .thenReturn(page);
 
         ResponseEntity<ApiResponse<Page<AnchorageResponse>>> result = controller.findAll(
-                0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null);
+                0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());

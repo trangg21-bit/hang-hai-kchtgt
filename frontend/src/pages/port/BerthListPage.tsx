@@ -380,7 +380,12 @@ export default function BerthList() {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -1304,7 +1309,7 @@ export default function BerthList() {
       <style>{`
         .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
-        /* ── Cỡ chữ 13.5px chuẩn toàn màn Quản lý bến cảng & các popup/drawer con ── */
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Bến cảng & các popup/drawer con ── */
         .berth-page-wrapper,
         .berth-page-wrapper .ant-table,
         .berth-page-wrapper .ant-table-cell,
@@ -1413,7 +1418,7 @@ export default function BerthList() {
         }
       `}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý bến cảng' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Bến cảng' }]}
         actions={headerActions}
       />
 

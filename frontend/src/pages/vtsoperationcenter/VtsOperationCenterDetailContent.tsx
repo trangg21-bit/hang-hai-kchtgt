@@ -408,7 +408,7 @@ export default function VtsOperationCenterDetailContent({
     return () => { mounted = false; };
   }, [selectedRecord?.id]);
 
-  // Tải danh sách KCHT khác thuộc trung tâm điều hành (Trạm Radar & Trạm AIS) — Lazy load chuẩn Bến cảng
+  // Tải danh sách KCHT khác thuộc trung tâm điều hành (Trạm radar & Trạm AIS) — Lazy load chuẩn Bến cảng
   const loadOtherInfra = useCallback((recordId: string) => {
     if (!recordId) return;
     setIsLoadingInfra(true);
@@ -435,7 +435,7 @@ export default function VtsOperationCenterDetailContent({
           id: x.id,
           infraName: x.stationName || x.name || x.code || '',
           infraType: 'RADAR_STATION',
-          typeLabel: 'Trạm Radar',
+          typeLabel: 'Trạm radar',
           raw: x,
         }));
         const aisList = (aisRes?.data || aisRes?.items || []).map((x: any) => ({
@@ -1004,7 +1004,7 @@ export default function VtsOperationCenterDetailContent({
                     value={infraTypeFilter || undefined}
                     onChange={(val) => setInfraTypeFilter(val || '')}
                     options={[
-                      { value: 'RADAR_STATION', label: 'Trạm Radar' },
+                      { value: 'RADAR_STATION', label: 'Trạm radar' },
                       { value: 'AIS_SYSTEM', label: 'Hệ thống trạm bờ AIS' },
                     ]}
                     style={{ width: 260, borderRadius: radiusPill, height: 32 }}
@@ -1034,7 +1034,7 @@ export default function VtsOperationCenterDetailContent({
                             color: actionPrimary,
                           }}
                         >
-                          {rec.typeLabel || (rec.infraType === 'RADAR_STATION' ? 'Trạm Radar' : 'Hệ thống trạm bờ AIS')}
+                          {rec.typeLabel || (rec.infraType === 'RADAR_STATION' ? 'Trạm radar' : 'Hệ thống trạm bờ AIS')}
                         </span>
                       ),
                     },

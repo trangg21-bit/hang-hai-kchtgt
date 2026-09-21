@@ -16,10 +16,15 @@ import com.hanghai.kchtg.port.service.ShipRepairYardService;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.port.dto.shiprepairyard.UpdateShipRepairYardRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,7 +35,11 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -146,5 +155,111 @@ class ShipRepairYardServiceTest {
 
         assertNotNull(response);
         assertEquals("CB-000004-SCDT-002", response.getShipRepairYardCode());
+    }
+
+    @Test
+    @DisplayName("update: when geometryType is null in request, location fields and spatial object are cleared")
+    void testUpdate_WhenGeometryTypeIsNull_ClearsLocationAndDeletesSpatialObject() {
+        UUID yardId = UUID.randomUUID();
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+
+        ShipRepairYard existing = ShipRepairYard.builder()
+                .shipRepairYardCode("CB-000004-SCDT-001")
+                .shipRepairYardName("Cơ sở cũ")
+                .portId(portId)
+                .approvalStatus(ApprovalStatus.DRAFT)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
+                .spatialId(spatialId)
+                .mapSymbolId(symbolId)
+                .coordinateSystem(1)
+                .displayRule(1)
+                .build();
+        existing.setId(yardId);
+
+        when(shipRepairYardRepository.findById(yardId)).thenReturn(Optional.of(existing));
+        when(portRepository.findById(portId)).thenReturn(Optional.of(port));
+        when(shipRepairYardRepository.saveAndFlush(any(ShipRepairYard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateShipRepairYardRequest req = new UpdateShipRepairYardRequest();
+        req.setId(yardId);
+        req.setShipRepairYardName("Cơ sở sửa");
+        req.setPortId(portId);
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+        req.setMapSymbolId(null);
+        req.setCoordinateSystem(null);
+        req.setDisplayRule(null);
+
+        ShipRepairYardResponse response = service.update(req);
+
+        assertNotNull(response);
+        assertNull(response.getSpatialId());
+        assertNull(response.getGeometryType());
+        assertNull(response.getCoordinates());
+        assertNull(response.getMapSymbolId());
+        assertNull(response.getCoordinateSystem());
+        assertNull(response.getDisplayRule());
+
+        verify(gisSpatialObjectService).delete(spatialId);
+        assertNull(existing.getSpatialId());
+        assertNull(existing.getMapSymbolId());
+        assertNull(existing.getCoordinateSystem());
+        assertNull(existing.getDisplayRule());
+    }
+
+    @Test
+    @DisplayName("update: when record was APPROVED and geometryType is cleared, writes audit history for GIS clearing")
+    void testUpdate_WhenRecordIsApprovedAndGeometryTypeCleared_WritesHistoryRows() {
+        UUID yardId = UUID.randomUUID();
+        UUID spatialId = UUID.randomUUID();
+
+        ShipRepairYard existing = ShipRepairYard.builder()
+                .shipRepairYardCode("CB-000004-SCDT-001")
+                .shipRepairYardName("Cơ sở đã duyệt")
+                .portId(portId)
+                .approvalStatus(ApprovalStatus.APPROVED)
+                .operationalStatus(OperationalStatus.OPERATIONAL)
+                .spatialId(spatialId)
+                .build();
+        existing.setId(yardId);
+
+        GisSpatialObject oldSpatial = GisSpatialObject.builder()
+                .name("Cơ sở đã duyệt")
+                .code("SHIP_REPAIR_YARD_CB-000004-SCDT-001")
+                .coordinates("POINT(106.5 20.8)")
+                .geometryType(GisGeometryType.POINT)
+                .build();
+        oldSpatial.setId(spatialId);
+
+        when(shipRepairYardRepository.findById(yardId)).thenReturn(Optional.of(existing));
+        when(portRepository.findById(portId)).thenReturn(Optional.of(port));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(oldSpatial));
+        when(shipRepairYardRepository.saveAndFlush(any(ShipRepairYard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateShipRepairYardRequest req = new UpdateShipRepairYardRequest();
+        req.setId(yardId);
+        req.setPortId(portId);
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+
+        ShipRepairYardResponse response = service.update(req);
+
+        assertNotNull(response);
+        assertNull(response.getSpatialId());
+
+        verify(gisSpatialObjectService).delete(spatialId);
+
+        ArgumentCaptor<InfrastructureHistory> captor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository, atLeastOnce()).save(captor.capture());
+
+        List<InfrastructureHistory> historyRows = captor.getAllValues();
+        boolean hasWktCleared = historyRows.stream().anyMatch(h ->
+                "Tọa độ GIS".equals(h.getChangedField()) && "POINT(106.5 20.8)".equals(h.getPreviousValue()) && h.getNewValue() == null);
+        boolean hasGeomCleared = historyRows.stream().anyMatch(h ->
+                "Loại đối tượng GIS".equals(h.getChangedField()) && "Đối tượng điểm".equals(h.getPreviousValue()) && h.getNewValue() == null);
+
+        assertTrue(hasWktCleared, "Must record history for clearing GIS coordinates");
+        assertTrue(hasGeomCleared, "Must record history for clearing GIS geometry type");
     }
 }

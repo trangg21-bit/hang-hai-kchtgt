@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -15,7 +15,7 @@ import {
   Modal,
   DatePicker,
 } from 'antd';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { dikeRevetmentCRUD, dikeRevetmentApproval } from '../../services/dikeRevetmentService';
@@ -34,7 +34,7 @@ import { useAuthStore } from '../../store/authStore';
 import { hasPermissionFromList } from '../../store/permissionStore';
 import { colors, sidebarBg, detailRowStyle, detailLabelColStyle, detailValueStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
-import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill, getDatePickerProps } from '../../themetokenchk';
+import { fontWeightBold, fontSizeLg, spaceMd, spaceLg, spaceXxl, inputStyle, selectStyle, formFieldStyle, primaryButtonStyle, outlineButtonStyle, dangerButtonStyle, statusOperational, radiusPill, readonlyInputStyle, getDatePickerProps } from '../../themetokenchk';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -120,7 +120,19 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
-  const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string }[]>([]);
+  const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }[]>([]);
+  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedSeaportId = Form.useWatch('seaportId', form);
+  const editSeaportIdRef = useRef<string | undefined>(undefined);
+  const [codeLoading, setCodeLoading] = useState(false);
+
+  const filteredSeaports = useMemo(() => {
+    if (!watchedOrgUnitId) return [];
+    const rawSet = resolveOrgSubtreeIds(organizations, String(watchedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaports.filter((p) => p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()));
+  }, [organizations, seaports, watchedOrgUnitId]);
 
   useEffect(() => {
     if (isDetailMode) return;
@@ -136,10 +148,26 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
 
   useEffect(() => {
     if (isDetailMode) return;
-    (async () => {
-      const list = await portCRUD.getOptions();
-      setSeaports(list || []);
-    })();
+    api.get('/common/options/ports').then((res) => {
+      const data = res.data?.data;
+      if (Array.isArray(data) && data.length > 0) {
+        setSeaports(data);
+      } else {
+        api.get('/v1/ports?size=1000').then((r) => {
+          const list = r.data?.data?.content || r.data?.data || [];
+          if (Array.isArray(list)) {
+            setSeaports(list.map((p: any) => ({
+              id: p.id,
+              portName: p.portName || p.name || '',
+              portCode: p.portCode || p.code,
+              orgUnitId: p.orgUnitId,
+            })));
+          }
+        }).catch(() => {});
+      }
+    }).catch(() => {
+      portCRUD.getOptions().then((opts) => setSeaports(opts || [])).catch(() => {});
+    });
   }, [isDetailMode]);
 
   useEffect(() => {
@@ -178,6 +206,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         try {
           const data = await dikeRevetmentCRUD.getById(id);
           setRecord(data);
+          editSeaportIdRef.current = data.seaportId ?? undefined;
           form.setFieldsValue({
             dikeRevetmentType: data.dikeRevetmentType,
             location: data.location,
@@ -210,6 +239,26 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       loadData();
     }
   }, [id, form]);
+
+  // Tự sinh mã đê kè khi người dùng chọn Thuộc cảng biển (chuẩn /berth, /vhf, /beacon-stations)
+  useEffect(() => {
+    if (isEditMode && editSeaportIdRef.current === watchedSeaportId) return;
+    if (!watchedSeaportId) {
+      if (!isEditMode) {
+        form.setFieldValue('code', undefined);
+      }
+      return;
+    }
+    if (isEditMode) return;
+    setCodeLoading(true);
+    api.get('/v1/dike-revetment/generate-code')
+      .then((res) => {
+        const code = res.data?.data?.code;
+        if (code) form.setFieldsValue({ code });
+      })
+      .catch(() => {})
+      .finally(() => setCodeLoading(false));
+  }, [watchedSeaportId, isEditMode, form]);
 
   // Fetch history
   useEffect(() => {
@@ -388,7 +437,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
 
   const breadcrumbs = [
     { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Quản lý đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', onClick: () => navigate('/dike-revetment') },
+    { title: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', onClick: () => navigate('/dike-revetment') },
     { title: isCreateMode ? 'Tạo mới' : isEditMode ? 'Chỉnh sửa' : 'Chi tiết' },
   ];
 
@@ -639,9 +688,17 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
             label: 'Thông tin cơ bản',
             children: (
               <>
-                <Form.Item {...labelProps('Mã đê kè')} style={formFieldStyle}
-                  tooltip="Mã đê kè được sinh tự động, không thể chỉnh sửa">
-                  <Input disabled placeholder="Mã tự động" style={{ ...inputStyle }} />
+                <Form.Item
+                  name="code"
+                  {...labelProps('Mã đê kè')}
+                  style={formFieldStyle}
+                  tooltip="Mã đê kè được sinh tự động"
+                >
+                  <Input
+                    disabled
+                    placeholder={codeLoading ? 'Đang sinh mã...' : watchedSeaportId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
+                    style={{ ...inputStyle, ...readonlyInputStyle, cursor: 'not-allowed' }}
+                  />
                 </Form.Item>
 
                 <Form.Item
@@ -835,22 +892,57 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       <Form.Item
         {...labelProps('Đơn vị quản lý')}
         name="orgUnitId"
+        required
         style={formFieldStyle}
+        rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
       >
         <FormOrgUnitTreeSelect
           organizations={organizations}
           placeholder="Chọn đơn vị quản lý..."
           style={selectStyle}
+          onChange={(val) => {
+            form.setFieldValue('orgUnitId', val);
+            const currentSeaportId = form.getFieldValue('seaportId');
+            if (!val) {
+              form.setFieldValue('seaportId', undefined);
+              if (!isEditMode) {
+                form.setFieldValue('code', undefined);
+              }
+            } else if (currentSeaportId) {
+              const rawSet = resolveOrgSubtreeIds(organizations, String(val));
+              const normalizedSet = new Set<string>();
+              rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+              const isValid = seaports.some(
+                (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
+              );
+              if (!isValid) {
+                form.setFieldValue('seaportId', undefined);
+                if (!isEditMode) {
+                  form.setFieldValue('code', undefined);
+                }
+              }
+            }
+          }}
         />
       </Form.Item>
 
-      <Form.Item {...labelProps('Thuộc cảng biển')} name="seaportId" style={formFieldStyle}>
+      <Form.Item
+        {...labelProps('Thuộc cảng biển')}
+        name="seaportId"
+        required
+        style={formFieldStyle}
+        rules={[{ required: true, message: 'Thuộc cảng biển là bắt buộc' }]}
+      >
         <Select
-          placeholder="Chọn cảng biển..."
+          placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+          disabled={!watchedOrgUnitId}
           allowClear
           showSearch
           optionFilterProp="label"
-          options={seaports.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }))}
+          options={filteredSeaports.map((p) => ({
+            value: p.id,
+            label: p.portCode ? `${p.portCode} - ${p.portName || p.id}` : (p.portName || p.id),
+          }))}
           style={selectStyle}
         />
       </Form.Item>

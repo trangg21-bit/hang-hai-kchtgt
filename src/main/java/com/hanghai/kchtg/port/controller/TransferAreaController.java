@@ -80,14 +80,16 @@ public class TransferAreaController {
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing TransferAreas: page={}, size={}, orgUnitId={}, search={}, transferAreaCode={}, transferAreaName={}, portId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, transferAreaCode, transferAreaName, portId, operationalStatus, approvalStatus);
+                "Listing TransferAreas: page={}, size={}, orgUnitId={}, search={}, transferAreaCode={}, transferAreaName={}, portId={}, status={}, approvalStatus={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, transferAreaCode, transferAreaName, portId, operationalStatus, approvalStatus, sortBy, sortDir);
         Page<TransferAreaResponse> result = transferAreaService.findAll(
                 page, size, orgUnitId,
                 search, transferAreaCode, transferAreaName, portId, provinceId, operationalFunctions,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách khu chuyển tải thành công", result));
     }
 

@@ -683,6 +683,8 @@ export default function TransferAreaListPage() {
         updatedTo: filterUpdatedTo,
         page,
         pageSize,
+        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
+        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
       const mapped = (r.data || []).map((item: any) => ({
         ...item,
@@ -708,6 +710,8 @@ export default function TransferAreaListPage() {
     filterUpdatedTo,
     page,
     pageSize,
+    sortField,
+    sortOrder,
   ]);
 
   useEffect(() => {
@@ -1115,30 +1119,6 @@ export default function TransferAreaListPage() {
     );
   };
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'transferAreaName') return r.transferAreaName ?? '';
-    if (field === 'transferAreaCode') return r.transferAreaCode ?? '';
-    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
-    if (field === 'province') return r.province || (r.provinceId ? VIETNAM_PROVINCES[Number(r.provinceId) - 1] : '') || '';
-    if (field === 'operationalFunctions') return formatOperationalFunctions(r.operationalFunctions);
-    if (field === 'operationalStatus') {
-      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      if (isTransferAreaDeleted(r)) return 'Đã xóa';
-      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap, portMap]);
-
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       {
@@ -1300,21 +1280,6 @@ export default function TransferAreaListPage() {
     sortField,
     sortOrder,
   ]);
-
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
 
   const statusTabs = useMemo(() => {
     const allChildSum = TAB_STATUS_LIST
@@ -1595,7 +1560,7 @@ export default function TransferAreaListPage() {
           }
         `}</style>
         <ScreenHeader
-          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu chuyển tải' }]}
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu chuyển tải' }]}
           actions={headerActions}
         />
         <FilterTableLayout
@@ -1612,19 +1577,19 @@ export default function TransferAreaListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={sortedDataSource}
+            dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
             loading={isLoading}
             onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              setPage(1);
               if (!o) {
-                setSortField(null);
-                setSortOrder(null);
+                setSortField('updatedAt');
+                setSortOrder('descend');
               } else {
                 setSortField(k);
                 setSortOrder(o === 'asc' ? 'ascend' : 'descend');
               }
-              setPage(1);
             }}
             scroll={{ x: 'max-content' }}
           />

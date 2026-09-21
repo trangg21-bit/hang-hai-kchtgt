@@ -25,7 +25,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.Sort;
 import com.hanghai.kchtg.security.annotation.DataScope;
 
 /**
@@ -88,6 +90,37 @@ public class BeaconStationController {
                         commissionedFrom, commissionedTo, updatedFrom, updatedTo)));
     }
 
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+            "name", "code", "type", "primaryLightModel", "operationalStatus",
+            "unitId", "seaportId", "operator", "provinceId", "stationArea",
+            "updatedAt", "submittedAt", "approvedDateLevel1", "approvedDateLevel2",
+            "status", "approvalStatus", "commissionedDate", "createdAt"
+    );
+
+    public static Sort resolveSort(String sortBy, String sortDir) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return Sort.by(Sort.Direction.DESC, "updatedAt");
+        }
+        String field = sortBy.trim();
+        if ("updatedByName".equalsIgnoreCase(field)) {
+            field = "updatedAt";
+        } else if ("unitName".equalsIgnoreCase(field)) {
+            field = "unitId";
+        } else if ("submittedByName".equalsIgnoreCase(field)) {
+            field = "submittedAt";
+        } else if ("approverLevel1Name".equalsIgnoreCase(field)) {
+            field = "approvedDateLevel1";
+        } else if ("approverLevel2Name".equalsIgnoreCase(field)) {
+            field = "approvedDateLevel2";
+        }
+
+        if (!ALLOWED_SORT_FIELDS.contains(field)) {
+            return Sort.by(Sort.Direction.DESC, "updatedAt");
+        }
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(direction, field);
+    }
+
     @GetMapping("/search-paged")
     @PreAuthorize("@auth.checkAny(authentication, 'beaconstation:manage', 'beaconstation:read', 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:manage', 'lighthouse:read', 'beaconlight:read', 'data:read')")
     public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconStationResponse>>> searchPaged(
@@ -110,9 +143,12 @@ public class BeaconStationController {
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         UUID effectiveUnitId = unitId != null ? unitId : orgUnitId;
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(
+                page, size, resolveSort(sortBy, sortDir));
         return ResponseEntity.ok(ApiResponse.success(
                 beaconStationService.searchPaged(name, code, type, primaryLightModel, status,
                         effectiveUnitId, seaportId, operator, provinceId,

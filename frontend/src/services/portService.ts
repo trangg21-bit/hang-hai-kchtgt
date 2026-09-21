@@ -817,22 +817,26 @@ export const anchorageCRUD = {
     isDeleted?: boolean;
     page?: number;
     pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
   }): Promise<PaginatedResponse<Anchorage>> {
     const sp = buildSearchParams({
       anchorageName: typeof params?.anchorageName === 'string' ? (params.anchorageName.trim() || undefined) : undefined,
       anchorageCode: typeof params?.anchorageCode === 'string' ? (params.anchorageCode.trim() || undefined) : undefined,
       portId: params?.portId,
-      orgUnitId: params?.orgUnitId,
       navigationChannelId: params?.navigationChannelId,
       buoyStationId: params?.buoyStationId,
+      orgUnitId: params?.orgUnitId,
       provinceId: params?.provinceId,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,
+      isDeleted: params?.isDeleted,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
-      isDeleted: params?.isDeleted,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
     });
     const res = await api.get(`/v1/anchorage?${sp}`);
     const pageData = res.data.data;
@@ -1009,6 +1013,8 @@ export const transferAreaCRUD = {
     updatedTo?: string;
     page?: number;
     pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
   }): Promise<PaginatedResponse<TransferArea>> {
     const sp = buildSearchParams({
       transferAreaName: typeof params?.transferAreaName === 'string' ? (params.transferAreaName.trim() || undefined) : undefined,
@@ -1016,13 +1022,15 @@ export const transferAreaCRUD = {
       portId: params?.portId,
       orgUnitId: params?.orgUnitId,
       provinceId: params?.provinceId,
-      operationalFunctions: params?.operationalFunctions,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,
+      operationalFunctions: params?.operationalFunctions,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
     });
     const res = await api.get(`/v1/transfer-area?${sp}`);
     const pageData = res.data.data;
@@ -1685,6 +1693,8 @@ export const shipRepairYardCRUD = {
     updatedTo?: string;
     page?: number;
     pageSize?: number;
+    sortBy?: string;
+    sortDir?: string;
   }): Promise<PaginatedResponse<ShipRepairYard>> {
     const sp = buildSearchParams({
       shipRepairYardName: typeof params?.shipRepairYardName === 'string' ? (params.shipRepairYardName.trim() || undefined) : undefined,
@@ -1699,6 +1709,8 @@ export const shipRepairYardCRUD = {
       updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
     });
     const res = await api.get(`/v1/ship-repair-yard?${sp}`);
     const pageData = res.data.data;

@@ -19,6 +19,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -166,6 +169,46 @@ class BeaconStationControllerTest {
 
         verify(beaconStationService)
                 .search("Đèn", "DEN", "LIGHTHOUSE", null, "DRAFT", null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    @Test
+    @DisplayName("GET /api/beacon-stations/search-paged — returns 200 with default sort by updatedAt DESC")
+    void testSearchPagedDefaultSort() throws Exception {
+        UUID id = UUID.randomUUID();
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        when(beaconStationService.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(makeResponse(id))));
+
+        mockMvc.perform(get("/api/beacon-stations/search-paged")
+                        .param("name", "Đèn"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content").isArray());
+
+        verify(beaconStationService).searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), pageableCaptor.capture());
+        Pageable captured = pageableCaptor.getValue();
+        org.junit.jupiter.api.Assertions.assertNotNull(captured.getSort().getOrderFor("updatedAt"));
+        org.junit.jupiter.api.Assertions.assertEquals(Sort.Direction.DESC, captured.getSort().getOrderFor("updatedAt").getDirection());
+    }
+
+    @Test
+    @DisplayName("GET /api/beacon-stations/search-paged — with sortBy and sortDir")
+    void testSearchPagedWithSort() throws Exception {
+        UUID id = UUID.randomUUID();
+        org.mockito.ArgumentCaptor<Pageable> pageableCaptor = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        when(beaconStationService.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(makeResponse(id))));
+
+        mockMvc.perform(get("/api/beacon-stations/search-paged")
+                        .param("sortBy", "name")
+                        .param("sortDir", "ASC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(beaconStationService).searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), pageableCaptor.capture());
+        Pageable captured = pageableCaptor.getValue();
+        org.junit.jupiter.api.Assertions.assertNotNull(captured.getSort().getOrderFor("name"));
+        org.junit.jupiter.api.Assertions.assertEquals(Sort.Direction.ASC, captured.getSort().getOrderFor("name").getDirection());
     }
 
     // ── CREATE ───────────────────────────────────────────────────

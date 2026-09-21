@@ -323,6 +323,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
   const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingWaterways, setLoadingWaterways] = useState(false);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
@@ -464,11 +465,36 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   }, []);
 
   // Load waterways
-  useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
-      .catch(() => {});
-  }, []);
+  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
+    if (!orgUnitId) {
+      setWaterwayOptions([]);
+      return;
+    }
+    setLoadingWaterways(true);
+    try {
+      const r = await navigationChannelCRUD.search({
+        orgUnitId,
+        approvalStatus: 'APPROVED',
+        page: 0,
+        size: 1000,
+      });
+      const options = (r.items || []).map((n) => {
+        const code = n.channelCode?.trim();
+        const name = n.channelName?.trim();
+        const label = code && name ? `${code} - ${name}` : (code || name || '');
+        return { value: n.id, label };
+      });
+      setWaterwayOptions(options);
+      const currentWaterwayId = form.getFieldValue('navigationChannelId');
+      if (currentWaterwayId && !options.some((o) => o.value === currentWaterwayId)) {
+        form.setFieldsValue({ navigationChannelId: undefined });
+      }
+    } catch {
+      setWaterwayOptions([]);
+    } finally {
+      setLoadingWaterways(false);
+    }
+  }, [form]);
 
   // Load buoy stations
   useEffect(() => {
@@ -481,8 +507,10 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   useEffect(() => {
     if (!watchedOrgUnitId) {
       setPortOptions([]);
+      setWaterwayOptions([]);
       return;
     }
+    loadWaterwayOptions(watchedOrgUnitId);
     (async () => {
       setLoadingPorts(true);
       try {
@@ -491,7 +519,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       } catch { /* silent */ }
       finally { setLoadingPorts(false); }
     })();
-  }, [watchedOrgUnitId]);
+  }, [watchedOrgUnitId, loadWaterwayOptions]);
 
   // Auto-generate code when portId selected (for create mode)
   useEffect(() => {
@@ -553,7 +581,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
           if (upperWkt.startsWith('POLYGON')) geomType = 'POLYGON';
           else if (upperWkt.startsWith('LINESTRING')) geomType = 'LINE';
           else geomType = 'POINT';
-        } else if (!geomType && (d.latitude != null || d.longitude != null || d.mapSymbolId)) {
+        } else if (!geomType && d.latitude != null && d.longitude != null) {
           geomType = 'POINT';
         }
 
@@ -576,6 +604,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
           setCoordinateList([]);
         }
 
+        if (d.orgUnitId) loadWaterwayOptions(d.orgUnitId);
         form.setFieldsValue({
           orgUnitId: d.orgUnitId,
           portId: d.portId,
@@ -1004,10 +1033,11 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       }
     }
 
-    const validCoords = vals.geometryType
+    const hasGeom = !!vals.geometryType;
+    const validCoords = hasGeom
       ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
       : [];
-    const wktCoordinates = vals.geometryType && validCoords.length > 0
+    const wktCoordinates = hasGeom && validCoords.length > 0
       ? serializeCoordinatesToWkt(
           validCoords.map((c) => ({
             latitude: dmToDd(c.latD, c.latM, c.latS),
@@ -1015,7 +1045,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
           })),
           vals.geometryType || 'POINT'
         )
-      : undefined;
+      : null;
 
     onSubmittingChange?.(true);
     try {
@@ -1061,13 +1091,13 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
         publicDecision: vals.publicDecision?.trim() || undefined,
         investmentAgreement: vals.investmentAgreement?.trim() || undefined,
-        geometryType: vals.geometryType || undefined,
-        mapSymbolId: vals.mapSymbolId || undefined,
-        coordinateSystem: vals.coordinateSystem != null ? Number(vals.coordinateSystem) : undefined,
-        displayRule: vals.geometryType ? 1 : undefined,
-        latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
-        longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
-        coordinates: wktCoordinates || undefined,
+        geometryType: hasGeom ? vals.geometryType : null,
+        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : null,
+        coordinateSystem: hasGeom ? (vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null) : null,
+        displayRule: hasGeom ? 1 : null,
+        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : null,
+        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : null,
+        coordinates: hasGeom ? (wktCoordinates || null) : null,
         mooringWaterAreas: mooringPayload,
       };
 
@@ -1199,7 +1229,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+                  <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải...'} options={waterwayOptions} loading={loadingWaterways} disabled={!watchedOrgUnitId} showSearch allowClear optionFilterProp="label" notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc đơn vị quản lý'} style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>

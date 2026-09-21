@@ -705,6 +705,8 @@ export default function ShipRepairYardList() {
         updatedTo: filterUpdatedTo,
         page,
         pageSize,
+        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
+        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
       setDataSource(res.data); setTotal(res.total);
     } catch {
@@ -712,7 +714,7 @@ export default function ShipRepairYardList() {
     } finally { setIsLoading(false); }
   }, [managingUnitId, filterName, filterCode, filterPortId, filterPierId,
     filterProvince, filterOperationalStatus,
-    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, sortField, sortOrder]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(managingUnitId); }, [managingUnitId, fetchCounts, orgUnitReady]);
@@ -1001,35 +1003,6 @@ export default function ShipRepairYardList() {
       )}
     </>
   );
-
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'shipRepairYardName') return r.shipRepairYardName ?? '';
-    if (field === 'shipRepairYardCode') return r.shipRepairYardCode ?? '';
-    if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label || r.portName || r.portId || '';
-    if (field === 'pierId') return pierOptions.find(o => o.value === r.pierId)?.label || r.pierName || r.pierId || '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : '';
-    if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus] || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      if (isShipRepairYardDeleted(r)) return 'Đã xóa';
-      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt' || field === 'updatedBy') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap, portOptions, pierOptions]);
 
   // ── Status tabs config ──────────────────────────────────────────
   const statusTabs = useMemo(() => {
@@ -1364,21 +1337,6 @@ export default function ShipRepairYardList() {
     sortOrder,
   ]);
 
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'sequenceNo' || sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
-
   // ── Detail drawer content ────────────────────────────────────────
   const ddToDms = (dd: number): { d: number; m: number; s: number } => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
@@ -1485,7 +1443,7 @@ export default function ShipRepairYardList() {
         }
       `}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cơ sở sửa chữa, đóng tàu' }]}
+        breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cơ sở sửa chữa, đóng tàu' }]}
         actions={headerActions}
       />
 
@@ -1503,19 +1461,19 @@ export default function ShipRepairYardList() {
       >
         <DataTable
           columns={columns}
-          dataSource={sortedDataSource}
+          dataSource={dataSource}
           rowKey="id"
           rowActions={rowActions}
-          loading={false}
+          loading={isLoading}
           onSort={(k: string, o: 'asc' | 'desc' | null) => {
+            setPage(1);
             if (!o) {
-              setSortField(null);
-              setSortOrder(null);
+              setSortField('updatedAt');
+              setSortOrder('descend');
             } else {
               setSortField(k);
               setSortOrder(o === 'asc' ? 'ascend' : 'descend');
             }
-            setPage(1);
           }}
           scroll={{ x: 'max-content' }}
         />

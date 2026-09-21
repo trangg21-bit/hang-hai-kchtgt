@@ -14,6 +14,8 @@ import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -154,6 +156,46 @@ class DikeRevetmentServiceTest {
         assertThat(testEntity.getConstructionDate()).isEqualTo(LocalDate.of(2020, 5, 10));
         assertThat(testEntity.getLastMaintenanceYear()).isEqualTo(2023);
         verify(repo, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("update when geometryType is cleared - should clear all location fields and delete spatial object")
+    void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+
+        testEntity.setSpatialId(spatialId);
+        testEntity.setSymbolId(symbolId);
+
+        GisSpatialObject spatial = new GisSpatialObject();
+        spatial.setId(spatialId);
+        spatial.setGeometryType(GisGeometryType.LINE);
+        spatial.setCoordinates("LINESTRING (106.7 20.8, 106.8 20.9)");
+
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatial));
+
+        DikeRevetmentUpdateRequest updateReq = DikeRevetmentUpdateRequest.builder()
+                .dikeRevetmentType(DikeRevetmentType.RIVER_DIKE)
+                .location("Bac Giang")
+                .geometryType(null)
+                .coordinates(null)
+                .symbolId(null)
+                .build();
+
+        DikeRevetmentResponse response = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertThat(response.getGeometryType()).isNull();
+        assertThat(response.getCoordinates()).isNull();
+        assertThat(response.getSymbolId()).isNull();
+        assertThat(response.getSpatialId()).isNull();
+
+        assertThat(testEntity.getSpatialId()).isNull();
+        assertThat(testEntity.getSymbolId()).isNull();
+
+        verify(gisSpatialObjectService).delete(spatialId);
+        verify(repo, atLeastOnce()).save(testEntity);
     }
 
     @Test
