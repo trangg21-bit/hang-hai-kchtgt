@@ -347,14 +347,7 @@ public class InfraAssetService {
             recordFieldChangeIfDifferent(id, refType, currentUserId, now, "monthlyDepreciation", entity.getMonthlyDepreciation(), request.getMonthlyDepreciation());
             recordFieldChangeIfDifferent(id, refType, currentUserId, now, "disposalMethod", entity.getDisposalMethod(), request.getDisposalMethod());
 
-            // Approval & Status
-            String oldApproval = entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : null;
-            String newApproval = request.getApprovalStatus();
-            if (newApproval != null && !newApproval.isBlank()) {
-                recordFieldChangeIfDifferent(id, refType, currentUserId, now, "approvalStatus", oldApproval, newApproval);
-            }
-            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "portAuthorityApprovalContent", entity.getPortAuthorityApprovalContent(), request.getPortAuthorityApprovalContent());
-            recordFieldChangeIfDifferent(id, refType, currentUserId, now, "departmentApprovalContent", entity.getDepartmentApprovalContent(), request.getDepartmentApprovalContent());
+            // Approval & Status: Skip recording approval status/content in data change history (handled by approval log)
         }
 
         copyEditableFields(request, entity);

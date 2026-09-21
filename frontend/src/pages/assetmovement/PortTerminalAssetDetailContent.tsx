@@ -509,80 +509,6 @@ export default function PortTerminalAssetDetailContent({
               },
             ],
           },
-        ],
-      },
-      {
-        key: "details",
-        label: "Thông tin chi tiết",
-        sections: [
-          {
-            key: "depreciation_info",
-            title: "2. Thông tin giá trị & Khấu hao tài sản",
-            icon: <SlidersOutlined />,
-            fields: [
-              {
-                name: "declarationDate",
-                label: "Ngày kê khai tài sản",
-                type: ViewFieldType.Date,
-              },
-              {
-                name: "originalValue",
-                label: "Nguyên giá (VNĐ)",
-                type: ViewFieldType.Number,
-                suffix: "VNĐ",
-              },
-              {
-                name: "depreciationRate",
-                label: "Tỷ lệ hao mòn/Khấu hao (%)",
-                render: (val) => (val != null ? `${val}%` : ""),
-              },
-              {
-                name: "remainingValue",
-                label: "Giá trị còn lại (VNĐ)",
-                type: ViewFieldType.Number,
-                suffix: "VNĐ",
-              },
-              {
-                label: "Đơn vị tính giá trị",
-                value: () => "VNĐ",
-              },
-              {
-                name: "assignmentDecisionNumber",
-                label: "Số quyết định giao (bao gồm cả tăng vốn)",
-              },
-              {
-                name: "depreciationStartDate",
-                label: "Ngày tính khấu hao",
-                type: ViewFieldType.Date,
-              },
-              {
-                name: "depreciationMonths",
-                label: "Số tháng tính khấu hao",
-                render: (val) => (val != null ? `${val} tháng` : ""),
-              },
-              {
-                name: "depreciationEndDate",
-                label: "Ngày hết khấu hao",
-                type: ViewFieldType.Date,
-              },
-              {
-                name: "accumulatedDepreciation",
-                label: "Khấu hao lũy kế (VNĐ)",
-                type: ViewFieldType.Number,
-                suffix: "VNĐ",
-              },
-              {
-                name: "monthlyDepreciation",
-                label: "Khấu hao tháng (VNĐ)",
-                type: ViewFieldType.Number,
-                suffix: "VNĐ",
-              },
-              {
-                name: "disposalMethod",
-                label: "Hình thức xử lý tài sản",
-              },
-            ],
-          },
           {
             key: "approval_info",
             title: "Thông tin phê duyệt",
@@ -677,6 +603,80 @@ export default function PortTerminalAssetDetailContent({
                     {String(val)}
                   </span>
                 ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        key: "details",
+        label: "Thông tin chi tiết",
+        sections: [
+          {
+            key: "depreciation_info",
+            title: "2. Thông tin giá trị & Khấu hao tài sản",
+            icon: <SlidersOutlined />,
+            fields: [
+              {
+                name: "declarationDate",
+                label: "Ngày kê khai tài sản",
+                type: ViewFieldType.Date,
+              },
+              {
+                name: "originalValue",
+                label: "Nguyên giá (VNĐ)",
+                type: ViewFieldType.Number,
+                suffix: "VNĐ",
+              },
+              {
+                name: "depreciationRate",
+                label: "Tỷ lệ hao mòn/Khấu hao (%)",
+                render: (val) => (val != null ? `${val}%` : ""),
+              },
+              {
+                name: "remainingValue",
+                label: "Giá trị còn lại (VNĐ)",
+                type: ViewFieldType.Number,
+                suffix: "VNĐ",
+              },
+              {
+                label: "Đơn vị tính giá trị",
+                value: () => "VNĐ",
+              },
+              {
+                name: "assignmentDecisionNumber",
+                label: "Số quyết định giao (bao gồm cả tăng vốn)",
+              },
+              {
+                name: "depreciationStartDate",
+                label: "Ngày tính khấu hao",
+                type: ViewFieldType.Date,
+              },
+              {
+                name: "depreciationMonths",
+                label: "Số tháng tính khấu hao",
+                render: (val) => (val != null ? `${val} tháng` : ""),
+              },
+              {
+                name: "depreciationEndDate",
+                label: "Ngày hết khấu hao",
+                type: ViewFieldType.Date,
+              },
+              {
+                name: "accumulatedDepreciation",
+                label: "Khấu hao lũy kế (VNĐ)",
+                type: ViewFieldType.Number,
+                suffix: "VNĐ",
+              },
+              {
+                name: "monthlyDepreciation",
+                label: "Khấu hao tháng (VNĐ)",
+                type: ViewFieldType.Number,
+                suffix: "VNĐ",
+              },
+              {
+                name: "disposalMethod",
+                label: "Hình thức xử lý tài sản",
               },
             ],
           },

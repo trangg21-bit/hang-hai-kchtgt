@@ -51,6 +51,57 @@ public class FieldVisibilityJacksonConfig implements Jackson2ObjectMapperBuilder
                 }
             }
         });
+        module.addDeserializer(java.time.LocalDate.class, new com.fasterxml.jackson.databind.JsonDeserializer<java.time.LocalDate>() {
+            @Override
+            public java.time.LocalDate deserialize(com.fasterxml.jackson.core.JsonParser p, com.fasterxml.jackson.databind.DeserializationContext ctxt) throws java.io.IOException {
+                String text = p.getText();
+                if (text == null || text.trim().isEmpty() || "null".equalsIgnoreCase(text.trim())) {
+                    return null;
+                }
+                text = text.trim();
+                try {
+                    return java.time.LocalDate.parse(text);
+                } catch (java.time.format.DateTimeParseException ignored) {}
+                try {
+                    return java.time.LocalDate.parse(text, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+                } catch (java.time.format.DateTimeParseException ignored) {}
+                try {
+                    return java.time.LocalDate.parse(text, java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+                } catch (java.time.format.DateTimeParseException ignored) {}
+                try {
+                    return java.time.LocalDate.parse(text, java.time.format.DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+                } catch (java.time.format.DateTimeParseException ignored) {}
+                if (text.length() >= 10) {
+                    try {
+                        return java.time.LocalDate.parse(text.substring(0, 10));
+                    } catch (Exception ignored) {}
+                }
+                throw new IllegalArgumentException("Định dạng ngày không hợp lệ: '" + text + "' (hỗ trợ yyyy-MM-dd hoặc dd/MM/yyyy)");
+            }
+        });
+        module.addDeserializer(java.time.LocalDateTime.class, new com.fasterxml.jackson.databind.JsonDeserializer<java.time.LocalDateTime>() {
+            @Override
+            public java.time.LocalDateTime deserialize(com.fasterxml.jackson.core.JsonParser p, com.fasterxml.jackson.databind.DeserializationContext ctxt) throws java.io.IOException {
+                String text = p.getText();
+                if (text == null || text.trim().isEmpty() || "null".equalsIgnoreCase(text.trim())) {
+                    return null;
+                }
+                text = text.trim();
+                try {
+                    return java.time.LocalDateTime.parse(text);
+                } catch (Exception ignored) {}
+                try {
+                    return java.time.LocalDateTime.parse(text, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+                } catch (Exception ignored) {}
+                try {
+                    return java.time.LocalDate.parse(text).atStartOfDay();
+                } catch (Exception ignored) {}
+                try {
+                    return java.time.LocalDate.parse(text, java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")).atStartOfDay();
+                } catch (Exception ignored) {}
+                return null;
+            }
+        });
         builder.modulesToInstall(module);
     }
 

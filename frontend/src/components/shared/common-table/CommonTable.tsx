@@ -186,18 +186,24 @@ function CommonTableInternal<T extends Record<string, unknown>>(
   const [internalPageSize, setInternalPageSize] = useState<number>(
     options?.pageSize || 20,
   );
-  const [sortField, setSortField] = useState<string | undefined>(
-    options?.defaultSort?.field,
-  );
-  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(
-    options?.defaultSort?.order === -1 ||
-      options?.defaultSort?.order === "descend"
+  const initialSortField =
+    (filters?.sortBy as string | undefined) ?? options?.defaultSort?.field;
+  const initialSortOrder = filters?.sortDir
+    ? filters.sortDir === "ASC"
+      ? "ascend"
+      : filters.sortDir === "DESC"
+        ? "descend"
+        : null
+    : options?.defaultSort?.order === -1 ||
+        options?.defaultSort?.order === "descend"
       ? "descend"
       : options?.defaultSort?.order === 1 ||
           options?.defaultSort?.order === "ascend"
         ? "ascend"
-        : null,
-  );
+        : null;
+
+  const [sortField, setSortField] = useState<string | undefined>(initialSortField);
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(initialSortOrder);
 
   // Đồng bộ trạng thái sort với bộ lọc ngoài nếu được truyền
   const [prevSortBy, setPrevSortBy] = useState(filters?.sortBy);
@@ -424,12 +430,44 @@ function CommonTableInternal<T extends Record<string, unknown>>(
     [isServiceProviderMode, fetchData, onPageChange],
   );
 
-  // Xử lý đổi sắp xếp
-  // sorterObj.columnKey luôn khớp với columnKey được đặt tường minh trên cột (= col.sortField || col.dataIndex)
+  // Chu kỳ sắp xếp 3 bước chuẩn:
+  // Lần 1: A -> Z ('ascend')
+  // Lần 2: Z -> A ('descend')
+  // Lần 3: Bỏ sort hiển thị về ban đầu (null)
+  // Lần 4, 5, 6...: Lặp lại chu kỳ trên
+  const handleSortCycle = useCallback(
+    (targetField: string) => {
+      const currentOrder = targetField === sortField ? sortOrder : null;
+      const nextCycle = getNextSortOrder(currentOrder);
+      const nextOrder =
+        nextCycle === "asc" ? "ascend" : nextCycle === "desc" ? "descend" : null;
+      const nextField = nextOrder ? targetField : undefined;
+
+      setSortField(nextField);
+      setSortOrder(nextOrder);
+
+      if (isServiceProviderMode) {
+        setInternalPage(1);
+        void fetchData(1, actualPageSize, effectiveFilters, nextField, nextOrder);
+      }
+      onSortChange?.(targetField, nextOrder);
+    },
+    [
+      sortField,
+      sortOrder,
+      isServiceProviderMode,
+      actualPageSize,
+      effectiveFilters,
+      fetchData,
+      onSortChange,
+    ],
+  );
+
+  // Xử lý đổi sắp xếp từ sự kiện Table onChange (fallback)
   const handleSortChange: NonNullable<TableProps<T>["onChange"]> = useCallback(
     (_pagination, _filters, sorter) => {
       const sorterObj = Array.isArray(sorter) ? sorter[0] : sorter;
-      const field = sorterObj
+      let field = sorterObj
         ? resolveSortField(
             sorterObj,
             (options?.mainColumns || []).map((column) => ({
@@ -438,33 +476,16 @@ function CommonTableInternal<T extends Record<string, unknown>>(
             })),
           )
         : undefined;
-      if (!field) return;
-      // AntD can loop descend -> ascend when a null entry appears in
-      // sortDirections. The controlled state is authoritative: ascend ->
-      // descend -> no sort, regardless of AntD's reported third value.
-      const nextOrder = getNextSortOrder(field && field === sortField ? sortOrder : null);
-      const order = nextOrder === "asc" ? "ascend" : nextOrder === "desc" ? "descend" : null;
-      const nextField = order ? field : undefined;
 
-      setSortField(nextField);
-      setSortOrder(order);
-
-      if (isServiceProviderMode) {
-        setInternalPage(1);
-        void fetchData(1, actualPageSize, effectiveFilters, nextField, order);
+      // Khi AntD clear sort thì sorterObj rỗng, phục hồi lại sortField đang active
+      if (!field && sortField) {
+        field = sortField;
       }
-      onSortChange?.(field ?? "", order);
+      if (!field) return;
+
+      handleSortCycle(field);
     },
-    [
-      isServiceProviderMode,
-      actualPageSize,
-      effectiveFilters,
-      fetchData,
-      onSortChange,
-      options?.mainColumns,
-      sortField,
-      sortOrder,
-    ],
+    [options?.mainColumns, sortField, handleSortCycle],
   );
 
   // Expose các phương thức điều khiển qua Ref
@@ -713,7 +734,26 @@ function CommonTableInternal<T extends Record<string, unknown>>(
             whiteSpace: "nowrap",
             cursor: effectiveSorter ? "pointer" : undefined,
             textAlign: col.align || "left",
+            userSelect: "none",
           },
+          onClickCapture:
+            effectiveSorter && colField
+              ? (event: React.MouseEvent<HTMLElement>) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleSortCycle(colField);
+                }
+              : undefined,
+          onKeyDownCapture:
+            effectiveSorter && colField
+              ? (event: React.KeyboardEvent<HTMLElement>) => {
+                  if (event.key === "Enter" || event.keyCode === 13) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleSortCycle(colField);
+                  }
+                }
+              : undefined,
         }),
       };
 
@@ -1057,6 +1097,7 @@ function CommonTableInternal<T extends Record<string, unknown>>(
     textSecondary,
     colors.sidebarBg,
     themeToken,
+    handleSortCycle,
   ]);
 
   // Tính toán độ rộng cuộn ngang an toàn

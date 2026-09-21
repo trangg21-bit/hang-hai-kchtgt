@@ -318,96 +318,6 @@ export default function TransferAreaAssetDetailContent({
               },
             ],
           },
-        ],
-      },
-      {
-        key: 'files',
-        label: 'Hồ sơ tài sản',
-        badgeCount: effectiveAttachments.length,
-        customContent: () => (
-          <div style={{ paddingTop: 6 }}>
-            <InfrastructureAttachmentTab
-              attachments={effectiveAttachments}
-              readonly={true}
-              onDownload={onDownloadAttachment}
-            />
-          </div>
-        ),
-      },
-      {
-        key: 'detail',
-        label: 'Thông tin chi tiết',
-        sections: [
-          {
-            key: 'depreciation_info',
-            title: 'Thông tin chi tiết',
-            icon: <SlidersOutlined />,
-            fields: [
-              {
-                name: 'declarationDate',
-                label: 'Ngày kê khai tài sản',
-                type: ViewFieldType.Date,
-              },
-              {
-                name: 'originalValue',
-                label: 'Nguyên giá (nguồn ngân sách, nguồn khác)',
-                type: ViewFieldType.Number,
-                suffix: 'VNĐ',
-              },
-              {
-                name: 'depreciationRate',
-                label: 'Tỷ lệ hao mòn/Khấu hao (%)',
-                type: ViewFieldType.Number,
-                suffix: '%',
-              },
-              {
-                name: 'remainingValue',
-                label: 'Giá trị còn lại',
-                type: ViewFieldType.Number,
-                suffix: 'VNĐ',
-              },
-              {
-                label: 'Đơn vị tính giá trị',
-                value: () => 'VNĐ',
-              },
-              {
-                name: 'assignmentDecisionNumber',
-                label: 'Số quyết định giao (bao gồm cả tăng vốn)',
-              },
-              {
-                name: 'depreciationStartDate',
-                label: 'Ngày tính khấu hao',
-                type: ViewFieldType.Date,
-              },
-              {
-                name: 'depreciationMonths',
-                label: 'Số tháng tính khấu hao',
-                type: ViewFieldType.Number,
-                suffix: 'tháng',
-              },
-              {
-                name: 'depreciationEndDate',
-                label: 'Ngày hết khấu hao',
-                type: ViewFieldType.Date,
-              },
-              {
-                name: 'accumulatedDepreciation',
-                label: 'Khấu hao lũy kế',
-                type: ViewFieldType.Number,
-                suffix: 'VNĐ',
-              },
-              {
-                name: 'monthlyDepreciation',
-                label: 'Khấu hao tháng',
-                type: ViewFieldType.Number,
-                suffix: 'VNĐ',
-              },
-              {
-                name: 'disposalMethod',
-                label: 'Hình thức xử lý tài sản',
-              },
-            ],
-          },
           {
             key: 'approval_info',
             title: 'Thông tin phê duyệt',
@@ -502,6 +412,96 @@ export default function TransferAreaAssetDetailContent({
                     {String(val)}
                   </span>
                 ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        key: 'files',
+        label: 'Hồ sơ tài sản',
+        badgeCount: effectiveAttachments.length,
+        customContent: () => (
+          <div style={{ paddingTop: 6 }}>
+            <InfrastructureAttachmentTab
+              attachments={effectiveAttachments}
+              readonly={true}
+              onDownload={onDownloadAttachment}
+            />
+          </div>
+        ),
+      },
+      {
+        key: 'detail',
+        label: 'Thông tin chi tiết',
+        sections: [
+          {
+            key: 'depreciation_info',
+            title: 'Thông tin chi tiết',
+            icon: <SlidersOutlined />,
+            fields: [
+              {
+                name: 'declarationDate',
+                label: 'Ngày kê khai tài sản',
+                type: ViewFieldType.Date,
+              },
+              {
+                name: 'originalValue',
+                label: 'Nguyên giá (nguồn ngân sách, nguồn khác)',
+                type: ViewFieldType.Number,
+                suffix: 'VNĐ',
+              },
+              {
+                name: 'depreciationRate',
+                label: 'Tỷ lệ hao mòn/Khấu hao (%)',
+                type: ViewFieldType.Number,
+                suffix: '%',
+              },
+              {
+                name: 'remainingValue',
+                label: 'Giá trị còn lại',
+                type: ViewFieldType.Number,
+                suffix: 'VNĐ',
+              },
+              {
+                label: 'Đơn vị tính giá trị',
+                value: () => 'VNĐ',
+              },
+              {
+                name: 'assignmentDecisionNumber',
+                label: 'Số quyết định giao (bao gồm cả tăng vốn)',
+              },
+              {
+                name: 'depreciationStartDate',
+                label: 'Ngày tính khấu hao',
+                type: ViewFieldType.Date,
+              },
+              {
+                name: 'depreciationMonths',
+                label: 'Số tháng tính khấu hao',
+                type: ViewFieldType.Number,
+                suffix: 'tháng',
+              },
+              {
+                name: 'depreciationEndDate',
+                label: 'Ngày hết khấu hao',
+                type: ViewFieldType.Date,
+              },
+              {
+                name: 'accumulatedDepreciation',
+                label: 'Khấu hao lũy kế',
+                type: ViewFieldType.Number,
+                suffix: 'VNĐ',
+              },
+              {
+                name: 'monthlyDepreciation',
+                label: 'Khấu hao tháng',
+                type: ViewFieldType.Number,
+                suffix: 'VNĐ',
+              },
+              {
+                name: 'disposalMethod',
+                label: 'Hình thức xử lý tài sản',
               },
             ],
           },
