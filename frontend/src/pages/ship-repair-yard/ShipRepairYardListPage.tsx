@@ -1196,7 +1196,7 @@ export default function ShipRepairYardList() {
       },
       {
         key: 'shipRepairYardName',
-        label: <span>Tên/Mã cơ sở sửa chữa, đóng tàu</span>,
+        label: <span>Tên/Mã cơ sở<br />sửa chữa, đóng tàu</span>,
         dataIndex: 'shipRepairYardName',
         width: 260,
         fixed: 'left' as const,
