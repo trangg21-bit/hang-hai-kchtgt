@@ -85,6 +85,7 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
 
     const canHistory = Boolean(
       canManage ||
+      canRead ||
       checkAny((res) =>
         Boolean(
           hasExplicitPerm?.(`${res}:history`) ||

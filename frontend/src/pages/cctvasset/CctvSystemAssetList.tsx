@@ -18,6 +18,7 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import toast from '../../components/ToastNotification';
 import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 

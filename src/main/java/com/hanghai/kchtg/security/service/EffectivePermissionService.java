@@ -550,7 +550,28 @@ public class EffectivePermissionService {
         }
 
         if (ACTION_HISTORY.equals(action) || "history".equals(action)) {
-            return permissions.contains(PermissionConstants.build(resource, ACTION_HISTORY));
+            for (String res : targetResources) {
+                if (permissions.contains(PermissionConstants.build(res, ACTION_HISTORY))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_READ))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_MANAGE))
+                        || permissions.contains(PermissionConstants.build(res, ACTION_WILDCARD))) {
+                    return true;
+                }
+            }
+            if (permissions.contains("data:read") || permissions.contains("data:manage") || permissions.contains("*")) {
+                return true;
+            }
+            Set<String> parents = RESOURCE_PARENT_DOMAINS.get(canonicalResource(resource));
+            if (parents != null) {
+                for (String parent : parents) {
+                    if (permissions.contains(PermissionConstants.build(parent, ACTION_READ))
+                            || permissions.contains(PermissionConstants.build(parent, ACTION_MANAGE))
+                            || permissions.contains(PermissionConstants.build(parent, ACTION_HISTORY))) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         // 1. Exact, alias, manage or wildcard match across all equivalent resources

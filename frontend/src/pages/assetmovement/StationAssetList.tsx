@@ -266,6 +266,30 @@ const parseYearToDayjs = (val: unknown): dayjs.Dayjs | undefined => {
   return d.isValid() ? dayjs(String(d.year()), 'YYYY') : undefined;
 };
 
+const parseDateToDayjs = (val: unknown): dayjs.Dayjs | undefined => {
+  if (val == null || val === '') return undefined;
+  if (dayjs.isDayjs(val)) return val.isValid() ? val : undefined;
+  const str = String(val).trim();
+  if (!str) return undefined;
+  const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    const dt = dayjs(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
+    return dt.isValid() ? dt : undefined;
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const dt = dayjs(str.substring(0, 10));
+    return dt.isValid() ? dt : undefined;
+  }
+  const d = dayjs(str);
+  return d.isValid() ? d : undefined;
+};
+
+const toIsoDate = (val: unknown): string | undefined => {
+  const dt = parseDateToDayjs(val);
+  return dt && dt.isValid() ? dt.format('YYYY-MM-DD') : undefined;
+};
+
 export interface StationAssetListProps {
   config: StationTypeConfig;
   fetchStationOptions: () => Promise<GenericStationOption[]>;
@@ -472,10 +496,10 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
       ...record,
       [config.stationFieldName]: (record as unknown as Record<string, unknown>)[config.stationFieldName] as string | undefined || record.stationId,
       constructionYear: parseYearToDayjs(record.constructionYear),
-      useDate: record.useDate ? dayjs(record.useDate) : undefined,
-      declarationDate: record.declarationDate ? dayjs(record.declarationDate) : undefined,
-      depreciationStartDate: record.depreciationStartDate ? dayjs(record.depreciationStartDate) : undefined,
-      depreciationEndDate: record.depreciationEndDate ? dayjs(record.depreciationEndDate) : undefined,
+      useDate: parseDateToDayjs(record.useDate),
+      declarationDate: parseDateToDayjs(record.declarationDate),
+      depreciationStartDate: parseDateToDayjs(record.depreciationStartDate),
+      depreciationEndDate: parseDateToDayjs(record.depreciationEndDate),
     });
     setDrawerMode('edit');
     try {
@@ -852,25 +876,43 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
                   ? merged.constructionYear
                   : Number(String(merged.constructionYear).match(/\b(19\d{2}|20\d{2})\b/)?.[0] || merged.constructionYear)))
           : undefined,
-        useDate: merged.useDate
-          ? (dayjs.isDayjs(merged.useDate) ? merged.useDate.format('YYYY-MM-DD') : String(merged.useDate))
-          : undefined,
-        declarationDate: merged.declarationDate
-          ? (dayjs.isDayjs(merged.declarationDate) ? merged.declarationDate.format('YYYY-MM-DD') : String(merged.declarationDate))
-          : undefined,
-        depreciationStartDate: merged.depreciationStartDate
-          ? (dayjs.isDayjs(merged.depreciationStartDate) ? merged.depreciationStartDate.format('YYYY-MM-DD') : String(merged.depreciationStartDate))
-          : undefined,
-        depreciationEndDate: merged.depreciationEndDate
-          ? (dayjs.isDayjs(merged.depreciationEndDate) ? merged.depreciationEndDate.format('YYYY-MM-DD') : String(merged.depreciationEndDate))
-          : undefined,
+        useDate: toIsoDate(merged.useDate),
+        declarationDate: toIsoDate(merged.declarationDate),
+        depreciationStartDate: toIsoDate(merged.depreciationStartDate),
+        depreciationEndDate: toIsoDate(merged.depreciationEndDate),
         attachmentName: attachments.length > 0 ? attachments[0].fileName : undefined,
         approvalStatus: status,
       };
 
+      const cleanPayload: Record<string, unknown> = { ...payload };
+      const excludeKeys = [
+        'id',
+        'parentOrgUnitName',
+        'orgUnitName',
+        'usingOrgUnitName',
+        'createdByName',
+        'updatedByName',
+        'submittedByName',
+        'departmentApprovedByName',
+        'departmentApprovedAt',
+        'portAuthorityApprovedByName',
+        'portAuthorityApprovedAt',
+        'submittedAt',
+        'rejectionReason',
+        'createdAt',
+        'updatedAt',
+        'lockVersion',
+      ];
+      excludeKeys.forEach((key) => delete cleanPayload[key]);
+      Object.keys(cleanPayload).forEach((key) => {
+        if (cleanPayload[key] === '' || cleanPayload[key] === null) {
+          delete cleanPayload[key];
+        }
+      });
+
       let savedId: string | undefined;
       if (drawerMode === 'create') {
-        const created = await createStationAsset(payload, config.type);
+        const created = await createStationAsset(cleanPayload as StationAssetPayload, config.type);
         savedId = created.id;
         if (merged.operatorOrgUnitId || merged.totalRevenue || merged.exploitationDeadline) {
           const deadlineDate = merged.exploitationDeadline
@@ -896,7 +938,7 @@ export default function StationAssetList({ config, fetchStationOptions }: Statio
         }
         toast.success(`Thêm mới ${config.title.toLowerCase()} thành công`);
       } else if (drawerMode === 'edit' && selected) {
-        await updateStationAsset(selected.id, payload, config.type);
+        await updateStationAsset(selected.id, cleanPayload as StationAssetPayload, config.type);
         savedId = selected.id;
         if (merged.operatorOrgUnitId || merged.totalRevenue || merged.exploitationDeadline) {
           const deadlineDate = merged.exploitationDeadline

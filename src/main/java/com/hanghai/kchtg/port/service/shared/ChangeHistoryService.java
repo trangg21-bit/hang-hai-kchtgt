@@ -28,6 +28,7 @@ import java.util.*;
 public class ChangeHistoryService {
 
     private final InfrastructureHistoryRepository historyRepository;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     public static InfrastructureType resolveInfrastructureType(String entityName) {
         if (entityName == null) return InfrastructureType.SEAPORT;
@@ -97,6 +98,9 @@ public class ChangeHistoryService {
         try {
             if (actualActor != null) userUuid = UUID.fromString(actualActor);
         } catch (Exception ignored) {}
+        if (userUuid == null && actualActor != null && !actualActor.isBlank() && userRepository != null) {
+            userUuid = userRepository.findByUsername(actualActor).map(com.hanghai.kchtg.user.entity.User::getId).orElse(null);
+        }
 
         UUID refUuid = null;
         try {

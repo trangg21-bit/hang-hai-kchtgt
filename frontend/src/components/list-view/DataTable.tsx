@@ -512,7 +512,9 @@ const DataTable: React.FC<DataTableProps> = ({
       // Prefer `columnKey`: every generated column gives it the page-defined
       // key, whereas `field` is an AntD-derived value and has caused sort to
       // jump to Name/Code on columns rendered from composite data.
-      const field = resolveSortField(activeSorter, columns as DataTableColumn[] | undefined);
+      const field =
+        resolveSortField(activeSorter, columns as DataTableColumn[] | undefined) ??
+        (!onSort ? localSort.field : lastServerSortRef.current.field);
       const sourceColumn = field
         ? (columns as DataTableColumn[] | undefined)?.find(
             (column) => column.key === field || column.dataIndex === field,

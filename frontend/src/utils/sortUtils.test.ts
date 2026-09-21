@@ -51,6 +51,65 @@ describe('DataTable sorting 3-state cycle', () => {
     handleSort('code', getNextSortOrder(sortOrder));
     expect(sortField).toBe('code');
     expect(sortOrder).toBe('ascend');
+
+    // 5th click: desc
+    handleSort('code', getNextSortOrder(sortOrder));
+    expect(sortField).toBe('code');
+    expect(sortOrder).toBe('descend');
+
+    // 6th click: null
+    handleSort('code', getNextSortOrder(sortOrder));
+    expect(sortField).toBe(null);
+    expect(sortOrder).toBe(null);
   });
 
+  it('correctly simulates CommonTable 3-state sort cycle across multiple clicks and column switches', () => {
+    let currentField: string | undefined = undefined;
+    let currentOrder: 'ascend' | 'descend' | null = null;
+    const dispatchedEvents: Array<{ field: string; order: 'ascend' | 'descend' | null }> = [];
+
+    const handleSortCycle = (targetField: string) => {
+      const order = targetField === currentField ? currentOrder : null;
+      const nextCycle = getNextSortOrder(order);
+      const nextOrder = nextCycle === 'asc' ? 'ascend' : nextCycle === 'desc' ? 'descend' : null;
+      currentField = nextOrder ? targetField : undefined;
+      currentOrder = nextOrder;
+      dispatchedEvents.push({ field: targetField, order: nextOrder });
+    };
+
+    // Click 1: Sắp xếp A -> Z
+    handleSortCycle('assetName');
+    expect(currentField).toBe('assetName');
+    expect(currentOrder).toBe('ascend');
+
+    // Click 2: Sắp xếp Z -> A
+    handleSortCycle('assetName');
+    expect(currentField).toBe('assetName');
+    expect(currentOrder).toBe('descend');
+
+    // Click 3: Bỏ sort hiển thị về ban đầu
+    handleSortCycle('assetName');
+    expect(currentField).toBe(undefined);
+    expect(currentOrder).toBe(null);
+
+    // Click 4: Lặp lại từ A -> Z
+    handleSortCycle('assetName');
+    expect(currentField).toBe('assetName');
+    expect(currentOrder).toBe('ascend');
+
+    // Chuyển sang cột khác: luôn bắt đầu từ A -> Z
+    handleSortCycle('orgUnitId');
+    expect(currentField).toBe('orgUnitId');
+    expect(currentOrder).toBe('ascend');
+
+    // Click lần 2 cột mới: Z -> A
+    handleSortCycle('orgUnitId');
+    expect(currentField).toBe('orgUnitId');
+    expect(currentOrder).toBe('descend');
+
+    // Click lần 3 cột mới: Bỏ sort
+    handleSortCycle('orgUnitId');
+    expect(currentField).toBe(undefined);
+    expect(currentOrder).toBe(null);
+  });
 });
