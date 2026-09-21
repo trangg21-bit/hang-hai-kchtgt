@@ -141,6 +141,65 @@ class RadarStationControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
     }
 
+    @Test
+    void testResolveSort_Default() {
+        org.springframework.data.domain.Sort sort = RadarStationController.resolveSort(null, null);
+        assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primary = sort.iterator().next();
+        assertEquals("t.updatedAt", primary.getProperty());
+        assertEquals(org.springframework.data.domain.Sort.Direction.DESC, primary.getDirection());
+    }
+
+    @Test
+    void testResolveSort_AscAndDesc() {
+        org.springframework.data.domain.Sort sortAsc = RadarStationController.resolveSort("stationName", "ASC");
+        org.springframework.data.domain.Sort.Order orderAsc = sortAsc.iterator().next();
+        assertEquals("LOWER(t.stationName)", orderAsc.getProperty());
+        assertEquals(org.springframework.data.domain.Sort.Direction.ASC, orderAsc.getDirection());
+
+        org.springframework.data.domain.Sort sortDesc = RadarStationController.resolveSort("stationName", "DESC");
+        org.springframework.data.domain.Sort.Order orderDesc = sortDesc.iterator().next();
+        assertEquals("LOWER(t.stationName)", orderDesc.getProperty());
+        assertEquals(org.springframework.data.domain.Sort.Direction.DESC, orderDesc.getDirection());
+    }
+
+    @Test
+    void testResolveSort_FieldMappings() {
+        assertEquals("t.updatedAt", RadarStationController.resolveSort("updatedByName", "DESC").iterator().next().getProperty());
+        assertEquals("t.updatedAt", RadarStationController.resolveSort("updatedBy", "DESC").iterator().next().getProperty());
+        assertEquals("LOWER(o.name)", RadarStationController.resolveSort("orgUnitName", "ASC").iterator().next().getProperty());
+        assertEquals("LOWER(p.portName)", RadarStationController.resolveSort("seaportName", "ASC").iterator().next().getProperty());
+        assertEquals("LOWER(pv.name)", RadarStationController.resolveSort("provinceName", "ASC").iterator().next().getProperty());
+        assertEquals("t.approvalStatus", RadarStationController.resolveSort("status", "ASC").iterator().next().getProperty());
+        assertEquals("t.submittedAt", RadarStationController.resolveSort("submittedByName", "ASC").iterator().next().getProperty());
+        assertEquals("t.submittedAt", RadarStationController.resolveSort("submittedForApprovalBy", "ASC").iterator().next().getProperty());
+        assertEquals("t.approvedDateLevel1", RadarStationController.resolveSort("approverLevel1", "ASC").iterator().next().getProperty());
+        assertEquals("t.approvedDateLevel2", RadarStationController.resolveSort("approverLevel2", "ASC").iterator().next().getProperty());
+        assertEquals("t.quantity", RadarStationController.resolveSort("quantity", "ASC").iterator().next().getProperty());
+    }
+
+    @Test
+    void testSearchPaged_DelegatesToServiceWithSort() {
+        org.springframework.data.domain.Page<RadarStationResponse> pageResult = new org.springframework.data.domain.PageImpl<>(Collections.singletonList(response));
+        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(pageResult);
+
+        ResponseEntity<?> result = controller.searchPaged(
+                null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null,
+                0, 20, "stationName", "ASC"
+        );
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        verify(service, times(1)).searchPaged(
+                any(), any(), any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(),
+                argThat(p -> {
+                    org.springframework.data.domain.Sort.Order order = p.getSort().iterator().next();
+                    return "LOWER(t.stationName)".equals(order.getProperty()) && order.getDirection() == org.springframework.data.domain.Sort.Direction.ASC;
+                })
+        );
+    }
+
     private Authentication mockAuth() {
         User principal = new User();
         principal.setId(TEST_USER_ID);

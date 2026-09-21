@@ -29,7 +29,10 @@ function extractHeaderLabel(val: any): string {
   if (!val) return '';
   if (typeof val === 'string') return val;
   if (typeof val === 'number') return String(val);
-  if (React.isValidElement(val)) return extractHeaderLabel((val.props as any)?.children);
+  if (React.isValidElement(val)) {
+    if ((val as any).type === 'br') return '\n';
+    return extractHeaderLabel((val.props as any)?.children);
+  }
   if (Array.isArray(val)) return val.map(extractHeaderLabel).join('');
   return '';
 }
@@ -38,7 +41,9 @@ function headerMinWidth(column: any): number {
   const label = extractHeaderLabel(column?.label ?? column?.title);
   if (!label) return 0;
   const sorterSpace = (column.sortable || column.sorter) ? HEADER_SORTER_WIDTH : 0;
-  return Math.ceil(label.length * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
+  const lines = label.split('\n');
+  const maxLineLength = Math.max(...lines.map((l: string) => l.trim().length));
+  return Math.ceil(maxLineLength * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
 }
 
 /** Nới `width` của cột lên tối thiểu bằng bề rộng tiêu đề của chính nó. */
@@ -507,7 +512,9 @@ const DataTable: React.FC<DataTableProps> = ({
       // Prefer `columnKey`: every generated column gives it the page-defined
       // key, whereas `field` is an AntD-derived value and has caused sort to
       // jump to Name/Code on columns rendered from composite data.
-      const field = resolveSortField(activeSorter, columns as DataTableColumn[] | undefined);
+      const field =
+        resolveSortField(activeSorter, columns as DataTableColumn[] | undefined) ??
+        (!onSort ? localSort.field : lastServerSortRef.current.field);
       const sourceColumn = field
         ? (columns as DataTableColumn[] | undefined)?.find(
             (column) => column.key === field || column.dataIndex === field,

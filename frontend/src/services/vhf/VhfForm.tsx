@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -28,7 +28,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -42,9 +42,8 @@ import {
 import {
   fetchVhfById, createVhf, updateVhf, generateVhfCode, submitVhf,
   fetchVhfAttachments, uploadVhfAttachment, deleteVhfAttachment, downloadVhfAttachment,
-  type VhfAttachmentResponse,
 } from './api';
-import type { VhfResponse, CreateVhfRequest, UpdateVhfRequest } from './types';
+import type { CreateVhfRequest, UpdateVhfRequest } from './types';
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
@@ -101,7 +100,7 @@ const OPERATIONAL_STATUS_OPTIONS = [
 
 const ATTACHED_INFRA_TYPE_OPTIONS = [
   { value: 1, label: 'Trung Tâm Điều Hành VTS' },
-  { value: 2, label: 'Trạm Radar' },
+  { value: 2, label: 'Trạm radar' },
 ];
 
 const UNIT_OF_MEASURE_OPTIONS = [
@@ -120,6 +119,18 @@ const UNIT_OF_MEASURE_OPTIONS = [
   { label: 'Kho', value: 13 },
   { label: 'Khu', value: 14 },
   { label: 'Ki-lô-mét', value: 15 },
+  { label: 'Mét', value: 16 },
+  { label: 'Mét vuông', value: 17 },
+  { label: 'Nhà', value: 18 },
+  { label: 'Phòng', value: 19 },
+  { label: 'Phân hệ', value: 20 },
+  { label: 'Quả', value: 21 },
+  { label: 'Tuyến', value: 22 },
+  { label: 'Tấn', value: 23 },
+  { label: 'Trạm', value: 24 },
+  { label: 'Tháp', value: 25 },
+  { label: 'Trụ', value: 26 },
+  { label: 'VNĐ', value: 27 },
 ];
 
 
@@ -247,6 +258,10 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
+  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedOrgUnitId = watchedOrgUnitId ?? form.getFieldValue('orgUnitId');
+  const watchedSeaportId = Form.useWatch('seaportId', form);
+  const editSeaportIdRef = useRef<string | undefined>(undefined);
 
   /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới */
   const useMaxReached = (name: string, max: number): boolean => {
@@ -268,12 +283,42 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   const [orgUnits, setOrgUnits] = useState<Organization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>([]);
-  const [seaportOptions, setSeaportOptions] = useState<Array<{ id: string; portName: string; portCode?: string }>>([]);
+  const [seaportOptions, setSeaportOptions] = useState<Array<{ id: string; portName: string; portCode?: string; orgUnitId?: string }>>([]);
+
+  const allowedOrgIds = useMemo(() => {
+    if (!selectedOrgUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(orgUnits, String(selectedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [orgUnits, selectedOrgUnitId]);
+
+  const filteredSeaportOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return seaportOptions.filter((port) => {
+      return port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, seaportOptions, selectedOrgUnitId]);
+
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
-  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string }>>([]);
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string; orgUnitId?: string }>>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string; orgUnitId?: string }>>([]);
   const [loadingRadars, setLoadingRadars] = useState(false);
   const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
+
+  const filteredRadarStationOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return radarStationOptions.filter((r) => {
+      return r.orgUnitId && allowedOrgIds.has(String(r.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, radarStationOptions, selectedOrgUnitId]);
+
+  const filteredVtsOperationCenterOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return vtsOperationCenterOptions.filter((c) => {
+      return c.orgUnitId && allowedOrgIds.has(String(c.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, selectedOrgUnitId, vtsOperationCenterOptions]);
 
   // Tọa độ GPS & File đính kèm
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
@@ -319,7 +364,12 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
         api.get('/v1/ports?size=1000').then((res) => {
           const list = res.data?.data?.content || res.data?.data || [];
           if (Array.isArray(list)) {
-            setSeaportOptions(list.map((p: any) => ({ id: p.id, portName: p.portName || p.name, portCode: p.portCode || p.code })));
+            setSeaportOptions(list.map((p: { id: string; portName?: string; name?: string; portCode?: string; code?: string; orgUnitId?: string }) => ({
+              id: p.id,
+              portName: p.portName || p.name || '',
+              portCode: p.portCode || p.code,
+              orgUnitId: p.orgUnitId,
+            })));
           }
         }).catch(() => {});
       });
@@ -332,16 +382,17 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
     }).catch(() => {});
   }, []);
 
-  // Nạp danh mục Trạm Radar (phục vụ hạ tầng phụ thuộc - loại 2)
+  // Nạp danh mục Trạm radar (phục vụ hạ tầng phụ thuộc - loại 2)
   useEffect(() => {
     setLoadingRadars(true);
     api.get('/common/options/radar-stations')
       .then((res) => {
         const items = res.data?.data;
         setRadarStationOptions(
-          (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
+          (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string; orgUnitId?: string }) => ({
             label: s.stationName || s.code || s.id,
             value: s.id,
+            orgUnitId: s.orgUnitId,
           }))
         );
       })
@@ -356,9 +407,10 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       .then((res) => {
         const items = res.data?.data;
         setVtsOperationCenterOptions(
-          (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+          (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
             label: s.name || s.code || s.id,
             value: s.id,
+            orgUnitId: s.orgUnitId,
           }))
         );
       })
@@ -381,17 +433,9 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
     })();
   }, []);
 
-  // Mode Thêm mới: sinh trước mã thiết bị & set đơn vị mặc định
+  // Mode Thêm mới: set đơn vị mặc định
   useEffect(() => {
     if (!isEdit) {
-      if (!form.getFieldValue('deviceCode')) {
-        setDeviceCodeLoading(true);
-        generateVhfCode()
-          .then((code) => { if (code) form.setFieldsValue({ deviceCode: code }); })
-          .catch(() => {})
-          .finally(() => setDeviceCodeLoading(false));
-      }
-
       // Mặc định đơn vị quản lý theo tài khoản của người dùng đang tạo bản ghi mới (chuẩn /beacon-stations)
       const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgUnits)
         || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
@@ -409,6 +453,25 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       }
     }
   }, [isEdit, currentUser, orgUnits, form]);
+
+  // Tự sinh mã thiết bị khi người dùng chọn Thuộc cảng biển (chuẩn /berth)
+  useEffect(() => {
+    if (isEdit && editSeaportIdRef.current === watchedSeaportId) return;
+    if (!watchedSeaportId) {
+      if (!isEdit) {
+        form.setFieldValue('deviceCode', undefined);
+      }
+      return;
+    }
+    if (isEdit) return;
+    setDeviceCodeLoading(true);
+    generateVhfCode()
+      .then((code) => {
+        if (code) form.setFieldsValue({ deviceCode: code });
+      })
+      .catch(() => {})
+      .finally(() => setDeviceCodeLoading(false));
+  }, [watchedSeaportId, isEdit, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
   useEffect(() => {
@@ -444,6 +507,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       try {
         const data = await fetchVhfById(id);
         if (disposed) return;
+        editSeaportIdRef.current = data.seaportId ?? undefined;
         form.setFieldsValue({
           deviceCode: data.deviceCode,
           deviceName: data.deviceName,
@@ -659,8 +723,9 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       return;
     }
     setGpsError(null);
+    const hasGeom = !!geomType;
     const validCoords = coordResult.validCoords;
-    const wktCoordinates = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+    const wktCoordinates = hasGeom && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : null;
 
     setSubmitting(true);
     onSubmittingChange?.(true);
@@ -674,11 +739,11 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
         ...values,
         yearOfUse: submittedYear,
         quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
-        coordinates: wktCoordinates || undefined,
-        geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
-        mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
-        displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
+        coordinates: hasGeom ? wktCoordinates : null,
+        geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+        mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
+        coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+        displayRule: hasGeom && values.displayRule != null ? (Number(values.displayRule) || null) : null,
       };
 
       let targetId: string;
@@ -759,17 +824,57 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                     showPath
                     disabled={isEdit && !isSystemAdmin}
                     style={{ borderRadius: radiusPill, height: 40 }}
+                    onChange={(val) => {
+                      form.setFieldValue('orgUnitId', val);
+                      const currentSeaportId = form.getFieldValue('seaportId');
+                      const currentAttachedId = form.getFieldValue('attachedInfrastructureId');
+
+                      if (!val) {
+                        form.setFieldValue('seaportId', undefined);
+                        form.setFieldValue('attachedInfrastructureId', undefined);
+                      } else {
+                        const rawSet = resolveOrgSubtreeIds(orgUnits, String(val));
+                        const normalizedSet = new Set<string>();
+                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+
+                        if (currentSeaportId) {
+                          const isValidSeaport = seaportOptions.some(
+                            (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
+                          );
+                          if (!isValidSeaport) {
+                            form.setFieldValue('seaportId', undefined);
+                          }
+                        }
+
+                        if (currentAttachedId) {
+                          const currentAttachedType = form.getFieldValue('attachedInfrastructureType');
+                          const activeOptions = currentAttachedType === 1 ? vtsOperationCenterOptions : currentAttachedType === 2 ? radarStationOptions : [];
+                          const isValidAttached = activeOptions.some(
+                            (item) => item.value === currentAttachedId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                          );
+                          if (!isValidAttached) {
+                            form.setFieldValue('attachedInfrastructureId', undefined);
+                          }
+                        }
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="seaportId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="seaportId"
+                  {...labelProps('Thuộc cảng biển')}
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Thuộc cảng biển là bắt buộc' }]}
+                >
                   <Select
-                    placeholder="Chọn cảng biển..."
+                    placeholder={!selectedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn cảng biển'}
+                    disabled={!selectedOrgUnitId}
                     allowClear
                     showSearch
                     optionFilterProp="label"
-                    options={seaportOptions.map((p) => ({
+                    options={filteredSeaportOptions.map((p) => ({
                       label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName,
                       value: p.id,
                     }))}
@@ -780,12 +885,16 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="deviceCode" {...labelProps('Mã thiết bị')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="deviceCode"
+                  {...labelProps('Mã thiết bị')}
+                  style={{ marginBottom: spaceFormField }}
+                  tooltip="Mã thiết bị được sinh tự động"
+                >
                   <Input
-                    placeholder="Mã tự động sinh..."
                     disabled
+                    placeholder={deviceCodeLoading ? 'Đang sinh mã...' : watchedSeaportId ? 'Mã tự động' : 'Chọn Cảng biển để sinh mã'}
                     style={{ ...inputStyle, ...readonlyInputStyle }}
-                    suffix={deviceCodeLoading ? <span style={{ color: textTertiary, fontSize: fontSizeSm }}>Đang sinh mã...</span> : null}
                   />
                 </Form.Item>
               </Col>
@@ -852,21 +961,23 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                 >
                   <Select
                     placeholder={
-                      watchedAttachedType === 2
-                        ? 'Chọn trạm Radar'
-                        : watchedAttachedType === 1
-                          ? 'Chọn Trung Tâm Điều Hành VTS'
-                          : 'Chọn loại hạ tầng trước'
+                      !selectedOrgUnitId
+                        ? 'Vui lòng chọn đơn vị quản lý trước'
+                        : watchedAttachedType === 2
+                          ? 'Chọn trạm Radar'
+                          : watchedAttachedType === 1
+                            ? 'Chọn Trung Tâm Điều Hành VTS'
+                            : 'Chọn loại hạ tầng trước'
                     }
                     options={
                       watchedAttachedType === 1
-                        ? vtsOperationCenterOptions
+                        ? filteredVtsOperationCenterOptions
                         : watchedAttachedType === 2
-                          ? radarStationOptions
+                          ? filteredRadarStationOptions
                           : []
                     }
                     loading={watchedAttachedType === 1 ? loadingVtsCenters : watchedAttachedType === 2 ? loadingRadars : false}
-                    disabled={watchedAttachedType !== 1 && watchedAttachedType !== 2}
+                    disabled={!selectedOrgUnitId || (watchedAttachedType !== 1 && watchedAttachedType !== 2)}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -901,8 +1012,8 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             </div>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn đơn vị tính..." options={UNIT_OF_MEASURE_OPTIONS} allowClear style={selectStyle} />
+                <Form.Item name="unitOfMeasure" {...labelProps('Đơn vị tính')} style={{ marginBottom: spaceFormField }} rules={[ { required: true, message: 'Đơn vị tính là bắt buộc' } ]}>
+                  <Select placeholder="Chọn đơn vị tính" options={UNIT_OF_MEASURE_OPTIONS} showSearch allowClear style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -915,7 +1026,6 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                     { required: true, message: 'Số lượng là bắt buộc' },
                     integer5Rule,
                   ]}
-                  initialValue={1}
                 >
                   <NumberInputWithCount
                     min={1}

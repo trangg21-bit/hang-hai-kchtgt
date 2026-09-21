@@ -176,6 +176,9 @@ public class DikeRevetmentService {
     public DikeRevetmentResponse getById(UUID id) {
         DikeRevetment dr = repo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đê kè với id: " + id));
+        if (dr.getDeletedAt() != null || dr.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new RuntimeException("Đê kè đã bị xóa hoặc lưu trữ");
+        }
         return toResponse(dr);
     }
 
@@ -356,9 +359,7 @@ public class DikeRevetmentService {
         Map<String, String> previousValues = new LinkedHashMap<>();
         applyIfChanged("dikeRevetmentName", dr.getDikeRevetmentName(), req.getDikeRevetmentName(), dr::setDikeRevetmentName, previousValues);
         applyIfChanged("dikeRevetmentType", dr.getDikeRevetmentType(), req.getDikeRevetmentType(), dr::setDikeRevetmentType, previousValues);
-        if (req.getLocation() != null && !req.getLocation().trim().isEmpty()) {
-            applyIfChanged("location", dr.getLocation(), req.getLocation().trim(), dr::setLocation, previousValues);
-        }
+        applyIfChanged("location", dr.getLocation(), req.getLocation(), dr::setLocation, previousValues);
         applyIfChanged("locationDetail", dr.getLocationDetail(), req.getLocationDetail(), dr::setLocationDetail, previousValues);
         applyIfChanged("seaportId", dr.getSeaportId(), req.getSeaportId(), dr::setSeaportId, previousValues);
         applyIfChanged("operatingUnitId", dr.getOperatingUnitId(), req.getOperatingUnitId(), dr::setOperatingUnitId, previousValues);
@@ -371,28 +372,20 @@ public class DikeRevetmentService {
         applyIfChanged("surfaceMaterial", dr.getSurfaceMaterial(), req.getSurfaceMaterial(), dr::setSurfaceMaterial, previousValues);
         applyIfChanged("status", dr.getStatus(), req.getStatus(), dr::setStatus, previousValues);
         applyIfChanged("note", dr.getNote(), req.getNote(), dr::setNote, previousValues);
-        if (req.getOrgUnitId() != null) {
-            applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues);
-        }
-        applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
+        applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues);
+        boolean hasGeometryType = req.getGeometryType() != null;
+        boolean hasCoordinates = req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty();
 
-        if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()
-                && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
-            previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
-        }
-        if (req.getGeometryType() != null && req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()
-                && !Objects.equals(req.getGeometryType(), oldGeometryType)) {
-            previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
-        }
+        if (hasGeometryType && hasCoordinates) {
+            applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
 
-        if (wasApproved) {
-            dr.setApprovalStatus(ApprovalStatus.APPROVED);
-        }
+            if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
+                previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+            }
+            if (!Objects.equals(req.getGeometryType(), oldGeometryType)) {
+                previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+            }
 
-        dr.setUpdatedBy(userId);
-        DikeRevetment saved = repo.save(dr);
-
-        if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
             GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -401,13 +394,35 @@ public class DikeRevetmentService {
                     dr.getCode(),
                     geomType,
                     objType,
-                    req.getCoordinates(),
+                    req.getCoordinates().trim(),
                     dr.getId(),
                     InfrastructureType.DIKE_REVETMENT
             );
-            saved.setSpatialId(spatialObj.getId());
-            saved = repo.save(saved);
+            dr.setSpatialId(spatialObj.getId());
+        } else {
+            // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
+            if (oldGeometryType != null) {
+                previousValues.put("geometryType", oldGeometryType.name());
+            }
+            if (oldCoordinates != null && !oldCoordinates.isBlank()) {
+                previousValues.put("coordinates", oldCoordinates);
+            }
+            if (dr.getSymbolId() != null) {
+                previousValues.put("symbolId", dr.getSymbolId().toString());
+                dr.setSymbolId(null);
+            }
+            if (dr.getSpatialId() != null) {
+                gisSpatialObjectService.delete(dr.getSpatialId());
+                dr.setSpatialId(null);
+            }
         }
+
+        if (wasApproved) {
+            dr.setApprovalStatus(ApprovalStatus.APPROVED);
+        }
+
+        dr.setUpdatedBy(userId);
+        DikeRevetment saved = repo.save(dr);
 
         // Chuẩn /vts-operation-center: mỗi trường thay đổi = 1 dòng history (tên trường + giá trị cũ/mới)
         if (wasApproved && !previousValues.isEmpty()) {
@@ -861,6 +876,7 @@ public class DikeRevetmentService {
 
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
             Map<String, String> previousValues) {
+        if (newVal == null) return; // null = không gửi trường này khi update
         if (EntityUpdateUtils.areEqual(oldVal, newVal)) return; // giá trị không đổi
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
@@ -1132,7 +1148,7 @@ public class DikeRevetmentService {
                 .note(dr.getNote())
                 .orgUnitId(dr.getOrgUnitId())
                 .orgUnitName(orgUnitName)
-                .approvalStatus(dr.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : dr.getApprovalStatus())
+                .approvalStatus(dr.getApprovalStatus())
                 .isApprovedLevel1(dr.getApprovedDateLevel1() != null)
                 .approverLevel1(dr.getApproverLevel1())
                 .approvedByNameLevel1(approverNameLevel1)

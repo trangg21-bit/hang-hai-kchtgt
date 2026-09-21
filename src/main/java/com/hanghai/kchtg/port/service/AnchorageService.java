@@ -45,6 +45,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -187,28 +188,54 @@ public class AnchorageService {
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
         }
-        entity.setNavigationChannelId(request.getNavigationChannelId());
-        entity.setBuoyStationId(request.getBuoyStationId());
-        entity.setProvinceId(request.getProvinceId());
-        entity.setDetailedLocation(request.getDetailedLocation());
+        if (request.getNavigationChannelId() != null)
+            entity.setNavigationChannelId(request.getNavigationChannelId());
+        if (request.getBuoyStationId() != null)
+            entity.setBuoyStationId(request.getBuoyStationId());
+        if (request.getProvinceId() != null)
+            entity.setProvinceId(request.getProvinceId());
+        if (request.getDetailedLocation() != null)
+            entity.setDetailedLocation(request.getDetailedLocation());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        entity.setShapeDescription(request.getShapeDescription());
-        entity.setArea(request.getArea());
-        entity.setDesignWaterDepth(request.getDesignWaterDepth());
-        entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
-        entity.setBottomElevationDesign(request.getBottomElevationDesign());
-        entity.setMaxVesselDWT(request.getMaxVesselDWT());
-        entity.setActiveAnchorageCount(request.getActiveAnchorageCount());
-        entity.setPublishedAnchorageCount(request.getPublishedAnchorageCount());
-        entity.setUnderInvestmentAnchorageCount(request.getUnderInvestmentAnchorageCount());
-        entity.setRemarks(request.getRemarks());
-        entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
-        entity.setPublicDecision(request.getPublicDecision());
-        entity.setInvestmentAgreement(request.getInvestmentAgreement());
-        entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setCoordinateSystem(request.getCoordinateSystem());
-        entity.setDisplayRule(request.getDisplayRule());
+        if (request.getShapeDescription() != null)
+            entity.setShapeDescription(request.getShapeDescription());
+        if (request.getArea() != null)
+            entity.setArea(request.getArea());
+        if (request.getDesignWaterDepth() != null)
+            entity.setDesignWaterDepth(request.getDesignWaterDepth());
+        if (request.getCurrentWaterDepth() != null)
+            entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
+        if (request.getBottomElevationDesign() != null)
+            entity.setBottomElevationDesign(request.getBottomElevationDesign());
+        if (request.getMaxVesselDWT() != null)
+            entity.setMaxVesselDWT(request.getMaxVesselDWT());
+        if (request.getActiveAnchorageCount() != null)
+            entity.setActiveAnchorageCount(request.getActiveAnchorageCount());
+        if (request.getPublishedAnchorageCount() != null)
+            entity.setPublishedAnchorageCount(request.getPublishedAnchorageCount());
+        if (request.getUnderInvestmentAnchorageCount() != null)
+            entity.setUnderInvestmentAnchorageCount(request.getUnderInvestmentAnchorageCount());
+        if (request.getRemarks() != null)
+            entity.setRemarks(request.getRemarks());
+        if (request.getOpeningAnnouncementDate() != null)
+            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
+        if (request.getPublicDecision() != null)
+            entity.setPublicDecision(request.getPublicDecision());
+        if (request.getInvestmentAgreement() != null)
+            entity.setInvestmentAgreement(request.getInvestmentAgreement());
+        boolean hasGeometryType = request.getGeometryType() != null;
+        boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
+
+        if (hasGeometryType && hasCoordinates) {
+            entity.setMapSymbolId(request.getMapSymbolId());
+            entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
+            entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
+        } else {
+            entity.setMapSymbolId(null);
+            entity.setCoordinateSystem(null);
+            entity.setDisplayRule(null);
+        }
 
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
@@ -249,21 +276,30 @@ public class AnchorageService {
 
         // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
-            if (coordinates != null && !coordinates.trim().isEmpty()) {
+            if (hasGeometryType && hasCoordinates) {
                 GisGeometryType geomType = request.getGeometryType() != null
                         ? request.getGeometryType() : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
                 boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
                             geometryTypeLabel(geomType), actorId);
+                }
+            } else if (oldWkt != null || oldGeomType != null) {
+                if (oldWkt != null && !oldWkt.trim().isEmpty()) {
+                    changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Tọa độ GIS",
+                            oldWkt.trim(), "Chưa có", actorId);
+                }
+                if (oldGeomType != null) {
+                    changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Loại đối tượng GIS",
+                            geometryTypeLabel(oldGeomType), "Chưa có", actorId);
                 }
             }
 
@@ -309,11 +345,33 @@ public class AnchorageService {
                                            String operationalStatus, String approvalStatus,
                                            String updatedFrom, String updatedTo,
                                            Boolean isDeleted) {
+        return findAll(page, size, orgUnitId, search, anchorageCode, anchorageName,
+                portId, navigationChannelId, buoyStationId, provinceId,
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AnchorageResponse> findAll(int page, int size, UUID orgUnitId,
+                                           String search, String anchorageCode, String anchorageName,
+                                           UUID portId, UUID navigationChannelId, UUID buoyStationId,
+                                           Integer provinceId,
+                                           String operationalStatus, String approvalStatus,
+                                           String updatedFrom, String updatedTo,
+                                           Boolean isDeleted,
+                                           String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                        Sort.Order.desc(EntityFields.CREATED_AT),
-                        Sort.Order.asc(EntityFields.ID)));
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "a.updatedAt")
+                .and(JpaSort.unsafe(Sort.Direction.DESC, "a.createdAt"))
+                .and(JpaSort.unsafe(Sort.Direction.ASC, "a.id"));
+        Sort sort = defaultSort;
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = JpaSort.unsafe(direction, property).and(defaultSort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         boolean deletedOnly = "DELETED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
                 || "ARCHIVED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
                 || Boolean.TRUE.equals(isDeleted);
@@ -391,6 +449,58 @@ public class AnchorageService {
         }
         evictAfterCommit();
         log.info("Soft-deleted Anchorage [{}] code={}", entity.getId(), entity.getAnchorageCode());
+    }
+
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null) return null;
+        switch (sortBy.trim()) {
+            case "anchorageCode":
+            case "code":
+                return "LOWER(a.anchorageCode)";
+            case "anchorageName":
+            case "name":
+                return "LOWER(a.anchorageName)";
+            case "portId":
+            case "portName":
+                return "LOWER(p.portName)";
+            case "navigationChannelId":
+            case "navigationChannelName":
+            case "waterway":
+            case "waterwayName":
+                return "LOWER(nc.channelName)";
+            case "buoyStationId":
+            case "buoyStationName":
+            case "buoyBerthName":
+                return "LOWER(bb.buoyBerthName)";
+            case "provinceId":
+            case "provinceName":
+            case "province":
+                return "LOWER(pv.name)";
+            case "orgUnitId":
+            case "orgUnitName":
+                return "LOWER(o.name)";
+            case "operationalStatus":
+                return "a.operationalStatus";
+            case "approvalStatus":
+                return "a.approvalStatus";
+            case "area":
+                return "a.area";
+            case "maxVesselDWT":
+            case "maxVesselDwt":
+                return "a.maxVesselDWT";
+            case "submittedForApprovalAt":
+                return "a.submittedForApprovalAt";
+            case "portAuthorityApprovedAt":
+                return "a.portAuthorityApprovedAt";
+            case "departmentApprovedAt":
+                return "a.departmentApprovedAt";
+            case "createdAt":
+                return "a.createdAt";
+            case "updatedAt":
+                return "a.updatedAt";
+            default:
+                return null;
+        }
     }
 
     public String generateAnchorageCode(UUID portId) {
@@ -750,16 +860,22 @@ public class AnchorageService {
         if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
             wkt = "POINT(" + longitude + " " + latitude + ")";
         }
-        if (wkt != null && !wkt.trim().isEmpty()) {
-            GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
+        if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
+            GisGeometryType geomType = geometryType;
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(), saved.getAnchorageName(), "ANCHORAGE_" + saved.getAnchorageCode(),
                     geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
                     InfrastructureType.ANCHORAGE_AREA);
             saved.setSpatialId(spatialObj.getId());
             anchorageRepository.saveAndFlush(saved);
-        } else if (saved.getSpatialId() != null) {
-            gisSpatialObjectService.delete(saved.getSpatialId());
+        } else {
+            if (saved.getSpatialId() != null) {
+                gisSpatialObjectService.delete(saved.getSpatialId());
+            }
+            if (saved.getId() != null) {
+                gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.ANCHORAGE_AREA)
+                        .ifPresent(sp -> gisSpatialObjectService.delete(sp.getId()));
+            }
             saved.setSpatialId(null);
             anchorageRepository.saveAndFlush(saved);
         }

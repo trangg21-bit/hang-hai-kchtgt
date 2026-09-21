@@ -41,7 +41,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { FormOrgUnitTreeSelect, OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
+import { FormOrgUnitTreeSelect, OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -799,7 +799,7 @@ export function historyFieldValue(
   }
   if (fn === 'attachedInfrastructureType' || fn === 'Loại hạ tầng' || fn === 'Thuộc loại hạ tầng') {
     if (val === '1' || val === 'TTDH VTS') return 'TTDH VTS';
-    if (val === '2' || val === 'Trạm Radar') return 'Trạm Radar';
+    if (val === '2' || val === 'Trạm radar') return 'Trạm radar';
     return val;
   }
   if (fn === 'attachedInfrastructureId' || fn === 'Thuộc hạ tầng' || fn === 'Hạ tầng phụ thuộc') {
@@ -906,6 +906,27 @@ const VtsAssistListPage = () => {
     updatedTo: "" as string | undefined,
   });
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần ở backend) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(0);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
@@ -991,12 +1012,12 @@ const VtsAssistListPage = () => {
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
     { label: 'Trung Tâm Điều Hành VTS', value: 1 },
-    { label: 'Trạm Radar', value: 2 },
+    { label: 'Trạm radar', value: 2 },
   ];
 
   // Radar station options for dependent dropdown
   const [radarStationOptions, setRadarStationOptions] = useState<
-    { label: string; value: string }[]
+    { label: string; value: string; orgUnitId?: string }[]
   >([]);
   const [loadingRadars, setLoadingRadars] = useState(false);
 
@@ -1006,9 +1027,10 @@ const VtsAssistListPage = () => {
       const res = await api.get("/common/options/radar-stations");
       const items = res.data?.data;
       setRadarStationOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string; orgUnitId?: string }) => ({
           label: s.stationName || s.code || s.id,
           value: s.id,
+          orgUnitId: s.orgUnitId,
         }))
       );
     } catch (error) {
@@ -1025,7 +1047,7 @@ const VtsAssistListPage = () => {
 
   // VTS Operation Center options for dependent dropdown (Thuộc TTDH VTS — loại 1)
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<
-    { label: string; value: string }[]
+    { label: string; value: string; orgUnitId?: string }[]
   >([]);
   const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
 
@@ -1035,9 +1057,10 @@ const VtsAssistListPage = () => {
       const res = await api.get("/common/options/vts-operation-centers");
       const items = res.data?.data;
       setVtsOperationCenterOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
           label: s.name || s.code || s.id,
           value: s.id,
+          orgUnitId: s.orgUnitId,
         }))
       );
     } catch (error) {
@@ -1051,6 +1074,22 @@ const VtsAssistListPage = () => {
   useEffect(() => {
     fetchVtsOperationCenters();
   }, [fetchVtsOperationCenters]);
+
+  const filteredFilterRadarStationOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return radarStationOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return radarStationOptions.filter((r) => r.orgUnitId && normalizedSet.has(String(r.orgUnitId).toLowerCase()));
+  }, [radarStationOptions, orgUnitOptions, filterValues.orgUnitId]);
+
+  const filteredFilterVtsOperationCenterOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return vtsOperationCenterOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && normalizedSet.has(String(c.orgUnitId).toLowerCase()));
+  }, [vtsOperationCenterOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   // Đơn vị khai thác — từ bảng operating_organizations (endpoint chung)
   const [operatingOrganizationOptions, setOperatingOrganizationOptions] = useState<
@@ -1137,6 +1176,26 @@ const VtsAssistListPage = () => {
   // Reactive watch for attached infrastructure dropdown
   const createAttachedType = Form.useWatch('attachedInfrastructureType', createForm);
   const createGeometryType = Form.useWatch('geometryType', createForm);
+  const createOrgUnitId = Form.useWatch('orgUnitId', createForm);
+  const selectedCreateOrgUnitId = createOrgUnitId ?? createForm.getFieldValue('orgUnitId');
+
+  const createAllowedOrgIds = useMemo(() => {
+    if (!selectedCreateOrgUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, String(selectedCreateOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [orgUnitOptions, selectedCreateOrgUnitId]);
+
+  const createFilteredRadarStations = useMemo(() => {
+    if (!selectedCreateOrgUnitId || createAllowedOrgIds.size === 0) return [];
+    return radarStationOptions.filter((r) => r.orgUnitId && createAllowedOrgIds.has(String(r.orgUnitId).toLowerCase()));
+  }, [createAllowedOrgIds, radarStationOptions, selectedCreateOrgUnitId]);
+
+  const createFilteredVtsCenters = useMemo(() => {
+    if (!selectedCreateOrgUnitId || createAllowedOrgIds.size === 0) return [];
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && createAllowedOrgIds.has(String(c.orgUnitId).toLowerCase()));
+  }, [createAllowedOrgIds, selectedCreateOrgUnitId, vtsOperationCenterOptions]);
 
   // GPS coordinates for create drawer
   const [gpsCoordList, setGpsCoordList] = useState<GpsCoordRow[]>([]);
@@ -1160,6 +1219,26 @@ const VtsAssistListPage = () => {
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
   const updateGeometryType = Form.useWatch('geometryType', updateForm);
+  const updateOrgUnitId = Form.useWatch('orgUnitId', updateForm);
+  const selectedUpdateOrgUnitId = updateOrgUnitId ?? updateForm.getFieldValue('orgUnitId');
+
+  const updateAllowedOrgIds = useMemo(() => {
+    if (!selectedUpdateOrgUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, String(selectedUpdateOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [orgUnitOptions, selectedUpdateOrgUnitId]);
+
+  const updateFilteredRadarStations = useMemo(() => {
+    if (!selectedUpdateOrgUnitId || updateAllowedOrgIds.size === 0) return [];
+    return radarStationOptions.filter((r) => r.orgUnitId && updateAllowedOrgIds.has(String(r.orgUnitId).toLowerCase()));
+  }, [updateAllowedOrgIds, radarStationOptions, selectedUpdateOrgUnitId]);
+
+  const updateFilteredVtsCenters = useMemo(() => {
+    if (!selectedUpdateOrgUnitId || updateAllowedOrgIds.size === 0) return [];
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && updateAllowedOrgIds.has(String(c.orgUnitId).toLowerCase()));
+  }, [updateAllowedOrgIds, selectedUpdateOrgUnitId, vtsOperationCenterOptions]);
 
   // GPS coordinates for edit drawer
   const [updateGpsCoordList, setUpdateGpsCoordList] = useState<GpsCoordRow[]>([]);
@@ -1609,9 +1688,10 @@ const VtsAssistListPage = () => {
         key: "deviceName",
         label: "Tên / Mã thiết bị",
         dataIndex: "deviceName",
-        width: 300,
+        width: 260,
         fixed: "left" as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("deviceName"),
         cellTitle: (record: VtsAssistResponse) => record.deviceName || '',
         render: (val: string, record: VtsAssistResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -1654,14 +1734,16 @@ const VtsAssistListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
+        sortOrder: sortOrderFor("orgUnitName"),
         cellTitle: (record: VtsAssistResponse) => record.orgUnitName || '',
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
-        label: "Thuộc TTDH VTS/Trạm Radar",
+        label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
+        sortable: false,
         cellTitle: (record: VtsAssistResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -1670,6 +1752,7 @@ const VtsAssistListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
+        sortable: false,
         cellTitle: (record: VtsAssistResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -1679,6 +1762,7 @@ const VtsAssistListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
+        sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: VtsAssistResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -1688,6 +1772,7 @@ const VtsAssistListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
+        sortOrder: sortOrderFor("unitOfMeasure"),
         cellTitle: (record: VtsAssistResponse) => (record.unitOfMeasure != null ? formatUnitOfMeasure(record.unitOfMeasure) : '') || '',
         render: (val: number) => renderCellWithTooltip(formatUnitOfMeasure(val)),
       },
@@ -1698,6 +1783,7 @@ const VtsAssistListPage = () => {
         width: 120,
         type: "number" as const,
         align: 'center' as const,
+        sortOrder: sortOrderFor("quantity"),
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -1712,6 +1798,7 @@ const VtsAssistListPage = () => {
         type: "mono" as const,
         align: 'center' as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("yearOfUse"),
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
@@ -1722,6 +1809,7 @@ const VtsAssistListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
+        sortOrder: sortOrderFor("operationalStatus"),
         render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
@@ -1745,6 +1833,7 @@ const VtsAssistListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
+        sortOrder: sortOrderFor("approvalStatus"),
         render: (val: string, record: VtsAssistResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy || val === "DELETED" || val === "ARCHIVED");
           return renderApprovalBadge(isDeleted ? "DELETED" : val);
@@ -1755,36 +1844,40 @@ const VtsAssistListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
+        sortOrder: sortOrderFor("updatedByName"),
         cellTitle: (record: VtsAssistResponse) => record.updatedByName || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
-        key: "submittedInfo",
+        key: "submittedByName",
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        sortOrder: sortOrderFor("submittedByName"),
         cellTitle: (record: VtsAssistResponse) => record.submittedByName || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
-        key: "approvedLevel1Info",
+        key: "approverLevel1Name",
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        sortOrder: sortOrderFor("approverLevel1Name"),
         cellTitle: (record: VtsAssistResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
-        key: "approvedLevel2Info",
+        key: "approverLevel2Name",
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        sortOrder: sortOrderFor("approverLevel2Name"),
         cellTitle: (record: VtsAssistResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: VtsAssistResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, hasPerm]
+    [page, pageSize, hasPerm, sortOrderFor]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -2154,13 +2247,12 @@ const VtsAssistListPage = () => {
       <div>
         {processedGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
-          const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+          const orgId = rec0.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
           const unitName =
             rec0.orgUnitName ||
             (orgName ? orgName.split(' - ').pop() || orgName : undefined) ||
             rec0.unitName ||
-            historyTarget?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
           const changes = g.changes;
           const orderedChanges = g.orderedChanges;
@@ -2341,6 +2433,20 @@ const VtsAssistListPage = () => {
     ));
     setUpdateGpsError(null);
     setUpdateActiveTabKey('general');
+
+    if (record.attachedInfrastructureType === 1 && record.attachedInfrastructureId && record.attachedInfrastructureName) {
+      setVtsOperationCenterOptions((prev) => {
+        if (prev.some((item) => item.value === record.attachedInfrastructureId)) return prev;
+        return [...prev, { value: record.attachedInfrastructureId!, label: record.attachedInfrastructureName!, orgUnitId: record.orgUnitId || undefined }];
+      });
+    }
+    if (record.attachedInfrastructureType === 2 && record.attachedInfrastructureId && record.attachedInfrastructureName) {
+      setRadarStationOptions((prev) => {
+        if (prev.some((item) => item.value === record.attachedInfrastructureId)) return prev;
+        return [...prev, { value: record.attachedInfrastructureId!, label: record.attachedInfrastructureName!, orgUnitId: record.orgUnitId || undefined }];
+      });
+    }
+
     setUpdateModalOpen(true);
   }, [updateForm, hasPerm, setUpdateModalOpen, setUpdateTarget, setUploadFileList, setUpdateGpsCoordList, setUpdateGpsError, setUpdateActiveTabKey]);
 
@@ -2565,8 +2671,8 @@ const VtsAssistListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: "updatedAt",
-        sortOrder: "desc",
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -2577,7 +2683,7 @@ const VtsAssistListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   useEffect(() => {
@@ -2671,6 +2777,8 @@ const VtsAssistListPage = () => {
       updatedFrom: "",
       updatedTo: "",
     });
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setPage(0);
   }, []);
 
@@ -2753,6 +2861,7 @@ const VtsAssistListPage = () => {
   const handleCreate = useCallback(
     async (values: Record<string, unknown>) => {
       const geomType = values.geometryType || undefined;
+      const hasGeom = !!geomType;
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
       const hasCoordinates = gpsCoordList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
       if (hasCoordinates && !geomType) {
@@ -2774,22 +2883,24 @@ const VtsAssistListPage = () => {
         return;
       }
       setCreateGpsError(null);
-      const wktCoordinates = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType as any) || undefined : undefined;
+      const wktCoordinates = hasGeom && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType as any) || undefined : undefined;
 
       setCreateLoading(true);
       try {
-        const createGeomType = (geomType as 'POINT' | 'LINE' | 'POLYGON') || null;
+        const createGeomType = hasGeom ? ((geomType as 'POINT' | 'LINE' | 'POLYGON') || null) : null;
 
         const payload = {
           ...values,
           deviceCode: values.deviceCode || (await generateVtsAssistCode()),
           operationalStatus: values.operationalStatus ?? 1,
           geometryType: createGeomType,
-          coordinates: geomType ? (wktCoordinates ?? undefined) : undefined,
-          mapSymbolId: values.mapSymbolId || undefined,
-          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+          coordinates: hasGeom && wktCoordinates ? wktCoordinates : null,
+          mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
+          coordinateSystem: hasGeom ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : null) : null,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
+          displayRule: hasGeom ? (values.displayRule != null ? Number(values.displayRule) || null : null) : null,
+          spatialId: null,
+          objectType: null,
         } as CreateVtsAssistRequest;
         // Chuẩn VTS: tạo theo hành động footer — draft/submit/approve
         // (backend resolveCreateApprovalStatus: DRAFT / PENDING_APPROVAL / APPROVED)
@@ -2844,6 +2955,7 @@ const VtsAssistListPage = () => {
       if (!updateTarget) return;
 
       const geomType = updateGeometryType || values.geometryType || undefined;
+      const hasGeom = !!geomType;
       // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
       const hasCoordinates = updateGpsCoordList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
       if (hasCoordinates && !geomType) {
@@ -2865,11 +2977,11 @@ const VtsAssistListPage = () => {
         return;
       }
       setUpdateGpsError(null);
-      const wktCoordinates = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType as any) || undefined : undefined;
+      const wktCoordinates = hasGeom && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType as any) || undefined : undefined;
 
       setUpdateLoading(true);
       try {
-        const updateGeomType = (geomType as 'POINT' | 'LINE' | 'POLYGON') || null;
+        const updateGeomType = hasGeom ? ((geomType as 'POINT' | 'LINE' | 'POLYGON') || null) : null;
 
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã phê duyệt — T12 backend)
@@ -2879,11 +2991,13 @@ const VtsAssistListPage = () => {
           ...values,
           quantity: values.quantity != null ? Number(String(values.quantity).replace(/,/g, '')) : undefined,
           geometryType: updateGeomType,
-          coordinates: geomType ? (wktCoordinates ?? '') : '',
-          mapSymbolId: values.mapSymbolId ? String(values.mapSymbolId) : undefined,
-          coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
+          coordinates: hasGeom && wktCoordinates ? wktCoordinates : null,
+          mapSymbolId: hasGeom ? (values.mapSymbolId ? String(values.mapSymbolId) : null) : null,
+          coordinateSystem: hasGeom ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : null) : null,
           // Cột display_rule là INT; chuỗi 'Độ, phút, giây (DMS)' chỉ để hiển thị (giống /port, /pier)
-          displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
+          displayRule: hasGeom ? (values.displayRule != null ? Number(values.displayRule) || null : null) : null,
+          spatialId: hasGeom ? (values.spatialId ? String(values.spatialId) : null) : null,
+          objectType: hasGeom ? (values.objectType != null ? Number(values.objectType) : null) : null,
           ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
         });
         if (uploadFileList.length > 0) {
@@ -2973,7 +3087,7 @@ const VtsAssistListPage = () => {
         .vtsassist-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
 
         /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ /cctv ≡ /berth) ── */
-        /* ── Breadcrumb title (màn /vts-assist): "Trang chủ" 14px, "Quản lý hệ thống phụ trợ VTS" 16px —
+        /* ── Breadcrumb title (màn /vts-assist): "Trang chủ" 14px, "Hệ thống phụ trợ VTS" 16px —
            khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
         .vtsassist-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span { font-size: 14px !important; }
         .vtsassist-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link > span { font-size: 16px !important; }
@@ -3171,7 +3285,7 @@ const VtsAssistListPage = () => {
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
-          { label: "Quản lý hệ thống phụ trợ VTS", path: "/vts-assist" },
+          { label: "Hệ thống phụ trợ VTS", path: "/vts-assist" },
         ]}
         actions={[
           hasPerm?.("vtsassist:create")
@@ -3246,12 +3360,27 @@ const VtsAssistListPage = () => {
                 treeDefaultExpandAll={false}
                 showSearch
                 value={filterValues.orgUnitId || undefined}
-                onChange={(val) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    orgUnitId: (val as string) || "",
-                  }))
-                }
+                onChange={(val) => {
+                  const nextOrg = (val as string) || "";
+                  setFilterValues((prev) => {
+                    let nextAttached = prev.attachedInfraId;
+                    if (nextAttached && nextOrg && nextOrg !== '__all__') {
+                      const rawSet = resolveOrgSubtreeIds(orgUnitOptions, nextOrg);
+                      const normalizedSet = new Set<string>();
+                      rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                      const activeOptions = prev.attachedInfraType === 1 ? vtsOperationCenterOptions : prev.attachedInfraType === 2 ? radarStationOptions : [];
+                      const validAttached = activeOptions.some(
+                        (item) => item.value === prev.attachedInfraId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                      );
+                      if (!validAttached) nextAttached = undefined;
+                    }
+                    return {
+                      ...prev,
+                      orgUnitId: nextOrg,
+                      attachedInfraId: nextAttached,
+                    };
+                  });
+                }}
                 loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
@@ -3319,7 +3448,7 @@ const VtsAssistListPage = () => {
                         attachedInfraId: val as string | undefined,
                       }))
                     }
-                    options={filterValues.attachedInfraType === 1 ? vtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? radarStationOptions : []}
+                    options={filterValues.attachedInfraType === 1 ? filteredFilterVtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? filteredFilterRadarStationOptions : []}
                     loading={filterValues.attachedInfraType === 1 ? loadingVtsCenters : filterValues.attachedInfraType === 2 ? loadingRadars : false}
                     disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
@@ -3464,6 +3593,7 @@ const VtsAssistListPage = () => {
               dataSource={data}
               rowKey="id"
               loading={isLoading}
+              onSort={handleSort}
               scroll={{ x: 'max-content' }}
               rowActions={rowActions}
               locale={{
@@ -3527,7 +3657,7 @@ const VtsAssistListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
                             { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderVtsAssistStatusBadge(st) : null; })() },
@@ -4234,6 +4364,26 @@ const VtsAssistListPage = () => {
                               showPath
                               treeDefaultExpandAll={false}
                               style={{ ...pillStyle }}
+                              onChange={(val) => {
+                                createForm.setFieldValue('orgUnitId', val);
+                                const currentAttachedId = createForm.getFieldValue('attachedInfrastructureId');
+                                if (!val) {
+                                  createForm.setFieldValue('attachedInfrastructureId', undefined);
+                                } else if (currentAttachedId) {
+                                  const rawSet = resolveOrgSubtreeIds(orgUnitOptions, String(val));
+                                  const normalizedSet = new Set<string>();
+                                  rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+
+                                  const currentAttachedType = createForm.getFieldValue('attachedInfrastructureType');
+                                  const activeOptions = currentAttachedType === 1 ? vtsOperationCenterOptions : currentAttachedType === 2 ? radarStationOptions : [];
+                                  const isValidAttached = activeOptions.some(
+                                    (item) => item.value === currentAttachedId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                                  );
+                                  if (!isValidAttached) {
+                                    createForm.setFieldValue('attachedInfrastructureId', undefined);
+                                  }
+                                }
+                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -4308,15 +4458,17 @@ const VtsAssistListPage = () => {
                             <Select
                               style={{ width: "100%", ...pillStyle }}
                               placeholder={
-                                createAttachedType === 2
-                                  ? "Chọn trạm Radar"
-                                  : createAttachedType === 1
-                                    ? "Chọn Trung Tâm Điều Hành VTS"
-                                    : "Chọn loại hạ tầng trước"
+                                !selectedCreateOrgUnitId
+                                  ? "Vui lòng chọn đơn vị quản lý trước"
+                                  : createAttachedType === 2
+                                    ? "Chọn trạm Radar"
+                                    : createAttachedType === 1
+                                      ? "Chọn Trung Tâm Điều Hành VTS"
+                                      : "Chọn loại hạ tầng trước"
                               }
-                              options={createAttachedType === 1 ? vtsOperationCenterOptions : createAttachedType === 2 ? radarStationOptions : []}
+                              options={createAttachedType === 1 ? createFilteredVtsCenters : createAttachedType === 2 ? createFilteredRadarStations : []}
                               loading={createAttachedType === 1 ? loadingVtsCenters : createAttachedType === 2 ? loadingRadars : false}
-                              disabled={createAttachedType !== 1 && createAttachedType !== 2}
+                              disabled={!selectedCreateOrgUnitId || (createAttachedType !== 1 && createAttachedType !== 2)}
                               allowClear
                             />
                           </Form.Item>
@@ -4817,15 +4969,17 @@ const VtsAssistListPage = () => {
                             <Select
                               style={{ width: "100%", ...pillStyle }}
                               placeholder={
-                                updateAttachedType === 2
-                                  ? "Chọn trạm Radar"
-                                  : updateAttachedType === 1
-                                    ? "Chọn Trung Tâm Điều Hành VTS"
-                                    : "Chọn loại hạ tầng trước"
+                                !selectedUpdateOrgUnitId
+                                  ? "Vui lòng chọn đơn vị quản lý trước"
+                                  : updateAttachedType === 2
+                                    ? "Chọn trạm Radar"
+                                    : updateAttachedType === 1
+                                      ? "Chọn Trung Tâm Điều Hành VTS"
+                                      : "Chọn loại hạ tầng trước"
                               }
-                              options={updateAttachedType === 1 ? vtsOperationCenterOptions : updateAttachedType === 2 ? radarStationOptions : []}
+                              options={updateAttachedType === 1 ? updateFilteredVtsCenters : updateAttachedType === 2 ? updateFilteredRadarStations : []}
                               loading={updateAttachedType === 1 ? loadingVtsCenters : updateAttachedType === 2 ? loadingRadars : false}
-                              disabled={updateAttachedType !== 1 && updateAttachedType !== 2}
+                              disabled={!selectedUpdateOrgUnitId || (updateAttachedType !== 1 && updateAttachedType !== 2)}
                               allowClear
                             />
                           </Form.Item>
@@ -4975,6 +5129,7 @@ const VtsAssistListPage = () => {
                             name="unitOfMeasure"
                             {...labelProps('Đơn vị tính')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={[ { required: true, message: 'Đơn vị tính là bắt buộc' } ]}
                           >
                             <Select
                               placeholder="Chọn đơn vị tính"
@@ -5007,6 +5162,7 @@ const VtsAssistListPage = () => {
                                 { label: 'Trụ', value: 26 },
                                 { label: 'VNĐ', value: 27 },
                               ]}
+                              showSearch
                               style={{ width: "100%", ...pillStyle }}
                             />
                           </Form.Item>
@@ -5024,7 +5180,7 @@ const VtsAssistListPage = () => {
                           >
                             <Input.TextArea
                               rows={3}
-                              placeholder="Nhập thông số kỹ thuật..."
+                              placeholder="Nhập thông số kỹ thuật"
                               maxLength={2000}
                               showCount
                               style={themeTokenChk.textAreaStyle}

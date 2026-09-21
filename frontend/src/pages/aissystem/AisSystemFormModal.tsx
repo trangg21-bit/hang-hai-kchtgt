@@ -272,7 +272,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       options: filteredOpCenters.map((c) => ({ value: c.id, label: c.name })),
     },
     {
-      label: 'Trạm Radar',
+      label: 'Trạm radar',
       options: filteredRadarStations.map((r) => ({ value: r.id, label: r.name })),
     },
   ], [filteredOpCenters, filteredRadarStations]);
@@ -611,7 +611,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
-          {/* Row 2: 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm Radar */}
+          {/* Row 2: 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm radar */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
@@ -641,12 +641,12 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             <Col span={12}>
               <Form.Item
                 name="locationId"
-                label="Thuộc TTDH VTS / Trạm Radar"
-                rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS / Trạm Radar' }]}
+                label="Thuộc TTDH VTS / Trạm radar"
+                rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS / Trạm radar' }]}
                 style={formFieldStyle}
               >
                 <Select
-                  placeholder={formOrgUnitId ? 'Chọn TTDH VTS / Trạm Radar' : 'Vui lòng chọn đơn vị quản lý trước'}
+                  placeholder={formOrgUnitId ? 'Chọn TTDH VTS / Trạm radar' : 'Vui lòng chọn đơn vị quản lý trước'}
                   disabled={!formOrgUnitId}
                   options={combinedLocationOptions}
                   style={selectStyle}

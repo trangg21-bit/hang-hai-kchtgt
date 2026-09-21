@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.scada.service;
 
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.scada.dto.ScadaResponse;
 import com.hanghai.kchtg.scada.dto.ScadaOptionResponse;
 import com.hanghai.kchtg.scada.dto.CreateScadaRequest;
@@ -23,6 +22,7 @@ import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
@@ -44,6 +44,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -364,27 +365,22 @@ public class ScadaService {
     Map<String, String> previousValues = new LinkedHashMap<>();
 
     // Apply updates via applyIfChanged
-    applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName(), entity::setDeviceName, previousValues);
-    applyIfChanged("detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation(), entity::setDetailedLocation, previousValues);
-    applyIfChanged("manufacturer", entity.getManufacturer(), request.getManufacturer(), entity::setManufacturer, previousValues);
-    applyIfChanged("model", entity.getModel(), request.getModel(), entity::setModel, previousValues);
-    applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues);
-    applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues);
-    applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues);
-    applyIfChanged("provinceName", entity.getProvinceName(), request.getProvinceName(), entity::setProvinceName, previousValues);
-    applyIfChanged("attachedInfrastructureType", entity.getAttachedInfrastructureType(), request.getAttachedInfrastructureType(), entity::setAttachedInfrastructureType, previousValues);
-    applyIfChanged("attachedInfrastructureId", entity.getAttachedInfrastructureId(), request.getAttachedInfrastructureId(), entity::setAttachedInfrastructureId, previousValues);
-    applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure(), entity::setUnitOfMeasure, previousValues);
-    applyIfChanged("yearOfUse", entity.getYearOfUse(), request.getYearOfUse(), entity::setYearOfUse, previousValues);
-    applyIfChanged("operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus(), entity::setOperationalStatus, previousValues);
-    applyIfChanged("specifications", entity.getSpecifications(), request.getSpecifications(), entity::setSpecifications, previousValues);
-    applyIfChanged("maintenanceInformation", entity.getMaintenanceInformation(), request.getMaintenanceInformation(), entity::setMaintenanceInformation, previousValues);
-    applyIfChanged("note", entity.getNote(), request.getNote(), entity::setNote, previousValues);
-    applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues);
-    applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues);
-    applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues);
-    applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues);
-    applyIfChanged("spatialId", entity.getSpatialId(), request.getSpatialId(), entity::setSpatialId, previousValues);
+    applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName(), entity::setDeviceName, previousValues, request);
+    applyIfChanged("detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation(), entity::setDetailedLocation, previousValues, request);
+    applyIfChanged("manufacturer", entity.getManufacturer(), request.getManufacturer(), entity::setManufacturer, previousValues, request);
+    applyIfChanged("model", entity.getModel(), request.getModel(), entity::setModel, previousValues, request);
+    applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues, request);
+    applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues, request);
+    applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues, request);
+    applyIfChanged("provinceName", entity.getProvinceName(), request.getProvinceName(), entity::setProvinceName, previousValues, request);
+    applyIfChanged("attachedInfrastructureType", entity.getAttachedInfrastructureType(), request.getAttachedInfrastructureType(), entity::setAttachedInfrastructureType, previousValues, request);
+    applyIfChanged("attachedInfrastructureId", entity.getAttachedInfrastructureId(), request.getAttachedInfrastructureId(), entity::setAttachedInfrastructureId, previousValues, request);
+    applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure(), entity::setUnitOfMeasure, previousValues, request);
+    applyIfChanged("yearOfUse", entity.getYearOfUse(), request.getYearOfUse(), entity::setYearOfUse, previousValues, request);
+    applyIfChanged("operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus(), entity::setOperationalStatus, previousValues, request);
+    applyIfChanged("specifications", entity.getSpecifications(), request.getSpecifications(), entity::setSpecifications, previousValues, request);
+    applyIfChanged("maintenanceInformation", entity.getMaintenanceInformation(), request.getMaintenanceInformation(), entity::setMaintenanceInformation, previousValues, request);
+    applyIfChanged("note", entity.getNote(), request.getNote(), entity::setNote, previousValues, request);
 
     // Chụp trạng thái GIS cũ trước khi đồng bộ để ghi 'Tọa độ GIS'/'Loại đối tượng GIS'
     // vào lịch sử khi sửa hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
@@ -399,27 +395,65 @@ public class ScadaService {
       }
     }
 
-    if (request.getCoordinates() != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
-      previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
-    }
-    if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
-      previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
-    }
+    boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
+        && (request.getGeometryType() == null
+            || (request.getCoordinates() != null && request.getCoordinates().trim().isEmpty()));
 
-    // Đồng bộ tọa độ GPS vào gis_spatial_objects (giống AIS): coordinates != null → upsert;
-    // chuỗi rỗng → xóa spatial cũ (trả null). Không gửi coordinates → giữ nguyên spatial hiện tại.
-    if (request.getCoordinates() != null) {
-      GisGeometryType geomType = request.getGeometryType() != null
-        ? request.getGeometryType() : GisGeometryType.POINT;
-      UUID spatialId = gisSpatialObjectService.syncSpatialObject(
-        entity.getSpatialId(),
-        "Hệ thống SCADA " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
-        entity.getDeviceCode(),
-        geomType,
-        request.getCoordinates(),
-        entity.getId(),
-        InfrastructureType.SCADA);
-      entity.setSpatialId(spatialId);
+    if (shouldClearLocation) {
+      // 1. Xóa đối tượng không gian trong gis_spatial_objects và xóa foreign key spatialId
+      if (entity.getSpatialId() != null) {
+        gisSpatialObjectService.delete(entity.getSpatialId());
+        entity.setSpatialId(null);
+      }
+      // 2. Xóa các trường bản đồ liên kết trên entity SCADA
+      if (entity.getMapSymbolId() != null) {
+        previousValues.put("mapSymbolId", String.valueOf(entity.getMapSymbolId()));
+        entity.setMapSymbolId(null);
+      }
+      if (entity.getCoordinateSystem() != null) {
+        previousValues.put("coordinateSystem", String.valueOf(entity.getCoordinateSystem()));
+        entity.setCoordinateSystem(null);
+      }
+      if (entity.getDisplayRule() != null) {
+        previousValues.put("displayRule", String.valueOf(entity.getDisplayRule()));
+        entity.setDisplayRule(null);
+      }
+      if (entity.getObjectType() != null) {
+        previousValues.put("objectType", String.valueOf(entity.getObjectType()));
+        entity.setObjectType(null);
+      }
+      // 3. Ghi nhận biến động xóa vào previousValues để lưu vết lịch sử nếu là hồ sơ ĐÃ DUYỆT
+      if (oldCoordinates != null && !oldCoordinates.isBlank()) {
+        previousValues.put("coordinates", oldCoordinates);
+      }
+      if (oldGeometryType != null && !oldGeometryType.isBlank()) {
+        previousValues.put("geometryType", oldGeometryType);
+      }
+    } else {
+      applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues, request);
+      applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues, request);
+      applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues, request);
+      applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues, request);
+
+      if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+        if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+          previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+        }
+        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+          previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
+        }
+
+        GisGeometryType geomType = request.getGeometryType();
+        UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+          entity.getSpatialId(),
+          "Hệ thống SCADA " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
+          entity.getDeviceCode(),
+          geomType,
+          request.getCoordinates().trim(),
+          entity.getId(),
+          InfrastructureType.SCADA);
+        entity.setSpatialId(spatialId);
+      }
     }
 
     // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26):
@@ -481,11 +515,25 @@ public class ScadaService {
     log.info("Soft-deleted SCADA: id={}", id);
   }
 
-  private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter, Map<String, String> previousValues) {
-    if (!EntityUpdateUtils.areEqual(oldValue, newValue)) {
-      previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
-      setter.accept(newValue);
+  private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter,
+      Map<String, String> previousValues, UpdateScadaRequest request) {
+    if (request != null) {
+      if (!request.isFieldPresent(fieldName)) {
+        return;
+      }
+    } else if (newValue == null) {
+      return;
     }
+    if (EntityUpdateUtils.areEqual(oldValue, newValue)) {
+      return;
+    }
+    previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
+    setter.accept(newValue);
+  }
+
+  private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter,
+      Map<String, String> previousValues) {
+    applyIfChanged(fieldName, oldValue, newValue, setter, previousValues, null);
   }
 
   private void validateAllowedOrgUnit(UUID orgUnitId) {
@@ -933,31 +981,76 @@ public class ScadaService {
    * (chống injection / field không tồn tại), mặc định updatedAt DESC.
    */
   private Sort buildSort(String sortBy, String sortOrder) {
-    String field = sortBy == null || sortBy.isBlank() ? "updatedAt" : sortBy.trim();
-    switch (field) {
-      case "deviceCode":
-      case "deviceName":
-      case "code":
-      case "createdAt":
-      case "updatedAt":
-      case "yearOfUse":
-      case "quantity":
-      case "unitOfMeasure":
-      case "provinceName":
-      case "orgUnitId":
-      case "approvalStatus":
-      case "operationalStatus":
-        break;
-      case "updatedByName": // cột gộp "Cán bộ cập nhật/Ngày cập nhật" — sort theo ngày
-        field = "updatedAt";
-        break;
-      default:
-        field = "updatedAt";
-    }
     Sort.Direction dir = "asc".equalsIgnoreCase(sortOrder)
         ? Sort.Direction.ASC
         : Sort.Direction.DESC;
-    return Sort.by(dir, field).and(Sort.by(Sort.Direction.ASC, "id"));
+    Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "c.updatedAt")
+        .and(JpaSort.unsafe(Sort.Direction.DESC, "c.createdAt"))
+        .and(JpaSort.unsafe(Sort.Direction.ASC, "c.id"));
+
+    if (sortBy == null || sortBy.isBlank()) {
+      return defaultSort;
+    }
+
+    String field = sortBy.trim();
+    String property;
+    switch (field) {
+      case "deviceCode":
+      case "code":
+        property = "LOWER(c.deviceCode)";
+        break;
+      case "deviceName":
+      case "name":
+        property = "LOWER(c.deviceName)";
+        break;
+      case "orgUnitName":
+      case "orgUnitId":
+        property = "LOWER(o.name)";
+        break;
+      case "provinceName":
+        property = "LOWER(c.provinceName)";
+        break;
+      case "yearOfUse":
+        property = "c.yearOfUse";
+        break;
+      case "quantity":
+        property = "c.quantity";
+        break;
+      case "unitOfMeasure":
+        property = "c.unitOfMeasure";
+        break;
+      case "operationalStatus":
+        property = "c.operationalStatus";
+        break;
+      case "approvalStatus":
+        property = "c.approvalStatus";
+        break;
+      case "submittedByName":
+      case "submittedInfo":
+        property = "c.submittedDate";
+        break;
+      case "approverLevel1Name":
+      case "approvedByNameLevel1":
+      case "approvedLevel1Info":
+        property = "c.approvedDateLevel1";
+        break;
+      case "approverLevel2Name":
+      case "approvedByNameLevel2":
+      case "approvedLevel2Info":
+        property = "c.approvedDateLevel2";
+        break;
+      case "updatedByName":
+      case "updatedInfo":
+      case "updatedAt":
+        property = "c.updatedAt";
+        break;
+      case "createdAt":
+        property = "c.createdAt";
+        break;
+      default:
+        return defaultSort;
+    }
+    return JpaSort.unsafe(dir, property).and(defaultSort);
   }
 
   // ── ATTACHMENTS (File đính kèm) ───────────────────────────────────

@@ -3,6 +3,8 @@ package com.hanghai.kchtg.vhf.service;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -40,6 +42,7 @@ import org.springframework.data.domain.PageImpl;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -89,6 +92,7 @@ class VhfServiceTest {
     private VhfService service;
 
     private Vhf entity;
+    private User principal;
 
     @BeforeEach
     void setUp() {
@@ -96,11 +100,12 @@ class VhfServiceTest {
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
-        when(userRepository.findById(any())).thenReturn(Optional.empty());
+        principal = mock(User.class);
+        when(principal.getId()).thenReturn(USER_ID);
+        when(principal.getAllPermissions()).thenReturn(java.util.Set.of("vhf:approvec2", "vhf:create", "vhf:update", "*"));
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(principal));
         when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
 
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(principal, "pass",
                         java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
@@ -142,12 +147,6 @@ class VhfServiceTest {
 
     @Test
     void createWithApproveActionDirectlyApprovesWithoutHistory() {
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(principal, "pass",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
-
         when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -186,6 +185,13 @@ class VhfServiceTest {
 
     @Test
     void createWithSubmitAction_AppliesRule14ViaApprovalService() {
+        com.hanghai.kchtg.orgunit.entity.OrgUnit subUnit = com.hanghai.kchtg.orgunit.entity.OrgUnit.builder()
+                .parentId(UUID.randomUUID())
+                .level(2)
+                .rank(com.hanghai.kchtg.orgunit.entity.OrgUnitRank.BRANCH)
+                .build();
+        when(principal.getOrgUnit()).thenReturn(subUnit);
+
         when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -217,12 +223,6 @@ class VhfServiceTest {
 
     @Test
     void updateApprovedRecordWithApproveActionRetainsApprovedAndRecordsHistory() {
-        User principal = mock(User.class);
-        when(principal.getId()).thenReturn(USER_ID);
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(principal, "pass",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN"))));
-
         entity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -271,6 +271,54 @@ class VhfServiceTest {
         assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
         verify(historyRepository, never()).save(argThat(h -> h != null && "Tên thiết bị".equals(h.getChangedField())));
         verify(historyRepository, never()).save(argThat(h -> h != null && h.getChangedField() == null));
+    }
+
+    @Test
+    void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+        UUID spatialId = UUID.randomUUID();
+        UUID symbolId = UUID.randomUUID();
+
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(symbolId);
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+        entity.setObjectType(1);
+
+        GisSpatialObject spatial = new GisSpatialObject();
+        spatial.setId(spatialId);
+        spatial.setGeometryType(GisGeometryType.POINT);
+        spatial.setCoordinates("POINT (106.7 20.8)");
+
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatial));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setDeviceName(entity.getDeviceName());
+        req.setGeometryType(null);
+        req.setCoordinates(null);
+        req.setMapSymbolId(null);
+        req.setCoordinateSystem(null);
+        req.setDisplayRule(null);
+
+        VhfResponse result = service.update(req);
+
+        assertNull(result.getGeometryType());
+        assertNull(result.getCoordinates());
+        assertNull(result.getMapSymbolId());
+        assertNull(result.getCoordinateSystem());
+        assertNull(result.getDisplayRule());
+        assertNull(result.getSpatialId());
+
+        assertNull(entity.getSpatialId());
+        assertNull(entity.getMapSymbolId());
+        assertNull(entity.getCoordinateSystem());
+        assertNull(entity.getDisplayRule());
+        assertNull(entity.getObjectType());
+
+        verify(gisSpatialObjectService).delete(spatialId);
+        verify(vhfRepository, atLeastOnce()).save(entity);
     }
 
     @Test

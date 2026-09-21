@@ -18,6 +18,7 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import toast from '../../components/ToastNotification';
 import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
+import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
 import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
 import { fmtInputNumber } from '../../utils/numFmt';
 
@@ -388,9 +389,9 @@ export default function CctvSystemAssetList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const orgId = rec.orgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || '');
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -976,7 +977,7 @@ export default function CctvSystemAssetList() {
         dataIndex: 'assetCode',
         type: TableColumnType.TwoLine,
         subField: 'assetName',
-        width: 250,
+        width: 260,
         fixed: 'left',
         allowSort: true,
         onClick: (record) => void openDetail(record),

@@ -175,13 +175,13 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
               <span className="detail-value">{record?.name || '—'}</span>
             </div>
 
-            {/* 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm Radar */}
+            {/* 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm radar */}
             <div className="detail-row">
               <span className="detail-label">Đơn vị quản lý</span>
               <span className="detail-value">{record?.orgUnitName || '—'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Thuộc TTDH VTS / Trạm Radar</span>
+              <span className="detail-label">Thuộc TTDH VTS / Trạm radar</span>
               <span className="detail-value">{record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
             </div>
 

@@ -157,7 +157,7 @@ const KCHT_TREE: KchtTypeNode[] = [
         name: 'Trung tâm điều hành VTS',
         level: 'C1',
         children: [
-          { key: '/radar-station', name: 'Trạm Radar', level: 'C2' },
+          { key: '/radar-station', name: 'Trạm radar', level: 'C2' },
           { key: '/ais-system', name: 'Hệ thống AIS', level: 'C2' },
           { key: '/cctv', name: 'Hệ thống CCTV', level: 'C2' },
           { key: '/scada', name: 'Hệ thống SCADA', level: 'C2' },

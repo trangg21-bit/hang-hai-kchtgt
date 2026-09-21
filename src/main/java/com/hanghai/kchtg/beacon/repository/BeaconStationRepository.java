@@ -85,7 +85,7 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
            "(CAST(:commissionedFrom AS date) IS NULL OR b.commissionedDate >= :commissionedFrom) AND " +
            "(CAST(:commissionedTo AS date) IS NULL OR b.commissionedDate <= :commissionedTo) AND " +
            "(CAST(:updatedFrom AS timestamp) IS NULL OR b.updatedAt >= :updatedFrom) AND " +
-           "(CAST(:updatedTo AS timestamp) IS NULL OR b.updatedAt <= :updatedTo) ORDER BY b.updatedAt DESC")
+           "(CAST(:updatedTo AS timestamp) IS NULL OR b.updatedAt <= :updatedTo)")
     Page<BeaconStation> searchFilteredPaged(
         @Param("name") String name,
         @Param("code") String code,

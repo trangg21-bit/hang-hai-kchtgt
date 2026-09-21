@@ -400,6 +400,33 @@ export default function DryPortListPage() {
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName =
+        u.organizationName ||
+        u.orgUnitName ||
+        u.departmentName ||
+        (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) ||
+        (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
   const defaultOrgApplied = useRef(false);
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
@@ -488,7 +515,22 @@ export default function DryPortListPage() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -516,12 +558,27 @@ export default function DryPortListPage() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, symbolImageMap, historyTarget]);
+  }, [filteredHistory, orgMap, symbolMap, symbolImageMap, historyTarget, userOrgMap]);
 
   const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
   const [updateDrawerOpen, setUpdateDrawerOpen] = useState(false);
@@ -580,10 +637,15 @@ export default function DryPortListPage() {
     }).catch(() => { });
     userService.list({ pageSize: 1000 }).then(r => {
       const users = r.data || (r as any).content || [];
+      setRawUsers(users);
       const umap = new Map<string, string>();
       users.forEach((u: any) => {
         const name = u.fullName || u.username || '';
-        if (name && !isUuidString(name)) umap.set(u.id, name);
+        if (name && !isUuidString(name)) {
+          umap.set(u.id, name);
+          umap.set(u.id.toLowerCase(), name);
+          if (u.username) umap.set(u.username, name);
+        }
       });
       setUserMap(umap);
     }).catch(() => { });
@@ -644,6 +706,8 @@ export default function DryPortListPage() {
         updatedTo: filterUpdatedTo,
         transportCorridor: filterTransportCorridor ? filterTransportCorridor.trim() : undefined,
         approvalStatus: TAB_QUERY_MAP[activeTab],
+        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
+        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -652,12 +716,14 @@ export default function DryPortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab]);
+  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab, sortField, sortOrder]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   const handleFilterApply = useCallback(() => {
+    setSearch((prev) => prev.trim());
+    setFilterCode((prev) => (prev ? prev.trim() : prev));
     setPage(1);
     void fetchData();
     void fetchCounts(filterOrgUnitId);
@@ -859,31 +925,6 @@ export default function DryPortListPage() {
 
 
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'approvalStatus') {
-      if (isDryPortDeleted(r)) return 'Đã xóa';
-      return trangThaiPheDuyetBadge(r.approvalStatus).label || r.approvalStatus || '';
-    }
-    if (field === 'portStatus') return r.portStatus ?? 0;
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'dryPortName') return r.dryPortName ?? '';
-    if (field === 'dryPortCode') return r.dryPortCode ?? '';
-    if (field === 'orgUnitName' || field === 'orgUnitId') return r.orgUnitName || orgMap.get(r.orgUnitId) || '';
-    if (field === 'operatingUnit') {
-      return r?.operatingOrgName
-        || DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === r.operatingUnit || o.id === (r as any)?.operatingOrgId)?.name
-        || r.operatingUnit
-        || '';
-    }
-    if (field === 'region') return r.region ?? '';
-    if (field === 'transportCorridor') return r.transportCorridor ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : '';
-    return r[field] ?? '';
-  }, [orgMap]);
-
   const renderCellWithTooltip = (
     text: string | null | undefined,
     isBold?: boolean
@@ -927,7 +968,7 @@ export default function DryPortListPage() {
         key: 'dryPortName',
         label: 'Tên/Mã Cảng cạn',
         dataIndex: 'dryPortName',
-        width: 280,
+        width: 260,
         fixed: 'left' as const,
         sortable: true,
         cellTitle: (record: DryPort) => record.dryPortName || '',
@@ -1074,21 +1115,6 @@ export default function DryPortListPage() {
     }));
   }, [page, pageSize, userMap, openDetailModal, activeTab, sortField, sortOrder]);
 
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'sequenceNo' || sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
-
   const rowActions = useCallback((record: DryPort) => {
     const isArchived = isDryPortDeleted(record);
     if (isArchived) {
@@ -1225,6 +1251,7 @@ export default function DryPortListPage() {
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onBlur={() => setSearch((prev) => prev.trim())}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
         />
@@ -1256,6 +1283,7 @@ export default function DryPortListPage() {
               prefix={<SearchOutlined style={{ color: textTertiary }} />}
               value={filterCode}
               onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+              onBlur={() => setFilterCode((prev) => (prev ? prev.trim() : prev))}
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
             />
@@ -1399,7 +1427,7 @@ export default function DryPortListPage() {
         `}</style>
 
         <ScreenHeader
-          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Quản lý cảng cạn' }]}
+          breadcrumb={[{ label: 'Quản lý tài sản KCHT hàng hải' }, { label: 'Cảng cạn' }]}
           actions={headerActions}
         />
         <FilterTableLayout
@@ -1419,19 +1447,19 @@ export default function DryPortListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={sortedDataSource}
+            dataSource={dataSource}
             loading={isLoading}
             rowKey="id"
             rowActions={rowActions}
             onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              setPage(1);
               if (!o) {
-                setSortField(undefined);
-                setSortOrder(undefined);
+                setSortField('updatedAt');
+                setSortOrder('descend');
               } else {
                 setSortField(k);
                 setSortOrder(o === 'asc' ? 'ascend' : 'descend');
               }
-              setPage(1);
             }}
             scroll={{ x: 'max-content' }}
           />
@@ -1674,6 +1702,7 @@ export default function DryPortListPage() {
                   allowClear
                   value={historyFilters.keyword || ''}
                   onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                  onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker

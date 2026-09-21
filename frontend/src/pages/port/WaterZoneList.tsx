@@ -173,7 +173,7 @@ export default function WaterZoneList() {
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: WaterZone, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'waterZoneCode', label: 'Mã', dataIndex: 'waterZoneCode', width: 140, render: (waterZoneCode: string) => <Tag color="cyan">{waterZoneCode}</Tag> },
-    { key: 'waterZoneName', label: 'Tên', dataIndex: 'waterZoneName', ellipsis: true },
+    { key: 'waterZoneName', label: 'Tên', dataIndex: 'waterZoneName', width: 260, ellipsis: true },
     { key: 'tenCangBien', label: 'Cảng biển', dataIndex: 'tenCangBien', width: 180, render: (v: string) => v || '—' },
     { key: 'area', label: 'Diện tích', dataIndex: 'area', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(1) || '—'}</span> },
     { key: 'doSauMax', label: 'Độ sâu max', dataIndex: 'doSauMax', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(1) || '—'}</span> },

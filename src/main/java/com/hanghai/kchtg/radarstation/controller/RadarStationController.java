@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +34,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -132,6 +134,96 @@ public class RadarStationController {
         }
     }
 
+    public static Sort resolveSort(String sortBy, String sortOrder) {
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.updatedAt")
+                .and(JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt"))
+                .and(JpaSort.unsafe(Sort.Direction.ASC, "t.id"));
+        if (sortBy == null || sortBy.isBlank()) {
+            return defaultSort;
+        }
+        String field = sortBy.trim();
+        String property;
+        switch (field) {
+            case "code":
+                property = "LOWER(t.code)";
+                break;
+            case "stationName":
+            case "name":
+                property = "LOWER(t.stationName)";
+                break;
+            case "location":
+                property = "LOWER(t.location)";
+                break;
+            case "stationType":
+                property = "LOWER(t.stationType)";
+                break;
+            case "coverage":
+                property = "t.coverage";
+                break;
+            case "emissionArea":
+                property = "t.emissionArea";
+                break;
+            case "source":
+                property = "t.source";
+                break;
+            case "unitOfMeasure":
+                property = "t.unitOfMeasure";
+                break;
+            case "quantity":
+                property = "t.quantity";
+                break;
+            case "conditionStatus":
+                property = "t.conditionStatus";
+                break;
+            case "status":
+            case "approvalStatus":
+                property = "t.approvalStatus";
+                break;
+            case "orgUnitName":
+            case "orgUnitId":
+                property = "LOWER(o.name)";
+                break;
+            case "seaportName":
+            case "seaportId":
+                property = "LOWER(p.portName)";
+                break;
+            case "provinceName":
+            case "provinceId":
+                property = "LOWER(pv.name)";
+                break;
+            case "submittedByName":
+            case "submittedForApprovalBy":
+            case "submittedInfo":
+                property = "t.submittedAt";
+                break;
+            case "approverLevel1Name":
+            case "approvedByNameLevel1":
+            case "approverLevel1":
+            case "approvedLevel1Info":
+                property = "t.approvedDateLevel1";
+                break;
+            case "approverLevel2Name":
+            case "approvedByNameLevel2":
+            case "approverLevel2":
+            case "approvedLevel2Info":
+                property = "t.approvedDateLevel2";
+                break;
+            case "updatedByName":
+            case "updatedBy":
+            case "updatedInfo":
+            case "updatedAt":
+                property = "t.updatedAt";
+                break;
+            case "createdAt":
+                property = "t.createdAt";
+                break;
+            default:
+                return defaultSort;
+        }
+        return JpaSort.unsafe(direction, property).and(defaultSort);
+    }
+
     @PreAuthorize("@auth.check(authentication, 'radarstation:read')")
     @GetMapping("/search-paged")
     public ResponseEntity<ApiResponse<Page<RadarStationResponse>>> searchPaged(
@@ -155,7 +247,7 @@ public class RadarStationController {
             @RequestParam(defaultValue = "updatedAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortOrder) {
         try {
-            Sort sort = Sort.by(Sort.Direction.fromString(sortOrder), sortBy);
+            Sort sort = resolveSort(sortBy, sortOrder);
             PageRequest pageable = PageRequest.of(page, size, sort);
             Page<RadarStationResponse> responses = service.searchPaged(
                     keyword, stationName, code, orgUnitId, seaportId, vtsSystemId, vtsOperationCenterId,

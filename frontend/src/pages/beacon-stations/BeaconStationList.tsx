@@ -31,7 +31,7 @@ import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import toast from '../../components/ToastNotification';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
@@ -345,6 +345,10 @@ export default function BeaconStationList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>('updatedByName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+
   // ── Data ─────────────────────────────────────────────────────────
   const [dataSource, setDataSource] = useState<BeaconStation[]>([]);
   const [total, setTotal] = useState(0);
@@ -357,7 +361,14 @@ export default function BeaconStationList() {
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
 
   // ── Seaports (cảng biển) + GIS symbols ─────────────────────────
-  const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string }[]>([]);
+  const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }[]>([]);
+  const filteredFilterSeaports = useMemo(() => {
+    if (!filterUnitId || filterUnitId === '__all__') return seaports;
+    const rawSet = resolveOrgSubtreeIds(organizations, filterUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaports.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
+  }, [seaports, organizations, filterUnitId]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
 
   // ── Drawer state ─────────────────────────────────────────────────
@@ -574,6 +585,8 @@ export default function BeaconStationList() {
         updatedTo: filterUpdatedTo,
         page,
         pageSize,
+        sortBy: sortField,
+        sortDir: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : undefined,
       });
       let data = res.data;
       if (activeTab === '') {
@@ -595,7 +608,7 @@ export default function BeaconStationList() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterName, filterCode, filterLightModel, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterCommissionedFrom, filterCommissionedTo, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [filterName, filterCode, filterLightModel, filterType, filterStatus, filterUnitId, filterSeaportId, filterOperator, filterProvinceId, filterOperationalStatus, filterCommissionedFrom, filterCommissionedTo, filterUpdatedBy, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, sortField, sortOrder]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
@@ -615,9 +628,21 @@ export default function BeaconStationList() {
     setFilterOperator(''); setFilterProvinceId(undefined); setFilterOperationalStatus(undefined);
     setFilterCommissionedFrom(''); setFilterCommissionedTo(''); setFilterUpdatedBy(undefined);
     setFilterUpdatedFrom(''); setFilterUpdatedTo('');
+    setSortField('updatedByName'); setSortOrder('desc');
     setActiveTab(''); setPage(1);
   }, []);
   const handleTabChange = useCallback((key: string) => { setActiveTab(key); setPage(1); }, []);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField('updatedByName');
+      setSortOrder('desc');
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(1);
+  }, []);
 
   // ── Drawer handlers ─────────────────────────────────────────────
   const openCreateDrawer = useCallback(() => {
@@ -905,13 +930,20 @@ export default function BeaconStationList() {
     );
   };
 
+  const sortOrderFor = useCallback(
+    (key: string): 'ascend' | 'descend' | null =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   const columns: any[] = useMemo(() => [
     {
       key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
     },
     {
-      key: 'name', label: 'Tên / Mã đèn biển', dataIndex: 'name', width: 300, fixed: 'left' as const, ellipsis: false,
+      key: 'name', label: 'Tên / Mã đèn biển', dataIndex: 'name', width: 260, fixed: 'left' as const, ellipsis: false,
+      sortOrder: sortOrderFor('name'),
       cellTitle: (record: BeaconStation) => record.name || '',
       render: (name: string, record: BeaconStation) => {
         const canView = hasPerm('beaconstation:read') || hasPerm('beaconstation:view');
@@ -963,26 +995,31 @@ export default function BeaconStationList() {
     },
     {
       key: 'unitName', label: 'Đơn vị quản lý', dataIndex: 'unitName', width: 300,
+      sortOrder: sortOrderFor('unitName'),
       cellTitle: (record: BeaconStation) => record.unitName || '',
       render: (v: string) => renderCellWithTooltip(v, true),
     },
     {
       key: 'seaportId', label: 'Thuộc cảng biển', dataIndex: 'seaportId', width: 220, ellipsis: true,
+      sortOrder: sortOrderFor('seaportId'),
       cellTitle: (record: BeaconStation) => seaports.find((p) => p.id === record.seaportId)?.portName || '',
       render: (v: string) => renderCellWithTooltip(seaports.find((p) => p.id === v)?.portName || null),
     },
     {
       key: 'operator', label: 'Đơn vị vận hành', dataIndex: 'operator', width: 280, ellipsis: true,
+      sortOrder: sortOrderFor('operator'),
       cellTitle: (record: BeaconStation) => record.operator || '',
       render: (v: string) => renderCellWithTooltip(v),
     },
     {
       key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 230,
+      sortOrder: sortOrderFor('provinceId'),
       cellTitle: (record: BeaconStation) => getProvinceNameById(record.provinceId != null ? Number(record.provinceId) : undefined) || '',
       render: (v: number) => renderCellWithTooltip(getProvinceNameById(v != null ? Number(v) : undefined) || null),
     },
     {
       key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 230,
+      sortOrder: sortOrderFor('operationalStatus'),
       render: (v: number) => {
         const s = OPERATIONAL_STATUS_STYLE_MAP[v];
         return s
@@ -992,6 +1029,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'type', label: 'Cấp trạm đèn', dataIndex: 'type', width: 150,
+      sortOrder: sortOrderFor('type'),
       cellTitle: (record: BeaconStation) => {
         const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === record.type);
         return opt ? opt.label : (record.type || '');
@@ -1003,6 +1041,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
+      sortOrder: sortOrderFor('status'),
       render: (status: string, record: BeaconStation) => {
         const isDeleted = Boolean(
           record.deletedAt ||
@@ -1018,6 +1057,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'updatedByName', label: 'Cán bộ cập nhật', dataIndex: 'updatedByName', width: 220,
+      sortOrder: sortOrderFor('updatedByName'),
       cellTitle: (record: BeaconStation) => record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.updatedByName || userOptions.find((u) => u.value === record.updatedBy)?.label;
@@ -1051,6 +1091,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'submittedByName', label: 'Cán bộ gửi phê duyệt', dataIndex: 'submittedByName', width: 220,
+      sortOrder: sortOrderFor('submittedByName'),
       cellTitle: (record: BeaconStation) => record.submittedByName || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.submittedByName;
@@ -1085,6 +1126,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'approverLevel1Name', label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', dataIndex: 'approverLevel1Name', width: 240,
+      sortOrder: sortOrderFor('approverLevel1Name'),
       cellTitle: (record: BeaconStation) => record.approverLevel1Name || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.approverLevel1Name;
@@ -1119,6 +1161,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'approverLevel2Name', title: <span style={{ whiteSpace: 'nowrap' }}>Cán bộ phê duyệt cấp Cục</span>, dataIndex: 'approverLevel2Name', width: 300,
+      sortOrder: sortOrderFor('approverLevel2Name'),
       cellTitle: (record: BeaconStation) => record.approverLevel2Name || '',
       render: (_: any, record: BeaconStation) => {
         const name = record.approverLevel2Name;
@@ -1151,7 +1194,7 @@ export default function BeaconStationList() {
         );
       },
     },
-  ], [page, pageSize, openDetailDrawer, seaports, userOptions, hasPerm]);
+  ], [page, pageSize, openDetailDrawer, seaports, userOptions, hasPerm, sortOrderFor]);
 
   const tableData = useMemo(() => {
     let rows = dataSource;
@@ -1178,7 +1221,18 @@ export default function BeaconStationList() {
         <FilterOrgUnitTreeSelect
           organizations={organizations}
           value={filterUnitId}
-          onChange={(v) => { setFilterUnitId(v); setPage(1); }}
+          onChange={(v) => {
+            const nextUnit = (v as string) || '';
+            setFilterUnitId(nextUnit);
+            if (nextUnit && nextUnit !== '__all__' && filterSeaportId) {
+              const rawSet = resolveOrgSubtreeIds(organizations, nextUnit);
+              const normalizedSet = new Set<string>();
+              rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+              const valid = seaports.some((p) => p.id === filterSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()));
+              if (!valid) setFilterSeaportId(undefined);
+            }
+            setPage(1);
+          }}
           placeholder="Tất cả"
           allowClear
           style={{ width: '100%' }}
@@ -1203,7 +1257,7 @@ export default function BeaconStationList() {
               filterOption={(input, option) =>
                 normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
               }
-              options={seaports.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }))}
+              options={filteredFilterSeaports.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }))}
               style={{ ...selectStyle, width: '100%' }} />
           </div>
 
@@ -2481,7 +2535,7 @@ export default function BeaconStationList() {
       `}</style>
 
       <ScreenHeader
-        breadcrumb={[{ label: 'Quản lý hàng hải' }, { label: 'Quản lý Đèn biển và nhà trạm gắn với Đèn biển' }]}
+        breadcrumb={[{ label: 'Quản lý hàng hải' }, { label: 'Đèn biển và nhà trạm gắn với Đèn biển' }]}
         actions={hasPerm('beaconstation:create')
           ? [{ key: 'create', label: 'Thêm mới', icon: <PlusOutlined />, variant: 'primary', onClick: openCreateDrawer }]
           : []}
@@ -2620,6 +2674,7 @@ export default function BeaconStationList() {
             dataSource={tableData}
             rowKey="id"
             rowActions={rowActions}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
             emptyState={<EmptyState description="Không có dữ liệu đèn biển nào phù hợp với bộ lọc" />}
           />

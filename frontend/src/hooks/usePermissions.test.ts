@@ -231,7 +231,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
     it('should completely exclude anchorage:approve, anchorageasset:approve and all anchoragearea:* permissions from tree', async () => {
       const mockPerms = [
         // Valid anchorage permissions
-        { id: '1', key: 'anchorage:manage', name: 'Quản lý khu neo đậu', resource: 'anchorage', action: 'manage' },
+        { id: '1', key: 'anchorage:manage', name: 'Khu neo đậu', resource: 'anchorage', action: 'manage' },
         { id: '2', key: 'anchorage:read', name: 'Xem khu neo đậu', resource: 'anchorage', action: 'read' },
         { id: '3', key: 'anchorage:create', name: 'Thêm khu neo đậu', resource: 'anchorage', action: 'create' },
         { id: '4', key: 'anchorage:update', name: 'Cập nhật khu neo đậu', resource: 'anchorage', action: 'update' },
@@ -301,7 +301,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize transferarea permissions and exclude transferarea:approve', async () => {
       const mockPerms = [
-        { id: '1', key: 'transferarea:manage', name: 'Quản lý khu chuyển tải', resource: 'transferarea', action: 'manage' },
+        { id: '1', key: 'transferarea:manage', name: 'Khu chuyển tải', resource: 'transferarea', action: 'manage' },
         { id: '2', key: 'transferarea:read', name: 'Xem khu chuyển tải', resource: 'transferarea', action: 'read' },
         { id: '3', key: 'transferarea:create', name: 'Thêm khu chuyển tải', resource: 'transferarea', action: 'create' },
         { id: '4', key: 'transferarea:update', name: 'Cập nhật khu chuyển tải', resource: 'transferarea', action: 'update' },
@@ -453,7 +453,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize vhf permissions into group_vhf and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'vhf:manage', name: 'Quản lý hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'manage' },
+        { id: '1', key: 'vhf:manage', name: 'Hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'manage' },
         { id: '2', key: 'vhf:read', name: 'Xem hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'read' },
         { id: '3', key: 'vhf:create', name: 'Thêm hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'create' },
         { id: '4', key: 'vhf:update', name: 'Cập nhật hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'update' },
@@ -503,7 +503,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize radarstation permissions into group_radarstation and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'radarstation:manage', name: 'Quản lý trạm radar', resource: 'radarstation', action: 'manage' },
+        { id: '1', key: 'radarstation:manage', name: 'Trạm radar', resource: 'radarstation', action: 'manage' },
         { id: '2', key: 'radarstation:read', name: 'Xem trạm radar', resource: 'radarstation', action: 'read' },
         { id: '3', key: 'radarstation:create', name: 'Thêm trạm radar', resource: 'radarstation', action: 'create' },
         { id: '4', key: 'radarstation:update', name: 'Cập nhật trạm radar', resource: 'radarstation', action: 'update' },
@@ -539,7 +539,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
       const radarGroup = tree.find((g) => g.key === 'group_radarstation');
       expect(radarGroup).toBeDefined();
-      expect(radarGroup?.title).toBe('Quản lý Trạm Radar');
+      expect(radarGroup?.title).toBe('Quản lý Trạm radar');
 
       const childKeys = (radarGroup?.children || []).map((c) => c.key);
       expect(childKeys).toEqual([
@@ -558,7 +558,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize cctv permissions into group_cctv and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'cctv:manage', name: 'Quản lý hệ thống CCTV', resource: 'cctv', action: 'manage' },
+        { id: '1', key: 'cctv:manage', name: 'Hệ thống CCTV', resource: 'cctv', action: 'manage' },
         { id: '2', key: 'cctv:read', name: 'Xem hệ thống CCTV', resource: 'cctv', action: 'read' },
         { id: '3', key: 'cctv:create', name: 'Thêm hệ thống CCTV', resource: 'cctv', action: 'create' },
         { id: '4', key: 'cctv:update', name: 'Cập nhật hệ thống CCTV', resource: 'cctv', action: 'update' },
@@ -613,7 +613,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize scada permissions into group_scada and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'scada:manage', name: 'Quản lý hệ thống SCADA', resource: 'scada', action: 'manage' },
+        { id: '1', key: 'scada:manage', name: 'Hệ thống SCADA', resource: 'scada', action: 'manage' },
         { id: '2', key: 'scada:read', name: 'Xem hệ thống SCADA', resource: 'scada', action: 'read' },
         { id: '3', key: 'scada:create', name: 'Thêm hệ thống SCADA', resource: 'scada', action: 'create' },
         { id: '4', key: 'scada:update', name: 'Cập nhật hệ thống SCADA', resource: 'scada', action: 'update' },
@@ -668,7 +668,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize transmission permissions into group_transmission and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'transmission:manage', name: 'Quản lý hệ thống truyền dẫn', resource: 'transmission', action: 'manage' },
+        { id: '1', key: 'transmission:manage', name: 'Hệ thống truyền dẫn', resource: 'transmission', action: 'manage' },
         { id: '2', key: 'transmission:read', name: 'Xem hệ thống truyền dẫn', resource: 'transmission', action: 'read' },
         { id: '3', key: 'transmission:create', name: 'Thêm hệ thống truyền dẫn', resource: 'transmission', action: 'create' },
         { id: '4', key: 'transmission:update', name: 'Cập nhật hệ thống truyền dẫn', resource: 'transmission', action: 'update' },
@@ -723,7 +723,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize vtsassist permissions into group_vtsassist and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'vtsassist:manage', name: 'Quản lý hệ thống phụ trợ VTS', resource: 'vtsassist', action: 'manage' },
+        { id: '1', key: 'vtsassist:manage', name: 'Hệ thống phụ trợ VTS', resource: 'vtsassist', action: 'manage' },
         { id: '2', key: 'vtsassist:read', name: 'Xem hệ thống phụ trợ VTS', resource: 'vtsassist', action: 'read' },
         { id: '3', key: 'vtsassist:create', name: 'Thêm hệ thống phụ trợ VTS', resource: 'vtsassist', action: 'create' },
         { id: '4', key: 'vtsassist:update', name: 'Cập nhật hệ thống phụ trợ VTS', resource: 'vtsassist', action: 'update' },
@@ -778,7 +778,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should properly organize shiprepairfacility/shiprepairyard permissions into group_shiprepairfacility and exclude deprecated approve permissions', async () => {
       const mockPerms = [
-        { id: '1', key: 'shiprepairyard:manage', name: 'Quản lý cơ sở sửa chữa, đóng tàu', resource: 'shiprepairyard', action: 'manage' },
+        { id: '1', key: 'shiprepairyard:manage', name: 'Cơ sở sửa chữa, đóng tàu', resource: 'shiprepairyard', action: 'manage' },
         { id: '2', key: 'shiprepairyard:read', name: 'Xem cơ sở sửa chữa, đóng tàu', resource: 'shiprepairyard', action: 'read' },
         { id: '3', key: 'shiprepairyard:create', name: 'Thêm cơ sở sửa chữa, đóng tàu', resource: 'shiprepairyard', action: 'create' },
         { id: '4', key: 'shiprepairyard:update', name: 'Cập nhật cơ sở sửa chữa, đóng tàu', resource: 'shiprepairyard', action: 'update' },

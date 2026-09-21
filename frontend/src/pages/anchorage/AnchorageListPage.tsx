@@ -425,6 +425,33 @@ export default function AnchorageListPage() {
     organizations.forEach(o => m.set(o.id, o.name));
     return m;
   }, [organizations]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName =
+        u.organizationName ||
+        u.orgUnitName ||
+        u.departmentName ||
+        (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) ||
+        (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
@@ -548,7 +575,22 @@ export default function AnchorageListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -582,12 +624,27 @@ export default function AnchorageListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap, userOrgMap]);
 
   // Load master data
   useEffect(() => {
@@ -619,8 +676,14 @@ export default function AnchorageListPage() {
       try {
         const r = await userService.list({ pageSize: 1000 });
         const u = r.data || (r as any).content || [];
+        setRawUsers(u);
         const m = new Map<string, string>();
-        u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id));
+        u.forEach((x: any) => {
+          const name = x.fullName || x.username || x.id;
+          m.set(x.id, name);
+          m.set(x.id.toLowerCase(), name);
+          if (x.username) m.set(x.username, name);
+        });
         setUserMap(m);
       } catch {}
     })();
@@ -656,10 +719,12 @@ export default function AnchorageListPage() {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
         const items = r.items || [];
-        setWaterwayOptions(items.map(n => ({
-          value: n.id,
-          label: n.channelName || n.channelCode || '',
-        })));
+        setWaterwayOptions(items.map(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          return { value: n.id, label };
+        }));
       })
       .catch(() => {});
   }, []);
@@ -669,7 +734,12 @@ export default function AnchorageListPage() {
     navigationChannelCRUD.search({ page: 0, size: 1000 })
       .then((r) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -796,6 +866,8 @@ export default function AnchorageListPage() {
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page, pageSize,
+        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
+        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
       let data = r.data || [];
       if (activeTab === 'all') {
@@ -818,13 +890,15 @@ export default function AnchorageListPage() {
   }, [
     orgUnit, nameInput, codeInput, filterPortId, filterNavigationChannelId,
     filterBuoyStationId, filterProvince, filterOperationalStatus,
-    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize,
+    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, sortField, sortOrder,
   ]);
 
   useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
   useEffect(() => { if (initialLoadDone) void fetchCounts(); }, [fetchCounts, initialLoadDone]);
 
   const handleFilterApply = useCallback(() => {
+    setNameInput((prev) => prev.trim());
+    setCodeInput((prev) => prev.trim());
     setPage(1);
     void fetchData();
     void fetchCounts();
@@ -1012,6 +1086,7 @@ export default function AnchorageListPage() {
           placeholder="Tìm theo tên khu neo đậu"
           value={nameInput}
           onChange={e => setNameInput(e.target.value)}
+          onBlur={() => setNameInput(prev => prev.trim())}
           onPressEnter={handleFilterApply}
           allowClear
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1083,6 +1158,7 @@ export default function AnchorageListPage() {
               placeholder="Tìm theo mã khu neo đậu"
               value={codeInput}
               onChange={e => setCodeInput(e.target.value)}
+              onBlur={() => setCodeInput(prev => prev.trim())}
               onPressEnter={handleFilterApply}
               allowClear
               prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1223,31 +1299,6 @@ export default function AnchorageListPage() {
     ];
   }, [userMap]);
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'anchorageName') return r.anchorageName ?? '';
-    if (field === 'anchorageCode') return r.anchorageCode ?? '';
-    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
-    if (field === 'navigationChannelId') return (r as any).navigationChannelName || waterwayMap.get(r.navigationChannelId) || r.navigationChannelId || '';
-    if (field === 'buoyStationId') return r.buoyStationName || buoyStationMap.get(r.buoyStationId) || r.buoyStationId || '';
-    if (field === 'provinceId' || field === 'province') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : ((r as any).province || '');
-    if (field === 'operationalStatus') {
-      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      if (isDeletedAnchorage(r)) return 'Đã xóa';
-      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap]);
-
   const renderCellWithTooltip = (
     text: string | null | undefined,
     isBold?: boolean
@@ -1282,7 +1333,7 @@ export default function AnchorageListPage() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span>,
       },
       {
-        label: <span>Tên/Mã khu neo đậu</span>, dataIndex: 'anchorageName', key: 'anchorageName', width: 220, fixed: 'left' as const, sortable: true, ellipsis: false,
+        label: <span>Tên/Mã khu neo đậu</span>, dataIndex: 'anchorageName', key: 'anchorageName', width: 260, fixed: 'left' as const, sortable: true, ellipsis: false,
         cellTitle: (record: Anchorage) => record.anchorageName || '',
         render: (v: string, record: Anchorage) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1408,21 +1459,6 @@ export default function AnchorageListPage() {
     });
   }, [tabCounts, activeTab, total]);
 
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
-
   return (
     <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd } as unknown as ThemeToken}>
       <div className="anchorage-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -1545,7 +1581,7 @@ export default function AnchorageListPage() {
             overflow-wrap: break-word;
           }
         `}</style>
-        <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu neo đậu' }]}
+        <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu neo đậu' }]}
           actions={headerActions} />
         <FilterTableLayout
           filterContent={filterContent}
@@ -1561,19 +1597,19 @@ export default function AnchorageListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={sortedDataSource}
+            dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
-            loading={false}
+            loading={isLoading}
             onSort={(k: string, o: 'asc' | 'desc' | null) => {
+              setPage(1);
               if (!o) {
-                setSortField(null);
-                setSortOrder(null);
+                setSortField('updatedAt');
+                setSortOrder('descend');
               } else {
                 setSortField(k);
                 setSortOrder(o === 'asc' ? 'ascend' : 'descend');
               }
-              setPage(1);
             }}
             scroll={{ x: 'max-content' }}
           />
@@ -1794,6 +1830,7 @@ export default function AnchorageListPage() {
                   allowClear
                   value={historyFilters.keyword || ''}
                   onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                  onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker

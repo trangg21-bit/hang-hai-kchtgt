@@ -150,7 +150,7 @@ export const KCHT_DRAW_TYPE_OPTIONS = [
   { value: 'BUOY_STATION', label: 'Nhà trạm quản lý vận hành phao tiêu' },
   { value: 'BUOY', label: 'Phao, tiêu' },
   { value: 'VTS_ASSIST', label: 'Hệ thống phụ trợ VTS' },
-  { value: 'RADAR_STATION_LEGACY', label: 'Trạm Radar' },
+  { value: 'RADAR_STATION_LEGACY', label: 'Trạm radar' },
   { value: 'COSPAS_SARSAT_STATION', label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam' },
   { value: 'SCADA', label: 'Hệ thống SCADA' },
   { value: 'TRANSMISSION', label: 'Hệ thống truyền dẫn' },

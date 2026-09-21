@@ -388,6 +388,7 @@ export default function StormShelterListPage() {
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
@@ -396,6 +397,27 @@ export default function StormShelterListPage() {
     organizations.forEach(o => m.set(o.id, o.name));
     return m;
   }, [organizations]);
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName = u.organizationName || u.orgUnitName || u.departmentName || (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) || (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
@@ -463,6 +485,7 @@ export default function StormShelterListPage() {
       try {
         const r = await userService.list({ pageSize: 1000 });
         const u = r.data || (r as any).content || [];
+        setRawUsers(u);
         const m = new Map<string, string>();
         u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id));
         setUserMap(m);
@@ -492,10 +515,12 @@ export default function StormShelterListPage() {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then((r) => {
         const items = r.items || [];
-        setWaterwayOptions(items.map(n => ({
-          value: n.id,
-          label: n.channelName || n.channelCode || '',
-        })));
+        setWaterwayOptions(items.map(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          return { value: n.id, label };
+        }));
       })
       .catch(() => {});
   }, []);
@@ -505,7 +530,12 @@ export default function StormShelterListPage() {
     navigationChannelCRUD.search({ page: 0, size: 1000 })
       .then((r) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); });
+        (r.items || []).forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
         setWaterwayMap(m);
       })
       .catch(() => {});
@@ -611,6 +641,8 @@ export default function StormShelterListPage() {
   useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
 
   const handleFilterApply = useCallback(() => {
+    setNameInput((prev) => prev.trim());
+    setCodeInput((prev) => prev.trim());
     setPage(1);
     void fetchData();
   }, [fetchData]);
@@ -873,7 +905,22 @@ export default function StormShelterListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -907,12 +954,27 @@ export default function StormShelterListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap, userOrgMap]);
 
   const filterContent = (
     <>
@@ -935,6 +997,7 @@ export default function StormShelterListPage() {
           placeholder="Tìm theo tên khu tránh, trú bão"
           value={nameInput}
           onChange={e => setNameInput(e.target.value)}
+          onBlur={() => setNameInput(prev => prev.trim())}
           onPressEnter={handleFilterApply}
           allowClear
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1006,6 +1069,7 @@ export default function StormShelterListPage() {
               placeholder="Tìm theo mã khu tránh, trú bão"
               value={codeInput}
               onChange={e => setCodeInput(e.target.value)}
+              onBlur={() => setCodeInput(prev => prev.trim())}
               onPressEnter={handleFilterApply}
               allowClear
               prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1176,7 +1240,7 @@ export default function StormShelterListPage() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span>,
       },
       {
-        label: <span>Tên/Mã khu tránh, trú bão</span>, dataIndex: 'stormShelterName', key: 'stormShelterName', width: 220, fixed: 'left' as const, sortable: true, ellipsis: false,
+        label: <span>Tên/Mã khu tránh, trú bão</span>, dataIndex: 'stormShelterName', key: 'stormShelterName', width: 260, fixed: 'left' as const, sortable: true, ellipsis: false,
         render: (v: string, record: StormShelterArea) => (
           <div>
             <a title={v || ''} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || ''}</a>
@@ -1390,7 +1454,7 @@ export default function StormShelterListPage() {
           }
         `}</style>
         <ScreenHeader
-          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý khu tránh, trú bão' }]}
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu tránh, trú bão' }]}
           actions={headerActions}
         />
         <FilterTableLayout
@@ -1646,6 +1710,7 @@ export default function StormShelterListPage() {
                   allowClear
                   value={historyFilters.keyword || ''}
                   onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                  onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker

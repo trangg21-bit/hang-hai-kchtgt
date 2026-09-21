@@ -1,4 +1,4 @@
-// RadarStation (Trạm Radar) — F-056..F-068
+// RadarStation (Trạm radar) — F-056..F-068
 // Contract khớp backend /api/v1/radar-station theo chuẩn M-1006.
 
 export interface RadarStationAttachment {
@@ -129,11 +129,11 @@ export interface CreateRadarStationRequest {
   stationType?: string;
   source?: string;
   note?: string;
-  longitude?: number;
-  latitude?: number;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
-  coordinates?: string;
-  mapIcon?: string;
+  longitude?: number | null;
+  latitude?: number | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
+  mapIcon?: string | null;
   action?: 'draft' | 'submit' | 'approve';
   approvalStatus?: RadarStationStatus;
 }

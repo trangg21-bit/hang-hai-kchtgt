@@ -322,7 +322,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       .finally(() => setLoadingSymbols(false));
   }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — đồng bộ với Quản lý cầu cảng
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — đồng bộ với Cầu cảng
   useEffect(() => {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
       .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
@@ -888,7 +888,13 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="cargoThroughput"
+                  {...labelProps('Sản lượng hàng thông qua')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Sản lượng hàng thông qua không được để trống' }]}
+                >
                   <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>

@@ -463,7 +463,7 @@ export default function WaterZoneListPage() {
     {
       title: 'Tên vùng nước',
       dataIndex: 'waterZoneName',
-      width: 250,
+      width: 260,
       ellipsis: true,
     },
     {

@@ -79,6 +79,8 @@ export interface CreateScadaRequest {
   coordinateSystem?: number | null;
   displayRule?: number | null;
   spatialId?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
   coordinates?: string | null;
   action?: string;
@@ -104,6 +106,8 @@ export interface UpdateScadaRequest {
   specifications?: string | null;
   maintenanceInformation?: string | null;
   note?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   objectType?: number | null;
   mapSymbolId?: string | null;
   coordinateSystem?: number | null;

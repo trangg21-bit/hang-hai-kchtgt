@@ -1322,7 +1322,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     doSauThietKe: 'Độ sâu thiết kế (m)',
     chieuRongThietKe: 'Chiều rộng thiết kế (m)',
 
-    // Trạm Radar
+    // Trạm radar
     maTram: 'Mã trạm',
     tenTram: 'Tên trạm radar',
     radarModel: 'Model radar',

@@ -484,6 +484,35 @@ export default function DaiTtdhListPage() {
     return map;
   }, [organizations]);
 
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
+
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName =
+        u.organizationName ||
+        u.orgUnitName ||
+        u.departmentName ||
+        (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) ||
+        (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
+
   const operatingUnitMap = useMemo(() => {
     const map = new Map<string, string>();
     DEFAULT_OPERATING_ORGANIZATIONS.forEach((o) => {
@@ -608,6 +637,7 @@ export default function DaiTtdhListPage() {
       try {
         const r = await userService.list({ pageSize: 1000 });
         const u = r.data || (r as any).content || [];
+        setRawUsers(u);
         const m = new Map<string, string>();
         u.forEach((x: any) => {
           const name = x.fullName || x.username || x.id;
@@ -704,8 +734,11 @@ export default function DaiTtdhListPage() {
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
+    setFilterName((prev) => prev.trim());
+    setFilterCode((prev) => prev.trim());
     setPage(1);
-  }, []);
+    void fetchData();
+  }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitRef.current;
@@ -894,6 +927,7 @@ export default function DaiTtdhListPage() {
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
+        setRawUsers(users);
         const m = new Map<string, string>();
         users.forEach((u: any) => {
           const name = u.fullName || u.username || u.id;
@@ -942,7 +976,22 @@ export default function DaiTtdhListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -980,7 +1029,22 @@ export default function DaiTtdhListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -989,7 +1053,7 @@ export default function DaiTtdhListPage() {
         return userMap.get(actor) || userMap.get(actor.toLowerCase()) || actor;
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, userMap, operatingUnitMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, userMap, operatingUnitMap, historyTarget, symbolImageMap, userOrgMap]);
 
   // ── Filter sidebar content ──────────────────────────────────────
   const filterContent = (
@@ -1016,6 +1080,7 @@ export default function DaiTtdhListPage() {
           placeholder="Tìm theo tên đài"
           value={filterName}
           onChange={(e) => setFilterName(e.target.value)}
+          onBlur={() => setFilterName((prev) => prev.trim())}
           onPressEnter={handleFilterApply}
           allowClear
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1051,6 +1116,7 @@ export default function DaiTtdhListPage() {
               placeholder="Tìm theo mã đài"
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value)}
+              onBlur={() => setFilterCode((prev) => prev.trim())}
               onPressEnter={handleFilterApply}
               allowClear
               prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1271,7 +1337,7 @@ export default function DaiTtdhListPage() {
         label: <span>Tên/Mã đài</span>,
         dataIndex: 'daiTtdhName',
         key: 'daiTtdhName',
-        width: 220,
+        width: 260,
         fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
@@ -1517,7 +1583,7 @@ export default function DaiTtdhListPage() {
         `}</style>
 
         <ScreenHeader
-          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý đài TTDH' }]}
+          breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Đài TTDH' }]}
           actions={headerActions}
         />
 
@@ -1879,6 +1945,7 @@ export default function DaiTtdhListPage() {
                   allowClear
                   value={historyFilters.keyword || ''}
                   onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                  onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker

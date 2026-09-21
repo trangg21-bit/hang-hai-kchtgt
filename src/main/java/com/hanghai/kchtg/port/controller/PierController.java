@@ -59,13 +59,13 @@ public class PierController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'pier:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pier:manage', 'pier:read', 'infraasset:manage', 'infraasset:read', 'data:read', 'berthasset:manage', 'berthasset:read', 'berth:manage', 'berth:read', 'port:manage', 'port:read')")
     public ResponseEntity<ApiResponse<PierResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy thông tin cầu cảng thành công", pierService.getById(id)));
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'pier:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pier:manage', 'pier:read', 'infraasset:manage', 'infraasset:read', 'data:read', 'berthasset:manage', 'berthasset:read', 'berth:manage', 'berth:read', 'port:manage', 'port:read')")
     public ResponseEntity<ApiResponse<Page<PierResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -97,14 +97,14 @@ public class PierController {
     }
 
     @GetMapping("/code/{pierCode}")
-    @PreAuthorize("@auth.check(authentication, 'pier:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pier:manage', 'pier:read', 'infraasset:manage', 'infraasset:read', 'data:read')")
     public ResponseEntity<ApiResponse<PierResponse>> findByCode(@PathVariable String pierCode) {
         return ResponseEntity.ok(ApiResponse.success("Tìm theo mã cầu cảng thành công",
                 pierService.findByCode(pierCode)));
     }
 
     @PutMapping
-    @PreAuthorize("@auth.check(authentication, 'pier:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pier:manage', 'pier:update', 'infraasset:manage', 'data:read')")
     public ResponseEntity<ApiResponse<PierResponse>> update(@Valid @RequestBody UpdatePierRequest request) {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật cầu cảng thành công", pierService.update(request)));
     }

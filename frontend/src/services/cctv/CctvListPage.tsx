@@ -21,7 +21,7 @@ import {
   Drawer,
   Tooltip,
 } from "antd";
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
 import { organizationService } from "../organizationService";
 import {
   PlusOutlined,
@@ -330,6 +330,27 @@ const CctvListPage = () => {
     updatedTo: "" as string,
   });
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần ở backend) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(0);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
@@ -418,9 +439,9 @@ const CctvListPage = () => {
 
 
   // Danh sách trạm radar và trung tâm VTS cho dropdown lọc hạ tầng phụ thuộc
-  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string; orgUnitId?: string }>>([]);
   const [loadingRadars, setLoadingRadars] = useState(false);
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string; orgUnitId?: string }>>([]);
   const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
 
   useEffect(() => {
@@ -431,9 +452,10 @@ const CctvListPage = () => {
         if (disposed) return;
         const items = r.data?.data;
         setRadarStationOptions(
-          (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; name?: string; code?: string }) => ({
+          (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; name?: string; code?: string; orgUnitId?: string }) => ({
             label: s.stationName || s.name || s.code || s.id,
             value: s.id,
+            orgUnitId: s.orgUnitId,
           }))
         );
       })
@@ -448,9 +470,10 @@ const CctvListPage = () => {
         if (disposed) return;
         const items = r.data?.data;
         setVtsOperationCenterOptions(
-          (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+          (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
             label: s.name || s.code || s.id,
             value: s.id,
+            orgUnitId: s.orgUnitId,
           }))
         );
       })
@@ -463,6 +486,22 @@ const CctvListPage = () => {
       disposed = true;
     };
   }, []);
+
+  const filteredFilterRadarStationOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return radarStationOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return radarStationOptions.filter((r) => r.orgUnitId && normalizedSet.has(String(r.orgUnitId).toLowerCase()));
+  }, [radarStationOptions, orgUnitOptions, filterValues.orgUnitId]);
+
+  const filteredFilterVtsOperationCenterOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return vtsOperationCenterOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && normalizedSet.has(String(c.orgUnitId).toLowerCase()));
+  }, [vtsOperationCenterOptions, orgUnitOptions, filterValues.orgUnitId]);
 
 
 
@@ -675,9 +714,10 @@ const CctvListPage = () => {
         key: "deviceName",
         label: "Tên / Mã thiết bị",
         dataIndex: "deviceName",
-        width: 300,
+        width: 260,
         fixed: "left" as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("deviceName"),
         cellTitle: (record: CctvResponse) => record.deviceName || '',
         render: (val: string, record: CctvResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -717,14 +757,16 @@ const CctvListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
+        sortOrder: sortOrderFor("orgUnitName"),
         cellTitle: (record: CctvResponse) => record.orgUnitName || '',
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
-        label: "Thuộc TTDH VTS/Trạm Radar",
+        label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
+        sortable: false,
         cellTitle: (record: CctvResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -733,6 +775,7 @@ const CctvListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
+        sortable: false,
         cellTitle: (record: CctvResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -742,6 +785,7 @@ const CctvListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
+        sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: CctvResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -751,6 +795,7 @@ const CctvListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
+        sortOrder: sortOrderFor("unitOfMeasure"),
         cellTitle: (record: CctvResponse) => (record.unitOfMeasure != null ? formatUnitOfMeasure(record.unitOfMeasure) : '') || '',
         render: (val: number) => renderCellWithTooltip(val != null ? formatUnitOfMeasure(val) : null),
       },
@@ -761,6 +806,7 @@ const CctvListPage = () => {
         width: 120,
         type: "number" as const,
         align: 'center' as const,
+        sortOrder: sortOrderFor("quantity"),
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -775,6 +821,7 @@ const CctvListPage = () => {
         type: "mono" as const,
         align: 'center' as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("yearOfUse"),
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
@@ -785,6 +832,7 @@ const CctvListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
+        sortOrder: sortOrderFor("operationalStatus"),
         render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
@@ -809,6 +857,7 @@ const CctvListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
+        sortOrder: sortOrderFor("approvalStatus"),
         render: (val: string, record: CctvResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy);
           return renderApprovalBadge(val, isDeleted);
@@ -819,36 +868,40 @@ const CctvListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
+        sortOrder: sortOrderFor("updatedByName"),
         cellTitle: (record: CctvResponse) => record.updatedByName || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
-        key: "submittedInfo",
+        key: "submittedByName",
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        sortOrder: sortOrderFor("submittedByName"),
         cellTitle: (record: CctvResponse) => record.submittedByName || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
-        key: "approvedLevel1Info",
+        key: "approverLevel1Name",
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        sortOrder: sortOrderFor("approverLevel1Name"),
         cellTitle: (record: CctvResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
-        key: "approvedLevel2Info",
+        key: "approverLevel2Name",
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        sortOrder: sortOrderFor("approverLevel2Name"),
         cellTitle: (record: CctvResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: CctvResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, openViewDetail, hasPerm]
+    [page, pageSize, openViewDetail, hasPerm, sortOrderFor]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -906,7 +959,7 @@ const CctvListPage = () => {
     }
     if (fieldKey === 'attachedInfrastructureType' || fieldKey === 'Loại hạ tầng' || fieldKey === 'Thuộc loại hạ tầng') {
       if (val === '1' || val === 'TTDH VTS') return 'TTDH VTS';
-      if (val === '2' || val === 'Trạm Radar') return 'Trạm Radar';
+      if (val === '2' || val === 'Trạm radar') return 'Trạm radar';
       return val;
     }
     if (fieldKey === 'approvalStatus' || fieldKey === 'Trạng thái phê duyệt') {
@@ -1668,8 +1721,8 @@ const CctvListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: "updatedAt",
-        sortOrder: "desc",
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
       });
       const isAllTab = !filterValues.approvalStatus || filterValues.approvalStatus === 'all';
       const content = isAllTab
@@ -1684,7 +1737,7 @@ const CctvListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   // ── Load đơn vị quản lý mặc định — chuẩn /beacon-stations & /dike-revetment ──
@@ -1776,6 +1829,8 @@ const CctvListPage = () => {
       updatedFrom: "",
       updatedTo: "",
     });
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setPage(0);
   }, []);
 
@@ -1914,7 +1969,7 @@ const CctvListPage = () => {
         .cctv-page-wrapper div:has(> button[aria-pressed]) > button { white-space: nowrap !important; flex-shrink: 0 !important; cursor: pointer !important; padding: 4px 2px !important; }
 
         /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ màn /berth; bao cả nhãn/giá trị khối chk-detail bị theme dùng chung ép 13px) ── */
-        /* ── Breadcrumb title (màn /cctv): "Trang chủ" 14px, "Quản lý hệ thống CCTV" 16px —
+        /* ── Breadcrumb title (màn /cctv): "Trang chủ" 14px, "Hệ thống CCTV" 16px —
            khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
         .cctv-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span { font-size: 14px !important; }
         .cctv-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link > span { font-size: 16px !important; }
@@ -2150,7 +2205,7 @@ const CctvListPage = () => {
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
-          { label: "Quản lý hệ thống CCTV", path: "/cctv" },
+          { label: "Hệ thống CCTV", path: "/cctv" },
         ]}
         actions={[
           hasExplicitPerm("cctv:create")
@@ -2223,12 +2278,27 @@ const CctvListPage = () => {
                 treeDefaultExpandAll={false}
                 showSearch
                 value={filterValues.orgUnitId || undefined}
-                onChange={(val) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    orgUnitId: (val as string) || "",
-                  }))
-                }
+                onChange={(val) => {
+                  const nextOrg = (val as string) || "";
+                  setFilterValues((prev) => {
+                    let nextAttached = prev.attachedInfraId;
+                    if (nextOrg && nextOrg !== '__all__' && prev.attachedInfraId) {
+                      const rawSet = resolveOrgSubtreeIds(orgUnitOptions, nextOrg);
+                      const normalizedSet = new Set<string>();
+                      rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                      const activeOptions = prev.attachedInfraType === 1 ? vtsOperationCenterOptions : prev.attachedInfraType === 2 ? radarStationOptions : [];
+                      const validAttached = activeOptions.some(
+                        (item) => item.value === prev.attachedInfraId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                      );
+                      if (!validAttached) nextAttached = undefined;
+                    }
+                    return {
+                      ...prev,
+                      orgUnitId: nextOrg,
+                      attachedInfraId: nextAttached,
+                    };
+                  });
+                }}
                 loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
@@ -2296,7 +2366,7 @@ const CctvListPage = () => {
                         attachedInfraId: val as string | undefined,
                       }))
                     }
-                    options={filterValues.attachedInfraType === 1 ? vtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? radarStationOptions : []}
+                    options={filterValues.attachedInfraType === 1 ? filteredFilterVtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? filteredFilterRadarStationOptions : []}
                     loading={filterValues.attachedInfraType === 1 ? loadingVtsCenters : filterValues.attachedInfraType === 2 ? loadingRadars : false}
                     disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
@@ -2425,6 +2495,7 @@ const CctvListPage = () => {
               dataSource={data}
               rowKey="id"
               loading={isLoading}
+              onSort={handleSort}
               scroll={{ x: 'max-content' }}
               rowActions={rowActions}
               locale={{
@@ -2504,7 +2575,7 @@ const CctvListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
                             { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderCctvStatusBadge(st) : null; })() },

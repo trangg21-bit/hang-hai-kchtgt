@@ -82,6 +82,7 @@ class DryPortServiceTest {
                         spatial.setId(UUID.randomUUID());
                         return spatial;
                     });
+            lenient().when(dryPortRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
             testId = UUID.randomUUID();
             testEntity = new DryPort();
@@ -150,6 +151,50 @@ class DryPortServiceTest {
             assertEquals(ApprovalStatus.APPROVED, result.getApprovalStatus());
             assertEquals("CC-001", result.getDryPortCode()); // code unchanged
             verify(changeHistoryService).recordChanges(eq("DryPort"), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("update — when geometryType is cleared, should clear all location fields and delete spatial object")
+        void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
+            UUID spatialId = UUID.randomUUID();
+            UUID mapSymbolId = UUID.randomUUID();
+            testEntity.setSpatialId(spatialId);
+            testEntity.setMapSymbolId(mapSymbolId);
+            testEntity.setCoordinateSystem(1);
+            testEntity.setDisplayRule(1);
+            testEntity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject mockSpatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+            mockSpatial.setId(spatialId);
+            mockSpatial.setGeometryType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT);
+            mockSpatial.setCoordinates("106.123 20.456");
+
+            when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+            when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+
+            UpdateDryPortRequest req = new UpdateDryPortRequest();
+            req.setId(testId);
+            req.setDryPortName("Cảng Cạn Demo");
+            req.setGeometryType(null);
+            req.setCoordinates(null);
+            req.setLongitude(null);
+            req.setLatitude(null);
+            req.setMapSymbolId(null);
+            req.setCoordinateSystem(null);
+            req.setDisplayRule(null);
+
+            DryPortResponse result = service.update(req);
+
+            assertNotNull(result);
+            assertNull(testEntity.getSpatialId());
+            assertNull(testEntity.getMapSymbolId());
+            assertNull(testEntity.getCoordinateSystem());
+            assertNull(testEntity.getDisplayRule());
+            verify(gisSpatialObjectService, atLeastOnce()).delete(spatialId);
+            assertNull(result.getCoordinates());
+            assertNull(result.getGeometryType());
+            assertNull(result.getMapSymbolId());
         }
 
         @Test

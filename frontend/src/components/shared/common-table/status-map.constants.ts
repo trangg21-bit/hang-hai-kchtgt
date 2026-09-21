@@ -7,7 +7,7 @@ import {
 } from '../../../themetokenchk';
 
 /**
- * Bản đồ ánh xạ màu trạng thái phê duyệt chuẩn hệ thống Hàng hải KCHTGT (chuẩn Quản lý khu neo đậu).
+ * Bản đồ ánh xạ màu trạng thái phê duyệt chuẩn hệ thống Hàng hải KCHTGT (chuẩn Khu neo đậu).
  */
 export const APPROVAL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   ALL: { label: 'Tất cả', color: actionPrimary },

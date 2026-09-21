@@ -47,6 +47,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -296,34 +297,6 @@ public class VhfService {
       validateAllowedOrgUnit(request.getOrgUnitId());
     }
 
-    Vhf snapshot = Vhf.builder()
-      .id(entity.getId())
-      .deviceCode(entity.getDeviceCode())
-      .deviceName(entity.getDeviceName())
-      .detailedLocation(entity.getDetailedLocation())
-      .manufacturer(entity.getManufacturer())
-      .model(entity.getModel())
-      .quantity(entity.getQuantity())
-      .seaportId(entity.getSeaportId())
-      .orgUnitId(entity.getOrgUnitId())
-      .operatingUnitId(entity.getOperatingUnitId())
-      .provinceName(entity.getProvinceName())
-      .attachedInfrastructureType(entity.getAttachedInfrastructureType())
-      .attachedInfrastructureId(entity.getAttachedInfrastructureId())
-      .unitOfMeasure(entity.getUnitOfMeasure())
-      .yearOfUse(entity.getYearOfUse())
-      .operationalStatus(entity.getOperationalStatus())
-      .approvalStatus(entity.getApprovalStatus())
-      .specifications(entity.getSpecifications())
-      .maintenanceInformation(entity.getMaintenanceInformation())
-      .note(entity.getNote())
-      .objectType(entity.getObjectType())
-      .mapSymbolId(entity.getMapSymbolId())
-      .coordinateSystem(entity.getCoordinateSystem())
-      .displayRule(entity.getDisplayRule())
-      .spatialId(entity.getSpatialId())
-      .build();
-
     Map<String, String> previousValues = new LinkedHashMap<>();
 
     applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName() != null ? request.getDeviceName().trim() : null, entity::setDeviceName, previousValues);
@@ -343,11 +316,6 @@ public class VhfService {
     applyIfChanged("specifications", entity.getSpecifications(), request.getSpecifications(), entity::setSpecifications, previousValues);
     applyIfChanged("maintenanceInformation", entity.getMaintenanceInformation(), request.getMaintenanceInformation(), entity::setMaintenanceInformation, previousValues);
     applyIfChanged("note", entity.getNote(), request.getNote(), entity::setNote, previousValues);
-    applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues);
-    applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues);
-    applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues);
-    applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues);
-    applyIfChanged("spatialId", entity.getSpatialId(), request.getSpatialId(), entity::setSpatialId, previousValues);
 
     String oldCoordinates = null;
     String oldGeometryType = null;
@@ -360,25 +328,60 @@ public class VhfService {
       }
     }
 
-if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
-      previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
-    }
-    if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
-      previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
-    }
+    boolean hasGeometryType = request.getGeometryType() != null;
+    boolean hasCoordinates = request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty();
 
-    if (request.getCoordinates() != null) {
-      GisGeometryType geomType = request.getGeometryType() != null
-        ? request.getGeometryType() : GisGeometryType.POINT;
+    if (hasGeometryType && hasCoordinates) {
+      applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues);
+      applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues);
+      applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues);
+      applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues);
+
+      if (!WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+        previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+      }
+      if (!Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+        previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
+      }
+
+      GisGeometryType geomType = request.getGeometryType();
       UUID spatialId = gisSpatialObjectService.syncSpatialObject(
         entity.getSpatialId(),
         "Hệ thống VHF " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
         entity.getDeviceCode(),
         geomType,
-        request.getCoordinates(),
+        request.getCoordinates().trim(),
         entity.getId(),
         InfrastructureType.VHF);
       entity.setSpatialId(spatialId);
+    } else {
+      // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
+      if (oldGeometryType != null) {
+        previousValues.put("geometryType", oldGeometryType);
+      }
+      if (oldCoordinates != null && !oldCoordinates.isBlank()) {
+        previousValues.put("coordinates", oldCoordinates);
+      }
+      if (entity.getMapSymbolId() != null) {
+        previousValues.put("mapSymbolId", entity.getMapSymbolId().toString());
+        entity.setMapSymbolId(null);
+      }
+      if (entity.getCoordinateSystem() != null) {
+        previousValues.put("coordinateSystem", String.valueOf(entity.getCoordinateSystem()));
+        entity.setCoordinateSystem(null);
+      }
+      if (entity.getDisplayRule() != null) {
+        previousValues.put("displayRule", String.valueOf(entity.getDisplayRule()));
+        entity.setDisplayRule(null);
+      }
+      if (entity.getObjectType() != null) {
+        previousValues.put("objectType", String.valueOf(entity.getObjectType()));
+        entity.setObjectType(null);
+      }
+      if (entity.getSpatialId() != null) {
+        gisSpatialObjectService.delete(entity.getSpatialId());
+        entity.setSpatialId(null);
+      }
     }
 
     ApprovalStatus currentStatus = entity.getApprovalStatus();
@@ -920,31 +923,80 @@ if (request.getCoordinates() != null && !WktCoordinateUtils.coordinatesEqual(req
   }
 
   private Sort buildSort(String sortBy, String sortOrder) {
-    String field = sortBy == null || sortBy.isBlank() ? "updatedAt" : sortBy.trim();
-    switch (field) {
-      case "deviceCode":
-      case "deviceName":
-      case "code":
-      case "createdAt":
-      case "updatedAt":
-      case "yearOfUse":
-      case "quantity":
-      case "unitOfMeasure":
-      case "provinceName":
-      case "orgUnitId":
-      case "approvalStatus":
-      case "operationalStatus":
-        break;
-      case "updatedByName":
-        field = "updatedAt";
-        break;
-      default:
-        field = "updatedAt";
-    }
     Sort.Direction dir = "asc".equalsIgnoreCase(sortOrder)
         ? Sort.Direction.ASC
         : Sort.Direction.DESC;
-    return Sort.by(dir, field).and(Sort.by(Sort.Direction.ASC, "id"));
+    Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "v.updatedAt")
+        .and(JpaSort.unsafe(Sort.Direction.DESC, "v.createdAt"))
+        .and(JpaSort.unsafe(Sort.Direction.ASC, "v.id"));
+
+    if (sortBy == null || sortBy.isBlank()) {
+      return defaultSort;
+    }
+
+    String field = sortBy.trim();
+    String property;
+    switch (field) {
+      case "deviceCode":
+      case "code":
+        property = "LOWER(v.deviceCode)";
+        break;
+      case "deviceName":
+      case "name":
+        property = "LOWER(v.deviceName)";
+        break;
+      case "seaportName":
+      case "seaportId":
+        property = "LOWER(p.portName)";
+        break;
+      case "orgUnitName":
+      case "orgUnitId":
+        property = "LOWER(o.name)";
+        break;
+      case "provinceName":
+        property = "LOWER(v.provinceName)";
+        break;
+      case "yearOfUse":
+        property = "v.yearOfUse";
+        break;
+      case "quantity":
+        property = "v.quantity";
+        break;
+      case "unitOfMeasure":
+        property = "v.unitOfMeasure";
+        break;
+      case "operationalStatus":
+        property = "v.operationalStatus";
+        break;
+      case "approvalStatus":
+        property = "v.approvalStatus";
+        break;
+      case "submittedByName":
+      case "submittedInfo":
+        property = "v.submittedDate";
+        break;
+      case "approverLevel1Name":
+      case "approvedByNameLevel1":
+      case "approvedLevel1Info":
+        property = "v.approvedDateLevel1";
+        break;
+      case "approverLevel2Name":
+      case "approvedByNameLevel2":
+      case "approvedLevel2Info":
+        property = "v.approvedDateLevel2";
+        break;
+      case "updatedByName":
+      case "updatedInfo":
+      case "updatedAt":
+        property = "v.updatedAt";
+        break;
+      case "createdAt":
+        property = "v.createdAt";
+        break;
+      default:
+        return defaultSort;
+    }
+    return JpaSort.unsafe(dir, property).and(defaultSort);
   }
 
   // ── ATTACHMENTS (File đính kèm) ───────────────────────────────────

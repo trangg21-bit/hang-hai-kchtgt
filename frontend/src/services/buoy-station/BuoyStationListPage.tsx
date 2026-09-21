@@ -251,6 +251,7 @@ export default function BuoyStationListPage() {
   const [isError, setIsError] = useState(false);
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [portMap, setPortMap] = useState<Map<string, string>>(new Map());
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
@@ -261,6 +262,19 @@ export default function BuoyStationListPage() {
     organizations.forEach((o) => { m.set(o.id, o.name); });
     return m;
   }, [organizations]);
+
+  const userOrgMap = useMemo(() => {
+    const m = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const unit = u.orgUnitName || (u.orgUnitId ? orgMap.get(u.orgUnitId) : '') || '';
+      if (unit) {
+        if (u.id) { m.set(u.id, unit); m.set(u.id.toLowerCase(), unit); }
+        if (u.username) { m.set(u.username, unit); m.set(u.username.toLowerCase(), unit); }
+        if (u.fullName) { m.set(u.fullName, unit); m.set(u.fullName.toLowerCase(), unit); }
+      }
+    });
+    return m;
+  }, [rawUsers, orgMap]);
 
   // Tên đơn vị cấp 2 trong chuỗi phân cấp — cột Đơn vị quản lý (chuẩn Cảng biển).
   const orgLevel2Map = useMemo(() => {
@@ -339,6 +353,7 @@ export default function BuoyStationListPage() {
       try {
         const r = await userService.list({ pageSize: 1000 });
         const u = r.data || (r as any).content || [];
+        setRawUsers(u);
         const m = new Map<string, string>();
         u.forEach((x: any) => {
           const name = x.fullName || x.username || '';
@@ -681,7 +696,10 @@ export default function BuoyStationListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+        const actor = String(rec.changedBy || rec.changedByName || rec.actor || rec.userName || rec.createdBy || rec.approvedBy || '').trim();
+        const userUnit = userOrgMap.get(actor) || userOrgMap.get(actor.toLowerCase()) || (rec as any).orgUnitName || (rec as any).unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const uId = rec.orgUnitId || (rec as any).unitId;
         const orgName = uId ? orgMap.get(uId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
       },
@@ -715,7 +733,10 @@ export default function BuoyStationListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const uId = historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId;
+        const actor = String(rec.changedBy || rec.changedByName || rec.actor || rec.userName || rec.createdBy || rec.approvedBy || '').trim();
+        const userUnit = userOrgMap.get(actor) || userOrgMap.get(actor.toLowerCase()) || (rec as any).orgUnitName || (rec as any).unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const uId = rec.orgUnitId || (rec as any).unitId;
         const orgName = uId ? orgMap.get(uId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '';
       },
@@ -847,7 +868,7 @@ export default function BuoyStationListPage() {
       ),
     },
     {
-      key: 'name', label: 'Tên/Mã nhà trạm', dataIndex: 'name', width: 280, fixed: 'left' as const, ellipsis: false, sortable: true,
+      key: 'name', label: 'Tên/Mã nhà trạm', dataIndex: 'name', width: 260, fixed: 'left' as const, ellipsis: false, sortable: true,
       render: (name: string, record: BuoyStationResponse) => (
         <div>
           <a title={name} onClick={() => void openDetail(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</a>
@@ -1017,7 +1038,7 @@ export default function BuoyStationListPage() {
       <style>{`
         .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
-        /* ── Cỡ chữ 13.5px chuẩn toàn màn Nhà trạm Phao, tiêu & các popup/drawer con ── */
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Nhà trạm vận hành Phao, tiêu & các popup/drawer con ── */
         .buoy-station-page-wrapper,
         .buoy-station-page-wrapper .ant-table,
         .buoy-station-page-wrapper .ant-table-cell,
@@ -1093,7 +1114,7 @@ export default function BuoyStationListPage() {
         }
       `}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm Phao, tiêu' }]}
+        breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Nhà trạm vận hành Phao, tiêu' }]}
         actions={[{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: icons.create, onClick: openCreate }]}
       />
       <FilterTableLayout
@@ -1120,6 +1141,7 @@ export default function BuoyStationListPage() {
             <Input placeholder="Tìm theo tên nhà trạm..." allowClear
               value={filterValues.name || ''}
               onChange={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value }))}
+              onBlur={(e) => setFilterValues((prev) => ({ ...prev, name: e.target.value.trim() }))}
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
@@ -1153,6 +1175,7 @@ export default function BuoyStationListPage() {
               <Input placeholder="Tìm theo mã nhà trạm..." allowClear
                 value={filterValues.code || ''}
                 onChange={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value }))}
+                onBlur={(e) => setFilterValues((prev) => ({ ...prev, code: e.target.value.trim() }))}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </div>
@@ -1314,6 +1337,7 @@ export default function BuoyStationListPage() {
                 allowClear
                 value={historyFilters.keyword || ''}
                 onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                onBlur={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value.trim() }))}
                 style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
               />
               <DatePicker

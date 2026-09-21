@@ -294,7 +294,7 @@ describe('Module 1: Tài sản bến cảng (docs/checklists/CHECKLIST-TAI-SAN-B
     expect(html).toContain('Tình trạng tài sản');
     expect(html).toContain('Mở rộng bộ lọc nâng cao');
 
-    // 8 Status tabs (chuẩn Quản lý khu neo đậu)
+    // 8 Status tabs (chuẩn Khu neo đậu)
     expect(html).toContain('Tất cả');
     expect(html).toContain('Lưu tạm');
     expect(html).toContain('Chờ phê duyệt cấp Cảng vụ/Chi cục');

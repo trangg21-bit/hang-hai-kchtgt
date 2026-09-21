@@ -1,5 +1,5 @@
 /**
- * M-003 Trạm Radar — E2E spec
+ * M-003 Trạm radar — E2E spec
  *
  * Pattern: live backend, manual login (no page.route mocking).
  * Asserts the REAL Wave-2 UI (TramRadarList / TramRadarForm), not placeholders.
@@ -18,7 +18,7 @@ async function login(page: Page) {
   await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15000 });
 }
 
-test.describe('M-003 Trạm Radar', () => {
+test.describe('M-003 Trạm radar', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
@@ -34,7 +34,7 @@ test.describe('M-003 Trạm Radar', () => {
   test('TC-M003-TR-02: Trang tạo mới hiển thị form với field thật', async ({ page }) => {
     await page.goto(CREATE_URL);
     await expect(page).not.toHaveURL(/login/);
-    await expect(page.getByRole('heading', { name: 'Tạo mới Trạm Radar' })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole('heading', { name: 'Tạo mới Trạm radar' })).toBeVisible({ timeout: 8000 });
     await expect(page.getByText('Tên trạm', { exact: true })).toBeVisible();
   });
 

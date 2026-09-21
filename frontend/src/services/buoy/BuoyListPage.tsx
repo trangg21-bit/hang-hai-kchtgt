@@ -320,7 +320,21 @@ export default function BuoyListPage() {
   const [isError, setIsError] = useState(false);
 
   // ── Organizations + Users for lookup ────────────────────────────
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+
+  const userOrgMap = useMemo(() => {
+    const m = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const unit = u.orgUnitName || (u.orgUnitId ? orgMap.get(u.orgUnitId) : '') || '';
+      if (unit) {
+        if (u.id) { m.set(u.id, unit); m.set(u.id.toLowerCase(), unit); }
+        if (u.username) { m.set(u.username, unit); m.set(u.username.toLowerCase(), unit); }
+        if (u.fullName) { m.set(u.fullName, unit); m.set(u.fullName.toLowerCase(), unit); }
+      }
+    });
+    return m;
+  }, [rawUsers, orgMap]);
 
 
   // ── Tab counts ──────────────────────────────────────────────────
@@ -514,6 +528,7 @@ export default function BuoyListPage() {
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
+        setRawUsers(users);
         const map = new Map<string, string>();
         users.forEach((u: any) => {
           const name = u.fullName || u.username || '';
@@ -538,8 +553,8 @@ export default function BuoyListPage() {
     setIsError(false);
     try {
       const all = await searchBuoys({
-        name: filterName || undefined,
-        code: filterCode || undefined,
+        name: filterName ? filterName.trim() : undefined,
+        code: filterCode ? filterCode.trim() : undefined,
         condition: filterCondition || undefined,
         provinceId: filterProvince ? (Number(VIETNAM_PROVINCE_OPTIONS.find((o) => o.label === filterProvince)?.value) || undefined) : undefined,
         updatedFrom: filterUpdatedFrom,
@@ -583,6 +598,8 @@ export default function BuoyListPage() {
   // ── Filter handlers ─────────────────────────────────────────────
 
   const handleFilterApply = useCallback(() => {
+    setFilterName((prev) => prev.trim());
+    setFilterCode((prev) => prev.trim());
     setPage(1);
     void fetchData();
   }, [fetchData]);
@@ -1188,7 +1205,10 @@ export default function BuoyListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec: RawHistoryRecord): string => {
-        const uId = (historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId) as string | undefined;
+        const actor = String(rec.changedBy || rec.changedByName || rec.actor || rec.userName || rec.createdBy || rec.approvedBy || '').trim();
+        const userUnit = userOrgMap.get(actor) || userOrgMap.get(actor.toLowerCase()) || (rec as any).orgUnitName || (rec as any).unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const uId = (rec.orgUnitId || (rec as any).unitId) as string | undefined;
         const orgName = uId ? orgMap.get(uId) : undefined;
         return String((orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '');
       },
@@ -1223,7 +1243,10 @@ export default function BuoyListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec: RawHistoryRecord): string => {
-        const uId = (historyRecord?.unitId || rec.orgUnitId || (rec as any).unitId) as string | undefined;
+        const actor = String(rec.changedBy || rec.changedByName || rec.actor || rec.userName || rec.createdBy || rec.approvedBy || '').trim();
+        const userUnit = userOrgMap.get(actor) || userOrgMap.get(actor.toLowerCase()) || (rec as any).orgUnitName || (rec as any).unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const uId = (rec.orgUnitId || (rec as any).unitId) as string | undefined;
         const orgName = uId ? orgMap.get(uId) : undefined;
         return String((orgName ? (orgName.split(' - ').pop() || orgName) : ((rec as any).orgUnitName || (rec as any).unitName)) || '');
       },
@@ -1373,7 +1396,7 @@ export default function BuoyListPage() {
       key: 'name',
       label: 'Tên/Mã phao tiêu',
       dataIndex: 'name',
-      width: 220,
+      width: 260,
       fixed: 'left' as const,
       sortable: true,
       ellipsis: false,
@@ -1673,7 +1696,7 @@ export default function BuoyListPage() {
       <style>{`
         .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child { display: none !important; }
 
-        /* ── Cỡ chữ 13.5px chuẩn toàn màn Quản lý Phao, tiêu & các popup/drawer con ── */
+        /* ── Cỡ chữ 13.5px chuẩn toàn màn Phao, tiêu & các popup/drawer con ── */
         .buoy-page-wrapper,
         .buoy-page-wrapper .ant-table,
         .buoy-page-wrapper .ant-table-cell,
@@ -1751,7 +1774,7 @@ export default function BuoyListPage() {
       {!isEmbeddedAction ? (
         <>
           <ScreenHeader
-            breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý Phao, tiêu' }]}
+            breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Phao, tiêu' }]}
             actions={headerActions}
           />
 
@@ -1782,6 +1805,7 @@ export default function BuoyListPage() {
             <Input placeholder="Tìm theo tên phao tiêu..." allowClear
               value={filterName}
               onChange={(e) => setFilterName(e.target.value)}
+              onBlur={(e) => setFilterName(e.target.value.trim())}
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
@@ -1818,6 +1842,7 @@ export default function BuoyListPage() {
               <Input placeholder="Tìm theo mã phao tiêu..." allowClear
                 value={filterCode}
                 onChange={(e) => setFilterCode(e.target.value)}
+                onBlur={(e) => setFilterCode(e.target.value.trim())}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </div>
@@ -2149,6 +2174,11 @@ export default function BuoyListPage() {
                   if (!val) setHistorySearch('');
                 }}
                 onPressEnter={() => setHistorySearch(historySearchInput.trim())}
+                onBlur={() => {
+                  const t = historySearchInput.trim();
+                  setHistorySearchInput(t);
+                  setHistorySearch(t);
+                }}
                 style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
               />
               <DatePicker

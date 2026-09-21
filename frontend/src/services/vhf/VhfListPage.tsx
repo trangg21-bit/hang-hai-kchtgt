@@ -81,7 +81,7 @@ DataTable,
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
 import AppDrawer from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
@@ -89,6 +89,7 @@ import DetailTable from "../../components/shared/DetailTable";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import toast from "../../components/ToastNotification";
 import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
+import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
 import { useAuthStore } from "../../store/authStore";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
@@ -111,7 +112,6 @@ import {
     fetchVhfAttachments,
     fetchVhfHistory,
     fetchVhfList,
-    generateVhfCode,
     submitVhf,
 } from "./api";
 import {
@@ -438,7 +438,7 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
       return (!isNaN(uomNum) && formatUnitOfMeasure(uomNum)) ? formatUnitOfMeasure(uomNum) : val;
     }
     if (fieldKey === 'attachedInfrastructureType' || fieldKey === 'Loại hạ tầng' || fieldKey === 'Thuộc loại hạ tầng') {
-      const m: Record<string, string> = { '1': 'Trung Tâm Điều Hành VTS', '2': 'Trạm Radar' };
+      const m: Record<string, string> = { '1': 'Trung Tâm Điều Hành VTS', '2': 'Trạm radar' };
       return m[String(val)] || val;
     }
     if (fieldKey === 'coordinateSystem' || fieldKey === 'Hệ quy chiếu' || fieldKey === 'Hệ tọa độ') {
@@ -632,6 +632,7 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
 const VhfListPage = () => {
   const [searchParams] = useSearchParams();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const currentUser = useAuthStore((s) => s.user);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<VhfResponse[]>([]);
@@ -660,6 +661,27 @@ const VhfListPage = () => {
     updatedFrom: "" as string,
     updatedTo: "" as string,
   });
+
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần ở backend) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(0);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
 
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
@@ -794,7 +816,7 @@ const VhfListPage = () => {
   }, [symbols]);
 
   // Danh mục options cảng biển & map
-  const [seaportOptions, setSeaportOptions] = useState<Array<{ id: string; portName: string; portCode?: string }>>([]);
+  const [seaportOptions, setSeaportOptions] = useState<Array<{ id: string; portName: string; portCode?: string; orgUnitId?: string }>>([]);
   const seaportMap = useMemo(() => {
     const m = new Map<string, string>();
     seaportOptions.forEach((p) => {
@@ -802,6 +824,122 @@ const VhfListPage = () => {
     });
     return m;
   }, [seaportOptions]);
+
+  // Radar station options for dependent dropdown (Thuộc Trạm radar — loại 2)
+  const [radarStationOptions, setRadarStationOptions] = useState<
+    { label: string; value: string; orgUnitId?: string }[]
+  >([]);
+  const [loadingRadars, setLoadingRadars] = useState(false);
+
+  const fetchRadarStations = useCallback(async () => {
+    setLoadingRadars(true);
+    try {
+      const res = await api.get("/common/options/radar-stations");
+      const items = res.data?.data;
+      setRadarStationOptions(
+        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string; orgUnitId?: string }) => ({
+          label: s.stationName || s.code || s.id,
+          value: s.id,
+          orgUnitId: s.orgUnitId,
+        }))
+      );
+    } catch (error) {
+      console.error("Lỗi tải danh sách trạm Radar:", error);
+      setRadarStationOptions([]);
+    } finally {
+      setLoadingRadars(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRadarStations();
+  }, [fetchRadarStations]);
+
+  // VTS Operation Center options for dependent dropdown (Thuộc TTDH VTS — loại 1)
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<
+    { label: string; value: string; orgUnitId?: string }[]
+  >([]);
+  const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
+
+  const fetchVtsOperationCenters = useCallback(async () => {
+    setLoadingVtsCenters(true);
+    try {
+      const res = await api.get("/common/options/vts-operation-centers");
+      const items = res.data?.data;
+      setVtsOperationCenterOptions(
+        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
+          label: s.name || s.code || s.id,
+          value: s.id,
+          orgUnitId: s.orgUnitId,
+        }))
+      );
+    } catch (error) {
+      console.error("Lỗi tải danh sách Trung tâm điều hành VTS:", error);
+      setVtsOperationCenterOptions([]);
+    } finally {
+      setLoadingVtsCenters(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchVtsOperationCenters();
+  }, [fetchVtsOperationCenters]);
+
+  // Danh mục đơn vị khai thác (Operating Unit) & map
+  const [operatingOrganizations, setOperatingOrganizations] = useState<Array<{ id: string; name: string }>>([]);
+  useEffect(() => {
+    fetchOperatingOrganizations().then((list) => {
+      if (Array.isArray(list)) setOperatingOrganizations(list);
+    }).catch(() => {});
+  }, []);
+
+  const operatingUnitMap = useMemo(() => {
+    const m = new Map<string, string>();
+    operatingOrganizations.forEach((o) => {
+      if (o.id && o.name) m.set(o.id, o.name);
+    });
+    return m;
+  }, [operatingOrganizations]);
+
+  const vtsCenterMap = useMemo(() => {
+    const m = new Map<string, string>();
+    vtsOperationCenterOptions.forEach((o) => {
+      if (o.value && o.label) m.set(o.value, o.label);
+    });
+    return m;
+  }, [vtsOperationCenterOptions]);
+
+  const radarStationMap = useMemo(() => {
+    const m = new Map<string, string>();
+    radarStationOptions.forEach((o) => {
+      if (o.value && o.label) m.set(o.value, o.label);
+    });
+    return m;
+  }, [radarStationOptions]);
+
+  const filteredFilterSeaportOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return seaportOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnits, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
+  }, [seaportOptions, orgUnits, filterValues.orgUnitId]);
+
+  const filteredFilterRadarStationOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return radarStationOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnits, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return radarStationOptions.filter((r) => r.orgUnitId && normalizedSet.has(String(r.orgUnitId).toLowerCase()));
+  }, [radarStationOptions, orgUnits, filterValues.orgUnitId]);
+
+  const filteredFilterVtsOperationCenterOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return vtsOperationCenterOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnits, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && normalizedSet.has(String(c.orgUnitId).toLowerCase()));
+  }, [vtsOperationCenterOptions, orgUnits, filterValues.orgUnitId]);
 
   const orgMap = useMemo(() => {
     const m = new Map<string, string>();
@@ -883,96 +1021,6 @@ const VhfListPage = () => {
     }
   };
 
-  // Radar station options for dependent dropdown (Thuộc Trạm Radar — loại 2)
-  const [radarStationOptions, setRadarStationOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingRadars, setLoadingRadars] = useState(false);
-
-  const fetchRadarStations = useCallback(async () => {
-    setLoadingRadars(true);
-    try {
-      const res = await api.get("/common/options/radar-stations");
-      const items = res.data?.data;
-      setRadarStationOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
-          label: s.stationName || s.code || s.id,
-          value: s.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách trạm Radar:", error);
-      setRadarStationOptions([]);
-    } finally {
-      setLoadingRadars(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRadarStations();
-  }, [fetchRadarStations]);
-
-  // VTS Operation Center options for dependent dropdown (Thuộc TTDH VTS — loại 1)
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
-
-  const fetchVtsOperationCenters = useCallback(async () => {
-    setLoadingVtsCenters(true);
-    try {
-      const res = await api.get("/common/options/vts-operation-centers");
-      const items = res.data?.data;
-      setVtsOperationCenterOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
-          label: s.name || s.code || s.id,
-          value: s.id,
-        }))
-      );
-    } catch (error) {
-      console.error("Lỗi tải danh sách Trung tâm điều hành VTS:", error);
-      setVtsOperationCenterOptions([]);
-    } finally {
-      setLoadingVtsCenters(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchVtsOperationCenters();
-  }, [fetchVtsOperationCenters]);
-
-  // Danh mục đơn vị khai thác (Operating Unit) & map
-  const [operatingOrganizations, setOperatingOrganizations] = useState<Array<{ id: string; name: string }>>([]);
-  useEffect(() => {
-    fetchOperatingOrganizations().then((list) => {
-      if (Array.isArray(list)) setOperatingOrganizations(list);
-    }).catch(() => {});
-  }, []);
-
-  const operatingUnitMap = useMemo(() => {
-    const m = new Map<string, string>();
-    operatingOrganizations.forEach((o) => {
-      if (o.id && o.name) m.set(o.id, o.name);
-    });
-    return m;
-  }, [operatingOrganizations]);
-
-  const vtsCenterMap = useMemo(() => {
-    const m = new Map<string, string>();
-    vtsOperationCenterOptions.forEach((o) => {
-      if (o.value && o.label) m.set(o.value, o.label);
-    });
-    return m;
-  }, [vtsOperationCenterOptions]);
-
-  const radarStationMap = useMemo(() => {
-    const m = new Map<string, string>();
-    radarStationOptions.forEach((o) => {
-      if (o.value && o.label) m.set(o.value, o.label);
-    });
-    return m;
-  }, [radarStationOptions]);
-
   // Load danh mục biểu tượng, người dùng, cảng biển
   useEffect(() => {
     api.get("/common/options/symbols")
@@ -1002,7 +1050,12 @@ const VhfListPage = () => {
       api.get('/v1/ports?size=1000').then((res) => {
         const list = res.data?.data?.content || res.data?.data || [];
         if (Array.isArray(list)) {
-          setSeaportOptions(list.map((p: any) => ({ id: p.id, portName: p.portName || p.name, portCode: p.portCode || p.code })));
+          setSeaportOptions(list.map((p: { id: string; portName?: string; name?: string; portCode?: string; code?: string; orgUnitId?: string }) => ({
+            id: p.id,
+            portName: p.portName || p.name || '',
+            portCode: p.portCode || p.code,
+            orgUnitId: p.orgUnitId,
+          })));
         }
       }).catch(() => {});
     });
@@ -1031,8 +1084,8 @@ const VhfListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: "updatedAt",
-        sortOrder: "desc",
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
       });
       setData(result.content || []);
       setTotal(result.totalElements || 0);
@@ -1042,7 +1095,7 @@ const VhfListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterValues]);
+  }, [page, pageSize, filterValues, sortField, sortOrder]);
 
   const fetchTabCounts = useCallback(async () => {
     const statuses = [
@@ -1141,6 +1194,8 @@ const VhfListPage = () => {
       updatedFrom: "",
       updatedTo: "",
     });
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setPage(0);
   }, []);
 
@@ -1195,12 +1250,6 @@ const VhfListPage = () => {
         })
         .catch(() => {});
     }
-
-    generateVhfCode()
-      .then((code) => {
-        if (code) createForm.setFieldsValue({ deviceCode: code });
-      })
-      .catch(() => {});
   };
 
   const handleOpenEdit = (record: VhfResponse) => {
@@ -1641,9 +1690,10 @@ const validHistoryGroups = useMemo(() => {
       key: "deviceName",
       label: "Tên / Mã thiết bị",
       dataIndex: "deviceName",
-      width: 300,
+      width: 260,
       fixed: "left" as const,
       ellipsis: false,
+      sortOrder: sortOrderFor("deviceName"),
       cellTitle: (record: VhfResponse) => record.deviceName || '',
       render: (val: string, record: VhfResponse) => (
         <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -1684,6 +1734,7 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "seaportName",
       width: 220,
       ellipsis: true,
+      sortOrder: sortOrderFor("seaportName"),
       cellTitle: (record: VhfResponse) => record.seaportName || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -1692,14 +1743,16 @@ const validHistoryGroups = useMemo(() => {
       label: "Đơn vị quản lý",
       dataIndex: "orgUnitName",
       width: 260,
+      sortOrder: sortOrderFor("orgUnitName"),
       cellTitle: (record: VhfResponse) => record.orgUnitName || '',
       render: (val: string) => renderCellWithTooltip(val, true),
     },
     {
       key: "vtsSystemName",
-      label: "Thuộc TTDH VTS/Trạm Radar",
+      label: "Thuộc TTDH VTS/Trạm radar",
       dataIndex: "attachedInfrastructureName",
       width: 280,
+      sortable: false,
       cellTitle: (record: VhfResponse) => record.attachedInfrastructureName || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -1708,6 +1761,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Đơn vị khai thác",
       dataIndex: "operatingUnitName",
       width: 260,
+      sortable: false,
       cellTitle: (record: VhfResponse) => record.operatingUnitName || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -1717,6 +1771,7 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "provinceName",
       width: 220,
       ellipsis: false,
+      sortOrder: sortOrderFor("provinceName"),
       cellTitle: (record: VhfResponse) => record.provinceName || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -1725,6 +1780,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Đơn vị tính",
       dataIndex: "unitOfMeasure",
       width: 130,
+      sortOrder: sortOrderFor("unitOfMeasure"),
       cellTitle: (record: VhfResponse) => formatUnitOfMeasure(record.unitOfMeasure) || '',
       render: (val: number) => renderCellWithTooltip(val != null ? formatUnitOfMeasure(val) : null),
     },
@@ -1733,6 +1789,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Số lượng",
       dataIndex: "quantity",
       width: 120,
+      sortOrder: sortOrderFor("quantity"),
       render: (val: number) => (
         <span style={{ ...tableMetaStyle, fontWeight: fontWeightMedium }}>{val != null ? val : 1}</span>
       ),
@@ -1743,6 +1800,7 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "yearOfUse",
       width: 220,
       ellipsis: false,
+      sortOrder: sortOrderFor("yearOfUse"),
       render: (val: number) => (
         <span style={tableMetaStyle}>{val || null}</span>
       ),
@@ -1753,9 +1811,14 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "operationalStatus",
       width: 270,
       type: "status" as const,
+      sortOrder: sortOrderFor("operationalStatus"),
+      cellTitle: (record: VhfResponse) => {
+        if (record.operationalStatus === undefined || record.operationalStatus === null || record.operationalStatus === '') return '';
+        return operationalStatusBadge(record.operationalStatus).label;
+      },
       render: (val: unknown) => {
-        const num = val === undefined || val === null || val === "" ? null : Number(val);
-        const badge = operationalStatusBadge(num);
+        if (val === undefined || val === null || val === '') return null;
+        const badge = operationalStatusBadge(val as number | string);
         return (
           <span className="kcht-cell-badge" style={statusBadgeStyle(badge.color)}>
             {badge.label}
@@ -1769,6 +1832,7 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "approvalStatus",
       width: 300,
       type: "status" as const,
+      sortOrder: sortOrderFor("approvalStatus"),
       render: (val: string, record: VhfResponse) => renderApprovalBadge(val, record),
     },
     {
@@ -1776,34 +1840,38 @@ const validHistoryGroups = useMemo(() => {
       label: "Cán bộ cập nhật",
       dataIndex: "updatedByName",
       width: 200,
+      sortOrder: sortOrderFor("updatedByName"),
       cellTitle: (record: VhfResponse) => record.updatedByName || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
     },
     {
-      key: "submittedInfo",
+      key: "submittedByName",
       label: "Cán bộ gửi phê duyệt",
       dataIndex: "submittedByName",
       width: 230,
+      sortOrder: sortOrderFor("submittedByName"),
       cellTitle: (record: VhfResponse) => record.submittedByName || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
     },
     {
-      key: "approvedLevel1Info",
+      key: "approverLevel1Name",
       label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
       dataIndex: "approverLevel1Name",
       width: 380,
+      sortOrder: sortOrderFor("approverLevel1Name"),
       cellTitle: (record: VhfResponse) => record.approverLevel1Name || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
     },
     {
-      key: "approvedLevel2Info",
+      key: "approverLevel2Name",
       label: "Cán bộ phê duyệt cấp Cục",
       dataIndex: "approverLevel2Name",
       width: 270,
+      sortOrder: sortOrderFor("approverLevel2Name"),
       cellTitle: (record: VhfResponse) => record.approverLevel2Name || '',
       render: (_: unknown, record: VhfResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
     },
-  ], [page, pageSize, handleOpenView]);
+  ], [page, pageSize, handleOpenView, sortOrderFor]);
 
   // ── Row Actions chuẩn /cctv ──
   const handleOpenHistory = useCallback((record: VhfResponse) => {
@@ -2172,7 +2240,7 @@ const validHistoryGroups = useMemo(() => {
           breadcrumb={[
             { label: "Trang chủ", path: "/" },
             { label: "Luồng hàng hải", path: "/navigation-channel" },
-            { label: "Quản lý hệ thống thông tin liên lạc VHF", path: "/vhf" },
+            { label: "Hệ thống thông tin liên lạc VHF", path: "/vhf" },
           ]}
           actions={(hasPerm?.("vhf:create")
             ? [
@@ -2209,7 +2277,32 @@ const validHistoryGroups = useMemo(() => {
                   allowClear
                   value={filterValues.orgUnitId || undefined}
                   onChange={(val) => {
-                    setFilterValues((prev) => ({ ...prev, orgUnitId: (val as string) || "" }));
+                    const nextOrg = (val as string) || "";
+                    setFilterValues((prev) => {
+                      let nextSeaport = prev.seaportId;
+                      let nextAttached = prev.attachedInfraId;
+                      if (nextOrg && nextOrg !== '__all__') {
+                        const rawSet = resolveOrgSubtreeIds(orgUnits, nextOrg);
+                        const normalizedSet = new Set<string>();
+                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+
+                        if (prev.seaportId) {
+                          const valid = seaportOptions.some(
+                            (p) => p.id === prev.seaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
+                          );
+                          if (!valid) nextSeaport = "";
+                        }
+
+                        if (prev.attachedInfraId) {
+                          const activeOptions = prev.attachedInfraType === 1 ? vtsOperationCenterOptions : prev.attachedInfraType === 2 ? radarStationOptions : [];
+                          const validAttached = activeOptions.some(
+                            (item) => item.value === prev.attachedInfraId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                          );
+                          if (!validAttached) nextAttached = "";
+                        }
+                      }
+                      return { ...prev, orgUnitId: nextOrg, seaportId: nextSeaport, attachedInfraId: nextAttached };
+                    });
                     setPage(0);
                   }}
                   loading={loadingOrgs}
@@ -2225,7 +2318,7 @@ const validHistoryGroups = useMemo(() => {
                   optionFilterProp="label"
                   value={filterValues.seaportId || undefined}
                   onChange={(val) => setFilterValues((prev) => ({ ...prev, seaportId: (val as string) || "" }))}
-                  options={seaportOptions.map((p) => ({ label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName, value: p.id }))}
+                  options={filteredFilterSeaportOptions.map((p) => ({ label: p.portCode ? `${p.portCode} - ${p.portName}` : p.portName, value: p.id }))}
                   style={{ width: "100%", borderRadius: radiusPill, height: 40 }}
                 />
               </SidebarFilterField>
@@ -2303,9 +2396,9 @@ const validHistoryGroups = useMemo(() => {
                       }
                       options={
                         filterValues.attachedInfraType === 1
-                          ? vtsOperationCenterOptions
+                          ? filteredFilterVtsOperationCenterOptions
                           : filterValues.attachedInfraType === 2
-                            ? radarStationOptions
+                            ? filteredFilterRadarStationOptions
                             : []
                       }
                       loading={
@@ -2445,6 +2538,7 @@ const validHistoryGroups = useMemo(() => {
               loading={isLoading}
               scroll={{ x: 'max-content' }}
               rowActions={rowActions}
+              onSort={handleSort}
             />
             <div style={{ height: 6, flexShrink: 0 }} />
             <Pagination
@@ -2705,17 +2799,14 @@ const validHistoryGroups = useMemo(() => {
                               { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                               { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
                               { label: 'Thuộc cảng biển', value: selectedRecord.seaportName || null },
-                              { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                              { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                               { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
                               { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                               {
                                 label: 'Tình trạng',
                                 value: (() => {
-                                  if (selectedRecord.operationalStatus == null) return null;
-                                  const num = typeof selectedRecord.operationalStatus === 'number'
-                                    ? selectedRecord.operationalStatus
-                                    : (selectedRecord.operationalStatus === 'OPERATIONAL' || selectedRecord.operationalStatus === '1' ? 1 : selectedRecord.operationalStatus === 'SUSPENDED' || selectedRecord.operationalStatus === '2' ? 2 : 0);
-                                  const badge = operationalStatusBadge(num);
+                                  if (selectedRecord.operationalStatus == null || selectedRecord.operationalStatus === '') return null;
+                                  const badge = operationalStatusBadge(selectedRecord.operationalStatus);
                                   return (
                                     <span className="kcht-cell-badge" style={statusBadgeStyle(badge.color)}>
                                       {badge.label}

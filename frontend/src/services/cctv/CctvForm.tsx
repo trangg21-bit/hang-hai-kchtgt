@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -28,7 +28,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -88,6 +88,15 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
 
+interface GisSelectionValue {
+  geometryType?: string;
+  symbolId?: string;
+  coordinates?: string;
+}
+
+const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
+  value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
+
 const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
@@ -101,7 +110,7 @@ const OPERATIONAL_STATUS_OPTIONS = [
 
 const ATTACHED_INFRA_TYPE_OPTIONS = [
   { value: 1, label: 'Trung Tâm Điều Hành VTS' },
-  { value: 2, label: 'Trạm Radar' },
+  { value: 2, label: 'Trạm radar' },
 ];
 
 const UNIT_OF_MEASURE_OPTIONS = [
@@ -260,6 +269,8 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
+  const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedOrgUnitId = watchedOrgUnitId ?? form.getFieldValue('orgUnitId');
 
   /** true khi field đã đạt đủ max ký tự — bật viền đỏ ô nhập + message bên dưới */
   const useMaxReached = (name: string, max: number): boolean => {
@@ -284,10 +295,32 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   const [loadingOperatingOrgs, setLoadingOperatingOrgs] = useState(false);
 
   // Danh sách trạm radar và trung tâm VTS cho dependent dropdown
-  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [radarStationOptions, setRadarStationOptions] = useState<Array<{ label: string; value: string; orgUnitId?: string }>>([]);
   const [loadingRadars, setLoadingRadars] = useState(false);
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string }>>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ label: string; value: string; orgUnitId?: string }>>([]);
   const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
+
+  const allowedOrgIds = useMemo(() => {
+    if (!selectedOrgUnitId) return new Set<string>();
+    const rawSet = resolveOrgSubtreeIds(orgUnits, String(selectedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return normalizedSet;
+  }, [orgUnits, selectedOrgUnitId]);
+
+  const filteredRadarStationOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return radarStationOptions.filter((r) => {
+      return r.orgUnitId && allowedOrgIds.has(String(r.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, radarStationOptions, selectedOrgUnitId]);
+
+  const filteredVtsOperationCenterOptions = useMemo(() => {
+    if (!selectedOrgUnitId || allowedOrgIds.size === 0) return [];
+    return vtsOperationCenterOptions.filter((c) => {
+      return c.orgUnitId && allowedOrgIds.has(String(c.orgUnitId).toLowerCase());
+    });
+  }, [allowedOrgIds, selectedOrgUnitId, vtsOperationCenterOptions]);
 
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
   const [coordinateList, setCoordinateList] = useState<DmsCoordinateItem[]>([]);
@@ -295,7 +328,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
-  const latestGisMapValueRef = useRef<any>(null);
+  const latestGisMapValueRef = useRef<GisSelectionValue | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [, setExistingFiles] = useState<CctvAttachmentResponse[]>([]);
 
@@ -323,9 +356,10 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     setLoadingRadars(true);
     api.get('/common/options/radar-stations').then(r => {
       const items = r.data?.data;
-      setRadarStationOptions((Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; name?: string; code?: string }) => ({
+      setRadarStationOptions((Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; name?: string; code?: string; orgUnitId?: string }) => ({
         label: s.stationName || s.name || s.code || s.id,
         value: s.id,
+        orgUnitId: s.orgUnitId,
       })));
     }).catch(() => {}).finally(() => setLoadingRadars(false));
   }, []);
@@ -334,9 +368,10 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     setLoadingVtsCenters(true);
     api.get('/common/options/vts-operation-centers').then(r => {
       const items = r.data?.data;
-      setVtsOperationCenterOptions((Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+      setVtsOperationCenterOptions((Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
         label: s.name || s.code || s.id,
         value: s.id,
+        orgUnitId: s.orgUnitId,
       })));
     }).catch(() => {}).finally(() => setLoadingVtsCenters(false));
   }, []);
@@ -525,7 +560,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
 
   // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
-  const applyMapSelection = (val: any) => {
+  const applyMapSelection = (val: GisSelectionValue | null | undefined) => {
     if (!val) return;
     latestGisMapValueRef.current = val;
     const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
@@ -630,29 +665,40 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
     try {
       const currentAction = saveAction === 'DRAFT' ? 'draft' : saveAction === 'APPROVED' ? 'approve' : 'submit';
+      const trimOrNull = (v: unknown): string | null => {
+        if (v == null) return null;
+        const s = String(v).trim();
+        return s === '' ? null : s;
+      };
+      const numOrNull = (v: unknown): number | null => {
+        if (v == null || v === '') return null;
+        const n = Number(v);
+        return Number.isNaN(n) ? null : n;
+      };
+
       const payload: Record<string, unknown> = {
         deviceCode: String(values.deviceCode || '').trim() || (isEdit ? undefined : await generateCctvCode()),
         deviceName: String(values.deviceName || '').trim(),
-        orgUnitId: values.orgUnitId || undefined,
-        operatingUnitId: values.operatingUnitId || undefined,
-        attachedInfrastructureType: values.attachedInfrastructureType != null ? Number(values.attachedInfrastructureType) : undefined,
-        attachedInfrastructureId: values.attachedInfrastructureId || undefined,
-        provinceName: values.provinceName || undefined,
-        detailedLocation: values.detailedLocation || undefined,
-        unitOfMeasure: values.unitOfMeasure != null ? Number(values.unitOfMeasure) : undefined,
-        quantity: values.quantity != null ? Number(values.quantity) : undefined,
-        yearOfUse: values.yearOfUse != null ? Number(values.yearOfUse) : undefined,
+        orgUnitId: values.orgUnitId || null,
+        operatingUnitId: values.operatingUnitId || null,
+        attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
+        attachedInfrastructureId: values.attachedInfrastructureId || null,
+        provinceName: trimOrNull(values.provinceName),
+        detailedLocation: trimOrNull(values.detailedLocation),
+        unitOfMeasure: numOrNull(values.unitOfMeasure),
+        quantity: numOrNull(values.quantity),
+        yearOfUse: numOrNull(values.yearOfUse),
         operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : undefined,
-        model: values.model || undefined,
-        manufacturer: values.manufacturer || undefined,
-        specifications: values.specifications || undefined,
-        maintenanceInformation: values.maintenanceInformation || undefined,
-        note: values.note || undefined,
-        geometryType: (geomType as 'POINT' | 'LINE' | 'POLYGON') || null,
-        coordinates: wktCoordinates || undefined,
-        mapSymbolId: values.mapSymbolId || undefined,
-        coordinateSystem: geomType ? (values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined) : undefined,
-        displayRule: geomType ? (values.displayRule != null ? Number(values.displayRule) || null : undefined) : undefined,
+        model: trimOrNull(values.model),
+        manufacturer: trimOrNull(values.manufacturer),
+        specifications: trimOrNull(values.specifications),
+        maintenanceInformation: trimOrNull(values.maintenanceInformation),
+        note: trimOrNull(values.note),
+        geometryType: geomType || null,
+        coordinates: geomType ? (wktCoordinates || null) : null,
+        mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
+        coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+        displayRule: geomType && values.displayRule != null ? Number(values.displayRule) || null : null,
       };
 
       let targetId: string;
@@ -732,6 +778,26 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     showPath
                     disabled={isEdit && !isSystemAdmin}
                     style={{ borderRadius: radiusPill, height: 40 }}
+                    onChange={(val) => {
+                      form.setFieldValue('orgUnitId', val);
+                      const currentAttachedId = form.getFieldValue('attachedInfrastructureId');
+                      if (!val) {
+                        form.setFieldValue('attachedInfrastructureId', undefined);
+                      } else if (currentAttachedId) {
+                        const rawSet = resolveOrgSubtreeIds(orgUnits, String(val));
+                        const normalizedSet = new Set<string>();
+                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+
+                        const currentAttachedType = form.getFieldValue('attachedInfrastructureType');
+                        const activeOptions = currentAttachedType === 1 ? vtsOperationCenterOptions : currentAttachedType === 2 ? radarStationOptions : [];
+                        const isValidAttached = activeOptions.some(
+                          (item) => item.value === currentAttachedId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                        );
+                        if (!isValidAttached) {
+                          form.setFieldValue('attachedInfrastructureId', undefined);
+                        }
+                      }
+                    }}
                   />
                 </Form.Item>
               </Col>
@@ -798,21 +864,23 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                 >
                   <Select
                     placeholder={
-                      watchedAttachedType === 2
-                        ? 'Chọn trạm Radar'
-                        : watchedAttachedType === 1
-                          ? 'Chọn Trung Tâm Điều Hành VTS'
-                          : 'Chọn loại hạ tầng trước'
+                      !selectedOrgUnitId
+                        ? 'Vui lòng chọn đơn vị quản lý trước'
+                        : watchedAttachedType === 2
+                          ? 'Chọn trạm Radar'
+                          : watchedAttachedType === 1
+                            ? 'Chọn Trung Tâm Điều Hành VTS'
+                            : 'Chọn loại hạ tầng trước'
                     }
                     options={
                       watchedAttachedType === 1
-                        ? vtsOperationCenterOptions
+                        ? filteredVtsOperationCenterOptions
                         : watchedAttachedType === 2
-                          ? radarStationOptions
+                          ? filteredRadarStationOptions
                           : []
                     }
                     loading={watchedAttachedType === 1 ? loadingVtsCenters : watchedAttachedType === 2 ? loadingRadars : false}
-                    disabled={watchedAttachedType !== 1 && watchedAttachedType !== 2}
+                    disabled={!selectedOrgUnitId || (watchedAttachedType !== 1 && watchedAttachedType !== 2)}
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -1241,8 +1309,8 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
             setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid));
           }}
           onDownload={async (uid, name) => {
-            const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
-            const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+            const fileItem = uploadedFiles.find((x) => x.uid === uid || (x as unknown as { id?: string }).id === uid);
+            const rawFile = fileItem?.originFileObj || (fileItem as unknown as { file?: File })?.file;
             if (rawFile) {
               const url = window.URL.createObjectURL(rawFile);
               const a = document.createElement('a');
@@ -1314,10 +1382,10 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={normalizeGeometryType(watchedGeometryType)}
             height={520}
             value={{
-              geometryType: (watchedGeometryType as any) || 'POINT',
+              geometryType: normalizeGeometryType(watchedGeometryType),
               coordinates: serializeCoordinatesToWkt(
                 coordinateList
                   .filter((c) => c.latD != null && c.lngD != null)

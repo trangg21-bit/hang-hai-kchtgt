@@ -445,7 +445,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           else if (wktUpper.startsWith('LINESTRING')) geomType = 'LINE';
           else if (wktUpper.startsWith('POINT')) geomType = 'POINT';
         }
-        if (!geomType && (pts.length > 0 || (data.latitude != null && data.longitude != null) || data.mapSymbolId)) {
+        if (!geomType && (pts.length > 0 || (data.latitude != null && data.longitude != null))) {
           geomType = pts.length > 2 ? 'POLYGON' : pts.length === 2 ? 'LINE' : 'POINT';
         }
 
@@ -582,12 +582,15 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           }
         }
 
-        const manualCoords = coordinateList
-          .filter((c) => (c.latD ?? c.latM ?? c.latS) != null && (c.lngD ?? c.lngM ?? c.lngS) != null)
-          .map((c) => ({
-            latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-            longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
-          }));
+        const hasGeom = !!values.geometryType;
+        const manualCoords = hasGeom
+          ? coordinateList
+              .filter((c) => (c.latD ?? c.latM ?? c.latS) != null && (c.lngD ?? c.lngM ?? c.lngS) != null)
+              .map((c) => ({
+                latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
+                longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
+              }))
+          : [];
 
         if (values.geometryType) {
           const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
@@ -635,10 +638,10 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           dryPortCode: String(values.dryPortCode || '').trim() || undefined,
           dryPortName,
           orgUnitId,
-          geometryType: values.geometryType || undefined,
-          latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
-          longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
-          coordinates: buildCoordinatesWkt(values.geometryType, manualCoords),
+          geometryType: hasGeom ? values.geometryType : null,
+          latitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].latitude : null,
+          longitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].longitude : null,
+          coordinates: hasGeom ? buildCoordinatesWkt(values.geometryType, manualCoords) : null,
           operatingOrgId: opOrgId,
           operatingUnit: opUnit,
           region: values.region || undefined,
@@ -652,10 +655,15 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           connectionMode: values.connectionMode || undefined,
           portStatus: values.portStatus !== undefined && values.portStatus !== null ? Number(values.portStatus) : undefined,
           remarks: values.remarks || undefined,
-          mapSymbolId: values.mapSymbolId || undefined,
+          mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
           coordinateSystem:
-            values.coordinateSystem !== undefined && values.coordinateSystem !== null ? Number(values.coordinateSystem) : undefined,
-          displayRule: values.displayRule != null && !Number.isNaN(Number(values.displayRule)) ? Number(values.displayRule) : undefined,
+            hasGeom && values.coordinateSystem !== undefined && values.coordinateSystem !== null
+              ? Number(values.coordinateSystem)
+              : null,
+          displayRule:
+            hasGeom && values.displayRule != null && !Number.isNaN(Number(values.displayRule))
+              ? Number(values.displayRule)
+              : (hasGeom ? 1 : null),
           announcementTime: values.announcementTime
             ? typeof values.announcementTime === 'string'
               ? values.announcementTime

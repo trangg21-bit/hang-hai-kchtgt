@@ -597,7 +597,7 @@ export default function InmarsatAssetList() {
           dataIndex: 'assetName',
           type: TableColumnType.TwoLine,
           subField: 'assetCode',
-          width: 230,
+          width: 260,
           fixed: 'left',
           allowSort: true,
           onClick: (record) => void openDetail(record),

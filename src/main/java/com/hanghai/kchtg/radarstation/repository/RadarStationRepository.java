@@ -2,6 +2,9 @@ package com.hanghai.kchtg.radarstation.repository;
 
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.Province;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,8 +33,11 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
 
     long countByVtsSystemIdAndDeletedAtIsNull(UUID vtsSystemId);
 
-    @Query("""
+    @Query(value = """
         SELECT t FROM RadarStation t
+        LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
+        LEFT JOIN Port p ON p.id = t.seaportId
+        LEFT JOIN Province pv ON pv.id = t.provinceId
         WHERE (
             (:deletedOnly = true AND (t.deletedAt IS NOT NULL OR t.deletedBy IS NOT NULL))
             OR
@@ -61,7 +67,37 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
           AND (CAST(:updatedFrom AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) >= :updatedFrom)
           AND (CAST(:updatedTo AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) <= :updatedTo)
-        ORDER BY t.createdAt DESC
+    """, countQuery = """
+        SELECT COUNT(t) FROM RadarStation t
+        WHERE (
+            (:deletedOnly = true AND (t.deletedAt IS NOT NULL OR t.deletedBy IS NOT NULL))
+            OR
+            (:deletedOnly = false AND :approvalStatus IS NULL)
+            OR
+            (:deletedOnly = false AND :approvalStatus IS NOT NULL AND t.deletedAt IS NULL AND t.deletedBy IS NULL AND (
+                t.approvalStatus = :approvalStatus
+                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
+                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)
+            ))
+        )
+          AND (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:seaportId IS NULL OR t.seaportId = :seaportId)
+          AND (:vtsSystemId IS NULL OR t.vtsSystemId = :vtsSystemId)
+          AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
+          AND (:operatingUnitId IS NULL OR t.operatingUnitId = :operatingUnitId)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
+          AND (CAST(:keyword AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.location)) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(t.stationType)) AS string) LIKE CAST(:keyword AS string))
+          AND (:code IS NULL OR CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:code AS string))
+          AND (:stationName IS NULL OR CAST(function('immutable_unaccent', LOWER(t.stationName)) AS string) LIKE CAST(:stationName AS string))
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
+          AND (CAST(:updatedFrom AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) >= :updatedFrom)
+          AND (CAST(:updatedTo AS timestamp) IS NULL OR COALESCE(t.updatedAt, t.createdAt) <= :updatedTo)
     """)
     Page<RadarStation> searchPaged(
         @Param("scopeEnabled") boolean scopeEnabled,

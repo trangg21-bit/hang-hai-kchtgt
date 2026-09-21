@@ -406,10 +406,32 @@ export default function PierListPage() {
   const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
   const orgMap = useMemo(() => { const m = new Map<string, string>(); organizations.forEach(o => m.set(o.id, o.name)); return m; }, [organizations]);
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName = u.organizationName || u.orgUnitName || u.departmentName || (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) || (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
   const [berthOptions, setBerthOptions] = useState<{ value: string; label: string }[]>([]);
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
   const portMap = useMemo(() => {
@@ -537,7 +559,22 @@ export default function PierListPage() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -565,12 +602,27 @@ export default function PierListPage() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, historyBerthMap, waterwayMap, historyTarget, symbolImageMap, userOrgMap]);
 
   useEffect(() => {
     (async () => { try { const r = await organizationService.list({ pageSize: 1000 });
@@ -590,7 +642,16 @@ export default function PierListPage() {
       } catch {
         setInitialLoadDone(true);
       } })();
-    (async () => { try { const r = await userService.list({ pageSize: 1000 }); const u = r.data || (r as any).content || []; const m = new Map<string, string>(); u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id)); setUserMap(m); } catch {} })();
+    (async () => {
+      try {
+        const r = await userService.list({ pageSize: 1000 });
+        const u = r.data || (r as any).content || [];
+        setRawUsers(u);
+        const m = new Map<string, string>();
+        u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id));
+        setUserMap(m);
+      } catch {}
+    })();
     (async () => { try { const r = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' }); const s = r.data || (r as any).content || []; const m = new Map<string, string>(); const imgMap = new Map<string, string>(); s.forEach((x: any) => { m.set(x.id, x.name); if (x.image) imgMap.set(x.id, x.image); }); setSymbolMap(m); setSymbolImageMap(imgMap); } catch {} })();
   }, []);
 
@@ -604,7 +665,16 @@ export default function PierListPage() {
 
   useEffect(() => {
     navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => { const m = new Map<string, string>(); r.items.forEach(n => { m.set(n.id, n.channelName || n.channelCode || ''); }); setWaterwayMap(m); })
+      .then((r) => {
+        const m = new Map<string, string>();
+        r.items.forEach(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (code || name || '');
+          m.set(n.id, label);
+        });
+        setWaterwayMap(m);
+      })
       .catch(() => {});
   }, []);
 
@@ -628,9 +698,7 @@ export default function PierListPage() {
         c[TAB_STATUS_LIST[i]?.key || 'all'] = r.status === 'fulfilled' ? r.value.total : 0;
       });
       const sumChildCounts = TAB_STATUS_LIST.filter((t) => t.key !== 'all').reduce((acc, t) => acc + (c[t.key] || 0), 0);
-      if (sumChildCounts > 0 && (!c['all'] || c['all'] < sumChildCounts)) {
-        c['all'] = sumChildCounts;
-      }
+      c['all'] = sumChildCounts;
       setTabCounts(c);
     } catch {}
   }, []);
@@ -667,8 +735,12 @@ export default function PierListPage() {
   useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
 
   const handleFilterApply = useCallback(() => {
+    setPierNameInput((prev) => prev.trim());
+    setPierCodeInput((prev) => prev.trim());
     setPage(1);
-  }, []);
+    void fetchData();
+    void fetchCounts(orgUnit);
+  }, [fetchData, fetchCounts, orgUnit]);
 
   const handleFilterReset = useCallback(() => {
     const oid = defaultOrgUnitRef.current || '__all__';
@@ -826,6 +898,7 @@ export default function PierListPage() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên cầu cảng</div>
         <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo tên cầu cảng"
           value={pierNameInput} onChange={e => setPierNameInput(e.target.value)}
+          onBlur={() => setPierNameInput(prev => prev.trim())}
           onPressEnter={handleFilterApply}
           allowClear prefix={<SearchOutlined style={{ color: textTertiary }} />} />
       </div>
@@ -859,6 +932,7 @@ export default function PierListPage() {
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cầu cảng</div>
           <Input style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Tìm theo mã cầu cảng"
             value={pierCodeInput} onChange={e => setPierCodeInput(e.target.value)}
+            onBlur={() => setPierCodeInput(prev => prev.trim())}
             onPressEnter={handleFilterApply}
             allowClear prefix={<SearchOutlined style={{ color: textTertiary }} />} />
         </div>
@@ -1006,7 +1080,7 @@ export default function PierListPage() {
     const baseColumns: any[] = [
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span> },
-    { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
+    { label: <span>Tên/Mã cầu cảng</span>, dataIndex: 'pierName', key: 'pierName', width: 260, fixed: 'left' as const, sortable: true, ellipsis: false,
       render: (v: string, record: Pier) => (
         <div>
           <a title={v || ''} onClick={(e) => { e.stopPropagation(); openDetailDrawer(record); }} style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}>{v || ''}</a>
@@ -1191,7 +1265,7 @@ export default function PierListPage() {
           overflow-wrap: break-word;
         }
       `}</style>
-      <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Quản lý cầu cảng' }]}
+      <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Cầu cảng' }]}
         actions={headerActions} />
       <FilterTableLayout filterContent={filterContent}
         statusTabs={TAB_STATUS_LIST.map(t => ({ key: t.key, label: t.label, color: t.color, count: tabCounts[t.key] ?? 0, active: activeTab === t.key }))}
@@ -1365,6 +1439,7 @@ export default function PierListPage() {
                 allowClear
                 value={historyFilters.keyword || ''}
                 onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                 style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
               />
               <DatePicker

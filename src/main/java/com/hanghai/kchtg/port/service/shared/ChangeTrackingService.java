@@ -30,6 +30,7 @@ import java.util.UUID;
 public class ChangeTrackingService {
 
     private final InfrastructureHistoryRepository historyRepository;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     /**
      * Compare old and new entity values field-by-field and record changes.
@@ -67,6 +68,9 @@ public class ChangeTrackingService {
         try {
             if (actualActor != null) userUuid = UUID.fromString(actualActor);
         } catch (Exception ignored) {}
+        if (userUuid == null && actualActor != null && !actualActor.isBlank() && userRepository != null) {
+            userUuid = userRepository.findByUsername(actualActor).map(com.hanghai.kchtg.user.entity.User::getId).orElse(null);
+        }
 
         List<String> changedFields = new ArrayList<>();
         Class<?> clazz = oldEntity.getClass();

@@ -153,6 +153,8 @@ public class DaiTtdhApprovalService {
                             ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("decidedAt", h.getApprovedDate());
                     m.put("cap", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : "");
+                    m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
+                    m.put("unitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
                     return m;
                 })
                 .collect(Collectors.toList());
@@ -203,6 +205,7 @@ public class DaiTtdhApprovalService {
         m.put("changedAt", h.getApprovedDate());
         m.put("approvedDate", h.getApprovedDate());
         m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
+        m.put("unitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
         m.put("status", h.getStatus() != null ? h.getStatus().getCode() : null);
         m.put("reason", "");
         m.put("approvalLevel", h.getApprovalLevel() != null ? h.getApprovalLevel().name() : null);

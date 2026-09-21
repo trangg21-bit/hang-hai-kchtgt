@@ -35,7 +35,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -323,6 +323,27 @@ const TransmissionListPage = () => {
     updatedTo: "" as string | undefined,
   });
 
+  // ── Sorting state (mặc định: Ngày cập nhật giảm dần ở backend) ───────────────
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(0);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
+
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const defaultOrgApplied = useRef(false);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
@@ -408,12 +429,12 @@ const TransmissionListPage = () => {
   // Attached infrastructure type options
   const attachedInfraTypeOptions = [
     { label: 'Trung Tâm Điều Hành VTS', value: 1 },
-    { label: 'Trạm Radar', value: 2 },
+    { label: 'Trạm radar', value: 2 },
   ];
 
   // Radar station options for dependent dropdown
   const [radarStationOptions, setRadarStationOptions] = useState<
-    { label: string; value: string }[]
+    { label: string; value: string; orgUnitId?: string }[]
   >([]);
   const [loadingRadars, setLoadingRadars] = useState(false);
 
@@ -423,9 +444,10 @@ const TransmissionListPage = () => {
       const res = await api.get("/common/options/radar-stations");
       const items = res.data?.data;
       setRadarStationOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string }) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; stationName?: string; code?: string; orgUnitId?: string }) => ({
           label: s.stationName || s.code || s.id,
           value: s.id,
+          orgUnitId: s.orgUnitId,
         }))
       );
     } catch (error) {
@@ -442,7 +464,7 @@ const TransmissionListPage = () => {
 
   // VTS Operation Center options for dependent dropdown (Thuộc TTDH VTS — loại 1)
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<
-    { label: string; value: string }[]
+    { label: string; value: string; orgUnitId?: string }[]
   >([]);
   const [loadingVtsCenters, setLoadingVtsCenters] = useState(false);
 
@@ -452,9 +474,10 @@ const TransmissionListPage = () => {
       const res = await api.get("/common/options/vts-operation-centers");
       const items = res.data?.data;
       setVtsOperationCenterOptions(
-        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string }) => ({
+        (Array.isArray(items) ? items : []).map((s: { id: string; name?: string; code?: string; orgUnitId?: string }) => ({
           label: s.name || s.code || s.id,
           value: s.id,
+          orgUnitId: s.orgUnitId,
         }))
       );
     } catch (error) {
@@ -468,6 +491,22 @@ const TransmissionListPage = () => {
   useEffect(() => {
     fetchVtsOperationCenters();
   }, [fetchVtsOperationCenters]);
+
+  const filteredFilterRadarStationOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return radarStationOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return radarStationOptions.filter((r) => r.orgUnitId && normalizedSet.has(String(r.orgUnitId).toLowerCase()));
+  }, [radarStationOptions, orgUnitOptions, filterValues.orgUnitId]);
+
+  const filteredFilterVtsOperationCenterOptions = useMemo(() => {
+    if (!filterValues.orgUnitId || filterValues.orgUnitId === '__all__') return vtsOperationCenterOptions;
+    const rawSet = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId);
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    return vtsOperationCenterOptions.filter((c) => c.orgUnitId && normalizedSet.has(String(c.orgUnitId).toLowerCase()));
+  }, [vtsOperationCenterOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailFiles, setDetailFiles] = useState<InfrastructureAttachmentItem[]>([]);
@@ -807,9 +846,10 @@ const TransmissionListPage = () => {
         key: "deviceName",
         label: "Tên / Mã thiết bị",
         dataIndex: "deviceName",
-        width: 300,
+        width: 260,
         fixed: "left" as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("deviceName"),
         cellTitle: (record: TransmissionResponse) => record.deviceName || '',
         render: (val: string, record: TransmissionResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -852,14 +892,16 @@ const TransmissionListPage = () => {
         label: "Đơn vị quản lý",
         dataIndex: "orgUnitName",
         width: 260,
+        sortOrder: sortOrderFor("orgUnitName"),
         cellTitle: (record: TransmissionResponse) => record.orgUnitName || '',
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
         key: "vtsSystemName",
-        label: "Thuộc TTDH VTS/Trạm Radar",
+        label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
+        sortable: false,
         cellTitle: (record: TransmissionResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -868,6 +910,7 @@ const TransmissionListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
+        sortable: false,
         cellTitle: (record: TransmissionResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -877,6 +920,7 @@ const TransmissionListPage = () => {
         dataIndex: "provinceName",
         width: 220,
         ellipsis: false,
+        sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: TransmissionResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -886,6 +930,7 @@ const TransmissionListPage = () => {
         dataIndex: "unitOfMeasure",
         width: 130,
         align: 'center' as const,
+        sortOrder: sortOrderFor("unitOfMeasure"),
         cellTitle: (record: TransmissionResponse) => formatUnitOfMeasure(record.unitOfMeasure) || '',
         render: (val: number) => renderCellWithTooltip(formatUnitOfMeasure(val)),
       },
@@ -896,6 +941,7 @@ const TransmissionListPage = () => {
         width: 120,
         type: "number" as const,
         align: 'center' as const,
+        sortOrder: sortOrderFor("quantity"),
         render: (val: number) => (
           <span style={{ ...tableValueStyle, fontWeight: fontWeightMedium }}>
             {fmtNum(val)}
@@ -910,6 +956,7 @@ const TransmissionListPage = () => {
         type: "mono" as const,
         align: 'center' as const,
         ellipsis: false,
+        sortOrder: sortOrderFor("yearOfUse"),
         render: (val: number) => (
           <span style={tableMetaStyle}>{val || null}</span>
         ),
@@ -920,6 +967,7 @@ const TransmissionListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
+        sortOrder: sortOrderFor("operationalStatus"),
         render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
@@ -939,6 +987,7 @@ const TransmissionListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
+        sortOrder: sortOrderFor("approvalStatus"),
         render: (val: string, record: TransmissionResponse) => {
           return renderApprovalBadge(val, record);
         },
@@ -948,36 +997,40 @@ const TransmissionListPage = () => {
         label: "Cán bộ cập nhật",
         dataIndex: "updatedByName",
         width: 200,
+        sortOrder: sortOrderFor("updatedByName"),
         cellTitle: (record: TransmissionResponse) => record.updatedByName || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
       },
       {
-        key: "submittedInfo",
+        key: "submittedByName",
         label: "Cán bộ gửi phê duyệt",
         dataIndex: "submittedByName",
         width: 230,
+        sortOrder: sortOrderFor("submittedByName"),
         cellTitle: (record: TransmissionResponse) => record.submittedByName || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.submittedByName, record.submittedDate),
       },
       {
-        key: "approvedLevel1Info",
+        key: "approverLevel1Name",
         label: "Cán bộ phê duyệt cấp Cảng vụ/Chi cục",
         dataIndex: "approverLevel1Name",
         width: 380,
+        sortOrder: sortOrderFor("approverLevel1Name"),
         cellTitle: (record: TransmissionResponse) => record.approverLevel1Name || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.approverLevel1Name, record.approvedDateLevel1),
       },
       {
-        key: "approvedLevel2Info",
+        key: "approverLevel2Name",
         label: "Cán bộ phê duyệt cấp Cục",
         dataIndex: "approverLevel2Name",
         width: 270,
+        sortOrder: sortOrderFor("approverLevel2Name"),
         cellTitle: (record: TransmissionResponse) => record.approverLevel2Name || '',
         render: (_: unknown, record: TransmissionResponse) => renderInfoStack(record.approverLevel2Name, record.approvedDateLevel2),
       },
     ];
     },
-    [page, pageSize, hasPerm]
+    [page, pageSize, hasPerm, sortOrderFor]
   );
 
   // ── History helpers ────────────────────────────────────────────────
@@ -1036,7 +1089,7 @@ const TransmissionListPage = () => {
     }
     if (fn === 'attachedInfrastructureType' || fn === 'Loại hạ tầng' || fn === 'Thuộc loại hạ tầng') {
       if (val === '1' || val === 'TTDH VTS') return 'TTDH VTS';
-      if (val === '2' || val === 'Trạm Radar') return 'Trạm Radar';
+      if (val === '2' || val === 'Trạm radar') return 'Trạm radar';
       return val;
     }
     if (fn === 'attachedInfrastructureId' || fn === 'Thuộc hạ tầng' || fn === 'Hạ tầng phụ thuộc') {
@@ -1835,8 +1888,8 @@ const TransmissionListPage = () => {
         yearOfUse: filterValues.yearOfUse,
         updatedFrom: filterValues.updatedFrom || undefined,
         updatedTo: filterValues.updatedTo || undefined,
-        sortBy: "updatedAt",
-        sortOrder: "desc",
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
       });
       setData(result.content);
       setTotal(result.totalElements);
@@ -1847,7 +1900,7 @@ const TransmissionListPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues]);
+  }, [page, pageSize, filterDeviceName, filterDeviceCode, filterValues, sortField, sortOrder]);
 
   // ── Load đơn vị quản lý mặc định — đồng bộ 100% chuẩn /radar-station ──
   useEffect(() => {
@@ -1941,6 +1994,8 @@ const TransmissionListPage = () => {
       updatedFrom: "",
       updatedTo: "",
     });
+    setSortField('updatedByName');
+    setSortOrder('desc');
     setPage(0);
   }, []);
 
@@ -2084,7 +2139,7 @@ const TransmissionListPage = () => {
         .transmission-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover { background: #94a3b8 !important; }
 
         /* ── Cỡ chữ 13.5px chuẩn: bảng + popup/drawer con (port đầy đủ từ /cctv ≡ /berth) ── */
-        /* ── Breadcrumb title (màn /transmission): "Trang chủ" 14px, "Quản lý hệ thống truyền dẫn" 16px —
+        /* ── Breadcrumb title (màn /transmission): "Trang chủ" 14px, "Hệ thống truyền dẫn" 16px —
            khóa cỡ 14/16 trên span tiêu đề, thắng cả ép 13.5px của font trang bên dưới ── */
         .transmission-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:not(:last-child) > .ant-breadcrumb-link > span { font-size: 14px !important; }
         .transmission-page-wrapper .ant-breadcrumb .ant-breadcrumb-item:last-child > .ant-breadcrumb-link > span { font-size: 16px !important; }
@@ -2306,7 +2361,7 @@ const TransmissionListPage = () => {
       <ScreenHeader
         breadcrumb={[
           { label: "Trang chủ", path: "/" },
-          { label: "Quản lý hệ thống truyền dẫn", path: "/transmission" },
+          { label: "Hệ thống truyền dẫn", path: "/transmission" },
         ]}
         actions={[
           hasPerm?.("transmission:create")
@@ -2346,12 +2401,27 @@ const TransmissionListPage = () => {
                 treeDefaultExpandAll={false}
                 showSearch
                 value={filterValues.orgUnitId || undefined}
-                onChange={(val) =>
-                  setFilterValues((prev) => ({
-                    ...prev,
-                    orgUnitId: (val as string) || "",
-                  }))
-                }
+                onChange={(val) => {
+                  const nextOrg = (val as string) || "";
+                  setFilterValues((prev) => {
+                    let nextAttached = prev.attachedInfraId;
+                    if (nextAttached && nextOrg && nextOrg !== '__all__') {
+                      const rawSet = resolveOrgSubtreeIds(orgUnitOptions, nextOrg);
+                      const normalizedSet = new Set<string>();
+                      rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                      const activeOptions = prev.attachedInfraType === 1 ? vtsOperationCenterOptions : prev.attachedInfraType === 2 ? radarStationOptions : [];
+                      const validAttached = activeOptions.some(
+                        (item) => item.value === prev.attachedInfraId && !!item.orgUnitId && normalizedSet.has(String(item.orgUnitId).toLowerCase()),
+                      );
+                      if (!validAttached) nextAttached = undefined;
+                    }
+                    return {
+                      ...prev,
+                      orgUnitId: nextOrg,
+                      attachedInfraId: nextAttached,
+                    };
+                  });
+                }}
                 loading={loadingOrgs}
                 style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
               />
@@ -2419,7 +2489,7 @@ const TransmissionListPage = () => {
                         attachedInfraId: val as string | undefined,
                       }))
                     }
-                    options={filterValues.attachedInfraType === 1 ? vtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? radarStationOptions : []}
+                    options={filterValues.attachedInfraType === 1 ? filteredFilterVtsOperationCenterOptions : filterValues.attachedInfraType === 2 ? filteredFilterRadarStationOptions : []}
                     loading={filterValues.attachedInfraType === 1 ? loadingVtsCenters : filterValues.attachedInfraType === 2 ? loadingRadars : false}
                     disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                     style={{ width: "100%", borderRadius: radiusPill, height: 40 }} />
@@ -2563,6 +2633,7 @@ const TransmissionListPage = () => {
               dataSource={data}
               rowKey="id"
               loading={isLoading}
+              onSort={handleSort}
               scroll={{ x: 'max-content' }}
               rowActions={rowActions}
               locale={{
@@ -2628,7 +2699,7 @@ const TransmissionListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm Radar', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
                             { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderTransmissionStatusBadge(st) : null; })() },

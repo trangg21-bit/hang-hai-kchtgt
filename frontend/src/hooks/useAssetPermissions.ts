@@ -18,6 +18,7 @@ export interface AssetPermissions {
 
 export function useAssetPermissions(resource: string | string[]): AssetPermissions {
   const userPermissions = usePermissionStore((s) => s.permissions);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission || s.hasPermission);
 
   const resourceKey = Array.isArray(resource) ? resource.join(',') : resource;
@@ -26,59 +27,128 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
     const rawList = Array.isArray(resource) ? resource : [resource];
     const resources = rawList.map((r) => r.toLowerCase().trim()).filter(Boolean);
 
-    const canAction = (action: string) =>
-      resources.some((res) => Boolean(hasExplicitPerm?.(`${res}:${action}`)));
+    const checkAny = (fn: (res: string) => boolean) => resources.some(fn);
+
+    const canManage = checkAny((res) =>
+      Boolean(
+        hasExplicitPerm?.(`${res}:manage`) ||
+        hasExplicitPerm?.(`${res}asset:manage`) ||
+        (res === 'infraasset' && hasExplicitPerm?.('infraasset:manage')) ||
+        hasExplicitPerm?.('*')
+      )
+    );
 
     // canRead for the action "Xem chi tiết" requires explicit read permission
     const canRead = Boolean(
-      canAction('read')
+      canManage ||
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:read`) ||
+          hasExplicitPerm?.(`${res}asset:read`) ||
+          (res === 'infraasset' && hasExplicitPerm?.('infraasset:read'))
+        )
+      )
     );
 
     const canCreate = Boolean(
-      canAction('create')
+      canManage ||
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:create`) ||
+          hasExplicitPerm?.(`${res}asset:create`) ||
+          (res === 'infraasset' && hasExplicitPerm?.('infraasset:create'))
+        )
+      )
     );
 
     const canUpdate = Boolean(
-      canAction('update')
+      canManage ||
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:update`) ||
+          hasExplicitPerm?.(`${res}asset:update`) ||
+          (res === 'infraasset' && hasExplicitPerm?.('infraasset:update'))
+        )
+      )
     );
 
     const canDelete = Boolean(
-      canAction('delete')
+      canManage ||
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:delete`) ||
+          hasExplicitPerm?.(`${res}asset:delete`) ||
+          (res === 'infraasset' && hasExplicitPerm?.('infraasset:delete'))
+        )
+      )
     );
 
     const canHistory = Boolean(
-      canAction('history')
+      canManage ||
+      canRead ||
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:history`) ||
+          hasExplicitPerm?.(`${res}asset:history`)
+        )
+      )
     );
 
     const canExploit = Boolean(
+      canManage ||
       Boolean(
         hasExplicitPerm?.('assetexploitation:create') ||
-        hasExplicitPerm?.('assetexploitation:update')
+        hasExplicitPerm?.('assetexploitation:update') ||
+        hasExplicitPerm?.('assetexploitation:manage')
       )
     );
 
     const canIncrease = Boolean(
+      canManage ||
       Boolean(
         hasExplicitPerm?.('assetincrease:create') ||
-        hasExplicitPerm?.('assetincrease:update')
+        hasExplicitPerm?.('assetincrease:update') ||
+        hasExplicitPerm?.('assetincrease:manage')
       )
     );
 
     const canDecrease = Boolean(
+      canManage ||
       Boolean(
         hasExplicitPerm?.('assetdecrease:create') ||
-        hasExplicitPerm?.('assetdecrease:update')
+        hasExplicitPerm?.('assetdecrease:update') ||
+        hasExplicitPerm?.('assetdecrease:manage')
       )
     );
 
-    const canApproveC1 = canAction('approvec1');
+    const canApproveC1 = checkAny((res) =>
+      Boolean(
+        canManage ||
+        hasExplicitPerm?.(`${res}:approvec1`) ||
+        hasExplicitPerm?.(`${res}:approve:c1`) ||
+        hasExplicitPerm?.('infraasset:approve')
+      )
+    );
 
-    const canApproveC2 = canAction('approvec2');
+    const canApproveC2 = checkAny((res) =>
+      Boolean(
+        canManage ||
+        hasExplicitPerm?.(`${res}:approvec2`) ||
+        hasExplicitPerm?.(`${res}:approve:c2`) ||
+        hasExplicitPerm?.('infraasset:approve')
+      )
+    );
 
     const canReject = Boolean(
+      canManage ||
       canApproveC1 ||
       canApproveC2 ||
-      canAction('reject')
+      checkAny((res) =>
+        Boolean(
+          hasExplicitPerm?.(`${res}:reject`) ||
+          hasExplicitPerm?.(`${res}asset:reject`)
+        )
+      )
     );
 
     return {
@@ -95,5 +165,5 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
       canReject,
       userPermissions: userPermissions || [],
     };
-  }, [resourceKey, hasExplicitPerm, userPermissions]);
+  }, [resourceKey, hasPerm, userPermissions]);
 }

@@ -500,8 +500,7 @@ public class BeaconStationService {
             throw new EntityNotFoundException("Đèn biển đã bị xóa");
         }
 
-        // Tọa độ GIS (chuẩn /vts-operation-center): nhận coordinates = WKT từ form;
-        // nếu trống → giữ vị trí spatial hiện có (chỉ đổi khi người dùng chọn vị trí mới).
+        // Tọa độ GIS (chuẩn /vts-operation-center): nhận coordinates = WKT từ form
         String requestedWkt = request.getCoordinates() != null ? request.getCoordinates().trim() : "";
         String existingWkt = null;
         if (entity.getSpatialId() != null) {
@@ -510,10 +509,7 @@ public class BeaconStationService {
                 existingWkt = spatialObjOpt.get().getCoordinates();
             }
         }
-        String wkt = !requestedWkt.isEmpty() ? requestedWkt : existingWkt;
-        GisGeometryType updateGeomType = !requestedWkt.isEmpty()
-                ? resolveGisGeometryType(request.getGeometryType(), requestedWkt)
-                : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
+        boolean hasGeometryType = request.getGeometryType() != null && !request.getGeometryType().trim().isEmpty();
 
         Map<String, String> previousValues = new LinkedHashMap<>();
         if (request.getName() != null && !EntityUpdateUtils.areEqual(entity.getName(), request.getName())) {
@@ -527,31 +523,31 @@ public class BeaconStationService {
             previousValues.put("type", entity.getType());
             entity.setType(request.getType());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getTowerColor(), request.getTowerColor())) {
+        if (request.getTowerColor() != null && !EntityUpdateUtils.areEqual(entity.getTowerColor(), request.getTowerColor())) {
             previousValues.put("towerColor", entity.getTowerColor());
             entity.setTowerColor(request.getTowerColor());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getPrimaryLightModel(), request.getPrimaryLightModel())) {
+        if (request.getPrimaryLightModel() != null && !EntityUpdateUtils.areEqual(entity.getPrimaryLightModel(), request.getPrimaryLightModel())) {
             previousValues.put("primaryLightModel", entity.getPrimaryLightModel());
             entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getBackupLightModel(), request.getBackupLightModel())) {
+        if (request.getBackupLightModel() != null && !EntityUpdateUtils.areEqual(entity.getBackupLightModel(), request.getBackupLightModel())) {
             previousValues.put("backupLightModel", entity.getBackupLightModel());
             entity.setBackupLightModel(request.getBackupLightModel());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getLightRange(), request.getLightRange())) {
+        if (request.getLightRange() != null && !EntityUpdateUtils.areEqual(entity.getLightRange(), request.getLightRange())) {
             previousValues.put("lightRange", entity.getLightRange() != null ? String.valueOf(entity.getLightRange()) : null);
             entity.setLightRange(request.getLightRange());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getArea(), request.getArea())) {
+        if (request.getArea() != null && !EntityUpdateUtils.areEqual(entity.getArea(), request.getArea())) {
             previousValues.put("area", entity.getArea() != null ? String.valueOf(entity.getArea()) : null);
             entity.setArea(request.getArea());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getLocation(), request.getLocation())) {
+        if (request.getLocation() != null && !EntityUpdateUtils.areEqual(entity.getLocation(), request.getLocation())) {
             previousValues.put("location", entity.getLocation());
             entity.setLocation(request.getLocation());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getDetailedLocation(), request.getDetailedLocation())) {
+        if (request.getDetailedLocation() != null && !EntityUpdateUtils.areEqual(entity.getDetailedLocation(), request.getDetailedLocation())) {
             previousValues.put("detailedLocation", entity.getDetailedLocation());
             entity.setDetailedLocation(request.getDetailedLocation());
         }
@@ -564,19 +560,19 @@ public class BeaconStationService {
             previousValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
             entity.setProvinceId(request.getProvinceId());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getSeaportId(), request.getSeaportId())) {
+        if (request.getSeaportId() != null && !EntityUpdateUtils.areEqual(entity.getSeaportId(), request.getSeaportId())) {
             previousValues.put("seaportId", entity.getSeaportId() != null ? entity.getSeaportId().toString() : null);
             entity.setSeaportId(request.getSeaportId());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getOperator(), request.getOperator())) {
+        if (request.getOperator() != null && !EntityUpdateUtils.areEqual(entity.getOperator(), request.getOperator())) {
             previousValues.put("operator", entity.getOperator());
             entity.setOperator(request.getOperator());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getLastRepairDate(), request.getLastRepairDate())) {
+        if (request.getLastRepairDate() != null && !EntityUpdateUtils.areEqual(entity.getLastRepairDate(), request.getLastRepairDate())) {
             previousValues.put("lastRepairDate", entity.getLastRepairDate() != null ? entity.getLastRepairDate().toString() : null);
             entity.setLastRepairDate(request.getLastRepairDate());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getCommissionedDate(), request.getCommissionedDate())) {
+        if (request.getCommissionedDate() != null && !EntityUpdateUtils.areEqual(entity.getCommissionedDate(), request.getCommissionedDate())) {
             previousValues.put("commissionedDate", entity.getCommissionedDate() != null ? entity.getCommissionedDate().toString() : null);
             entity.setCommissionedDate(request.getCommissionedDate());
         }
@@ -584,35 +580,35 @@ public class BeaconStationService {
             previousValues.put("isActive", entity.getIsActive() != null ? String.valueOf(entity.getIsActive()) : null);
             entity.setIsActive(request.getIsActive());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getShape(), request.getShape())) {
+        if (request.getShape() != null && !EntityUpdateUtils.areEqual(entity.getShape(), request.getShape())) {
             previousValues.put("shape", entity.getShape());
             entity.setShape(request.getShape());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getStructure(), request.getStructure())) {
+        if (request.getStructure() != null && !EntityUpdateUtils.areEqual(entity.getStructure(), request.getStructure())) {
             previousValues.put("structure", entity.getStructure());
             entity.setStructure(request.getStructure());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getTowerHeight(), request.getTowerHeight())) {
+        if (request.getTowerHeight() != null && !EntityUpdateUtils.areEqual(entity.getTowerHeight(), request.getTowerHeight())) {
             previousValues.put("towerHeight", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : null);
             entity.setTowerHeight(request.getTowerHeight());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getLightHeight(), request.getLightHeight())) {
+        if (request.getLightHeight() != null && !EntityUpdateUtils.areEqual(entity.getLightHeight(), request.getLightHeight())) {
             previousValues.put("lightHeight", entity.getLightHeight() != null ? String.valueOf(entity.getLightHeight()) : null);
             entity.setLightHeight(request.getLightHeight());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getGeographicRange(), request.getGeographicRange())) {
+        if (request.getGeographicRange() != null && !EntityUpdateUtils.areEqual(entity.getGeographicRange(), request.getGeographicRange())) {
             previousValues.put("geographicRange", entity.getGeographicRange());
             entity.setGeographicRange(request.getGeographicRange());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getPowerSupply(), request.getPowerSupply())) {
+        if (request.getPowerSupply() != null && !EntityUpdateUtils.areEqual(entity.getPowerSupply(), request.getPowerSupply())) {
             previousValues.put("powerSupply", entity.getPowerSupply());
             entity.setPowerSupply(request.getPowerSupply());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getStaffCount(), request.getStaffCount())) {
+        if (request.getStaffCount() != null && !EntityUpdateUtils.areEqual(entity.getStaffCount(), request.getStaffCount())) {
             previousValues.put("staffCount", entity.getStaffCount() != null ? String.valueOf(entity.getStaffCount()) : null);
             entity.setStaffCount(request.getStaffCount());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getStationArea(), request.getStationArea())) {
+        if (request.getStationArea() != null && !EntityUpdateUtils.areEqual(entity.getStationArea(), request.getStationArea())) {
             previousValues.put("stationArea", entity.getStationArea() != null ? String.valueOf(entity.getStationArea()) : null);
             entity.setStationArea(request.getStationArea());
         }
@@ -620,36 +616,83 @@ public class BeaconStationService {
             previousValues.put("operationalStatus", entity.getOperationalStatus() != null ? String.valueOf(entity.getOperationalStatus()) : null);
             entity.setOperationalStatus(request.getOperationalStatus());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getRegion(), request.getRegion())) {
+        if (request.getRegion() != null && !EntityUpdateUtils.areEqual(entity.getRegion(), request.getRegion())) {
             previousValues.put("region", entity.getRegion());
             entity.setRegion(request.getRegion());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getIdentifyingFeature(), request.getIdentifyingFeature())) {
+        if (request.getIdentifyingFeature() != null && !EntityUpdateUtils.areEqual(entity.getIdentifyingFeature(), request.getIdentifyingFeature())) {
             previousValues.put("identifyingFeature", entity.getIdentifyingFeature());
             entity.setIdentifyingFeature(request.getIdentifyingFeature());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getNote(), request.getNote())) {
+        if (request.getNote() != null && !EntityUpdateUtils.areEqual(entity.getNote(), request.getNote())) {
             previousValues.put("note", entity.getNote());
             entity.setNote(request.getNote());
         }
-        if (!EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
-            previousValues.put("geometryType", entity.getGeometryType());
-            entity.setGeometryType(request.getGeometryType());
-        }
-        if (!EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
-            previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
-            entity.setMapSymbolId(request.getMapSymbolId());
-        }
-        if (!EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
-            previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        }
-        if (!EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
-            previousValues.put("displayRule", entity.getDisplayRule());
-            entity.setDisplayRule(request.getDisplayRule());
-        }
-        if (!requestedWkt.isEmpty() && !EntityUpdateUtils.areEqual(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
-            previousValues.put("coordinates", existingWkt != null ? existingWkt : "Chưa có");
+        if (hasGeometryType) {
+            String wkt = !requestedWkt.isEmpty() ? requestedWkt : existingWkt;
+            GisGeometryType updateGeomType = !requestedWkt.isEmpty()
+                    ? resolveGisGeometryType(request.getGeometryType(), requestedWkt)
+                    : (existingWkt != null ? resolveGisGeometryType(entity.getGeometryType(), existingWkt) : GisGeometryType.POINT);
+
+            if (!EntityUpdateUtils.areEqual(entity.getGeometryType(), request.getGeometryType())) {
+                previousValues.put("geometryType", entity.getGeometryType());
+                entity.setGeometryType(request.getGeometryType());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getMapSymbolId(), request.getMapSymbolId())) {
+                previousValues.put("mapSymbolId", entity.getMapSymbolId() != null ? entity.getMapSymbolId().toString() : null);
+                entity.setMapSymbolId(request.getMapSymbolId());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getCoordinateSystem(), request.getCoordinateSystem())) {
+                previousValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? String.valueOf(entity.getCoordinateSystem()) : null);
+                entity.setCoordinateSystem(request.getCoordinateSystem());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getDisplayRule(), request.getDisplayRule())) {
+                previousValues.put("displayRule", entity.getDisplayRule());
+                entity.setDisplayRule(request.getDisplayRule());
+            }
+            if (!requestedWkt.isEmpty() && !EntityUpdateUtils.areEqual(requestedWkt, existingWkt != null ? existingWkt.trim() : null)) {
+                previousValues.put("coordinates", existingWkt != null ? existingWkt : "Chưa có");
+            }
+
+            // Sync GIS spatial object (chuẩn /vts-operation-center: tạo khi chưa có, cập nhật WKT/loại hình)
+            if (wkt != null && !wkt.isBlank()) {
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        entity.getSpatialId(),
+                        entity.getName(),
+                        "DENBIEN_" + entity.getCode(),
+                        updateGeomType,
+                        resolveSpatialObjectType(updateGeomType),
+                        wkt, entity.getId(),
+                        InfrastructureType.LIGHTHOUSE);
+                if (entity.getSpatialId() == null) {
+                    entity.setSpatialId(spatialObj.getId());
+                }
+            }
+        } else {
+            // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" bị xóa hoặc trống
+            if (entity.getGeometryType() != null) {
+                previousValues.put("geometryType", entity.getGeometryType());
+                entity.setGeometryType(null);
+            }
+            if (entity.getMapSymbolId() != null) {
+                previousValues.put("mapSymbolId", entity.getMapSymbolId().toString());
+                entity.setMapSymbolId(null);
+            }
+            if (entity.getCoordinateSystem() != null) {
+                previousValues.put("coordinateSystem", String.valueOf(entity.getCoordinateSystem()));
+                entity.setCoordinateSystem(null);
+            }
+            if (entity.getDisplayRule() != null) {
+                previousValues.put("displayRule", entity.getDisplayRule());
+                entity.setDisplayRule(null);
+            }
+            if (entity.getSpatialId() != null) {
+                if (existingWkt != null && !existingWkt.isBlank()) {
+                    previousValues.put("coordinates", existingWkt);
+                }
+                gisSpatialObjectService.delete(entity.getSpatialId());
+                entity.setSpatialId(null);
+            }
         }
 
         boolean wasApproved = isApprovedStatus(entity.getStatus())
@@ -687,22 +730,6 @@ public class BeaconStationService {
         }
 
         entity = beaconStationRepo.save(entity);
-
-        // Sync GIS spatial object (chuẩn /vts-operation-center: tạo khi chưa có, cập nhật WKT/loại hình)
-        if (wkt != null) {
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    entity.getSpatialId(),
-                    entity.getName(),
-                    "DENBIEN_" + entity.getCode(),
-                    updateGeomType,
-                    resolveSpatialObjectType(updateGeomType),
-                    wkt, entity.getId(),
-                    InfrastructureType.LIGHTHOUSE);
-            if (entity.getSpatialId() == null) {
-                entity.setSpatialId(spatialObj.getId());
-                beaconStationRepo.save(entity);
-            }
-        }
 
         // Ghi nhật ký từng trường thay đổi (chuẩn /vts-operation-center)
         if (wasApproved && !previousValues.isEmpty()) {

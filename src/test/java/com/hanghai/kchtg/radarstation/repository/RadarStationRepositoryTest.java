@@ -53,6 +53,31 @@ class RadarStationRepositoryTest {
         assertEquals(List.of("Trạm Radar A", "Trạm Radar B", "Trạm Radar C"), names);
     }
 
+    @Test
+    void testSearchPaged_Sorting_AscAndDesc() {
+        RadarStation r1 = createRadar("RADAR-ALPHA", "Trạm Radar Alpha", ApprovalStatus.APPROVED, "1");
+        repository.save(r1);
+
+        RadarStation r2 = createRadar("RADAR-ZETA", "Trạm Radar Zeta", ApprovalStatus.APPROVED, "1");
+        repository.save(r2);
+
+        entityManager.flush();
+
+        org.springframework.data.domain.Page<RadarStation> pageAsc = repository.searchPaged(
+                false, List.of(), null, null, null, null, null, null, null, null, null, null, false, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 10, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.ASC, "stationName"))
+        );
+        List<String> namesAsc = pageAsc.getContent().stream().map(RadarStation::getStationName).filter(n -> n.contains("Radar Alpha") || n.contains("Radar Zeta")).toList();
+        assertEquals(List.of("Trạm Radar Alpha", "Trạm Radar Zeta"), namesAsc);
+
+        org.springframework.data.domain.Page<RadarStation> pageDesc = repository.searchPaged(
+                false, List.of(), null, null, null, null, null, null, null, null, null, null, false, null, null, null,
+                org.springframework.data.domain.PageRequest.of(0, 10, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "stationName"))
+        );
+        List<String> namesDesc = pageDesc.getContent().stream().map(RadarStation::getStationName).filter(n -> n.contains("Radar Alpha") || n.contains("Radar Zeta")).toList();
+        assertEquals(List.of("Trạm Radar Zeta", "Trạm Radar Alpha"), namesDesc);
+    }
+
     private RadarStation createRadar(String code, String name, ApprovalStatus approvalStatus, String conditionStatus) {
         return RadarStation.builder()
                 .code(code)

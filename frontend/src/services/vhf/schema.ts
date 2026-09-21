@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { statusAttention, statusOperational, statusCritical } from '../../themetokenchk';
+import { statusAttention, statusCritical, statusDraft, statusOperational } from '../../themetokenchk';
 
 // ── Form schemas — clone từ services/cctv/schema.ts ────────────────
-// Quản lý hệ thống thông tin liên lạc VHF
+// Hệ thống thông tin liên lạc VHF
 
 // ── Status enums ────────────────────────────────────────────────────
 export const OPERATIONAL_STATUS_OPTIONS: Array<{ label: string; value: number }> = [
@@ -13,7 +13,7 @@ export const OPERATIONAL_STATUS_OPTIONS: Array<{ label: string; value: number }>
 
 export const ATTACHED_INFRA_TYPE_OPTIONS: Array<{ label: string; value: number }> = [
   { label: 'TTDH VTS', value: 1 },
-  { label: 'Trạm Radar', value: 2 },
+  { label: 'Trạm radar', value: 2 },
 ];
 
 export const createSchema = z.object({
@@ -24,6 +24,7 @@ export const createSchema = z.object({
   model: z.string().trim().optional().nullable(),
   quantity: z.number({ message: 'Số lượng không được để trống' }).min(1, 'Số lượng phải lớn hơn 0'),
   orgUnitId: z.string().trim().optional().nullable(),
+  seaportId: z.string().trim().min(1, 'Thuộc cảng biển không được để trống'),
   operatingUnitId: z.string().trim().optional().nullable(),
   provinceName: z.string().trim().optional().nullable(),
   attachedInfrastructureType: z.number().optional().nullable(),
@@ -79,11 +80,20 @@ export const deleteConfirmSchema = z.object({
 export type DeleteFormValues = z.infer<typeof deleteConfirmSchema>;
 
 // ── Badge / colour helpers ──────────────────────────────────────────
-
-// Matches BeaconStation OPERATIONAL_STATUS_STYLE_MAP: 0/1/2
-export const operationalStatusBadge = (status: number | undefined | null): { color: string; label: string } => {
-  if (status === 0) return { color: statusAttention, label: 'Chưa khai thác/vận hành' };
-  if (status === 1) return { color: statusOperational, label: 'Đang khai thác/vận hành' };
-  if (status === 2) return { color: statusCritical, label: 'Dừng khai thác/vận hành' };
-  return { color: 'default', label: String(status ?? '—') };
+// Hỗ trợ cả số (0, 1, 2) và chuỗi enum (NOT_YET_OPERATIONAL, OPERATIONAL, SUSPENDED, ACTIVE, INACTIVE)
+export const operationalStatusBadge = (status: number | string | undefined | null): { color: string; label: string } => {
+  if (status === undefined || status === null || status === '') {
+    return { color: statusDraft, label: '—' };
+  }
+  const str = String(status).toUpperCase().trim();
+  if (str === '0' || str === 'NOT_YET_OPERATIONAL') {
+    return { color: statusAttention, label: 'Chưa khai thác/vận hành' };
+  }
+  if (str === '1' || str === 'OPERATIONAL' || str === 'ACTIVE') {
+    return { color: statusOperational, label: 'Đang khai thác/vận hành' };
+  }
+  if (str === '2' || str === 'SUSPENDED' || str === 'INACTIVE') {
+    return { color: statusCritical, label: 'Dừng khai thác/vận hành' };
+  }
+  return { color: statusDraft, label: String(status) };
 };

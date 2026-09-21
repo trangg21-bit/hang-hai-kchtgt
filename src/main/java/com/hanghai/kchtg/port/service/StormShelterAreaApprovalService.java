@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -148,12 +149,15 @@ public class StormShelterAreaApprovalService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(
-                                User::getId,
-                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
-                                (a, b) -> a));
+        Map<UUID, User> userMap = resolveUsers(userIds);
+        Map<UUID, String> userNameMap = new HashMap<>();
+        Map<UUID, String> userOrgUnitMap = new HashMap<>();
+        userMap.forEach((uid, u) -> {
+            userNameMap.put(uid, formatUserIdentity(u));
+            if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null) {
+                userOrgUnitMap.put(uid, u.getOrgUnit().getName());
+            }
+        });
 
         List<Map<String, Object>> changeHistory = list.stream()
                 .filter(h -> h.getChangedField() != null)
@@ -175,6 +179,8 @@ public class StormShelterAreaApprovalService {
                     m.put("approvedByName", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : null);
                     m.put("changedAt", h.getApprovedDate());
                     m.put("approvedDate", h.getApprovedDate());
+                    m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
+                    m.put("unitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
                     return m;
                 })
                 .toList();
@@ -189,6 +195,8 @@ public class StormShelterAreaApprovalService {
                     m.put("decision", h.getStatus().name());
                     m.put("decidedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("decidedAt", h.getApprovedDate());
+                    m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
+                    m.put("unitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
                     return m;
                 })
                 .toList();
@@ -226,12 +234,15 @@ public class StormShelterAreaApprovalService {
                 .map(InfrastructureHistory::getApprovedBy)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-        Map<UUID, String> userNameMap = userIds.isEmpty() ? Collections.emptyMap() :
-                userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(
-                                User::getId,
-                                u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName() : u.getUsername(),
-                                (a, b) -> a));
+        Map<UUID, User> userMap = resolveUsers(userIds);
+        Map<UUID, String> userNameMap = new HashMap<>();
+        Map<UUID, String> userOrgUnitMap = new HashMap<>();
+        userMap.forEach((uid, u) -> {
+            userNameMap.put(uid, formatUserIdentity(u));
+            if (u.getOrgUnit() != null && u.getOrgUnit().getName() != null) {
+                userOrgUnitMap.put(uid, u.getOrgUnit().getName());
+            }
+        });
         List<Map<String, Object>> changeHistory = list.stream()
                 .map(h -> {
                     Map<String, Object> m = new HashMap<>();
@@ -254,9 +265,34 @@ public class StormShelterAreaApprovalService {
                     m.put("newValue", h.getNewValue());
                     m.put("changedBy", h.getApprovedBy() != null ? userNameMap.getOrDefault(h.getApprovedBy(), h.getApprovedBy().toString()) : "");
                     m.put("changedAt", h.getApprovedDate());
+                    m.put("orgUnitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
+                    m.put("unitName", h.getApprovedBy() != null ? userOrgUnitMap.get(h.getApprovedBy()) : null);
                     return m;
                 })
                 .toList();
         return java.util.Map.of("entityType", entityType, "changeHistory", changeHistory, "entityNames", entityNames, "histories", list);
+    }
+
+    private Map<UUID, User> resolveUsers(Collection<UUID> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Set<UUID> nonNullIds = userIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (nonNullIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return userRepository.findAllByIdInWithOrgUnit(nonNullIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (first, second) -> first));
+    }
+
+    private String formatUserIdentity(User user) {
+        if (user == null) return null;
+        if (user.getFullName() != null && !user.getFullName().trim().isEmpty()) {
+            return user.getFullName().trim();
+        }
+        if (user.getUsername() != null && !user.getUsername().trim().isEmpty()) {
+            return user.getUsername().trim();
+        }
+        return null;
     }
 }
