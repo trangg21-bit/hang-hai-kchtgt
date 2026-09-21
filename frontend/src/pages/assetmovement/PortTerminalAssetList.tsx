@@ -7,6 +7,7 @@ import {
   HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
+  PlusOutlined,
   RocketOutlined,
   SearchOutlined,
   SendOutlined,
