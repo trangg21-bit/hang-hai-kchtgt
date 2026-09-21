@@ -61,7 +61,7 @@ Nguồn gốc duy nhất của các trường dữ liệu trên Bảng danh sác
    - Công thức tính: `(page - 1) * pageSize + index + 1`.
 
 2. **Cột Tên / Mã KCHT (Fixed Left)**:
-   - Cố định bên trái (`fixed: 'left'`) ngay sau cột STT, chiều rộng từ `220px` - `260px`, căn trái (`align: 'left'`).
+   - Cố định bên trái (`fixed: 'left'`) ngay sau cột STT, **chiều rộng chuẩn cố định `260px` (`width: 260`)**, căn trái (`align: 'left'`).
    - Cấu trúc 2 dòng:
      - **Dòng 1 (Tên KCHT)**: Cỡ chữ `13px` (`fontSizeMd`), `fontWeightBold`, màu `textPrimary` hoặc `colors.sidebarBg` (click để mở xem chi tiết).
      - **Dòng 2 (Mã KCHT)**: Cỡ chữ `13px` (`fontSizeMd`), `fontWeightMedium`, màu `textSecondary`. **BẮT BUỘC dùng `fontSizeMd` (13px)**, tuyệt đối không dùng `fontSizeSm` (10px) để đảm bảo chữ to rõ, dễ nhìn và đồng bộ toàn hệ thống.

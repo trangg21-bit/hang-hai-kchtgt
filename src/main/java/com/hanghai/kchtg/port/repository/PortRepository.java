@@ -67,7 +67,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
     List<Port> findAllActiveForCache();
 
     @Query("SELECT p FROM Port p WHERE " +
-            "((:approvalStatus IS NULL AND p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (p.deletedAt IS NOT NULL OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "  OR (p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
             "      p.approvalStatus = :approvalStatus " +

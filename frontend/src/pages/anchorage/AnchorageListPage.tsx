@@ -422,6 +422,33 @@ export default function AnchorageListPage() {
     organizations.forEach(o => m.set(o.id, o.name));
     return m;
   }, [organizations]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName =
+        u.organizationName ||
+        u.orgUnitName ||
+        u.departmentName ||
+        (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) ||
+        (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
   const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
@@ -545,7 +572,22 @@ export default function AnchorageListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -579,12 +621,27 @@ export default function AnchorageListPage() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, buoyStationMap, waterwayMap, historyTarget, symbolImageMap, userOrgMap]);
 
   // Load master data
   useEffect(() => {
@@ -616,8 +673,14 @@ export default function AnchorageListPage() {
       try {
         const r = await userService.list({ pageSize: 1000 });
         const u = r.data || (r as any).content || [];
+        setRawUsers(u);
         const m = new Map<string, string>();
-        u.forEach((x: any) => m.set(x.id, x.fullName || x.username || x.id));
+        u.forEach((x: any) => {
+          const name = x.fullName || x.username || x.id;
+          m.set(x.id, name);
+          m.set(x.id.toLowerCase(), name);
+          if (x.username) m.set(x.username, name);
+        });
         setUserMap(m);
       } catch {}
     })();
@@ -831,6 +894,8 @@ export default function AnchorageListPage() {
   useEffect(() => { if (initialLoadDone) void fetchCounts(); }, [fetchCounts, initialLoadDone]);
 
   const handleFilterApply = useCallback(() => {
+    setNameInput((prev) => prev.trim());
+    setCodeInput((prev) => prev.trim());
     setPage(1);
     void fetchData();
     void fetchCounts();
@@ -1018,6 +1083,7 @@ export default function AnchorageListPage() {
           placeholder="Tìm theo tên khu neo đậu"
           value={nameInput}
           onChange={e => setNameInput(e.target.value)}
+          onBlur={() => setNameInput(prev => prev.trim())}
           onPressEnter={handleFilterApply}
           allowClear
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1089,6 +1155,7 @@ export default function AnchorageListPage() {
               placeholder="Tìm theo mã khu neo đậu"
               value={codeInput}
               onChange={e => setCodeInput(e.target.value)}
+              onBlur={() => setCodeInput(prev => prev.trim())}
               onPressEnter={handleFilterApply}
               allowClear
               prefix={<SearchOutlined style={{ color: textTertiary }} />}
@@ -1263,7 +1330,7 @@ export default function AnchorageListPage() {
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + i + 1}</span>,
       },
       {
-        label: <span>Tên/Mã khu neo đậu</span>, dataIndex: 'anchorageName', key: 'anchorageName', width: 220, fixed: 'left' as const, sortable: true, ellipsis: false,
+        label: <span>Tên/Mã khu neo đậu</span>, dataIndex: 'anchorageName', key: 'anchorageName', width: 260, fixed: 'left' as const, sortable: true, ellipsis: false,
         cellTitle: (record: Anchorage) => record.anchorageName || '',
         render: (v: string, record: Anchorage) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1758,6 +1825,7 @@ export default function AnchorageListPage() {
                   allowClear
                   value={historyFilters.keyword || ''}
                   onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                  onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker

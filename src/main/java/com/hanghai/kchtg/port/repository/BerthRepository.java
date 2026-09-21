@@ -53,7 +53,7 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
      * For operationalStatus null-check (NHAP status), pass operationalStatusNull=true.
      */
     @Query("SELECT b FROM Berth b WHERE " +
-            "((:approvalStatus IS NULL AND b.deletedAt IS NULL AND b.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (b.deletedAt IS NOT NULL OR b.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "  OR (b.deletedAt IS NULL AND b.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
             "      b.approvalStatus = :approvalStatus " +

@@ -658,7 +658,7 @@ export default function TransmissionAssetList() {
           type: TableColumnType.TwoLine,
           subField: 'assetCode',
           subValueRef: (r) => formatAssetCode(r.assetCode),
-          width: 230,
+          width: 260,
           fixed: 'left',
           allowSort: true,
           onClick: (record) => void openDetail(record),

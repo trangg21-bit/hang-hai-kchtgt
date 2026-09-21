@@ -834,6 +834,8 @@ export default function BuoyAssetList() {
 
     setFilters((current) => ({
       ...draftFilters,
+      assetName: draftFilters.assetName ? draftFilters.assetName.trim() : undefined,
+      assetCode: draftFilters.assetCode ? draftFilters.assetCode.trim() : undefined,
       sortBy: current.sortBy,
       sortDir: current.sortDir,
       buoyId,
@@ -929,7 +931,7 @@ export default function BuoyAssetList() {
         dataIndex: 'assetName',
         type: TableColumnType.TwoLine,
         subField: 'assetCode',
-        width: 250,
+        width: 260,
         fixed: 'left',
         allowSort: true,
         onClick: (record) => void openDetail(record),
@@ -1395,6 +1397,7 @@ export default function BuoyAssetList() {
                   allowClear
                   value={historySearch}
                   onChange={e => setHistorySearch(e.target.value)}
+                  onBlur={e => setHistorySearch(e.target.value.trim())}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker
@@ -1439,9 +1442,10 @@ export default function BuoyAssetList() {
               renderStandardHistoryCards({
                 records: filteredHistoryRecords,
                 fieldLabels: BUOY_ASSET_FIELD_LABELS,
-                resolveUnitName: () => {
-                  const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
-                  return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+                resolveUnitName: (rec: any) => {
+                  const oId = rec?.orgUnitId;
+                  if (oId && orgName.has(oId)) return orgName.get(oId)!;
+                  return rec?.orgUnitName || rec?.unitName || '';
                 },
                 formatValue: (fn, raw) => {
                   if (isBlankOrDash(raw)) return '';

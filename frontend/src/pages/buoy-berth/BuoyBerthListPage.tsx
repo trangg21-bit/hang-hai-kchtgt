@@ -11,6 +11,7 @@ import {
     Modal,
     Select,
     Space,
+    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,7 +20,7 @@ import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../componen
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -308,8 +309,6 @@ export default function BuoyBerthList() {
 
   const authUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const userPermissions = authUser?.permissions || [];
-  const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
@@ -341,6 +340,7 @@ export default function BuoyBerthList() {
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
@@ -352,6 +352,28 @@ export default function BuoyBerthList() {
     });
     return map;
   }, [organizations]);
+
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName = u.organizationName || u.orgUnitName || u.departmentName || (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) || (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
 
   // ── Port options ─────────────────────────────────────────────────
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
@@ -490,7 +512,22 @@ export default function BuoyBerthList() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -524,12 +561,27 @@ export default function BuoyBerthList() {
         return isBlankOrDash(resolved) ? '' : resolved;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, waterwayMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, waterwayMap, historyTarget, symbolImageMap, userOrgMap]);
 
   // ── Load organizations ──────────────────────────────────────────
   useEffect(() => {
@@ -567,6 +619,7 @@ export default function BuoyBerthList() {
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
+        setRawUsers(users);
         const map = new Map<string, string>();
         users.forEach((u: any) => { map.set(u.id, u.fullName || u.username || u.id); });
         setUserMap(map);
@@ -602,41 +655,53 @@ export default function BuoyBerthList() {
     })();
   }, [managingUnitId, orgUnitReady]);
 
+  // Dùng chung toàn bộ bộ lọc nghiệp vụ cho bảng và số lượng trên status tabs.
+  const getBaseSearchParams = useCallback(() => ({
+    orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
+    buoyBerthName: filterName.trim() || undefined,
+    buoyBerthCode: filterCode.trim() || undefined,
+    portId: filterPortId,
+    waterwayId: filterWaterwayId,
+    classification: filterClassification,
+    provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
+    operationalStatus: filterOperationalStatus,
+    updatedFrom: filterUpdatedFrom,
+    updatedTo: filterUpdatedTo,
+  }), [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
+    filterClassification, filterProvince, filterOperationalStatus,
+    filterUpdatedFrom, filterUpdatedTo]);
+
   // ── Fetch tab counts ────────────────────────────────────────────
-  const fetchCounts = useCallback(async (orgId: string | undefined) => {
+  const fetchCounts = useCallback(async () => {
     try {
+      const baseSearchParams = getBaseSearchParams();
       const results = await Promise.allSettled(
         TAB_STATUS_LIST.map((tab) =>
           tab.key === 'all'
-            ? buoyBerthCRUD.search({ orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 })
-            : buoyBerthCRUD.search({ approvalStatus: TAB_QUERY_MAP[tab.key], orgUnitId: (orgId && orgId !== '__all__') ? orgId : undefined, page: 1, pageSize: 1 }),
+            ? buoyBerthCRUD.search({ ...baseSearchParams, page: 1, pageSize: 1 })
+            : buoyBerthCRUD.search({ ...baseSearchParams, approvalStatus: TAB_QUERY_MAP[tab.key], page: 1, pageSize: 1 }),
         ),
       );
       const counts: Record<string, number> = {};
+      let childSum = 0;
       results.forEach((result, idx) => {
         const tabKey = TAB_STATUS_LIST[idx]?.key || 'all';
-        counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
+        const count = result.status === 'fulfilled' ? result.value.total : 0;
+        counts[tabKey] = count;
+        if (tabKey !== 'all') childSum += count;
       });
+      counts['all'] = childSum;
       setTabCounts(counts);
     } catch { /* silent */ }
-  }, []);
+  }, [getBaseSearchParams]);
 
   // ── Fetch main data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
       const res = await buoyBerthCRUD.search({
-        orgUnitId: (managingUnitId && managingUnitId !== '__all__') ? managingUnitId : undefined,
-        buoyBerthName: filterName.trim() || undefined,
-        buoyBerthCode: filterCode.trim() || undefined,
-        portId: filterPortId,
-        waterwayId: filterWaterwayId,
-        classification: filterClassification,
-        provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
-        operationalStatus: filterOperationalStatus,
+        ...getBaseSearchParams(),
         approvalStatus: TAB_QUERY_MAP[activeTab],
-        updatedFrom: filterUpdatedFrom,
-        updatedTo: filterUpdatedTo,
         page,
         pageSize,
       });
@@ -644,20 +709,21 @@ export default function BuoyBerthList() {
     } catch {
       setIsError(true);
     } finally { setIsLoading(false); }
-  }, [managingUnitId, filterName, filterCode, filterPortId, filterWaterwayId,
-    filterClassification,
-    filterProvince, filterOperationalStatus,
-    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize]);
+  }, [getBaseSearchParams, activeTab, page, pageSize]);
 
   useEffect(() => {
     if (orgUnitReady && !isEmbeddedAction) void fetchData();
   }, [fetchData, orgUnitReady, isEmbeddedAction]);
-  useEffect(() => { if (orgUnitReady) void fetchCounts(managingUnitId); }, [managingUnitId, fetchCounts, orgUnitReady]);
+  useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
+    setFilterName(prev => prev.trim());
+    setFilterCode(prev => prev.trim());
     setPage(1);
-  }, []);
+    void fetchData();
+    void fetchCounts();
+  }, [fetchData, fetchCounts]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
@@ -895,6 +961,7 @@ export default function BuoyBerthList() {
           allowClear
           value={filterName}
           onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+          onBlur={() => setFilterName(prev => prev.trim())}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40 }}
         />
@@ -925,6 +992,7 @@ export default function BuoyBerthList() {
             allowClear
             value={filterCode}
             onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+            onBlur={() => setFilterCode(prev => prev.trim())}
             onPressEnter={handleFilterApply}
             style={{ borderRadius: radiusPill, height: 40 }}
           />
@@ -1092,7 +1160,7 @@ export default function BuoyBerthList() {
 
   // ── Table columns (đối chiếu đúng cột CSV) ─────────────────────
   const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
+    if (field === 'orgUnitId') return orgMap.get(r.orgUnitId || '') || r.orgUnitName || '';
     if (field === 'portId') return r.portName || portMap.get(r.portId) || portOptions.find(o => o.value === r.portId)?.label || r.portId || '';
     if (field === 'waterwayId') return waterwayMap.get(r.waterwayId) ?? r.waterwayId ?? '';
     if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
@@ -1114,7 +1182,7 @@ export default function BuoyBerthList() {
     if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
     if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
     return r[field] ?? '';
-  }, [organizations, orgMap, portOptions, portMap, waterwayMap]);
+  }, [orgMap, portOptions, portMap, waterwayMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1130,7 +1198,7 @@ export default function BuoyBerthList() {
         key: 'buoyBerthName',
         label: <span>Tên/Mã bến phao</span>,
         dataIndex: 'buoyBerthName',
-        width: 220,
+        width: 260,
         fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
@@ -1157,11 +1225,17 @@ export default function BuoyBerthList() {
         dataIndex: 'orgUnitId',
         width: 260,
         sortable: true,
-        render: (_v: string | null, record: BuoyBerth) => (
-          <span style={{ fontWeight: fontWeightBold }}>
-            {resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || record.orgUnitId || ''}
-          </span>
-        ),
+        ellipsis: true,
+        render: (_v: string | null, record: BuoyBerth) => {
+          const name = orgMap.get(record.orgUnitId || '') || (record as any).orgUnitName || record.orgUnitId || '';
+          return (
+            <Tooltip title={name}>
+              <span style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name}
+              </span>
+            </Tooltip>
+          );
+        },
       },
       {
         key: 'portId',
@@ -1243,8 +1317,8 @@ export default function BuoyBerthList() {
       },
     ];
 
-    // Audit columns — chỉ hiển thị cho Admin Cục / admin-operation (giống Bến cảng)
-    const auditColumns: any[] = isAuditViewer ? [
+    // Audit columns — hiển thị đầy đủ 4 cặp cột audit (chuẩn SKILL.md)
+    const auditColumns: any[] = [
       { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true,
         render: (v: string | null, record: BuoyBerth) => {
           const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
@@ -1284,7 +1358,7 @@ export default function BuoyBerthList() {
             </div>
           );
         } },
-    ] : [];
+    ];
 
     const tailColumns: any[] = [];
 
@@ -1295,10 +1369,8 @@ export default function BuoyBerthList() {
     }));
   }, [
     openDetailDrawer,
-    organizations,
     orgMap,
     userMap,
-    isAuditViewer,
     page,
     pageSize,
     portOptions,
@@ -1789,6 +1861,7 @@ export default function BuoyBerthList() {
                 allowClear
                 value={historyFilters.keyword || ''}
                 onChange={(e) => setHistoryFilters((p) => ({ ...p, keyword: e.target.value }))}
+                onBlur={() => setHistoryFilters((p) => ({ ...p, keyword: (p.keyword || '').trim() }))}
                 style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
               />
               <DatePicker

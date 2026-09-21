@@ -633,9 +633,9 @@ export default function DryPortAssetList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const orgId = rec.orgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || '');
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -695,9 +695,9 @@ export default function DryPortAssetList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const orgId = rec.orgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || '');
+        return (oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || '';
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -1018,6 +1018,8 @@ export default function DryPortAssetList() {
     const range = draftFilters.updatedRange as [Dayjs | null, Dayjs | null] | undefined;
     setFilters({
       ...draftFilters,
+      assetName: draftFilters.assetName ? draftFilters.assetName.trim() : undefined,
+      assetCode: draftFilters.assetCode ? draftFilters.assetCode.trim() : undefined,
       updatedFrom: range?.[0]?.format('YYYY-MM-DD'),
       updatedTo: range?.[1]?.format('YYYY-MM-DD'),
     });
@@ -1038,7 +1040,7 @@ export default function DryPortAssetList() {
           dataIndex: 'assetName',
           type: TableColumnType.TwoLine,
           subField: 'assetCode',
-          width: 230,
+          width: 260,
           fixed: 'left',
           allowSort: true,
           onClick: (record) => void handleOpenDetail(record),
@@ -1681,6 +1683,7 @@ export default function DryPortAssetList() {
                   allowClear
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
+                  onBlur={(e) => setHistorySearch(e.target.value.trim())}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker

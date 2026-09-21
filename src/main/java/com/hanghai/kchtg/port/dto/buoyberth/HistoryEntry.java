@@ -23,6 +23,9 @@ public class HistoryEntry {
     private String status;
     private String approvedBy;
     private String approvedByName;
+    private String changedBy;
+    private String changedByName;
+    private String actor;
     private String orgUnitName;
     private LocalDateTime approvedDate;
     private LocalDateTime changedAt;

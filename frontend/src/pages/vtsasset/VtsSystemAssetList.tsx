@@ -373,9 +373,9 @@ export default function VtsSystemAssetList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
+        const orgId = rec.orgUnitId;
         const oName = orgId ? orgName.get(orgId) : undefined;
-        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || (historyTarget?.orgUnitName || ''));
+        return String((oName ? oName.split(' - ').pop() || oName : rec.orgUnitName || rec.unitName) || '');
       },
       resolveActorName: (rawActor, rec) => {
         return rawActor || rec?.changedBy || rec?.createdBy || 'Nguyễn Văn An';
@@ -926,7 +926,7 @@ export default function VtsSystemAssetList() {
         dataIndex: 'assetName',
         type: TableColumnType.TwoLine,
         subField: 'assetCode',
-        width: 240,
+        width: 260,
         fixed: 'left',
         allowSort: true,
         onClick: perms.canRead ? (record) => void openDetail(record) : undefined,

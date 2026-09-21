@@ -363,6 +363,35 @@ export default function ShipRepairYardList() {
     return map;
   }, [organizations]);
 
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
+
+  const userOrgMap = useMemo(() => {
+    const map = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const orgName =
+        u.organizationName ||
+        u.orgUnitName ||
+        u.departmentName ||
+        (u.orgUnitId ? orgMap.get(u.orgUnitId) : undefined) ||
+        (u.organizationId ? orgMap.get(u.organizationId) : undefined);
+      if (orgName) {
+        if (u.id) {
+          map.set(u.id, orgName);
+          map.set(u.id.toLowerCase(), orgName);
+        }
+        if (u.username) {
+          map.set(u.username, orgName);
+          map.set(u.username.toLowerCase(), orgName);
+        }
+        if (u.fullName) {
+          map.set(u.fullName, orgName);
+          map.set(u.fullName.toLowerCase(), orgName);
+        }
+      }
+    });
+    return map;
+  }, [rawUsers, orgMap]);
+
   // ── Port options ─────────────────────────────────────────────────
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const portMap = useMemo(() => {
@@ -483,12 +512,27 @@ export default function ShipRepairYardList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, pierMap, historyTarget, symbolImageMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, pierMap, historyTarget, symbolImageMap, userOrgMap]);
 
   const openHistory = useCallback(async (r: ShipRepairYard) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
@@ -534,7 +578,22 @@ export default function ShipRepairYardList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
+        const actor = String(
+          rec.changedBy ||
+          rec.changedByName ||
+          rec.actor ||
+          rec.userName ||
+          rec.createdBy ||
+          rec.approvedBy ||
+          ''
+        ).trim();
+        const userUnit =
+          userOrgMap.get(actor) ||
+          userOrgMap.get(actor.toLowerCase()) ||
+          rec.orgUnitName ||
+          rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        const orgId = rec.orgUnitId;
         const orgName = orgId ? orgMap.get(orgId) : undefined;
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
@@ -602,10 +661,15 @@ export default function ShipRepairYardList() {
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
+        setRawUsers(users);
         const map = new Map<string, string>();
         users.forEach((u: any) => {
           const name = u.fullName || u.username || '';
-          if (name && !isUuidString(name)) map.set(u.id, name);
+          if (name && !isUuidString(name)) {
+            map.set(u.id, name);
+            map.set(u.id.toLowerCase(), name);
+            if (u.username) map.set(u.username, name);
+          }
         });
         setUserMap(map);
       } catch { console.error('Failed to load users'); }
@@ -721,6 +785,8 @@ export default function ShipRepairYardList() {
 
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
+    setFilterName((prev) => prev.trim());
+    setFilterCode((prev) => prev.trim());
     setPage(1);
     void fetchData();
     void fetchCounts(managingUnitId);
@@ -903,6 +969,7 @@ export default function ShipRepairYardList() {
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
           value={filterName}
           onChange={(e) => setFilterName(e.target.value)}
+          onBlur={() => setFilterName((prev) => prev.trim())}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
         />
@@ -935,6 +1002,7 @@ export default function ShipRepairYardList() {
               prefix={<SearchOutlined style={{ color: textTertiary }} />}
               value={filterCode}
               onChange={(e) => setFilterCode(e.target.value)}
+              onBlur={() => setFilterCode((prev) => prev.trim())}
               onPressEnter={handleFilterApply}
               style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
             />
@@ -1130,8 +1198,7 @@ export default function ShipRepairYardList() {
         key: 'shipRepairYardName',
         label: <span>Tên/Mã cơ sở sửa chữa, đóng tàu</span>,
         dataIndex: 'shipRepairYardName',
-        width: 400,
-        minWidth: 350,
+        width: 260,
         fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
@@ -1721,6 +1788,10 @@ export default function ShipRepairYardList() {
                 const val = e.target.value;
                 setHistorySearchInput(val);
                 if (!val) setHistorySearch('');
+              }}
+              onBlur={() => {
+                setHistorySearchInput((prev) => prev.trim());
+                setHistorySearch(historySearchInput.trim());
               }}
               onPressEnter={() => setHistorySearch(historySearchInput.trim())}
               style={{ flex: 1, borderRadius: radiusPill, height: 40 }}

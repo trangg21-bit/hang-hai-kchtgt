@@ -7,7 +7,6 @@ import {
   HistoryOutlined,
   MinusCircleOutlined,
   PlusCircleOutlined,
-  PlusOutlined,
   RocketOutlined,
   SearchOutlined,
   SendOutlined,
@@ -336,9 +335,10 @@ function PortTerminalAssetList({
     return countStandardHistoryCards({
       records: filteredHistoryRecords,
       fieldLabels: PORT_TERMINAL_ASSET_FIELD_LABELS,
-      resolveUnitName: () => {
-        const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
-        return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+      resolveUnitName: (rec: any) => {
+        const oId = rec?.orgUnitId;
+        if (oId && orgName.has(oId)) return orgName.get(oId)!;
+        return rec?.orgUnitName || rec?.unitName || '';
       },
       formatValue: (fn, raw) => {
         if (isBlankOrDash(raw)) return '';
@@ -1007,6 +1007,8 @@ function PortTerminalAssetList({
       | undefined;
     setFilters({
       ...draftFilters,
+      assetName: draftFilters.assetName ? draftFilters.assetName.trim() : undefined,
+      assetCode: draftFilters.assetCode ? draftFilters.assetCode.trim() : undefined,
       updatedFrom: range?.[0]?.format("YYYY-MM-DD"),
       updatedTo: range?.[1]?.format("YYYY-MM-DD"),
     });
@@ -1029,7 +1031,7 @@ function PortTerminalAssetList({
         dataIndex: 'assetName',
         type: TableColumnType.TwoLine,
         subField: 'assetCode',
-        width: 240,
+        width: 260,
         fixed: 'left',
         allowSort: true,
         sortField: 'assetName',
@@ -1631,6 +1633,7 @@ function PortTerminalAssetList({
                   allowClear
                   value={historySearch}
                   onChange={e => setHistorySearch(e.target.value)}
+                  onBlur={e => setHistorySearch(e.target.value.trim())}
                   style={{ flex: 1, borderRadius: radiusPill, height: 40 }}
                 />
                 <DatePicker
@@ -1675,9 +1678,10 @@ function PortTerminalAssetList({
               renderStandardHistoryCards({
                 records: filteredHistoryRecords,
                 fieldLabels: PORT_TERMINAL_ASSET_FIELD_LABELS,
-                resolveUnitName: () => {
-                  const targetOrgId = historyTarget?.orgUnitId || historyTarget?.parentOrgUnitId;
-                  return targetOrgId ? (orgName.get(targetOrgId) || '') : '';
+                resolveUnitName: (rec: any) => {
+                  const oId = rec?.orgUnitId;
+                  if (oId && orgName.has(oId)) return orgName.get(oId)!;
+                  return rec?.orgUnitName || rec?.unitName || '';
                 },
                 formatValue: (fn, raw) => {
                   if (isBlankOrDash(raw)) return '';

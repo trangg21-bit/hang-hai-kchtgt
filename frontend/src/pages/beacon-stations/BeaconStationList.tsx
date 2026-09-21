@@ -942,7 +942,7 @@ export default function BeaconStationList() {
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
     },
     {
-      key: 'name', label: 'Tên / Mã đèn biển', dataIndex: 'name', width: 300, fixed: 'left' as const, ellipsis: false,
+      key: 'name', label: 'Tên / Mã đèn biển', dataIndex: 'name', width: 260, fixed: 'left' as const, ellipsis: false,
       sortOrder: sortOrderFor('name'),
       cellTitle: (record: BeaconStation) => record.name || '',
       render: (name: string, record: BeaconStation) => {

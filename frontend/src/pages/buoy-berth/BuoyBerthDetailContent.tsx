@@ -220,7 +220,7 @@ export default function BuoyBerthDetailContent({
       .catch(() => {});
   }, [r.waterwayId, waterwayMap, waterwayOptions]);
 
-  const orgName = resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || r.orgUnitId || '';
+  const orgName = orgMap.get(r.orgUnitId || '') || (r as any).orgUnitName || r.orgUnitId || '';
   const portName = portOptions.find((o) => o.value === r.portId)?.label || r.portId || '';
   const waterwayName = (waterwayMap && r.waterwayId ? waterwayMap.get(r.waterwayId) : undefined)
     || waterwayOptions.find((o) => o.value === r.waterwayId)?.label
@@ -403,7 +403,7 @@ export default function BuoyBerthDetailContent({
                           <div className={`chk-detail-row ${isLongCode ? 'chk-detail-row--compact' : ''}`}>
                             <span className="chk-detail-label sec-col1-label">Mã bến phao</span>
                             <span className="chk-detail-value">
-                              {r.buoyBerthCode ? <span style={{ ...statusBadgeStyle(actionPrimary), whiteSpace: 'nowrap' }}>{r.buoyBerthCode}</span> : ''}
+                              {r.buoyBerthCode ? <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{r.buoyBerthCode}</span> : ''}
                             </span>
                           </div>
                         );
@@ -478,48 +478,16 @@ export default function BuoyBerthDetailContent({
                         <span className="chk-detail-value">{fmtNumber(r.currentWaterDepth)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Trọng tải tàu lớn nhất theo thiết kế (DWT)</span>
-                        <span className="chk-detail-value">{fmtNumber((r as any).designedVesselDWT || r.maxVesselDWT)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Trọng tải tàu lớn nhất theo công bố (DWT)</span>
+                        <span className="chk-detail-label sec-col1-label">Trọng tải tàu lớn nhất theo công bố (DWT)</span>
                         <span className="chk-detail-value">{fmtNumber(r.maxVesselDWT)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cỡ tàu khai thác theo quy hoạch</span>
+                        <span className="chk-detail-label sec-col2-label">Cỡ tàu khai thác theo quy hoạch</span>
                         <span className="chk-detail-value">{fmtNumber(r.plannedVesselDWT)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Khả năng tiếp nhận cỡ tàu theo thiết kế</span>
-                        <span className="chk-detail-value">{(r as any).designShipReceivingCapacity || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Khả năng tiếp nhận cỡ tàu theo công bố</span>
-                        <span className="chk-detail-value">{(r as any).publishedShipReceivingCapacity || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Chiều dài tàu lớn nhất (m)</span>
-                        <span className="chk-detail-value">{fmtNumber((r as any).maxVesselLength)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Mớn nước tàu lớn nhất (m)</span>
-                        <span className="chk-detail-value">{fmtNumber((r as any).maxVesselDraft)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Bán kính quay trở tàu (m)</span>
-                        <span className="chk-detail-value">{fmtNumber((r as any).turningBasinRadius)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cao trình đỉnh công trình (m)</span>
-                        <span className="chk-detail-value">{fmtNumber((r as any).topElevation || r.bottomElevationDesign)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Vùng đón trả hoa tiêu</span>
-                        <span className="chk-detail-value">{(r as any).pilotBoardingArea || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Loại hàng hóa bốc dỡ</span>
-                        <span className="chk-detail-value">{(r as any).cargoType || ''}</span>
+                        <span className="chk-detail-label sec-col1-label">Cao độ đáy bến thiết kế</span>
+                        <span className="chk-detail-value">{fmtNumber(r.bottomElevationDesign)}</span>
                       </div>
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col2-label">Năng lực thông qua thiết kế</span>
@@ -542,22 +510,6 @@ export default function BuoyBerthDetailContent({
                         <span className="chk-detail-value">{fmtDate(r.operationExpiryDate)}</span>
                       </div>
                       <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Thời gian bắt đầu xây dựng</span>
-                        <span className="chk-detail-value">{fmtDate((r as any).constructionStartDate)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Thời gian hoàn thành xây dựng</span>
-                        <span className="chk-detail-value">{fmtDate((r as any).constructionEndDate)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Thời điểm bắt đầu đưa vào sử dụng</span>
-                        <span className="chk-detail-value">{fmtDate((r as any).operationStartDate || r.openingAnnouncementDate)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Năm khai thác</span>
-                        <span className="chk-detail-value">{(r as any).operationYear || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Số lượng bến phao đang khai thác</span>
                         <span className="chk-detail-value">{fmtNumber(r.activeBuoyBerthCount)}</span>
                       </div>
@@ -568,10 +520,6 @@ export default function BuoyBerthDetailContent({
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Số lượng bến phao đang thỏa thuận đầu tư</span>
                         <span className="chk-detail-value">{fmtNumber(r.underInvestmentBuoyBerthCount)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Cao độ đáy bến thiết kế</span>
-                        <span className="chk-detail-value">{fmtNumber(r.bottomElevationDesign)}</span>
                       </div>
                     </div>
                   </div>
@@ -689,18 +637,27 @@ export default function BuoyBerthDetailContent({
                             </div>
                           );
                         })()}
-                        <div className="chk-detail-row">
-                          <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
-                          <span className="chk-detail-value">
-                            {userMap.get((r as any).updatedBy || '') || (r as any).updatedBy ? (
-                              <span style={{ fontWeight: fontWeightBold }}>{userMap.get((r as any).updatedBy || '') || (r as any).updatedBy}</span>
-                            ) : ''}
-                          </span>
-                        </div>
-                        <div className="chk-detail-row">
-                          <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                          <span className="chk-detail-value">{fmtDateTime((r as any).updatedAt)}</span>
-                        </div>
+                        {(() => {
+                          const updaterId = (r as any).updatedBy || (r as any).createdBy || '';
+                          const updaterName = (r as any).updatedByName || userMap.get(updaterId) || (r as any).createdByName || userMap.get((r as any).createdBy || '') || updaterId;
+                          const updateTime = (r as any).updatedAt || (r as any).createdAt;
+                          return (
+                            <>
+                              <div className="chk-detail-row">
+                                <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
+                                <span className="chk-detail-value">
+                                  {updaterName ? (
+                                    <span style={{ fontWeight: fontWeightBold }}>{updaterName}</span>
+                                  ) : ''}
+                                </span>
+                              </div>
+                              <div className="chk-detail-row">
+                                <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
+                                <span className="chk-detail-value">{fmtDateTime(updateTime)}</span>
+                              </div>
+                            </>
+                          );
+                        })()}
                         <div className="chk-detail-row">
                           <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                           <span className="chk-detail-value">

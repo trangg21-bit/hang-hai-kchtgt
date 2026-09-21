@@ -888,7 +888,13 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="cargoThroughput" {...labelProps('Sản lượng hàng thông qua')} style={{ marginBottom: spaceFormField }}>
+                <Form.Item
+                  name="cargoThroughput"
+                  {...labelProps('Sản lượng hàng thông qua')}
+                  required
+                  style={{ marginBottom: spaceFormField }}
+                  rules={[{ required: true, message: 'Sản lượng hàng thông qua không được để trống' }]}
+                >
                   <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>

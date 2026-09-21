@@ -2113,7 +2113,7 @@ export default function RadarStationList() {
       render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span>,
     },
     {
-      key: 'stationName', label: 'Tên / Mã trạm radar', dataIndex: 'stationName', width: 300, fixed: 'left' as const,
+      key: 'stationName', label: 'Tên / Mã trạm radar', dataIndex: 'stationName', width: 260, fixed: 'left' as const,
       sortOrder: sortOrderFor('stationName'),
       cellTitle: (record: RadarStationResponse) => record.stationName || '',
       render: (name: string | undefined, record: RadarStationResponse) => (
@@ -3240,7 +3240,7 @@ export default function RadarStationList() {
         const reasons = g.reasons;
         const rec0: any = g.items[0] || {};
         const rawUnit = rec0.orgUnitName;
-        const orgId = rec0.orgUnitId || historyTarget?.orgUnitId;
+        const orgId = rec0.orgUnitId;
         const resolvedName = orgId ? orgNameById(orgId) : undefined;
         const unitName = (rawUnit && rawUnit !== '—' && rawUnit !== '-') ? rawUnit : (resolvedName && resolvedName !== '—' && resolvedName !== '-' ? (resolvedName.split(' - ').pop() || resolvedName) : 'Cục Hàng hải Việt Nam');
         const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '' || c.oldValue === 'Chưa có');

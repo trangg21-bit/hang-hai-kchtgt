@@ -87,6 +87,17 @@ const columns = [
 ];
 ```
 
+### Quy chuẩn Chiều rộng Cố định Cột Tên / Mã KCHT (Width Standard = 260px)
+- **Chuẩn hóa kích thước duy nhất**: Mọi màn hình danh sách KCHT hàng hải (Bến cảng, Khu neo đậu, Khu chuyển tải, Tuyến luồng, Đê kè, Đèn biển, Phao tiêu, Trạm radar, Nhà trạm, Hệ thống VTS, Đài duyên hải, CCTV/SCADA/VHF...) và màn hình Biến động tài sản (`*AssetList`) **BẮT BUỘC khóa cứng độ rộng cột Tên/Mã KCHT ở đúng kích thước duy nhất: `width: 260` (`260px`)**.
+- **Tuyệt đối cấm sai lệch**: Nghiêm cấm đặt kích thước tùy tiện (210, 220, 240, 280, 300, 350, 400) làm bảng danh sách bị giật chiều rộng và mất đồng bộ thị giác giữa các phân hệ.
+- **Quy cách hiển thị**:
+  - Cố định bên trái: `fixed: 'left'`.
+  - Căn lề: Căn trái (`align: 'left'`).
+  - Cấu trúc 2 dòng:
+    - Dòng 1: Tên KCHT (`fontSizeMd`, `fontWeightBold`, màu `textPrimary` hoặc `colors.sidebarBg`, click mở Drawer chi tiết).
+    - Dòng 2: Mã KCHT (`fontSizeMd`, `fontWeightMedium`, màu `textSecondary`).
+  - Chống tràn: Cấp cấu hình cột đặt `ellipsis: false`, bên trong ô render bọc `div` hoặc `a` có `overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'` kèm `title` hoặc Tooltip khi hover để xem trọn vẹn văn bản.
+
 ### Chống cắt chữ tiêu đề cột (Anti-Truncation Rule)
 - Tiêu đề cột **BẮT BUỘC hiển thị 100% đầy đủ chữ** (ví dụ: `TRẠNG THÁI`, tuyệt đối không để bị cắt chữ thành `TRẠNG` hoặc `...`).
 - Cột `approvalStatus` (`Trạng thái`) phải có `width >= 200px` và `ellipsis: false`.
@@ -361,10 +372,11 @@ Khi map dữ liệu từ API vào `CommonHistoryEntry[]`, **BẮT BUỘC** tuân
 1. [ ] Đã chạy `npx tsc --noEmit` ở thư mục `frontend` và đạt **0 lỗi TypeScript**.
 2. [ ] Đã chạy `mvn test` hoặc `mvn compile -DskipTests` và đạt **BUILD SUCCESS**.
 3. [ ] Đã kiểm tra tên thực thể trên Breadcrumb, filter label, placeholder, form title và modal confirm đồng nhất 100%.
-4. [ ] Bảng danh sách có đủ 4 cặp cột audit (Cán bộ cập nhật, Cán bộ gửi duyệt, Cán bộ duyệt C1, Cán bộ duyệt C2) và tiêu đề không bị cắt chữ.
-5. [ ] Hàm `handleFilterSearch` đã có `.trim()` cho tất cả các trường input text.
-6. [ ] Bộ lọc theo mã hoạt động chính xác cả ở Frontend service lẫn Backend API (có param `code`).
-7. [ ] Form tạo mới có `conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL` và trường `provinceId` có `required: true`.
-8. [ ] Drawer xem chi tiết hiển thị đúng nhãn "Đang khai thác/vận hành" và có đủ cán bộ, ngày cập nhật trong Thông tin phê duyệt.
-9. [ ] Drawer lịch sử thay đổi hiển thị đầy đủ Người cập nhật, Đơn vị, danh sách chi tiết thay đổi (không bị trống hoặc báo "Không có thông tin chi tiết thay đổi").
+4. [ ] Cột Tên / Mã KCHT trên bảng danh sách đã được khóa cứng đúng kích thước chuẩn `width: 260` (`260px`) và cố định bên trái (`fixed: 'left'`).
+5. [ ] Bảng danh sách có đủ 4 cặp cột audit (Cán bộ cập nhật, Cán bộ gửi duyệt, Cán bộ duyệt C1, Cán bộ duyệt C2) và tiêu đề không bị cắt chữ.
+6. [ ] Hàm `handleFilterSearch` đã có `.trim()` cho tất cả các trường input text.
+7. [ ] Bộ lọc theo mã hoạt động chính xác cả ở Frontend service lẫn Backend API (có param `code`).
+8. [ ] Form tạo mới có `conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL` và trường `provinceId` có `required: true`.
+9. [ ] Drawer xem chi tiết hiển thị đúng nhãn "Đang khai thác/vận hành" và có đủ cán bộ, ngày cập nhật trong Thông tin phê duyệt.
+10. [ ] Drawer lịch sử thay đổi hiển thị đầy đủ Người cập nhật, Đơn vị, danh sách chi tiết thay đổi (không bị trống hoặc báo "Không có thông tin chi tiết thay đổi").
 

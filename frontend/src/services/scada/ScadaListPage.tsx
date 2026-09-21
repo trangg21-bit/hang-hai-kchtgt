@@ -713,7 +713,7 @@ const ScadaListPage = () => {
         key: "deviceName",
         label: "Tên / Mã thiết bị",
         dataIndex: "deviceName",
-        width: 300,
+        width: 260,
         fixed: "left" as const,
         ellipsis: false,
         sortOrder: sortOrderFor("deviceName"),
@@ -1372,14 +1372,12 @@ const ScadaListPage = () => {
       <div>
         {groups.map((g, gi) => {
           const rec0 = g.items[0] || {};
-          const orgId = rec0.orgUnitId || historyTarget?.orgUnitId || selectedRecord?.orgUnitId;
+          const orgId = rec0.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
           const unitName =
             rec0.orgUnitName ||
             (orgName ? orgName.split(' - ').pop() || orgName : undefined) ||
             rec0.unitName ||
-            historyTarget?.orgUnitName ||
-            selectedRecord?.orgUnitName ||
             'Cục Hàng hải Việt Nam';
           // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
           const seenLabels = new Set<string>();

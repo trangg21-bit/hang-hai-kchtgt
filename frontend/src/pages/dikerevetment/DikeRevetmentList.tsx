@@ -2142,7 +2142,7 @@ export default function DikeRevetmentList() {
       key: 'codeAndName',
       label: <span>Tên/Mã đê kè</span>,
       dataIndex: 'dikeRevetmentName',
-      width: 350,
+      width: 260,
       fixed: 'left' as const,
       sortOrder: sortOrderFor('dikeRevetmentName'),
       cellTitle: (record: DikeRevetmentResponse) => record.dikeRevetmentName || '',

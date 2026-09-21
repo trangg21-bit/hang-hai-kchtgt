@@ -352,6 +352,7 @@ export default function BerthList() {
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
@@ -395,6 +396,19 @@ export default function BerthList() {
     organizations.forEach((o) => map.set(o.id, o.name));
     return map;
   }, [organizations]);
+
+  const userOrgMap = useMemo(() => {
+    const m = new Map<string, string>();
+    rawUsers.forEach((u: any) => {
+      const unit = u.orgUnitName || (u.orgUnitId ? orgMap.get(u.orgUnitId) : '') || '';
+      if (unit) {
+        if (u.id) { m.set(u.id, unit); m.set(u.id.toLowerCase(), unit); }
+        if (u.username) { m.set(u.username, unit); m.set(u.username.toLowerCase(), unit); }
+        if (u.fullName) { m.set(u.fullName, unit); m.set(u.fullName.toLowerCase(), unit); }
+      }
+    });
+    return m;
+  }, [rawUsers, orgMap]);
 
   // ── Port options ─────────────────────────────────────────────────
   const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
@@ -513,12 +527,17 @@ export default function BerthList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
-        const orgName = orgId ? orgMap.get(orgId) : undefined;
-        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+        const actor = String(rec.changedBy || rec.changedByName || rec.actor || rec.userName || rec.createdBy || rec.approvedBy || '').trim();
+        const userUnit = userOrgMap.get(actor) || userOrgMap.get(actor.toLowerCase()) || rec.orgUnitName || rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        if (rec.orgUnitId) {
+          const orgName = orgMap.get(rec.orgUnitId);
+          if (orgName) return orgName.split(' - ').pop() || orgName;
+        }
+        return '';
       },
     });
-  }, [filteredHistory, historyTarget, orgMap, symbolMap, portMap, waterwayMap, operatingOrgMap, symbolImageMap]);
+  }, [filteredHistory, historyTarget, orgMap, userOrgMap, symbolMap, portMap, waterwayMap, operatingOrgMap, symbolImageMap]);
 
   const openHistory = useCallback(async (r: Berth) => {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
@@ -576,9 +595,14 @@ export default function BerthList() {
         return isBlankOrDash(formatted) ? '' : formatted;
       },
       resolveUnitName: (rec) => {
-        const orgId = rec.orgUnitId || historyTarget?.orgUnitId;
-        const orgName = orgId ? orgMap.get(orgId) : undefined;
-        return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
+        const actor = String(rec.changedBy || rec.changedByName || rec.actor || rec.userName || rec.createdBy || rec.approvedBy || '').trim();
+        const userUnit = userOrgMap.get(actor) || userOrgMap.get(actor.toLowerCase()) || rec.orgUnitName || rec.unitName;
+        if (userUnit) return userUnit.split(' - ').pop() || userUnit;
+        if (rec.orgUnitId) {
+          const orgName = orgMap.get(rec.orgUnitId);
+          if (orgName) return orgName.split(' - ').pop() || orgName;
+        }
+        return '';
       },
       emptyMessage: q || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
     });
@@ -622,6 +646,7 @@ export default function BerthList() {
       try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
+        setRawUsers(users);
         const map = new Map<string, string>();
         users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
         setUserMap(map);
@@ -687,6 +712,8 @@ export default function BerthList() {
         const tabKey = TAB_STATUS_LIST[idx]?.key || 'all';
         counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
       });
+      const subTotal = Object.entries(counts).filter(([k]) => k !== 'all').reduce((sum, [, v]) => sum + v, 0);
+      counts['all'] = subTotal;
       setTabCounts(counts);
     } catch { /* silent */ }
   }, [getBaseSearchParams]);
@@ -989,6 +1016,7 @@ export default function BerthList() {
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên bến cảng</div>
         <Input placeholder="Tìm theo tên bến cảng" allowClear value={filterName}
           onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+          onBlur={(e) => setFilterName(e.target.value.trim())}
           onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: 12 }}>
@@ -1024,6 +1052,7 @@ export default function BerthList() {
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã bến cảng</div>
             <Input placeholder="Tìm theo mã bến cảng" allowClear value={filterCode}
               onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+              onBlur={(e) => setFilterCode(e.target.value.trim())}
               onPressEnter={handleFilterApply} style={{ borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1102,7 +1131,7 @@ export default function BerthList() {
     const baseColumns: any[] = [
       { key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
         render: (_: any, __: any, i: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + i + 1}</span> },
-      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 210, fixed: 'left' as const, sortable: true, ellipsis: false,
+      { key: 'berthName', label: <span>Tên/Mã bến cảng</span>, dataIndex: 'berthName', width: 260, fixed: 'left' as const, sortable: true, ellipsis: false,
         render: (v: string, record: Berth) => (
           <div>
             <a title={v} onClick={() => openDetailDrawer(record)} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</a>
@@ -1753,7 +1782,9 @@ export default function BerthList() {
         {!historyLoading && (
           <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
             <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-              onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
+              onChange={e => setHistorySearch(e.target.value)}
+              onBlur={e => setHistorySearch(e.target.value.trim())}
+              style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
             <DatePicker placeholder="Từ ngày" classNames={{ popup: { root: 'history-dt-popup' } }} value={historyFrom ? dayjs(historyFrom) : null}
               onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD') : '')}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY" />
