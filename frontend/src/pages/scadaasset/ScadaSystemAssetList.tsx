@@ -19,7 +19,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import api from '../../services/api';
 import { renderStandardHistoryCards, isBlankOrDash, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, isYearField, formatYearValue } from '../../utils/numFmt';
 
 import {
   CommonStatusTabs,
@@ -285,10 +285,8 @@ export default function ScadaSystemAssetList() {
         const dev = scadaDeviceMap.get(String(val));
         return dev ? (dev.deviceCode ? `${dev.deviceCode} - ${dev.deviceName}` : dev.deviceName) : String(val);
       }
-      if (field === 'constructionYear') {
-        const str = String(val).trim();
-        const match = str.match(/\b(19\d{2}|20\d{2})\b/);
-        return match ? match[0] : str;
+      if (isYearField(field)) {
+        return formatYearValue(val);
       }
       if (
         field === 'useDate' ||

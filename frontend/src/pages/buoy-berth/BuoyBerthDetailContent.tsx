@@ -50,7 +50,6 @@ import {
 import type { BuoyBerth } from '../../types/port';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { VIETNAM_PROVINCES } from '../../types/common';
-import { resolveOrgLevel2Name } from '../../components/org-unit';
 import type { Organization } from '../../services/organizationService';
 
 // Đồng bộ cỡ chữ 13.5px toàn màn chi tiết như Cầu cảng (PierDetailContent.tsx)
@@ -142,7 +141,6 @@ const BUOY_INFRA_TYPE_OPTIONS = [
 export default function BuoyBerthDetailContent({
   selectedRecord,
   orgMap,
-  organizations = [],
   symbolMap,
   symbolImageMap,
   portOptions,
@@ -738,7 +736,9 @@ export default function BuoyBerthDetailContent({
                             </span>
                           );
                         })()],
-                        ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (coords.length > 0 ? 'WGS-84' : '')],
+                        ['Hệ quy chiếu', (r.geometryType || r.coordinates || r.latitude != null || r.longitude != null || coords.length > 0)
+                          ? (r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : '')
+                          : ''],
                         ['Quy tắc hiển thị', (r.geometryType || r.coordinates || r.latitude != null || r.longitude != null || coords.length > 0) ? 'Độ, phút, giây (DMS)' : ''],
                       ].map(([label, value], index) => (
                         <div key={label as string} className="chk-detail-row">

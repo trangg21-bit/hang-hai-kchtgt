@@ -27,7 +27,7 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
     List<NavigationChannel> findByChannelNameContainingAndDeletedAtIsNull(String channelName);
 
     @Query("SELECT l FROM NavigationChannel l WHERE " +
-            "((:approvalStatus IS NULL AND l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (l.deletedAt IS NOT NULL OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "  OR (l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
             "      l.approvalStatus = :approvalStatus " +
@@ -49,7 +49,7 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
             Pageable pageable);
 
     @Query("SELECT l FROM NavigationChannel l WHERE " +
-            "((:approvalStatus IS NULL AND l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (l.deletedAt IS NOT NULL OR l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "  OR (l.deletedAt IS NULL AND l.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
             "      l.approvalStatus = :approvalStatus " +

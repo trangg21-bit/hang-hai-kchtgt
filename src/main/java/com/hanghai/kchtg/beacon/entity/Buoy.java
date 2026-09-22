@@ -66,9 +66,8 @@ public class Buoy extends BaseEntity {
     @Column(name = "light_characteristic", length = 100)
     private String lightCharacteristic;
 
-    @NotNull
-    @DecimalMin("0.01")
-    @DecimalMax("100.0")
+    @DecimalMin("0.0")
+    @Column(name = "range")
     private Double range;
 
     @Size(max = 1000)

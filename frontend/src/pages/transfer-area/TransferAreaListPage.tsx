@@ -233,9 +233,10 @@ const histLabels: Record<string, string> = {
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
   mapSymbolId: 'Biểu tượng',
-  mooringWaterAreas: 'Phạm vi khu nước neo buộc tàu',
-  'Khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
-  'Phạm vi khu nước neo buộc tàu': 'Phạm vi khu nước neo buộc tàu',
+  mooringWaterAreas: 'Thông tin khu nước neo buộc tàu',
+  'Khu nước neo buộc tàu': 'Thông tin khu nước neo buộc tàu',
+  'Phạm vi khu nước neo buộc tàu': 'Thông tin khu nước neo buộc tàu',
+  'Thông tin khu nước neo buộc tàu': 'Thông tin khu nước neo buộc tàu',
   'Tọa độ GIS': 'Tọa độ GPS',
   'Tọa độ GPS': 'Tọa độ GPS',
   'Loại đối tượng GIS': 'Loại đối tượng',
@@ -267,7 +268,7 @@ const HISTORY_FIELD_ORDER = [
   'remarks', 'openingAnnouncementDate', 'publicDecision', 'investmentAgreement',
   'activityStartDate', 'activityEndDate', 'coordinateSystem', 'displayRule', 'mapSymbolId',
   'mooringWaterAreas', 'operationalFunctions', 'spatialId',
-  'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm',
+  'Tọa độ GPS', 'Tọa độ GIS', 'Loại đối tượng', 'Loại đối tượng GIS', 'Thông tin khu nước neo buộc tàu', 'Phạm vi khu nước neo buộc tàu', 'Khu nước neo buộc tàu', 'Tài liệu đính kèm',
   // Vietnamese label aliases:
   'Đơn vị quản lý', 'Thuộc cảng biển', 'Cảng biển', 'Mã khu chuyển tải', 'Tên khu chuyển tải',
   'Địa điểm (Tỉnh/Thành Phố)', 'Tỉnh/Thành phố', 'Địa điểm chi tiết', 'Tình trạng', 'Trạng thái',
@@ -623,7 +624,7 @@ export default function TransferAreaListPage() {
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
     });
-  }, [filteredHistory, orgMap, symbolMap, portMap, historyTarget, symbolImageMap, userOrgMap]);
+  }, [filteredHistory, orgMap, symbolMap, portMap, symbolImageMap, userOrgMap]);
 
   useEffect(() => {
     (async () => {
@@ -682,7 +683,7 @@ export default function TransferAreaListPage() {
         /* ignore */
       }
     })();
-  }, []);
+  }, [authUser]);
 
 
 

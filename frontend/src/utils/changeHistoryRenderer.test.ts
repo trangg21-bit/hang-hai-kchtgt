@@ -3,8 +3,10 @@ import {
   areEquivalentCoordinatePositions,
   countHistoryUpdates,
   buildHistoryUpdateSessions,
+  autoFormatHistoryValue,
   type RawHistoryRecord,
 } from './changeHistoryRenderer';
+import { isYearField, formatYearValue, formatHistoryNumber } from './numFmt';
 
 describe('changeHistoryRenderer - countHistoryUpdates', () => {
   it('returns 0 for empty or null records', () => {
@@ -165,5 +167,39 @@ describe('changeHistoryRenderer - countHistoryUpdates', () => {
         changedAt: '2026-09-17T15:11:31Z',
       }],
     })).toHaveLength(0);
+  });
+
+  describe('Year formatting in change history', () => {
+    it('correctly identifies year fields', () => {
+      expect(isYearField('yearOfUse')).toBe(true);
+      expect(isYearField('Năm đưa vào sử dụng')).toBe(true);
+      expect(isYearField('constructionYear')).toBe(true);
+      expect(isYearField('Năm xây dựng')).toBe(true);
+      expect(isYearField('commissioningYear')).toBe(true);
+      expect(isYearField('yearOfManufacture')).toBe(true);
+      expect(isYearField('manufactureYear')).toBe(true);
+      expect(isYearField('Năm sản xuất')).toBe(true);
+      expect(isYearField('quantity')).toBe(false);
+      expect(isYearField('assetName')).toBe(false);
+    });
+
+    it('formats year values cleanly without thousand separators', () => {
+      expect(formatYearValue('2020')).toBe('2020');
+      expect(formatYearValue(2020)).toBe('2020');
+      expect(formatYearValue('1998')).toBe('1998');
+      expect(formatYearValue('2026-01-01')).toBe('2026');
+    });
+
+    it('autoFormatHistoryValue preserves 4-digit years for year fields without dot/comma', () => {
+      expect(autoFormatHistoryValue('yearOfUse', '2020')).toBe('2020');
+      expect(autoFormatHistoryValue('Năm đưa vào sử dụng', '2020')).toBe('2020');
+      expect(autoFormatHistoryValue('constructionYear', '2020')).toBe('2020');
+      expect(autoFormatHistoryValue('commissioningYear', 2020)).toBe('2020');
+      expect(autoFormatHistoryValue('manufactureYear', '2019')).toBe('2019');
+      // Regular numeric fields should still format with separators
+      expect(autoFormatHistoryValue('quantity', '2020')).toBe('2,020');
+      expect(formatHistoryNumber('2020', 'yearOfUse')).toBe('2020');
+      expect(formatHistoryNumber('2020', 'quantity')).toBe('2,020');
+    });
   });
 });

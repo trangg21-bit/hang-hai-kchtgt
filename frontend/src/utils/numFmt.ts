@@ -99,15 +99,70 @@ export function normalizeSafeNumber(v: unknown): string | undefined {
 }
 
 /**
+ * Kiểm tra một trường có phải là trường năm (năm đưa vào sử dụng, năm xây dựng, năm sản xuất...) hay không
+ */
+export function isYearField(fn: string | null | undefined): boolean {
+  if (!fn) return false;
+  const raw = fn.trim().toLowerCase();
+  // Nếu chuỗi gốc có chữ "năm" (tiếng Việt có dấu)
+  if (raw.includes('năm')) return true;
+
+  // Chuỗi không dấu giữ nguyên khoảng trắng
+  const normWithSpaces = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  // Khớp từ "nam" độc lập trong cụm từ tiếng Việt không dấu (vd: "nam dua vao su dung")
+  if (/\bnam\b/.test(normWithSpaces)) return true;
+
+  const k = normWithSpaces.replace(/[^a-z0-9]/g, '');
+  // Các trường tiếng Anh chứa 'year' (yearOfUse, constructionYear, manufactureYear, commissioningYear...)
+  if (k.includes('year')) return true;
+
+  // Các trường tiếng Việt dạng camelCase hoặc không dấu viết liền
+  const specificNamKeys = [
+    'namduavaosudung',
+    'namxaydung',
+    'namsanxuat',
+    'namhoatdong',
+    'namvanhanh',
+    'namhoanthanh',
+    'namnghiemthu',
+    'namdutu',
+    'namnaovet',
+    'nambaotri',
+    'namsudung',
+  ];
+  return specificNamKeys.some((sk) => k.includes(sk));
+}
+
+/**
+ * Format giá trị năm: giữ nguyên 4 chữ số năm (ví dụ: 2020), không thêm dấu phân cách hàng nghìn (2.020 hoặc 2,020)
+ */
+export function formatYearValue(val: unknown): string {
+  if (val == null) return '';
+  const s = String(val).trim();
+  if (s === '' || s === '(null)' || s === 'null') return '';
+  const match = s.match(/\b(19\d{2}|20\d{2})\b/);
+  if (match) return match[0];
+  if (/^\d{4}$/.test(s)) return s;
+  return s;
+}
+
+/**
  * Format số trong Lịch sử thay đổi:
  * - Phân tách hàng nghìn bằng dấu phẩy ',' (chuẩn en-US), KHÔNG dùng dấu chấm '.'
  * - Định dạng chuỗi thuần túy không qua Number() để tránh làm tròn số lớn (20 số 9)
  * - Tự động sửa 100.000.000.000.000.000.000 / 100000000000000000000 về 99,999,999,999,999,999,999
  */
-export function formatHistoryNumber(valStr: string | null | undefined): string {
+export function formatHistoryNumber(valStr: string | null | undefined, fieldName?: string): string {
   if (valStr == null) return '';
   let s = String(valStr).trim();
   if (s === '' || s === '(null)' || s === 'null') return '';
+  if (fieldName && isYearField(fieldName)) {
+    return formatYearValue(s);
+  }
   if (s.includes('=')) {
     s = s.substring(s.indexOf('=') + 1).trim();
   }

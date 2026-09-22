@@ -27,9 +27,8 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     List<Buoy> findByBuoyStationId(UUID buoyStationId);
 
     @Query("SELECT b FROM Buoy b WHERE " +
-           "((cast(:name as string) IS NULL AND cast(:code as string) IS NULL) OR " +
-           "(cast(:name as string) IS NOT NULL AND CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:name as string), '%'))) AS string)) OR " +
-           "(cast(:code as string) IS NOT NULL AND CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:code as string), '%'))) AS string))) AND " +
+           "(cast(:name as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:name as string), '%'))) AS string)) AND " +
+           "(cast(:code as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.code)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:code as string), '%'))) AS string)) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
            "(:status IS NULL OR b.status = :status) AND " +
            "(:condition IS NULL OR b.condition = :condition) AND " +

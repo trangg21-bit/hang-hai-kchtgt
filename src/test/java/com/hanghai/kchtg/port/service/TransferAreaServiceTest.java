@@ -9,6 +9,8 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.port.dto.transferarea.TransferAreaResponse;
 import com.hanghai.kchtg.port.dto.transferarea.UpdateTransferAreaRequest;
 import com.hanghai.kchtg.port.entity.TransferArea;
+import com.hanghai.kchtg.port.entity.TransferAreaMooringWaterArea;
+import com.hanghai.kchtg.port.entity.TransferAreaMooringWaterAreaAnchorPoint;
 import com.hanghai.kchtg.port.repository.*;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.PortCacheService;
@@ -22,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -126,5 +129,33 @@ class TransferAreaServiceTest {
         assertNull(result.getCoordinates());
         assertNull(result.getGeometryType());
         assertNull(result.getMapSymbolId());
+    }
+
+    @Test
+    void buildMooringWaterAreaSummary_shouldIncludeMapParametersAndAnchorPointDetails() {
+        UUID waterAreaId = UUID.randomUUID();
+        TransferAreaMooringWaterArea waterArea = TransferAreaMooringWaterArea.builder()
+                .id(waterAreaId)
+                .transferAreaId(ID)
+                .description("Khu nước số 1")
+                .geometryType("POINT")
+                .coordinateSystem(1)
+                .displayRule("Độ, phút, giây (DMS)")
+                .build();
+        TransferAreaMooringWaterAreaAnchorPoint point = TransferAreaMooringWaterAreaAnchorPoint.builder()
+                .transferAreaMooringWaterAreaId(waterAreaId)
+                .name("Điểm neo A")
+                .latitude(new java.math.BigDecimal("20.123"))
+                .longitude(new java.math.BigDecimal("106.456"))
+                .build();
+        when(transferAreaMooringWaterAreaAnchorPointRepository
+                .findByTransferAreaMooringWaterAreaId(waterAreaId)).thenReturn(List.of(point));
+
+        String summary = service.buildMooringWaterAreaSummary(List.of(waterArea));
+
+        assertTrue(summary.contains("Khu nước số 1"));
+        assertTrue(summary.contains("Loại: Đối tượng điểm"));
+        assertTrue(summary.contains("Hệ quy chiếu: WGS-84"));
+        assertTrue(summary.contains("Điểm neo A [20.123, 106.456]"));
     }
 }

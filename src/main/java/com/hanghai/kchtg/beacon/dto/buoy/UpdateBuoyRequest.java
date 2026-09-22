@@ -42,8 +42,7 @@ public class UpdateBuoyRequest {
     @Size(max = 100)
     private String lightCharacteristic;
 
-    @DecimalMin("0.01")
-    @DecimalMax("100.0")
+    @DecimalMin("0.0")
     private Double range;
 
     @Size(max = 1000)

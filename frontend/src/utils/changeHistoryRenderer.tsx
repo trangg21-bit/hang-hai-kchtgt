@@ -26,7 +26,7 @@ import {
   historyArrowStyle,
 } from '../themetokenchk';
 import { VIETNAM_PROVINCES } from '../types/common';
-import { formatHistoryNumber } from './numFmt';
+import { formatHistoryNumber, isYearField, formatYearValue } from './numFmt';
 import { getServicesProvidedHistoryDelta, isServicesProvidedHistoryField } from './serviceHistoryDelta';
 
 export const isBlankOrDash = (v: unknown): boolean => {
@@ -115,6 +115,19 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   area: 'Diện tích (m²)',
   totalArea: 'Tổng diện tích (m²)',
   constructionYear: 'Năm xây dựng',
+  yearOfUse: 'Năm đưa vào sử dụng',
+  commissioningYear: 'Năm đưa vào sử dụng',
+  yearOfManufacture: 'Năm sản xuất',
+  manufacturingYear: 'Năm sản xuất',
+  manufactureYear: 'Năm sản xuất',
+  latestMaintenanceYear: 'Năm duy tu gần nhất',
+  latestDredgingYear: 'Năm nạo vét gần nhất',
+  startYear: 'Năm bắt đầu',
+  endYear: 'Năm kết thúc',
+  operationalYear: 'Năm đưa vào hoạt động',
+  namDuaVaoSuDung: 'Năm đưa vào sử dụng',
+  namXayDung: 'Năm xây dựng',
+  namSanXuat: 'Năm sản xuất',
   useDate: 'Ngày đưa vào sử dụng',
   landArea: 'Diện tích đất (m²)',
   floorArea: 'Diện tích sàn (m²)',
@@ -408,8 +421,13 @@ export function autoFormatHistoryValue(fn: string, raw: unknown): string | null 
     }
   }
 
+  // 11b. Year fields (yearOfUse, constructionYear, commissioningYear, etc.)
+  if (isYearField(fn) || isYearField(normKey)) {
+    return formatYearValue(s);
+  }
+
   // 12. Pure numbers with thousand separators
-  return formatHistoryNumber(s);
+  return formatHistoryNumber(s, fn);
 }
 
 export interface ParsedWharfAreaHistoryItem {

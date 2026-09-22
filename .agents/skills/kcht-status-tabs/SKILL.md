@@ -36,11 +36,31 @@ Dãy tab trạng thái phê duyệt **BẮT BUỘC** tuân thủ đúng thứ t�
 | **7** | `REJECTED_LEVEL2` | **Từ chối cấp Cục** | `#E34948` | `statusCritical` | `'REJECTED_LEVEL2'` |
 | **8** | `ARCHIVED` | **Đã xóa** | `#E34948` | `statusCritical` | `'ARCHIVED'` |
 
-### Quy tắc số lượng bản ghi (MANDATORY):
+### Quy tắc số lượng và phạm vi hiển thị bản ghi (MANDATORY):
 1. **Số lượng tab Tất cả**: Bắt buộc bằng tổng số các tab con:
    $$\text{Tất cả} = \text{Lưu tạm} + \text{Chờ Cảng vụ} + \text{Chờ Cục} + \text{Đã phê duyệt} + \text{Từ chối C1} + \text{Từ chối C2} + \text{Đã xóa}$$
    `CommonStatusTabs` đã cài đặt sẵn logic tự động cộng dồn này, không cần tính toán thủ công ở component cha.
-2. **Tuyệt đối không dùng mã legacy**: Không dùng các mã cũ như `PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)` mà chỉ dùng các enum chuỗi chuẩn trên.
+2. **Tab "Tất cả" BAO GỒM cả bản ghi Đã xóa (`ARCHIVED` / soft-deleted)**:
+   - Khi đứng ở tab "Tất cả", bảng dữ liệu **BẮT BUỘC** hiển thị toàn bộ bản ghi thuộc mọi trạng thái, **bao gồm cả các bản ghi có trạng thái Đã xóa** (khớp chính xác số lượng tổng trên badge tab "Tất cả").
+   - **Quy chuẩn Backend JPQL (Bắt buộc theo mẫu `BerthRepository`)**:
+     Trong câu truy vấn JPQL lọc theo trạng thái phê duyệt, khi `:approvalStatus IS NULL` (tương ứng tab "Tất cả"), mệnh đề điều kiện **BẮT BUỘC** là `(:approvalStatus IS NULL)` trần, **TUYỆT ĐỐI CẤM** nối thêm `AND x.deletedAt IS NULL` hoặc `AND x.approvalStatus != ARCHIVED`.
+     ```java
+     // ✅ ĐÚNG: chuẩn BerthRepository / PortRepository
+     @Query("SELECT x FROM X x WHERE " +
+             "((:approvalStatus IS NULL) " +
+             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (x.deletedAt IS NOT NULL OR x.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
+             "  OR (x.deletedAt IS NULL AND x.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
+             "      x.approvalStatus = :approvalStatus ... " +
+             "  ))) ...")
+     ```
+     ```java
+     // ❌ SAI NGHIÊM TRỌNG: Lọc bỏ bản ghi đã xóa khi :approvalStatus IS NULL
+     "((:approvalStatus IS NULL AND x.deletedAt IS NULL AND x.approvalStatus != ARCHIVED) ...) // Bảng rỗng dù badge đếm = 1!
+     ```
+   - **Quy chuẩn Frontend List Screen**:
+     - Khi `activeTab === 'all'`, gửi `approvalStatus: undefined` và `isDeleted: undefined` (tuyệt đối không gửi `isDeleted: false`).
+     - **TUYỆT ĐỐI CẤM** dùng client-side filter loại bỏ bản ghi đã xóa khi đứng ở tab "Tất cả" (ví dụ `if (activeTab === 'all') data = data.filter(item => !isDel)`).
+3. **Tuyệt đối không dùng mã legacy**: Không dùng các mã cũ như `PROPOSED (1)`, `APPROVED_LEVEL2 (4)`, `REJECTED (6)` mà chỉ dùng các enum chuỗi chuẩn trên.
 
 ---
 
@@ -142,8 +162,10 @@ Khi dữ liệu được load toàn bộ về client hoặc phân trang local, t
 ---
 
 ## 4. Checklist kiểm tra khi hoàn thành màn hình (Self-Verification)
-- [ ] Tab "Tất cả" luôn đứng đầu tiên, có số lượng bằng tổng các tab con.
-- [ ] Khi click tab "Tất cả", tham số `approvalStatus` gửi về backend là `undefined`.
+- [ ] Tab "Tất cả" luôn đứng đầu tiên, có số lượng bằng tổng các tab con (bao gồm cả tab "Đã xóa").
+- [ ] Khi click tab "Tất cả", tham số `approvalStatus` gửi về backend là `undefined`, `isDeleted` là `undefined`.
+- [ ] Bảng dữ liệu ở tab "Tất cả" hiển thị đầy đủ mọi bản ghi bao gồm cả bản ghi có trạng thái Đã xóa (`ARCHIVED`), tuyệt đối không bị trống khi có bản ghi đã xóa.
+- [ ] Backend JPQL repository: Mệnh đề `:approvalStatus IS NULL` không nối thêm `AND deletedAt IS NULL` hay `AND approvalStatus != ARCHIVED`.
 - [ ] Tab đang chọn có đường gạch chân màu `#0E6FD6`, chữ in đậm `600`.
 - [ ] Badge số lượng hiển thị hình viên thuốc bo tròn (`radiusPill`), màu nền mờ `${tabColor}15` và chữ màu `${tabColor}`.
 - [ ] Không có cảnh báo hoặc lỗi đỏ trong TypeScript và ESLint (`0 errors, 0 warnings`).

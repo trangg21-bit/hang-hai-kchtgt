@@ -33,10 +33,10 @@ describe('Dike Revetment Status Filter and Tab Counts (/dike-revetment)', () => 
 
   describe('isDeleted parameter mapping for tabs', () => {
     const getIsDeletedForTab = (activeTab: string) =>
-      activeTab === 'ARCHIVED' ? true : (activeTab === '' ? false : undefined);
+      activeTab === 'ARCHIVED' ? true : undefined;
 
-    it('maps empty tab (Tất cả) to isDeleted: false', () => {
-      expect(getIsDeletedForTab('')).toBe(false);
+    it('maps empty tab (Tất cả) to isDeleted: undefined (bao gồm cả bản ghi đã xóa)', () => {
+      expect(getIsDeletedForTab('')).toBeUndefined();
     });
 
     it('maps ARCHIVED tab (Đã xóa) to isDeleted: true', () => {
@@ -86,8 +86,8 @@ describe('Dike Revetment Status Filter and Tab Counts (/dike-revetment)', () => 
     });
   });
 
-  describe('DataTable active filter for Tất cả tab', () => {
-    it('filters out records where isDikeRevetmentDeleted is true when activeTab is empty', () => {
+  describe('DataTable data for Tất cả tab', () => {
+    it('preserves all records including soft-deleted ones when activeTab is empty', () => {
       const records: Array<{ id: string; dikeRevetmentName: string; approvalStatus?: string; deletedAt?: string; deletedBy?: string }> = [
         { id: '1', dikeRevetmentName: 'Đê 1', approvalStatus: 'APPROVED' },
         { id: '2', dikeRevetmentName: 'Đê 2', approvalStatus: 'ARCHIVED' },
@@ -95,12 +95,8 @@ describe('Dike Revetment Status Filter and Tab Counts (/dike-revetment)', () => 
         { id: '4', dikeRevetmentName: 'Đê 4', approvalStatus: 'PENDING_APPROVAL' },
       ];
 
-      const activeTab = '';
-      const filtered = activeTab === ''
-        ? records.filter((r) => !isDikeRevetmentDeleted(r))
-        : records;
-
-      expect(filtered.map((r) => r.id)).toEqual(['1', '4']);
+      // Tab Tất cả hiển thị toàn bộ bản ghi không filter bỏ bản ghi đã xóa
+      expect(records.map((r) => r.id)).toEqual(['1', '2', '3', '4']);
     });
 
     it('preserves all records when on ARCHIVED tab', () => {
@@ -109,12 +105,7 @@ describe('Dike Revetment Status Filter and Tab Counts (/dike-revetment)', () => 
         { id: '3', dikeRevetmentName: 'Đê 3', approvalStatus: 'DRAFT', deletedAt: '2026-09-16' },
       ];
 
-      const activeTab = 'ARCHIVED';
-      const filtered = activeTab === ''
-        ? records.filter((r) => !isDikeRevetmentDeleted(r))
-        : records;
-
-      expect(filtered.length).toBe(2);
+      expect(records.length).toBe(2);
     });
   });
 });
