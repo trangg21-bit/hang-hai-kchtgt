@@ -21,10 +21,16 @@ public class KchtgApplication {
         SpringApplication.run(KchtgApplication.class, args);
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KchtgApplication.class);
+
     @Bean
     public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy() {
         return flyway -> {
-            flyway.repair();
+            try {
+                flyway.repair();
+            } catch (Exception e) {
+                log.warn("Flyway repair encountered an issue (proceeding with migrate): {}", e.getMessage());
+            }
             flyway.migrate();
         };
     }
