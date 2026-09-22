@@ -18,9 +18,9 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import toast from '../../components/ToastNotification';
 import { useAssetPermissions } from '../../hooks/useAssetPermissions';
 import api from '../../services/api';
-import { isAssetRecordEditable, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { isAssetRecordEditable } from '../../utils/approvalEditPolicy';
 import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, isYearField, formatYearValue } from '../../utils/numFmt';
 
 import {
   CommonStatusTabs,
@@ -280,10 +280,8 @@ export default function CctvSystemAssetList() {
         const dev = cctvDeviceMap.get(String(val));
         return dev ? (dev.deviceCode ? `${dev.deviceCode} - ${dev.deviceName}` : dev.deviceName) : String(val);
       }
-      if (field === 'constructionYear') {
-        const str = String(val).trim();
-        const match = str.match(/\b(19\d{2}|20\d{2})\b/);
-        return match ? match[0] : str;
+      if (isYearField(field)) {
+        return formatYearValue(val);
       }
       if (
         field === 'useDate' ||

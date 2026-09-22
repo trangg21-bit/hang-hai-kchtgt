@@ -285,7 +285,7 @@ public class TransferAreaService {
             String newMooringSummary = buildMooringWaterAreaSummary(
                     transferAreaMooringWaterAreaRepository.findByTransferAreaId(saved.getId()));
             if (!oldMooringSummary.equals(newMooringSummary)) {
-                changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Khu nước neo buộc tàu",
+                changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "mooringWaterAreas",
                         oldMooringSummary.isEmpty() ? null : oldMooringSummary,
                         newMooringSummary.isEmpty() ? null : newMooringSummary, actorId);
             }
@@ -876,7 +876,7 @@ public class TransferAreaService {
      * Summary đọc được của bảng con "Khu nước neo buộc tàu" (transfer_area_mooring_water_areas + điểm neo),
      * dùng cho lịch sử thay đổi — không ghi Java toString rác của reflection.
      */
-    private String buildMooringWaterAreaSummary(List<TransferAreaMooringWaterArea> areas) {
+    String buildMooringWaterAreaSummary(List<TransferAreaMooringWaterArea> areas) {
         if (areas == null || areas.isEmpty()) return "";
         List<String> parts = new ArrayList<>();
         for (int i = 0; i < areas.size(); i++) {
@@ -885,15 +885,31 @@ public class TransferAreaService {
                     ? wa.getDescription().trim() : ("Khu nước " + (i + 1));
             List<TransferAreaMooringWaterAreaAnchorPoint> points =
                     transferAreaMooringWaterAreaAnchorPointRepository.findByTransferAreaMooringWaterAreaId(wa.getId());
+            String geometryLabel = switch (wa.getGeometryType() == null ? "" : wa.getGeometryType().trim().toUpperCase()) {
+                case "POINT" -> "Đối tượng điểm";
+                case "LINE" -> "Đối tượng đường";
+                case "POLYGON" -> "Đối tượng vùng";
+                default -> "Chưa xác định";
+            };
+            String coordinateSystemLabel = switch (wa.getCoordinateSystem() == null ? 0 : wa.getCoordinateSystem()) {
+                case 1 -> "WGS-84";
+                case 2 -> "VN-2000";
+                default -> "Chưa xác định";
+            };
+            String pointSummary;
             if (points.isEmpty()) {
-                parts.add(desc + " (0 điểm)");
+                pointSummary = "0 điểm";
             } else {
                 String ptDetails = points.stream()
                         .map(p -> (p.getName() != null && !p.getName().isBlank() ? p.getName().trim() : "Điểm neo")
                                 + (p.getLatitude() != null && p.getLongitude() != null ? " [" + p.getLatitude() + ", " + p.getLongitude() + "]" : ""))
                         .collect(Collectors.joining(", "));
-                parts.add(desc + " (" + points.size() + " điểm: " + ptDetails + ")");
+                pointSummary = points.size() + " điểm: " + ptDetails;
             }
+            parts.add(desc + " [Loại: " + geometryLabel + "; Hệ quy chiếu: " + coordinateSystemLabel
+                    + "; Quy tắc hiển thị: "
+                    + (wa.getDisplayRule() == null || wa.getDisplayRule().isBlank() ? "Chưa xác định" : wa.getDisplayRule().trim())
+                    + "; " + pointSummary + "]");
         }
         return areas.size() + " khu nước: " + String.join("; ", parts);
     }

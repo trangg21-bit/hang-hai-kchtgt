@@ -809,7 +809,7 @@ export default function AnchorageListPage() {
           if (t.key === 'all') {
             return anchorageCRUD.search({
               ...baseFilterParams,
-              isDeleted: false,
+              isDeleted: undefined,
               approvalStatus: undefined,
             });
           }
@@ -857,25 +857,14 @@ export default function AnchorageListPage() {
         provinceId: filterProvince ? (VIETNAM_PROVINCES.indexOf(filterProvince) + 1) : undefined,
         operationalStatus: filterOperationalStatus,
         approvalStatus: activeTab === 'DELETED' ? undefined : TAB_QUERY_MAP[activeTab],
-        isDeleted: activeTab === 'DELETED' ? true : false,
+        isDeleted: activeTab === 'DELETED' ? true : (activeTab === 'all' ? undefined : false),
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
         page, pageSize,
         sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
         sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
       });
-      let data = r.data || [];
-      if (activeTab === 'all') {
-        data = data.filter((item) => {
-          const isDel = Boolean(
-            (item as any).deletedAt ||
-            (item as any).deletedBy ||
-            item.approvalStatus === 'ARCHIVED' ||
-            item.approvalStatus === 'DELETED'
-          );
-          return !isDel;
-        });
-      }
+      const data = r.data || [];
       setDataSource(data); setTotal(r.total);
     } catch {
       setIsError(true);

@@ -21,6 +21,18 @@ export interface CangBienResponse {
   updatedBy: string | null;
   createdByName: string | null;
   updatedByName: string | null;
+  submittedBy: string | null;
+  submittedByName: string | null;
+  submittedAt: string | null;
+  approverLevel1: string | null;
+  approverLevel1Name: string | null;
+  approvedDateLevel1: string | null;
+  approvalContentLevel1: string | null;
+  approverLevel2: string | null;
+  approverLevel2Name: string | null;
+  approvedDateLevel2: string | null;
+  approvalContentLevel2: string | null;
+  rejectionReason: string | null;
   createdAt: string | null;
   updatedAt: string | null;
   deletedAt?: string | null;

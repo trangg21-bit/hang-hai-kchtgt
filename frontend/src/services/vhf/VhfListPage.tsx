@@ -3,7 +3,7 @@ import {
     ddToDms,
     parseWktToCoordinates,
 } from "../../utils/gisGeometry";
-import { fmtNum } from "../../utils/numFmt";
+import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 
 // Normalize form geometryType ('POINT' | 'LINE' | 'POLYGON') — fallback POINT khi chưa chọn
@@ -454,6 +454,9 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
       };
       return m[val] || val;
     }
+    if (isYearField(fieldKey)) {
+      return formatYearValue(val);
+    }
     if (fieldKey === 'changedAt' || fieldKey === 'createdAt') {
       try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
@@ -589,8 +592,9 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
     }
 
     // Bỏ qua nếu sau khi định dạng số hiển thị cả 2 bằng nhau
-    const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
-    const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+    const isYear = isYearField(field);
+    const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? (isYear ? formatYearValue(cleanOv) : fmtNum(cleanOv)) : ov;
+    const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? (isYear ? formatYearValue(cleanNv) : fmtNum(cleanNv)) : nv;
     if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
       return false;
     }

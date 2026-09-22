@@ -88,6 +88,18 @@ public class Port extends BaseEntity implements ApprovableEntity {
     @Column(name = "approved_date_level2")
     private LocalDateTime approvedDateLevel2;
 
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    @Column(name = "submitted_by")
+    private UUID submittedBy;
+
+    @Column(name = "approval_content_level1", length = 2000)
+    private String level1ApprovalContent;
+
+    @Column(name = "approval_content_level2", length = 2000)
+    private String level2ApprovalContent;
+
     @Column(name = "rejection_reason", columnDefinition = "TEXT")
     private String rejectionReason;
 

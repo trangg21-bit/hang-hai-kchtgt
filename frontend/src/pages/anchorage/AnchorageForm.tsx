@@ -40,10 +40,11 @@ import {
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import { buildAnchorageBuoyBerthQuery, toAnchorageBuoyBerthOptions } from './anchorageBuoyBerthOptions';
 import {
-  textPrimary, textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textPrimary, textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
-  radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, spaceMd,
+  radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
   getDatePickerProps, drawerProps, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
@@ -325,6 +326,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingWaterways, setLoadingWaterways] = useState(false);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingBuoyStations, setLoadingBuoyStations] = useState(false);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
   const [anchorageCodeLoading, setAnchorageCodeLoading] = useState(false);
@@ -496,12 +498,35 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
     }
   }, [form]);
 
-  // Load buoy stations
+  // Chỉ tải bến phao đã phê duyệt thuộc cây đơn vị quản lý đang chọn.
   useEffect(() => {
-    buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' })
-      .then(r => setBuoyStationOptions((r.data || []).map(b => ({ value: b.id, label: b.buoyBerthName || b.buoyBerthCode || '' }))))
-      .catch(() => {});
-  }, []);
+    let cancelled = false;
+    if (!watchedOrgUnitId) {
+      setBuoyStationOptions([]);
+      setLoadingBuoyStations(false);
+      return () => { cancelled = true; };
+    }
+
+    setLoadingBuoyStations(true);
+    buoyBerthCRUD.search(buildAnchorageBuoyBerthQuery(String(watchedOrgUnitId)))
+      .then((response) => {
+        if (cancelled) return;
+        const options = toAnchorageBuoyBerthOptions(response.data || []);
+        setBuoyStationOptions(options);
+        const currentId = form.getFieldValue('buoyStationId');
+        if (currentId && !options.some((option) => option.value === currentId)) {
+          form.setFieldValue('buoyStationId', undefined);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setBuoyStationOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingBuoyStations(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [form, watchedOrgUnitId]);
 
   // Filter ports when orgUnit changes
   useEffect(() => {
@@ -684,10 +709,15 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         toast.error('Không thể tải thông tin khu neo đậu');
       }
     })();
-  }, [isEdit, id, form]);
+  }, [isEdit, id, form, loadWaterwayOptions]);
 
   const handleOrgUnitChange = () => {
-    form.setFieldsValue({ portId: undefined, anchorageCode: undefined });
+    form.setFieldsValue({
+      portId: undefined,
+      navigationChannelId: undefined,
+      buoyStationId: undefined,
+      anchorageCode: undefined,
+    });
   };
 
   const handlePortChange = () => {
@@ -1229,7 +1259,17 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
               </Col>
               <Col span={12}>
                 <Form.Item name="buoyStationId" {...labelProps('Thuộc bến phao')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn bến phao..." options={buoyStationOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+                  <Select
+                    placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn bến phao...'}
+                    options={buoyStationOptions}
+                    loading={loadingBuoyStations}
+                    disabled={!watchedOrgUnitId}
+                    showSearch
+                    allowClear
+                    optionFilterProp="label"
+                    notFoundContent={loadingBuoyStations ? 'Đang tải...' : 'Không có bến phao đã phê duyệt thuộc đơn vị quản lý'}
+                    style={selectStyle}
+                  />
                 </Form.Item>
               </Col>
             </Row>

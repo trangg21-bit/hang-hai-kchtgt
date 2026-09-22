@@ -989,7 +989,7 @@ export default function DikeRevetmentList() {
         dikeRevetmentType: filterType,
         conditionStatus: filterStatusVal,
         approvalStatus: TAB_QUERY_MAP[activeTab],
-        isDeleted: activeTab === 'ARCHIVED' ? true : (activeTab === '' ? false : undefined),
+        isDeleted: activeTab === 'ARCHIVED' ? true : undefined,
         orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
         commissioningYear: filterCommissioningYear,
         updatedFrom: filterUpdatedRange?.[0] ? filterUpdatedRange[0].format('YYYY-MM-DD') : undefined,
@@ -997,9 +997,7 @@ export default function DikeRevetmentList() {
         sortBy: sortField,
         sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : 'DESC',
       });
-      const items = activeTab === ''
-        ? (res.items || []).filter((item) => !isDikeRevetmentDeleted(item))
-        : (res.items || []);
+      const items = res.items || [];
       setDataSource(items);
       setTotal(res.total);
     } catch {
@@ -1034,7 +1032,7 @@ export default function DikeRevetmentList() {
           page: 1,
           size: 1,
           approvalStatus: TAB_QUERY_MAP[tab.key],
-          isDeleted: tab.key === 'ARCHIVED' ? true : (tab.key === '' ? false : undefined),
+          isDeleted: tab.key === 'ARCHIVED' ? true : undefined,
           ...filterScope,
         })
       )
@@ -3215,7 +3213,7 @@ export default function DikeRevetmentList() {
       >
         <DataTable
           columns={columns}
-          dataSource={activeTab === '' ? dataSource.filter((r) => !isDikeRevetmentDeleted(r)) : dataSource}
+          dataSource={dataSource}
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 'max-content' }}

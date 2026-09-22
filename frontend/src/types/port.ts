@@ -607,16 +607,21 @@ export interface Anchorage {
   activityStatus?: string;
   submittedForApprovalAt?: string;
   submittedForApprovalBy?: string;
+  submittedForApprovalByName?: string;
   portAuthorityApprovedAt?: string;
   portAuthorityApprovedBy?: string;
+  portAuthorityApprovedByName?: string;
   portAuthorityApprovalContent?: string;
   departmentApprovedAt?: string;
   departmentApprovedBy?: string;
+  departmentApprovedByName?: string;
   departmentApprovalContent?: string;
   rejectionReason?: string;
   // Audit
   createdBy?: string;
   updatedBy?: string;
+  createdByName?: string;
+  updatedByName?: string;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -1300,4 +1305,3 @@ export interface ShipRepairYardApprovalResponse {
   changeHistory: any[];
   approvalLog: any[];
 }
-

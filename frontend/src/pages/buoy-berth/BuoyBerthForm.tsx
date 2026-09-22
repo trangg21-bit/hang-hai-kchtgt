@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, InputNumber, Tabs,
@@ -25,6 +25,7 @@ import type { SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
+import { normalizeDecimal20_4 } from '../../utils/numberRuleHelper';
 import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
@@ -34,7 +35,7 @@ import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
-import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt, parseWktToCoordinates, dmsToDd } from '../../utils/gisGeometry';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
@@ -89,6 +90,20 @@ function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWi
     />
   );
 }
+
+const formatDecimalCommaInput = (
+  value: string | number | null | undefined,
+  info?: { userTyping?: boolean },
+): string => fmtInputNumber(value, info).replace('.', ',');
+
+const parseDecimalCommaInput = (value: string | undefined): string => normalizeDecimal20_4(value);
+
+const LOCATION_TAB_FIELD_NAMES = new Set([
+  'geometryType',
+  'mapSymbolId',
+  'coordinateSystem',
+  'displayRule',
+]);
 
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
@@ -276,7 +291,6 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [buoyBerthCodeLoading, setBuoyBerthCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
@@ -312,7 +326,6 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const [gpsPage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
-  const [, setExistingFiles] = useState<any[]>([]);
 
   useEffect(() => {
     setLoadingSymbols(true);
@@ -322,13 +335,34 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       .finally(() => setLoadingSymbols(false));
   }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — đồng bộ với Cầu cảng
-  useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
-      .catch(() => {});
-  }, []);
   useEffect(() => { api.get('/common/options/operating-units').then(r => { const list = r.data?.data; if (Array.isArray(list) && list.length) setOperatingOrgs(list); }).catch(() => {}); }, []);
+
+  const [loadingWaterways, setLoadingWaterways] = useState(false);
+
+  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
+    if (!orgUnitId) {
+      setWaterwayOptions([]);
+      return;
+    }
+    setLoadingWaterways(true);
+    try {
+      const r = await navigationChannelCRUD.search({
+        orgUnitId,
+        approvalStatus: 'APPROVED',
+        page: 0,
+        size: 1000,
+      });
+      const options = (r.items || []).map((n) => ({
+        value: n.id,
+        label: n.channelName || n.channelCode || '',
+      }));
+      setWaterwayOptions(options);
+    } catch {
+      setWaterwayOptions([]);
+    } finally {
+      setLoadingWaterways(false);
+    }
+  }, []);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -343,9 +377,14 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
 
   // Đơn vị quản lý KHÔNG tự điền sẵn — để người dùng chủ động chọn từ cây đơn vị (không mặc định 1 giá trị)
   useEffect(() => {
-    if (!watchedOrgUnitId) { setPortOptions([]); return; }
+    if (!watchedOrgUnitId) {
+      setPortOptions([]);
+      setWaterwayOptions([]);
+      return;
+    }
     void loadPortOptions(watchedOrgUnitId);
-  }, [watchedOrgUnitId]);
+    void loadWaterwayOptions(watchedOrgUnitId);
+  }, [watchedOrgUnitId, loadWaterwayOptions]);
 
   useEffect(() => {
     if (!watchedPortId) return;
@@ -409,11 +448,19 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           const lngDms = ddToDms(c.longitude);
           return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
         }) : data.latitude != null ? (() => { const latDms = ddToDms(Number(data.latitude)); const lngDms = ddToDms(Number(data.longitude)); return [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]; })() : []);
-        if (data.orgUnitId) await loadPortOptions(data.orgUnitId);
+        if (data.orgUnitId) {
+          await loadPortOptions(data.orgUnitId);
+          await loadWaterwayOptions(data.orgUnitId);
+          if (data.waterwayId) {
+            setWaterwayOptions((prev) => {
+              if (prev.some((o) => o.value === data.waterwayId)) return prev;
+              return [{ value: data.waterwayId, label: data.waterway || 'Luồng hiện tại' }, ...prev];
+            });
+          }
+        }
         try {
           const fr = await api.get(`/v1/buoy-berth/${id}/attachments`, { params: { page: 0, size: 50 } });
           const files = fr.data?.data || [];
-          setExistingFiles(files);
           setUploadedFiles(
             files.map((a: any) => ({
               ...a,
@@ -432,7 +479,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
               status: 'done' as const,
             }))
           );
-        } catch { setExistingFiles([]); }
+        } catch { /* ignore */ }
         editPortIdRef.current = data.portId;
         initialApprovalStatusRef.current = data.approvalStatus;
         initialBuoyBerthCodeRef.current = data.buoyBerthCode;
@@ -540,9 +587,10 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
     }; return n; });
   };
 
-  const handleOrgUnitChange = () => { form.setFieldsValue({ portId: undefined, buoyBerthCode: undefined }); setCoordinateList([]); };
-  const handlePortChange = () => { form.setFieldsValue({ buoyBerthCode: undefined }); };
-
+  const handleOrgUnitChange = () => {
+    form.setFieldsValue({ portId: undefined, buoyBerthCode: undefined, waterwayId: undefined });
+    setCoordinateList([]);
+  };
   const handleSave = useCallback(async (saveAction: SaveAction) => {
     const values = form.getFieldsValue();
     try {
@@ -551,8 +599,12 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
       const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
       toast.error(firstError);
-      if (errFields.some((f) => f.name[0] === 'orgUnitId' || f.name[0] === 'portId' || f.name[0] === 'buoyBerthName' || f.name[0] === 'operatingOrgId')) setActiveTabKey('general');
-      else if (errFields.some((f) => f.name[0] === 'mapSymbolId' || f.name[0] === 'coordinateSystem' || f.name[0] === 'displayRule' || f.name[0] === 'geometryType')) setActiveTabKey('location');
+      const firstInvalidField = errFields[0]?.name;
+      const firstInvalidFieldName = String(firstInvalidField?.[0] ?? '');
+      setActiveTabKey(LOCATION_TAB_FIELD_NAMES.has(firstInvalidFieldName) ? 'location' : 'general');
+      if (firstInvalidField) {
+        window.setTimeout(() => form.scrollToField(firstInvalidField, { block: 'center' }), 0);
+      }
       return false;
     }
 
@@ -753,7 +805,17 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           </Col>
           <Col span={12}>
             <Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-              <Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+              <Select
+                placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : waterwayOptions.length === 0 && !loadingWaterways ? 'Không có luồng hàng hải thuộc đơn vị quản lý' : 'Chọn luồng hàng hải...'}
+                loading={loadingWaterways}
+                disabled={!watchedOrgUnitId}
+                options={waterwayOptions}
+                showSearch
+                allowClear
+                optionFilterProp="label"
+                notFoundContent="Không có luồng hàng hải thuộc đơn vị quản lý"
+                style={selectStyle}
+              />
             </Form.Item>
           </Col>
         </Row>
@@ -824,24 +886,24 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={1} precision={0} maxLength={20} placeholder="0" style={numberStyle} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="plannedVesselDWT" {...labelProps('Cỡ tàu khai thác theo quy hoạch')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={1} precision={0} maxLength={20} placeholder="0" style={numberStyle} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1198,6 +1260,76 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
     },
   ];
 
+  const latestGisMapValueRef = useRef<{ geometryType: string; coordinates: string; symbolId?: string } | null>(null);
+
+  const gisModalValue = useMemo(() => {
+    const validCoords = coordinateList
+      .filter(
+        (c) =>
+          (c.latD != null || c.latM != null || c.latS != null) &&
+          (c.lngD != null || c.lngM != null || c.lngS != null),
+      )
+      .map((c) => ({
+        latitude: dmsToDd(c.latD, c.latM, c.latS),
+        longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+      }))
+      .filter(
+        (c) =>
+          c.latitude != null &&
+          c.longitude != null &&
+          !isNaN(c.latitude) &&
+          !isNaN(c.longitude),
+      ) as { latitude: number; longitude: number }[];
+
+    const wkt =
+      validCoords.length > 0
+        ? serializeCoordinatesToWkt(validCoords, (watchedGeometryType as any) || 'POINT')
+        : '';
+
+    return {
+      geometryType: (watchedGeometryType as any) || 'POINT',
+      coordinates: wkt,
+      symbolId: form.getFieldValue('mapSymbolId') || undefined,
+    };
+  }, [coordinateList, watchedGeometryType, form]);
+
+  const handleCancelGisModal = () => {
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
+  const handleConfirmGisModal = () => {
+    const val = latestGisMapValueRef.current;
+    if (val) {
+      if (val.coordinates) {
+        const points = parseWktToCoordinates(val.coordinates);
+        if (points.length > 0) {
+          const geom = ((val?.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+          const newPoints = points.map((p) => {
+            const latDms = ddToDms(p.latitude);
+            const lngDms = ddToDms(p.longitude);
+            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+          });
+          if (geom === 'POINT') {
+            setCoordinateList([newPoints[0]]);
+          } else {
+            setCoordinateList(newPoints);
+          }
+        }
+      } else if (val.coordinates === '') {
+        setCoordinateList([]);
+      }
+      if (val.symbolId) {
+        form.setFieldsValue({ mapSymbolId: val.symbolId });
+      }
+      if (val.geometryType && val.geometryType !== watchedGeometryType) {
+        form.setFieldsValue({ geometryType: val.geometryType });
+      }
+    }
+    latestGisMapValueRef.current = null;
+    setGisModalOpen(false);
+  };
+
   return (
     <>
       <style>{`.buoy-berth-filter .ant-select-selector { border-radius: 999px !important; } .buoy-berth-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .buoy-berth-filter .ant-select-content-item { max-width: 45% !important; } .buoy-berth-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
@@ -1214,18 +1346,18 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           </div>
         }
         open={gisModalOpen}
-        onCancel={() => setGisModalOpen(false)}
+        onCancel={handleCancelGisModal}
         destroyOnClose
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
-          <Button key="cancel" onClick={() => setGisModalOpen(false)} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
+          <Button key="cancel" onClick={handleCancelGisModal} style={{ ...outlineButtonStyle, height: 36, borderRadius: radiusPill }}>
             Hủy
           </Button>,
           <Button
             key="ok"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
+            onClick={handleConfirmGisModal}
             style={{ ...primaryButtonStyle, height: 36 }}
           >
             Xác nhận tọa độ
@@ -1237,40 +1369,9 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
             inline={true}
             defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
+            value={gisModalValue}
             onChange={(val) => {
-              if (val?.coordinates) {
-                // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
-                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
-                if (points.length > 0) {
-                  setCoordinateList((prev) => {
-                    const current = Array.isArray(prev) ? prev : [];
-                    const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
-                      c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(current
-                      .filter(isFilled)
-                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                    const fresh = points.filter(p => !existingKeys.has(key(p)));
-                    const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>) => ps.map(p => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    // 1) Điền điểm vào các hàng còn TRỐNG ở đầu/cuối (giữ nguyên vị trí), số điểm thừa mới thêm xuống dưới.
-                    let fi = 0;
-                    const merged = current.map((row) => {
-                      if (isFilled(row)) return row;
-                      if (fi >= fresh.length) return row;
-                      const p = fresh[fi];
-                      fi += 1;
-                      const rows = toDmsRows([p]);
-                      return rows[0];
-                    });
-                    merged.push(...toDmsRows(fresh.slice(fi)));
-                    return merged;
-                  });
-                }
-              }
+              latestGisMapValueRef.current = val;
             }}
           />
         </div>

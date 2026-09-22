@@ -11,6 +11,7 @@ import com.hanghai.kchtg.port.dto.anchorage.UpdateAnchorageRequest;
 import com.hanghai.kchtg.port.entity.Anchorage;
 import com.hanghai.kchtg.port.repository.*;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.port.service.PortCacheService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,9 @@ class AnchorageServiceTest {
 
     @Mock
     private ChangeHistoryService changeHistoryService;
+
+    @Mock
+    private UserResolverService userResolverService;
 
     @Mock
     private PortCacheService portCacheService;

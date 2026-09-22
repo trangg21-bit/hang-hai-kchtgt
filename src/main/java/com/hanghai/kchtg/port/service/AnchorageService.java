@@ -55,6 +55,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -76,6 +77,7 @@ public class AnchorageService {
     private final MooringWaterAreaAnchorPointRepository mooringWaterAreaAnchorPointRepository;
     private final InfrastructureHistoryRepository historyRepository;
     private final ChangeHistoryService changeHistoryService;
+    private final UserResolverService userResolverService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -747,16 +749,21 @@ public class AnchorageService {
                 .activityStatus(entity.getActivityStatus())
                 .submittedForApprovalAt(entity.getSubmittedForApprovalAt())
                 .submittedForApprovalBy(entity.getSubmittedForApprovalBy())
+                .submittedForApprovalByName(resolveUserName(entity.getSubmittedForApprovalBy()))
                 .portAuthorityApprovedAt(entity.getPortAuthorityApprovedAt())
                 .portAuthorityApprovedBy(entity.getPortAuthorityApprovedBy())
+                .portAuthorityApprovedByName(resolveUserName(entity.getPortAuthorityApprovedBy()))
                 .portAuthorityApprovalContent(entity.getPortAuthorityApprovalContent())
                 .departmentApprovedAt(entity.getDepartmentApprovedAt())
                 .departmentApprovedBy(entity.getDepartmentApprovedBy())
+                .departmentApprovedByName(resolveUserName(entity.getDepartmentApprovedBy()))
                 .departmentApprovalContent(entity.getDepartmentApprovalContent())
                 .rejectionReason(entity.getRejectionReason())
                 // Audit
                 .createdBy(entity.getCreatedBy())
                 .updatedBy(entity.getUpdatedBy())
+                .createdByName(userResolverService.resolveName(entity.getCreatedBy()))
+                .updatedByName(userResolverService.resolveName(entity.getUpdatedBy()))
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .deletedAt(entity.getDeletedAt())
@@ -786,6 +793,15 @@ public class AnchorageService {
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
         return response;
+    }
+
+    private String resolveUserName(String userId) {
+        if (userId == null || userId.isBlank()) return null;
+        try {
+            return userResolverService.resolveName(UUID.fromString(userId.trim()));
+        } catch (IllegalArgumentException ex) {
+            return userId.trim();
+        }
     }
 
     private void parseLatLng(String coordinates, AnchorageResponse response) {

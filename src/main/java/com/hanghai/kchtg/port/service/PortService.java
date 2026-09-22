@@ -25,6 +25,7 @@ import com.hanghai.kchtg.port.dto.port.PortWharfAreaDto;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.common.entity.EntityFields;
@@ -206,6 +207,8 @@ public class PortService {
 
         boolean isDraft = "draft".equals(action);
         boolean isApprove = "approve".equals(action);
+        UUID actorId = SecurityUtils.getCurrentUserId();
+        LocalDateTime workflowTime = LocalDateTime.now();
 
         if (portRepository.existsByPortCode(request.getPortCode())) {
             throw new IllegalArgumentException("Mã " + request.getPortCode() + " đã tồn tại");
@@ -252,6 +255,19 @@ public class PortService {
                 .otherWaterAreas(request.getOtherWaterAreas())
                 .remarks(request.getRemarks())
                 .build();
+
+        if (!isDraft) {
+            entity.setSubmittedAt(workflowTime);
+            entity.setSubmittedBy(actorId);
+        }
+        if (isApprove) {
+            entity.setApproverLevel1(actorId);
+            entity.setApprovedDateLevel1(workflowTime);
+            entity.setLevel1ApprovalContent("Cấp Cục phê duyệt trực tiếp");
+            entity.setApproverLevel2(actorId);
+            entity.setApprovedDateLevel2(workflowTime);
+            entity.setLevel2ApprovalContent("Lưu và phê duyệt trực tiếp");
+        }
 
         Port saved = portRepository.save(entity);
 
@@ -425,6 +441,9 @@ public class PortService {
             try {
                 if (e.getCreatedBy() != null) userUuids.add(e.getCreatedBy());
                 if (e.getUpdatedBy() != null) userUuids.add(e.getUpdatedBy());
+                if (e.getSubmittedBy() != null) userUuids.add(e.getSubmittedBy());
+                if (e.getApproverLevel1() != null) userUuids.add(e.getApproverLevel1());
+                if (e.getApproverLevel2() != null) userUuids.add(e.getApproverLevel2());
             } catch (Exception ex) {
                 // ignore
             }
@@ -447,6 +466,9 @@ public class PortService {
                 e,
                 userNamesMap.get(e.getCreatedBy() != null ? e.getCreatedBy().toString() : null),
                 userNamesMap.get(e.getUpdatedBy() != null ? e.getUpdatedBy().toString() : null),
+                userNamesMap.get(e.getSubmittedBy() != null ? e.getSubmittedBy().toString() : null),
+                userNamesMap.get(e.getApproverLevel1() != null ? e.getApproverLevel1().toString() : null),
+                userNamesMap.get(e.getApproverLevel2() != null ? e.getApproverLevel2().toString() : null),
                 false));
     }
 
@@ -872,10 +894,12 @@ public class PortService {
     // ── Internal helpers ─────────────────────────────────────────────────
 
     private PortResponse toResponse(Port entity) {
-        return toResponse(entity, null, null, true);
+        return toResponse(entity, null, null, null, null, null, true);
     }
 
     private PortResponse toResponse(Port entity, String preResolvedCreatorName, String preResolvedUpdaterName,
+                                    String preResolvedSubmitterName, String preResolvedApproverLevel1Name,
+                                    String preResolvedApproverLevel2Name,
                                     boolean includeChildCollections) {
         String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName 
                 : userResolverService.resolveName(entity.getCreatedBy());
@@ -901,6 +925,18 @@ public class PortService {
                 .updatedBy(entity.getUpdatedBy())
                 .createdByName(createdBy)
                 .updatedByName(updatedBy)
+                .submittedBy(entity.getSubmittedBy())
+                .submittedByName(preResolvedSubmitterName != null ? preResolvedSubmitterName : userResolverService.resolveName(entity.getSubmittedBy()))
+                .submittedAt(entity.getSubmittedAt())
+                .approverLevel1(entity.getApproverLevel1())
+                .approverLevel1Name(preResolvedApproverLevel1Name != null ? preResolvedApproverLevel1Name : userResolverService.resolveName(entity.getApproverLevel1()))
+                .approvedDateLevel1(entity.getApprovedDateLevel1())
+                .approvalContentLevel1(entity.getLevel1ApprovalContent())
+                .approverLevel2(entity.getApproverLevel2())
+                .approverLevel2Name(preResolvedApproverLevel2Name != null ? preResolvedApproverLevel2Name : userResolverService.resolveName(entity.getApproverLevel2()))
+                .approvedDateLevel2(entity.getApprovedDateLevel2())
+                .approvalContentLevel2(entity.getLevel2ApprovalContent())
+                .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .deletedAt(entity.getDeletedAt())

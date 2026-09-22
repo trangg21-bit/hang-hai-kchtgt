@@ -73,14 +73,14 @@ public class BuoyService {
             String name, String code, String type, String status,
             String condition, Integer provinceId, String locationDetail, String approvalStatus) {
         return buoyRepo.searchFiltered(
-                name,
-                code,
-                type,
-                status,
-                condition,
+                name != null && !name.trim().isEmpty() ? name.trim() : null,
+                code != null && !code.trim().isEmpty() ? code.trim() : null,
+                type != null && !type.trim().isEmpty() ? type.trim() : null,
+                status != null && !status.trim().isEmpty() ? status.trim() : null,
+                condition != null && !condition.trim().isEmpty() ? condition.trim() : null,
                 provinceId,
-                locationDetail,
-                approvalStatus).stream()
+                locationDetail != null && !locationDetail.trim().isEmpty() ? locationDetail.trim() : null,
+                approvalStatus != null && !approvalStatus.trim().isEmpty() ? approvalStatus.trim() : null).stream()
                 .map(this::toResponse)
                 .toList();
     }

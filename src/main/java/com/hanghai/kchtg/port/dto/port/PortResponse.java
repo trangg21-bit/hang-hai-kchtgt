@@ -36,6 +36,18 @@ public class PortResponse {
     private UUID updatedBy;
     private String createdByName;
     private String updatedByName;
+    private UUID submittedBy;
+    private String submittedByName;
+    private LocalDateTime submittedAt;
+    private UUID approverLevel1;
+    private String approverLevel1Name;
+    private LocalDateTime approvedDateLevel1;
+    private String approvalContentLevel1;
+    private UUID approverLevel2;
+    private String approverLevel2Name;
+    private LocalDateTime approvedDateLevel2;
+    private String approvalContentLevel2;
+    private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;
