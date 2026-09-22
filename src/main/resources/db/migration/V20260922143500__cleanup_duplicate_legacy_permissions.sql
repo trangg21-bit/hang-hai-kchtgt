@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration: V20260922143000__cleanup_duplicate_legacy_permissions.sql
+-- Migration: V20260922143500__cleanup_duplicate_legacy_permissions.sql
 -- Description: Dọn dẹp triệt để các mã quyền duplicate / legacy (lrit, cospassarsat,
 --              ttxltt, inmarsat, shiprepair, shiprepairyard, waterarea, buoystation,
 --              beaconlight, lighthousestation, interconnect) và đồng bộ chuyển đổi sang
