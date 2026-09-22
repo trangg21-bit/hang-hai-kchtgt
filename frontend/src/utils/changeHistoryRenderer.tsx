@@ -4,10 +4,9 @@ import { HistoryOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
   actionPrimary,
+  textPrimary,
   textSecondary,
   textTertiary,
-  borderDefault,
-  colors,
   fontSizeSm,
   fontSizeMd,
   fontWeightMedium,

@@ -450,9 +450,8 @@ export default function HistoryDrawer({
         </div>
       );
     }
-    return (
-      <div>
-        {groups.map((g, gi) => {
+
+    const renderedCards = groups.map((g, gi) => {
           const sortOrder = fieldOrder.length > 0 ? fieldOrder : Object.keys(fieldNameMap);
           const changes = g.items.flatMap((item: any) => historyChangeRows(item, fieldNameMap, approvalStatusMap, conditionStatusMap)).sort((a, b) => {
             const ia = sortOrder.indexOf(a.field);

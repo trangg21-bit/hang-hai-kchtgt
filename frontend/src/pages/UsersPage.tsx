@@ -15,7 +15,14 @@ import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService, type Organization } from '../services/organizationService';
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
-import { isStructuralNodeKey, usePermissions } from '../hooks/usePermissions';
+import {
+  getPermissionTreeKeys,
+  getVisiblePermissionKeys,
+  handleTreeCheck,
+  isHiddenPermission,
+  isStructuralNodeKey,
+  usePermissions,
+} from '../hooks/usePermissions';
 import {
   actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
   fontWeightBold, fontWeightMedium, radiusPill, radiusMd, radiusTextArea, borderDefault,
