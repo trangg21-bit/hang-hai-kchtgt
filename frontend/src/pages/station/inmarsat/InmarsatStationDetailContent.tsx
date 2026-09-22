@@ -658,7 +658,7 @@ export default function InmarsatStationDetailContent({
 
                       <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{record.approvalContentLevel1 || (record as any).level1ApprovalContent || (record as any).approvalReasonLevel1 || ''}</span>
+                        <span className="chk-detail-value">{record.approvalContentLevel1 || (record as any).level1ApprovalContent || (record as any).approvalReasonLevel1 || '—'}</span>
                       </div>
 
                       <div className="chk-detail-row">
@@ -666,7 +666,7 @@ export default function InmarsatStationDetailContent({
                         <span className="chk-detail-value">
                           {record.approverLevel2Name || record.approverNameLevel2 || record.approverLevel2 ? (
                             <span style={{ fontWeight: fontWeightBold }}>{record.approverLevel2Name || record.approverNameLevel2 || record.approverLevel2}</span>
-                          ) : ''}
+                          ) : '—'}
                         </span>
                       </div>
                       <div className="chk-detail-row">
@@ -676,7 +676,7 @@ export default function InmarsatStationDetailContent({
 
                       <div className="chk-detail-row chk-detail-row--full">
                         <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{record.approvalContentLevel2 || (record as any).level2ApprovalContent || (record as any).approvalReasonLevel2 || ''}</span>
+                        <span className="chk-detail-value">{record.approvalContentLevel2 || (record as any).level2ApprovalContent || (record as any).approvalReasonLevel2 || '—'}</span>
                       </div>
 
                       {record.rejectionReason && (
@@ -1112,7 +1112,7 @@ export default function InmarsatStationDetailContent({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

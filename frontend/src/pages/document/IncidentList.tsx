@@ -666,8 +666,8 @@ export default function IncidentList() {
         title={drawerMode === 'view' ? 'Chi tiết hồ sơ sự cố' : drawerMode === 'edit' ? 'Chỉnh sửa hồ sơ sự cố' : 'Ghi nhận sự cố'}
         open={drawerMode !== null}
         onClose={closeDrawer}
-        width={drawerMode === 'view' ? 920 : 860}
-        destroyOnClose
+        size={drawerMode === 'view' ? 920 : 860}
+        destroyOnHidden
       >
         {drawerMode === 'view' && viewRecord ? (
           <Tabs

@@ -37,6 +37,7 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../utils/approvalEditPolicy';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 
 const fontSizeMd = 13.5;
 
@@ -909,9 +910,8 @@ export function AisSystemList() {
     const uid = currentUser?.userId || currentUser?.id;
     const isCreator = Boolean(uid && (record.createdBy === uid || (record as any).userId === uid));
     const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1Name === currentUser?.fullName));
-    const userUnitType = currentUser?.unitType || '';
     const isAdmin = hasPerm('*') || hasPerm('admin:all');
-    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+    const isCucLevel = isCucLevelUser(currentUser) || isAdmin;
 
     const actions: any[] = [
       {
@@ -983,7 +983,7 @@ export function AisSystemList() {
       });
     }
 
-    if (hasPerm('aissystem:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
+    if (hasPerm('aissystem:approvec2') && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin) && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approve_c2',
         label: 'Phê duyệt cấp Cục',

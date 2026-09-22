@@ -549,7 +549,7 @@ export default function UnitList() {
         </FilterTableLayout>
 
         <Drawer
-          width="50%"
+          size="50%"
           placement="right"
           open={modalOpen}
           onClose={() => setModalOpen(false)}

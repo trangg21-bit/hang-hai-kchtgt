@@ -32,8 +32,8 @@ export default function WaterZoneForm() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await portCRUD.search({ page: 1, pageSize: 1000 });
-        setCangBienOptions((res.data || []).map((cb: any) => ({ value: cb.id, label: cb.portName })));
+        const res = await portCRUD.getOptions();
+        setCangBienOptions((res || []).map((cb: any) => ({ value: cb.id, label: cb.portName || cb.portCode || cb.id })));
       } catch { /* ignore */ }
     })();
   }, []);

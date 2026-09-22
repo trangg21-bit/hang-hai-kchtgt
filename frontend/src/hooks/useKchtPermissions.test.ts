@@ -73,10 +73,15 @@ describe('useKchtPermissions Unit Tests', () => {
       const perms = renderKchtHook('vts');
       expect(perms.isAdmin).toBe(true);
       expect(perms.isCucLevel).toBe(true);
-      expect(perms.canRead).toBe(false);
+      // Having vts:approvec1/c2 grants implicit read for vts, but not create or history
+      expect(perms.canRead).toBe(true);
       expect(perms.canCreate).toBe(false);
       expect(perms.canViewHistory).toBe(false);
       expect(perms.canSaveAndApprove).toBe(true);
+
+      // Other resources without permissions cannot be read
+      const portPerms = renderKchtHook('port');
+      expect(portPerms.canRead).toBe(false);
 
       // Admin can approve even own created record (separation of duty override)
       const ownRecord = { id: 'rec-1', createdBy: 'admin1', approvalStatus: 'PENDING_APPROVAL' };
@@ -199,6 +204,22 @@ describe('useKchtPermissions Unit Tests', () => {
         approvalStatus: 'APPROVED_LEVEL1',
       };
       expect(perms.canApproveL2(recApprovedByOtherL1)).toBe(true);
+    });
+
+    it('allows Cuc level to approve Level 2 even if created by Cuc officer', () => {
+      useAuthStore.setState({
+        user: {
+          id: 'user-cuc-2',
+          userId: 'user-cuc-2',
+          username: 'user_cuc_2',
+          unitType: 'LANH_DAO_CUC',
+          permissions: ['vts:approvec2'],
+        } as any,
+      });
+
+      const perms = renderKchtHook('vts', { approvalLevels: 2 });
+      const ownRecord = { id: 'r6', createdBy: 'user-cuc-2', approvalStatus: 'APPROVED_LEVEL1' };
+      expect(perms.canApproveL2(ownRecord)).toBe(true);
     });
   });
 

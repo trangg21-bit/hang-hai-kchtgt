@@ -3,6 +3,8 @@ import { useState } from 'react';
 import RejectionModal from './RejectionModal';
 import ApprovalModal from './ApprovalModal';
 import { hasPermissionFromList } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 
 export type ApprovalStatus = 'PROPOSED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 
@@ -46,18 +48,22 @@ export default function ApprovalActionBar({
   // C2 stage: PENDING_APPROVAL
   const isC2Stage = currentStatus === 'PENDING_APPROVAL';
   const canApproveC2 = isC2Stage && hasApprovePerm('c2');
+  const currentUser = useAuthStore((s) => s.user);
+  const isCucLevel = isCucLevelUser(currentUser);
+
   const canRejectAtC2 =
     isC2Stage &&
-    !(currentUserId && nguoiPheDuyetC1 === currentUserId) &&
+    (!(currentUserId && nguoiPheDuyetC1 === currentUserId) || isCucLevel) &&
     (hasApprovePerm('c1') || hasApprovePerm('c2'));
 
   const canDelete = currentStatus === 'APPROVED' && hasPermission(`${entityPermissionPrefix}:delete`);
 
-  // C2 must always be performed by a different user than C1.
+  // C2 must always be performed by a different user than C1, unless user is Cuc-level (Option 1).
   const isSelfApprovalC2 = !!(
     canApproveC2 &&
     currentUserId &&
-    nguoiPheDuyetC1 === currentUserId
+    nguoiPheDuyetC1 === currentUserId &&
+    !isCucLevel
   );
 
   // Determine which rejection handler to use

@@ -1222,7 +1222,7 @@ export default function VtsOperationCenterDetailContent({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
@@ -1293,7 +1293,7 @@ export default function VtsOperationCenterDetailContent({
         ]}
         width="min(800px, 90vw)"
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 8 }}>
           {previewLoading ? (

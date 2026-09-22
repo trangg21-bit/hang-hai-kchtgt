@@ -4,7 +4,10 @@ import { HistoryOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
   actionPrimary,
+  textSecondary,
   textTertiary,
+  borderDefault,
+  colors,
   fontSizeSm,
   fontSizeMd,
   fontWeightMedium,
@@ -28,6 +31,11 @@ import {
 import { VIETNAM_PROVINCES } from '../types/common';
 import { formatHistoryNumber } from './numFmt';
 import { getServicesProvidedHistoryDelta, isServicesProvidedHistoryField } from './serviceHistoryDelta';
+import {
+  formatMaritimeServicesDisplay,
+  resolveMaritimeServiceLabel,
+  parseMaritimeServiceTokens,
+} from '../constants/maritimeServices';
 
 export const isBlankOrDash = (v: unknown): boolean => {
   if (v === null || v === undefined) return true;
@@ -167,6 +175,12 @@ export function autoFormatHistoryValue(fn: string, raw: unknown): string | null 
   if (isBlankOrDash(s)) return null;
 
   const normKey = normalizeHistoryKey(fn);
+
+  // 0. Services Provided (Dịch vụ cung cấp viễn thông hàng hải)
+  if (isServicesProvidedHistoryField(fn) || normKey.includes('services') || normKey.includes('dichvu')) {
+    const formatted = formatMaritimeServicesDisplay(s);
+    if (formatted && formatted !== '—') return formatted;
+  }
 
   // 1. Booleans
   if (s.toLowerCase() === 'true' || (s === '1' && (normKey === 'isactive' || normKey === 'hoatdong' || normKey === 'receiveslargevessel' || normKey === 'nhantaulon'))) {
@@ -937,14 +951,31 @@ export function buildHistoryUpdateSessions(options: ChangeHistoryRendererOptions
   return sessions;
 }
 
-const renderServiceHistoryValue = (field: string, value: React.ReactNode) => {
+const renderServiceHistoryValue = (field: string, value: React.ReactNode, isOld: boolean = false) => {
   if (!isServicesProvidedHistoryField(field) || typeof value !== 'string') return value;
-  const services = value.split(/[,\r\n]+/).map((item) => item.trim()).filter(Boolean);
-  if (services.length <= 1) return value;
+  const rawTokens = parseMaritimeServiceTokens(value);
+  const services = rawTokens.length > 0
+    ? rawTokens.map((tok) => resolveMaritimeServiceLabel(tok)).filter(Boolean)
+    : value.split(/[,\r\n]+/).map((item) => resolveMaritimeServiceLabel(item)).filter(Boolean);
+  const uniqueServices = Array.from(new Set(services));
+  if (uniqueServices.length === 0) return value;
   return (
-    <span style={{ display: 'flex', flexDirection: 'column', gap: spaceXs }}>
-      {services.map((service) => <span key={service}>{service}</span>)}
-    </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+      {uniqueServices.map((service, sIdx) => (
+        <div
+          key={sIdx}
+          style={{
+            color: isOld ? textSecondary : textPrimary,
+            fontWeight: isOld ? 400 : fontWeightMedium,
+            lineHeight: '20px',
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {service}
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -1013,12 +1044,18 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
             return (
               <div key={x.rowId} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                 <Typography.Text style={historyFieldLabelStyle}>{x.label}</Typography.Text>
-                <span style={historyOldValueStyle} title={typeof x.ov === 'string' && x.ov ? x.ov : undefined}>
-                  {renderServiceHistoryValue(x.field, x.ov)}
+                <span
+                  style={historyOldValueStyle}
+                  title={typeof x.ov === 'string' ? x.ov : undefined}
+                >
+                  {renderServiceHistoryValue(x.field, x.ov, true)}
                 </span>
                 <Typography.Text style={historyArrowStyle}>→</Typography.Text>
-                <span style={historyNewValueStyle} title={typeof x.nv === 'string' && x.nv ? x.nv : undefined}>
-                  {renderServiceHistoryValue(x.field, x.nv)}
+                <span
+                  style={historyNewValueStyle}
+                  title={typeof x.nv === 'string' ? x.nv : undefined}
+                >
+                  {renderServiceHistoryValue(x.field, x.nv, false)}
                 </span>
               </div>
             );

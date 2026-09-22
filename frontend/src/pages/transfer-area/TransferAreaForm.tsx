@@ -488,8 +488,9 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
     (async () => {
       setLoadingPorts(true);
       try {
-        const r = await portCRUD.findAll({ orgUnitId: watchedOrgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 });
-        setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+        const allPorts = await portCRUD.getOptions({ approvalStatus: 'APPROVED' });
+        const filtered = (allPorts || []).filter((p: any) => !p.orgUnitId || p.orgUnitId === watchedOrgUnitId);
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName || p.portCode || p.id })));
       } catch { /* silent */ }
       finally { setLoadingPorts(false); }
     })();
@@ -1802,11 +1803,11 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         rootClassName="transfer-area-drawer-scope"
         className="transfer-area-drawer-scope"
         size={1000}
-        width="min(1000px, 96vw)"
+        size="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
         open={waterAreaDrawerOpen}
         onClose={closeWaterAreaDrawer}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         extra={<Button type="text" onClick={closeWaterAreaDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
@@ -2082,11 +2083,11 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         rootClassName="transfer-area-drawer-scope"
         className="transfer-area-drawer-scope"
         size={1000}
-        width="min(1000px, 96vw)"
+        size="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
         open={!!viewingWaterArea}
         onClose={() => setViewingWaterArea(null)}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
@@ -2367,7 +2368,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         zIndex={2500}
@@ -2439,7 +2440,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         }
         open={waterAreaGisModalOpen}
         onCancel={() => setWaterAreaGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         zIndex={2500}

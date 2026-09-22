@@ -34,6 +34,8 @@ import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, 
 import { useKchtRowActions } from '../../../hooks/useKchtRowActions';
 import { useSearchParams } from 'react-router-dom';
 import { getVtsConditionStatusLabel, getConditionStatusLabel, getConditionStatusColor } from '../../../themetokenchk';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 
 const fontSizeMd = 13.5;
 
@@ -214,6 +216,9 @@ const formatHistoryValue = (field: string, val: unknown): string => {
     const sVal = String(val).trim();
     const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
     return found ? found.name : sVal;
+  }
+  if (field === 'services' || field === 'servicesProvided' || field === 'Dịch vụ cung cấp' || field === 'providedServices') {
+    return formatMaritimeServicesDisplay(val);
   }
   return String(val);
 };

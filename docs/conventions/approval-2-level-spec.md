@@ -93,10 +93,13 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 >
 > **Case test bắt buộc:** không được nhảy vòng (Chờ Cảng vụ/Chi cục → Đã duyệt), không được duyệt ngược (Chờ Cục → Chờ Cảng vụ/Chi cục), không được gửi duyệt khi chưa điền đủ thông tin bắt buộc, không được xóa hồ sơ khi không ở trạng thái "Lưu tạm".
 
-### 3.3. Chống tự duyệt (4-eyes) — quy tắc 8
+### 3.3. Chống tự duyệt (4-eyes) & Quy tắc ngoại lệ cấp Cục — quy tắc 8
 
 - Quyền duyệt gắn với **chức vụ của người duyệt**: lãnh đạo Cảng vụ/Chi cục chỉ duyệt vòng 1, lãnh đạo Cục duyệt vòng 2.
-- **Người duyệt không được duyệt hồ sơ do chính mình gửi** (4-eyes principle).
+- **Nguyên tắc 4 mắt (Cấp Cảng vụ / Chi cục - Vòng 1)**: Người duyệt ở cấp Cảng vụ/Chi cục **không được tự duyệt hồ sơ do chính mình tạo hoặc gửi** (4-eyes principle).
+- **Quy tắc ngoại lệ cho cấp Cục (Vòng 2 & Quyền approvec2)**: Để đảm bảo tính đồng bộ và nhất quán với luồng *"Lưu và phê duyệt"* (cho phép cán bộ cấp Cục tạo và phê duyệt trực tiếp sang `APPROVED`), tài khoản thuộc cấp Cục (`isCucLevel` / `isDepartmentLevelUser` / Admin có quyền `approvec2`) **được phép phê duyệt** các hồ sơ do chính mình tạo hoặc gửi duyệt.
+  - Backend: `InfrastructureApprovalService` áp dụng `validateNotSelfApproval` chỉ khi người dùng không thuộc cấp Cục (`!isDepartmentLevelUser(userId)`).
+  - Frontend: `useKchtPermissions`, `useKchtRowActions`, `ApprovalActionBar` và các bảng danh sách cho phép `isCucLevel` tự duyệt (miễn trừ ràng buộc `!isCreator` và `!isApproverL1`).
 
 ### 3.4. Từ chối bắt buộc nhập lý do — quy tắc 5
 
@@ -183,7 +186,7 @@ guard phía backend. Mọi tài liệu/màn hình khác phải khớp với bả
 | **Chờ Cục duyệt** `APPROVED_LEVEL1` (3) | ❌ | — | — | — |
 | **Bị Cảng vụ/Chi cục trả về** `REJECTED_LEVEL1` (8) | ✅ | Sửa **+ gửi lại** | Người nhập | `<resource>:update` |
 | **Bị Cục trả về** `REJECTED_LEVEL2` (9) | ✅ | Sửa **+ gửi lại** | Người nhập | `<resource>:update` |
-| **Đã duyệt** `APPROVED` (5) | ✅ | Sửa qua **"Lưu và phê duyệt"** | **Người có quyền phê duyệt** | `<resource>:approvec2` |
+| **Đã duyệt** `APPROVED` (5) | ✅ | Cập nhật trực tiếp / Lưu và phê duyệt | Cán bộ cập nhật / Cán bộ Cục | `<resource>:update` (kèm `<resource>:approvec2` nếu duyệt trực tiếp) |
 | **Đã xóa** `ARCHIVED` (7) | ❌ | — | — | — |
 
 **Giải thích các quy tắc bắt buộc:**
@@ -199,21 +202,26 @@ guard phía backend. Mọi tài liệu/màn hình khác phải khớp với bả
    của việc trả về. Cấm sửa ở hai trạng thái này sẽ làm **tắc quy trình** — hồ sơ không bao giờ
    đi tiếp được. Sau khi sửa, hồ sơ quay lại `PENDING_APPROVAL` (gửi lại vòng 1).
 
-3. **Sửa hồ sơ Đã duyệt = "Lưu và phê duyệt"** (T12): chỉ **người có quyền phê duyệt**
-   (`<resource>:approvec2`) mới thấy nút "Chỉnh sửa" trên hồ sơ `APPROVED`. Khi lưu:
-   bản cũ ghi vào nhật ký thay đổi, hồ sơ **giữ nguyên trạng thái `APPROVED`**, ghi lại
-   người thực hiện + thời điểm. **Tuyệt đối không** hạ hồ sơ về `DRAFT` — vì `/options`
-   chỉ trả về bản ghi `APPROVED` (quy tắc APPROVED ONLY), hạ trạng thái sẽ làm hồ sơ đang
-   khai thác biến mất khỏi mọi dropdown của các màn hình khác.
+3. **Sửa hồ sơ Đã duyệt (Bắt buộc phải có quyền `<resource>:update`)**:
+   Điều kiện tiên quyết để hiển thị nút "Chỉnh sửa" là người dùng **bắt buộc phải có quyền `<resource>:update`**.
+   Nếu người quản trị đã bỏ tích quyền `<resource>:update`, nút "Chỉnh sửa" **phải ẩn 100% trên toàn bộ các dòng bản ghi** (kể cả bản ghi `APPROVED`).
+   Khi người dùng có quyền `<resource>:update`:
+   - Nếu tài khoản có thêm quyền duyệt cấp Cục (`approvec2` tại cấp Cục): chân form hiển thị nút xanh lá **"Lưu và phê duyệt"** (sửa và duyệt trực tiếp giữ nguyên trạng thái `APPROVED`).
+   - Nếu tài khoản chỉ có quyền cập nhật (`update`): chân form hiển thị nút xanh dương **"Cập nhật"**.
+   - Bản cũ được ghi vào nhật ký thay đổi (`infrastructure_history`), hồ sơ **giữ nguyên trạng thái `APPROVED`**,
+     ghi lại người thực hiện + thời điểm. **Tuyệt đối không** hạ hồ sơ về `DRAFT` — vì `/options`
+     chỉ trả về bản ghi `APPROVED` (quy tắc APPROVED ONLY), hạ trạng thái sẽ làm hồ sơ đang
+     khai thác biến mất khỏi mọi dropdown của các màn hình khác.
 
 4. **Không có quyền tương ứng thì ẩn nút**, không hiện rồi báo lỗi khi bấm.
 
 **Bộ ba nút chân form khi chỉnh sửa** (khác với khi tạo mới):
 
-| Trạng thái đang sửa | Các nút hiển thị |
-| :--- | :--- |
-| `DRAFT`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2` | `Hủy` · `Lưu tạm` · `Lưu và gửi phê duyệt` |
-| `APPROVED` | `Hủy` · `Lưu và phê duyệt` (nút xanh lá) |
+| Trạng thái đang sửa | Quyền tài khoản | Các nút hiển thị |
+| :--- | :--- | :--- |
+| `DRAFT`, `REJECTED_LEVEL1`, `REJECTED_LEVEL2` | `<resource>:update` | `Hủy` · `Lưu tạm` · `Lưu và gửi phê duyệt` |
+| `APPROVED` | `<resource>:approvec2` (cấp Cục) | `Hủy` · `Lưu và phê duyệt` (nút xanh lá) |
+| `APPROVED` | `<resource>:update` | `Hủy` · `Cập nhật` (nút xanh dương) |
 
 **Triển khai dùng chung — CẤM tự viết lại điều kiện ở từng màn:**
 

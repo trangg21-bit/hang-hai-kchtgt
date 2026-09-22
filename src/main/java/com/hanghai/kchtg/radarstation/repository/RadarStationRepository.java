@@ -166,6 +166,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         SELECT t FROM RadarStation t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+          AND (t.conditionStatus = '1' OR UPPER(t.conditionStatus) = 'OPERATIONAL' OR t.conditionStatus = 'Đang khai thác/vận hành')
           AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(t.stationName) ASC
     """)

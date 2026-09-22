@@ -8,7 +8,7 @@ import {
     SearchOutlined,
     SendOutlined,
 } from '@ant-design/icons';
-import viVN from 'antd/locale/vi_VN';
+import viVN from 'antd/locale/vi_VN.js';
 import React from 'react';
 import { colors as baseColors, layout as baseLayout } from './theme';
 

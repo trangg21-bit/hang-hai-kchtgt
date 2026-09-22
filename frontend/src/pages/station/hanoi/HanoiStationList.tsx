@@ -35,8 +35,10 @@ import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs, { type Dayjs } from 'dayjs';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
+import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
 
 const fontSizeMd = 13.5;
 
@@ -305,6 +307,9 @@ const formatHistoryValue = (field: string, val: unknown): string => {
     const sVal = String(val).trim();
     const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
     return found ? found.name : sVal;
+  }
+  if (field === 'services' || field === 'servicesProvided' || field === 'Dịch vụ cung cấp' || field === 'providedServices') {
+    return formatMaritimeServicesDisplay(val);
   }
   return String(val);
 };
@@ -959,8 +964,7 @@ export default function HanoiStationList() {
     const uid = currentUser?.userId || currentUser?.id;
     const isCreator = Boolean(uid && (record.createdBy === uid || record.userId === uid));
     const isApproverL1 = Boolean(uid && (record.approverLevel1 === uid || record.approverLevel1Name === currentUser?.fullName));
-    const userUnitType = currentUser?.unitType || '';
-    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+    const isCucLevel = isCucLevelUser(currentUser) || isAdmin;
 
     const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1');
     const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
@@ -968,20 +972,17 @@ export default function HanoiStationList() {
     const canEdit = canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource: 'coastalstationhaiphong',
-      extraUpdatePerms: ['specialstation:update', 'data:update'],
-      extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
-    }) || (record.approvalStatus === ApprovalStatus.APPROVED && isAdmin);
+    });
 
     const canDelete = canDeleteApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource: 'coastalstationhaiphong',
-      extraDeletePerms: ['specialstation:delete', 'data:delete'],
     });
     const canSubmit = (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) &&
       (hasPerm('coastalstationhaiphong:update') || hasPerm('specialstation:update') || hasPerm('data:update') || isAdmin);
 
     const canApproveL1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && isApproverL1Perm && (!isCreator || isCucLevel || isAdmin);
-    const canApproveL2 = (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && isApproverL2Perm && (!isApproverL1 || isCucLevel || isAdmin);
+    const canApproveL2 = (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && isApproverL2Perm && (!isCreator || isCucLevel || isAdmin) && (!isApproverL1 || isCucLevel || isAdmin);
 
     return [
       {
@@ -996,12 +997,12 @@ export default function HanoiStationList() {
         icon: icons.edit,
         onClick: () => handleEdit(record),
       }] : []),
-      {
+      ...(hasPerm('coastalstationhaiphong:history') ? [{
         key: 'history',
         label: 'Lịch sử',
         icon: icons.history,
         onClick: () => handleOpenHistory(record),
-      },
+      }] : []),
       ...(canSubmit ? [{
         key: 'submit',
         label: 'Gửi phê duyệt',

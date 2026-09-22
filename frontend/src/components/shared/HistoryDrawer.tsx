@@ -477,6 +477,17 @@ export default function HistoryDrawer({
             return historyFieldValue(fn, raw, approvalStatusMap, conditionStatusMap);
           };
           if (changes.length === 0) return null;
+          const validChanges = changes.filter((c: any) => {
+            if (!c.field) return false;
+            const ov = formatHistoryValue(c.field, c.oldValue);
+            const nv = formatHistoryValue(c.field, c.newValue);
+            if (ov == null && nv == null) return false;
+            if (ov === nv) return false;
+            return true;
+          });
+          const reasons = g.items.map((i: any) => i.ghiChu || i.note || i.reason).filter(Boolean);
+          if (validChanges.length === 0 && reasons.length === 0) return null;
+
           const actionMeta = resolveHistoryActionMeta(g.items[0], changes);
           return (
             <div key={gi} style={{ display: 'grid', gridTemplateColumns: '220px minmax(0, 1fr)', gap: spaceLg, alignItems: 'start', marginBottom: gi < groups.length - 1 ? spaceMd : 0 }}>
@@ -506,15 +517,6 @@ export default function HistoryDrawer({
                   {informationTitle}
                 </Typography.Text>
                 {(() => {
-                  const validChanges = changes.filter((c: any) => {
-                    if (!c.field) return false;
-                    const ov = formatHistoryValue(c.field, c.oldValue);
-                    const nv = formatHistoryValue(c.field, c.newValue);
-                    if (ov == null && nv == null) return false;
-                    if (ov === nv) return false;
-                    return true;
-                  });
-                  const reasons = g.items.map((i: any) => i.ghiChu || i.note).filter(Boolean);
                   if (validChanges.length > 0) {
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
@@ -548,21 +550,30 @@ export default function HistoryDrawer({
                       </div>
                     );
                   }
-                  return <Typography.Text style={{ color: textTertiary, fontSize: fontSizeMd, fontStyle: 'italic' }}>Không có thông tin chi tiết thay đổi</Typography.Text>;
+                  return null;
                 })()}
               </div>
             </div>
           );
-        })}
-      </div>
-    );
-  };
+        }).filter(Boolean);
+
+        if (renderedCards.length === 0) {
+          return (
+            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
+              <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
+              <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || dateFrom || dateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
+            </div>
+          );
+        }
+
+        return <div>{renderedCards}</div>;
+      };
 
   return (
     <Drawer
       open={open}
       onClose={onClose}
-      width={1000}
+      size={1000}
       style={{ maxWidth: '95vw' }}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>

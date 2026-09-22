@@ -328,14 +328,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
   // Tự sinh mã trạm radar khi người dùng chọn Thuộc cảng biển (chuẩn /berth)
   useEffect(() => {
-    if (isEdit && editSeaportIdRef.current === watchedSeaportId) return;
+    if (isEditMode && editSeaportIdRef.current === watchedSeaportId) return;
     if (!watchedSeaportId) {
-      if (!isEdit) {
+      if (!isEditMode) {
         form.setFieldValue('code', undefined);
       }
       return;
     }
-    if (isEdit) return;
+    if (isEditMode) return;
     setCodeLoading(true);
     radarStationCRUD.generateCode()
       .then((r) => {
@@ -343,7 +343,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       })
       .catch(() => {})
       .finally(() => setCodeLoading(false));
-  }, [watchedSeaportId, isEdit, form]);
+  }, [watchedSeaportId, isEditMode, form]);
 
   const handleSubmit = useCallback(async (submitMode: 'save' | 'submit' | 'approve' = 'save') => {
     try {
@@ -614,6 +614,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   // Trạng thái hiện tại của bản ghi (khớp RadarStationList: status || approvalStatus)
   const st = record?.status || record?.approvalStatus || '';
   const currentUserId = useAuthStore.getState().user?.userId;
+  const isCuc = isCucLevelUser(useAuthStore.getState().user);
   // Chỉ những trạng thái chưa duyệt xong mới được gửi duyệt (lại) từ màn Cập nhật
   const canResubmit = isEditMode && ['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st);
 
@@ -694,22 +695,22 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 </Button>
               </Popconfirm>
             )}
-            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && currentUserId !== record.createdBy && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (currentUserId !== record.createdBy || isCuc) && (
               <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c1')}>
                 Phê duyệt cấp Cảng vụ/Chi cục
               </Button>
             )}
-            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && currentUserId !== record.createdBy && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (currentUserId !== record.createdBy || isCuc) && (
               <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c1')}>
                 Từ chối cấp Cảng vụ/Chi cục
               </Button>
             )}
-            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && currentUserId !== record.approverLevel1 && (
+            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && (currentUserId !== record.approverLevel1 || isCuc) && (
               <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c2')}>
                 Phê duyệt cấp Cục
               </Button>
             )}
-            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && currentUserId !== record.approverLevel1 && (
+            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && (currentUserId !== record.approverLevel1 || isCuc) && (
               <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c2')}>
                 Từ chối cấp Cục
               </Button>
@@ -790,7 +791,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <FormOrgUnitTreeSelect
               organizations={orgOptions}
               placeholder="Chọn đơn vị quản lý..."
-              disabled={isEdit}
+              disabled={isEditMode}
               allowClear
               showSearch
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -799,7 +800,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 const seaportId = form.getFieldValue('seaportId');
                 if (!orgUnitId) {
                   form.setFieldValue('seaportId', undefined);
-                  if (!isEdit) {
+                  if (!isEditMode) {
                     form.setFieldValue('code', undefined);
                   }
                 } else if (seaportId) {
@@ -811,7 +812,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                   );
                   if (!isValidSeaport) {
                     form.setFieldValue('seaportId', undefined);
-                    if (!isEdit) {
+                    if (!isEditMode) {
                       form.setFieldValue('code', undefined);
                     }
                   }
@@ -1110,7 +1111,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>}
           open={open}
           onCancel={onCancel}
-          destroyOnClose
+          destroyOnHidden
           width={isDetailMode ? 900 : 760}
           maskClosable={false}
           footer={

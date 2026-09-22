@@ -1168,7 +1168,7 @@ export default function NavigationChannelDetailContent({
         }
         open={gisOpen}
         onCancel={() => setGisOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
@@ -1201,7 +1201,7 @@ export default function NavigationChannelDetailContent({
         }
         footer={null}
         onCancel={() => setPreviewImage(null)}
-        destroyOnClose
+        destroyOnHidden
         width={800}
       >
         {previewImage && (

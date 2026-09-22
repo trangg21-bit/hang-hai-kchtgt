@@ -1,4 +1,7 @@
-import { resolveMaritimeServiceLabel } from '../constants/maritimeServices';
+import {
+  resolveMaritimeServiceLabel,
+  parseMaritimeServiceTokens,
+} from '../constants/maritimeServices';
 
 export type ServiceHistoryDelta = {
   field: string;
@@ -28,20 +31,9 @@ const toServiceValues = (raw: unknown): string[] => {
   const text = String(raw).trim();
   if (EMPTY_VALUES.has(text.toLowerCase())) return [];
 
-  if (text.startsWith('[') && text.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        return toServiceValues(parsed.join(','));
-      }
-    } catch {
-      // The legacy value is not JSON; process it as a delimited string below.
-    }
-  }
-
+  const tokens = parseMaritimeServiceTokens(raw);
   const seen = new Set<string>();
-  return text
-    .split(/[;,\r\n]+/)
+  return tokens
     .map((item) => item.trim())
     .filter((item) => item && !EMPTY_VALUES.has(item.toLowerCase()))
     .filter((item) => {

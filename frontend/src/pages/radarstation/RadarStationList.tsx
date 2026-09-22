@@ -298,10 +298,10 @@ const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: statusAttention },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusInfo },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusInfo },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -322,12 +322,12 @@ const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: str
   PROPOSED: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusInfo, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusInfo, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED_LEVEL2: { color: statusOperational, label: 'Đã phê duyệt' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
 
@@ -2036,17 +2036,19 @@ export default function RadarStationList() {
     if (hasPerm('radarstation:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: themeTokenChk.icons.history, onClick: () => openHistory(record) });
     }
-    const currentUserId = useAuthStore.getState().user?.userId;
+    const user = useAuthStore.getState().user;
+    const currentUserId = user?.userId;
+    const isCuc = isCucLevelUser(user);
     if (['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('radarstation:update') || hasPerm('radarstation:create'))) {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: themeTokenChk.icons.submit, onClick: () => openSubmitModal(record) });
     }
-    // Quy tắc 8/9: chống tự duyệt (4-eyes) — người tạo không tự duyệt cấp Cảng vụ
-    if (hasPerm('radarstation:approvec1') && st === 'PENDING_APPROVAL' && currentUserId !== record.createdBy) {
+    // Quy tắc 8/9: chống tự duyệt (4-eyes) — người tạo không tự duyệt cấp Cảng vụ (trừ cấp Cục)
+    if (hasPerm('radarstation:approvec1') && st === 'PENDING_APPROVAL' && (currentUserId !== record.createdBy || isCuc)) {
       actions.push({ key: 'approveC1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record, 'c1') });
       actions.push({ key: 'rejectC1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record, 'c1') });
     }
-    // Cấp Cục: người duyệt C1 không tự duyệt C2
-    if (hasPerm('radarstation:approvec2') && st === 'APPROVED_LEVEL1' && currentUserId !== record.approverLevel1) {
+    // Cấp Cục: người duyệt C1 không tự duyệt C2 (trừ cấp Cục được tự duyệt)
+    if (hasPerm('radarstation:approvec2') && st === 'APPROVED_LEVEL1' && (currentUserId !== record.approverLevel1 || isCuc)) {
       actions.push({ key: 'approveC2', label: 'Phê duyệt cấp Cục', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record, 'c2') });
       actions.push({ key: 'rejectC2', label: 'Từ chối cấp Cục', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record, 'c2') });
     }
@@ -3103,12 +3105,12 @@ export default function RadarStationList() {
         PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
         PENDING: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
         PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+        APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
         APPROVED_LEVEL2: 'Đã phê duyệt',
         APPROVED: 'Đã phê duyệt',
         REJECTED: 'Từ chối cấp Cảng vụ/Chi cục',
         REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-        REJECTED_LEVEL2: 'Từ chối cấp cục',
+        REJECTED_LEVEL2: 'Từ chối cấp Cục',
       };
       return displayValue.split(';').map((value) => {
         const normalizedValue = String(value || '').trim();

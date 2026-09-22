@@ -4,17 +4,19 @@ export const BE = 'http://localhost:8080';
 
 /** Log in as admin through the UI; resolves once redirected away from /login. */
 export async function loginAdmin(page: Page) {
+  await page.goto('/');
+  if (!page.url().includes('/login')) return;
   await page.goto('/login');
-  await page.getByLabel('Email').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('admin123');
-  await page.getByRole('button', { name: /đăng nhập/i }).click();
+  await page.fill('input[placeholder*="đăng nhập"]', 'admin');
+  await page.fill('input[placeholder*="mật khẩu"]', 'Asdqwe@123');
+  await page.click('button[type="submit"]');
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20_000 });
 }
 
 /** Get an admin JWT via the API (for fixture setup/cleanup, not the thing under test). */
 export async function adminToken(request: APIRequestContext): Promise<string> {
   const res = await request.post(`${BE}/api/auth/login`, {
-    data: { username: 'admin', password: 'admin123' },
+    data: { username: 'admin', password: 'Asdqwe@123' },
   });
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
@@ -27,27 +29,20 @@ export async function createNhaTramDen(
   token: string,
   tag: string,
 ): Promise<string> {
-  const res = await request.post(`${BE}/api/v1/lighthouse-station`, {
+  const res = await request.post(`${BE}/api/beacon-stations`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       code: `E2E-DEN-${tag}`,
       name: `E2E Đèn biển ${tag}`,
       type: 'LIGHTHOUSE',
-      latitude: 20.8523,
-      longitude: 106.6821,
       lightRange: 15.5,
-      lightColor: 'Trắng',
-      lightCharacteristic: 'Chớp đơn chu kỳ 5 giây',
-      range: 20.0,
-      description: `E2E test nhà trạm đèn ${tag}`,
-      unitId: '00000000-0000-0000-0000-000000000000',
-      lastMaintenanceDate: '2025-01-01',
-      nextMaintenanceDate: '2026-01-01',
+      towerColor: 'Trắng',
+      primaryLightModel: 'Model-E2E',
+      location: `E2E test nhà trạm đèn ${tag}`,
       isActive: true,
-      status: 'DRAFT',
     },
   });
-  expect(res.ok(), `create lighthouse-station failed: ${res.status()} ${await res.text()}`).toBeTruthy();
+  expect(res.ok(), `create beacon-station failed: ${res.status()} ${await res.text()}`).toBeTruthy();
   const body = await res.json();
   return (body.data ?? body).id;
 }

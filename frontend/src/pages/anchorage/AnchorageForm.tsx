@@ -472,13 +472,9 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
     }
     setLoadingWaterways(true);
     try {
-      const r = await navigationChannelCRUD.search({
-        orgUnitId,
-        approvalStatus: 'APPROVED',
-        page: 0,
-        size: 1000,
-      });
-      const options = (r.items || []).map((n) => {
+      const items = await navigationChannelCRUD.getOptions();
+      const filtered = items.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnitId);
+      const options = filtered.map((n) => {
         const code = n.channelCode?.trim();
         const name = n.channelName?.trim();
         const label = code && name ? `${code} - ${name}` : (code || name || '');
@@ -498,8 +494,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
 
   // Load buoy stations
   useEffect(() => {
-    buoyBerthCRUD.search({ page: 1, pageSize: 1000, approvalStatus: 'APPROVED' })
-      .then(r => setBuoyStationOptions((r.data || []).map(b => ({ value: b.id, label: b.buoyBerthName || b.buoyBerthCode || '' }))))
+    buoyBerthCRUD.getOptions()
+      .then(items => setBuoyStationOptions(items.map(b => ({ value: b.id, label: b.buoyBerthName || b.buoyBerthCode || '' }))))
       .catch(() => {});
   }, []);
 
@@ -514,8 +510,9 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
     (async () => {
       setLoadingPorts(true);
       try {
-        const r = await portCRUD.findAll({ orgUnitId: watchedOrgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 });
-        setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+        const allPorts = await portCRUD.getOptions();
+        const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === watchedOrgUnitId);
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
       } catch { /* silent */ }
       finally { setLoadingPorts(false); }
     })();
@@ -1776,11 +1773,11 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         rootClassName="anchorage-drawer-scope"
         className="anchorage-drawer-scope"
         size={1000}
-        width="min(1000px, 96vw)"
+        size="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
         open={waterAreaDrawerOpen}
         onClose={closeWaterAreaDrawer}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         extra={<Button type="text" onClick={closeWaterAreaDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={
@@ -2056,11 +2053,11 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         rootClassName="anchorage-drawer-scope"
         className="anchorage-drawer-scope"
         size={1000}
-        width="min(1000px, 96vw)"
+        size="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
         open={!!viewingWaterArea}
         onClose={() => setViewingWaterArea(null)}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
         footer={null}
@@ -2341,7 +2338,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         zIndex={2500}
@@ -2415,7 +2412,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         }
         open={waterAreaGisModalOpen}
         onCancel={() => setWaterAreaGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         zIndex={2500}

@@ -126,17 +126,24 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
     };
 
     if (currentValue && currentValue !== '__all__' && !findNode(base, currentValue)) {
+      const isMinistryVal =
+        currentValue === '00000000-0000-0000-0000-000000000017' ||
+        currentValue === 'G17' ||
+        currentValue.toLowerCase().includes('bộ giao thông');
+      if (isMinistryVal) {
+        // Tuyệt đối không bao giờ chèn node Bộ Giao thông Vận tải vào cây đơn vị
+        return base;
+      }
       const org = byId.get(currentValue);
-      const isMinistryVal = currentValue === '00000000-0000-0000-0000-000000000017' || currentValue === 'G17';
       const title = org
         ? (org.name || (org.code ? `${org.code} - ${org.name}` : org.name))
-        : (isMinistryVal ? 'G17 - Bộ Giao thông Vận tải' : (currentOrgName || 'Đơn vị quản lý'));
+        : (currentOrgName || 'Đơn vị quản lý');
       base = [
         {
           key: currentValue,
           value: currentValue,
           title,
-          label: org?.name || (isMinistryVal ? 'Bộ Giao thông Vận tải' : title),
+          label: org?.name || title,
         },
         ...base,
       ];
@@ -169,11 +176,19 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   }, [effectiveOrganizations, showPath, effectiveAllLabel, restProps.value, currentOrgName]);
 
   const internalValue = useMemo(() => {
-    if (isForm) {
-      return restProps.value;
-    }
     const raw = restProps.value;
-    if (raw === undefined || raw === null || raw === '' || raw === '__all__') {
+    const isMinistryVal =
+      raw === '00000000-0000-0000-0000-000000000017' ||
+      raw === 'G17' ||
+      (typeof raw === 'string' && raw.toLowerCase().includes('bộ giao thông'));
+
+    if (isForm) {
+      if (isMinistryVal) {
+        return undefined;
+      }
+      return raw;
+    }
+    if (raw === undefined || raw === null || raw === '' || raw === '__all__' || isMinistryVal) {
       return effectiveAllLabel ? '__all__' : undefined;
     }
     return String(raw);

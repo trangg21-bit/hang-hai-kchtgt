@@ -173,10 +173,10 @@ import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
   ARCHIVED: 'Đã xóa',
   DELETED: 'Đã xóa',
 };
@@ -1673,9 +1673,10 @@ const ScadaListPage = () => {
       }
 
       // PENDING_APPROVAL + scada:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
+      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
       if (hasPerm?.("scada:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC1",
           label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
@@ -1703,9 +1704,10 @@ const ScadaListPage = () => {
       }
 
       // APPROVED_LEVEL1 + scada:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
-      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
+      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2 (trừ tài khoản cấp Cục).
       if (hasPerm?.("scada:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
-        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC2",
           label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
@@ -2375,7 +2377,7 @@ const ScadaListPage = () => {
                     format="DD/MM/YYYY"
                     placeholder={["Từ ngày", "Đến ngày"]}
                     allowClear
-                    popupClassName="chk-range-datepicker-popup"
+                    classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
                     value={
                       filterValues.updatedFrom && filterValues.updatedTo
                         ? [
@@ -2439,7 +2441,7 @@ const ScadaListPage = () => {
           },
           {
             key: "APPROVED_LEVEL1",
-            label: "Chờ phê duyệt cấp cục",
+            label: "Chờ phê duyệt cấp Cục",
             count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
@@ -2460,7 +2462,7 @@ const ScadaListPage = () => {
           },
           {
             key: "REJECTED_LEVEL2",
-            label: "Từ chối cấp cục",
+            label: "Từ chối cấp Cục",
             count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
               ? total
               : (tabCounts["REJECTED_LEVEL2"] ?? 0),
@@ -2522,7 +2524,7 @@ const ScadaListPage = () => {
       <Drawer
         {...drawerProps}
         size={undefined}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         rootClassName={THEME_SCOPE_CLASS}
         className="scada-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống SCADA{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -3337,7 +3339,7 @@ const ScadaListPage = () => {
           },
           body: { padding: '0 24px 12px 24px' },
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <style>{requiredMarkStyle}</style>
         {createModalOpen && (

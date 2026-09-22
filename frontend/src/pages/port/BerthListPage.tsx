@@ -103,10 +103,10 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -381,10 +381,10 @@ export default function BerthList() {
 
   // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — không dùng GIS LineObject (đồng bộ chuẩn Cầu cảng)
   useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => {
+    navigationChannelCRUD.getOptions()
+      .then((items) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach(n => {
+        items.forEach(n => {
           const code = n.channelCode?.trim();
           const name = n.channelName?.trim();
           const label = code && name ? `${code} - ${name}` : (code || name || '');
@@ -414,12 +414,21 @@ export default function BerthList() {
   }, [rawUsers, orgMap]);
 
   // ── Port options ─────────────────────────────────────────────────
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [allPorts, setAllPorts] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const portMap = useMemo(() => {
     const map = new Map<string, string>();
-    portOptions.forEach((o) => map.set(o.value, o.label));
+    allPorts.forEach((o) => map.set(o.id, o.portName || o.portCode || o.id));
     return map;
-  }, [portOptions]);
+  }, [allPorts]);
+  const allPortOptions = useMemo(() => {
+    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts]);
+  const portOptions = useMemo(() => {
+    const filtered = (!managingUnitId || managingUnitId === '__all__')
+      ? allPorts
+      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === managingUnitId);
+    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts, managingUnitId]);
 
   // ── Tab counts ──────────────────────────────────────────────────
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
@@ -668,18 +677,22 @@ export default function BerthList() {
     })();
   }, []);
 
-  // ── Load port options ──────────────────────────────────────────
+  // ── Load port options via lightweight options endpoint ──────────
   useEffect(() => {
-    if (!orgUnitReady) return;
-    (async () => {
-      try {
-        const params: any = { page: 1, pageSize: 1000 };
-        if (managingUnitId && managingUnitId !== '__all__') params.orgUnitId = managingUnitId;
-        const res = await portCRUD.search(params);
-        setPortOptions((res.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
-      } catch { /* ignore */ }
-    })();
-  }, [managingUnitId, orgUnitReady]);
+    portCRUD.getOptions()
+      .then((items) => setAllPorts(items || []))
+      .catch(() => {});
+  }, []);
+
+  // Cascading reset: Khi đổi đơn vị quản lý, nếu cảng đang chọn không thuộc đơn vị mới thì reset filterPortId
+  useEffect(() => {
+    if (filterPortId && managingUnitId && managingUnitId !== '__all__') {
+      const match = allPorts.find((p) => p.id === filterPortId);
+      if (match && match.orgUnitId && match.orgUnitId !== managingUnitId) {
+        setFilterPortId(undefined);
+      }
+    }
+  }, [managingUnitId, filterPortId, allPorts]);
 
   // Dùng chung toàn bộ bộ lọc nghiệp vụ cho bảng và số lượng trên status tabs.
   // approvalStatus được thêm riêng theo tab để số đếm luôn phản ánh đúng tập dữ liệu đã lọc.
@@ -1082,7 +1095,7 @@ export default function BerthList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
             <DatePicker.RangePicker format="DD/MM/YYYY"
-              placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
+              placeholder={['Từ ngày', 'Đến ngày']} allowClear classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
               value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
               onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
@@ -1127,8 +1140,9 @@ export default function BerthList() {
     if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
     if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
     if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
+    if (field === 'portId') return r.portId ? portMap.get(r.portId) ?? r.portId : '';
     return r[field] ?? '';
-  }, [organizations, orgMap, portOptions, waterwayMap]);
+  }, [organizations, orgMap, portMap, waterwayMap]);
 
   const columns = useMemo(() => {
     const baseColumns: any[] = [
@@ -1151,8 +1165,8 @@ export default function BerthList() {
         cellTitle: (record: Berth) => record.structureType != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === record.structureType)?.label || record.structureType.toString()) : '',
         render: (v: number | null) => (v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : '') },
       { key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 200, sortable: true,
-        cellTitle: (record: Berth) => portOptions.find(o => o.value === record.portId)?.label || record.portId || '',
-        render: (v: string | null) => portOptions.find(o => o.value === v)?.label || v || '' },
+        cellTitle: (record: Berth) => record.portId ? portMap.get(record.portId) || record.portId : '',
+        render: (v: string | null) => (v ? portMap.get(v) || v : '') },
       { key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true,
         cellTitle: (record: Berth) => record.waterwayId ? (waterwayMap.get(record.waterwayId) || record.waterway || record.waterwayId) : (record.waterway || ''),
         render: (v?: string, record?: Berth) => (
@@ -1192,7 +1206,7 @@ export default function BerthList() {
 
     // Audit columns (F-018 TKCT - đồng bộ chuẩn Cầu cảng, không hiển thị cột nội dung phê duyệt trên bảng)
     const auditColumns: any[] = [
-      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 210, sortable: true,
+      { key: 'submittedForApprovalAt', label: <span>Cán bộ gửi Phê duyệt</span>, dataIndex: 'submittedForApprovalAt', width: 240, sortable: true,
         render: (v: string | null, record: Berth) => {
           const name = userMap.get(record.submittedForApprovalBy || '') || record.submittedForApprovalBy || '';
           const date = formatDate(v);
@@ -1205,7 +1219,7 @@ export default function BerthList() {
             </div>
           );
         } },
-      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 340, sortable: true,
+      { key: 'portAuthorityApprovedAt', label: <span>Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>, dataIndex: 'portAuthorityApprovedAt', width: 380, sortable: true,
         render: (v: string | null, record: Berth) => {
           const name = userMap.get(record.portAuthorityApprovedBy || '') || record.portAuthorityApprovedBy || '';
           const date = formatDate(v);
@@ -1286,7 +1300,7 @@ export default function BerthList() {
       ...col,
       sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
     }));
-  }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, openDetailDrawer]);
+  }, [page, pageSize, portMap, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, openDetailDrawer]);
 
   // ── Detail drawer content ────────────────────────────────────────
   const openPierDetail = useCallback(async (id: string) => {
@@ -1312,7 +1326,7 @@ export default function BerthList() {
         organizations={organizations}
         symbolMap={symbolMap}
         symbolImageMap={symbolImageMap}
-        portOptions={portOptions}
+        portOptions={allPortOptions}
         userMap={userMap}
         detailFiles={detailFiles}
         ddToDms={ddToDms}
@@ -1742,7 +1756,7 @@ export default function BerthList() {
             selectedRecord={pierDetailRecord}
             orgMap={orgMap}
             organizations={organizations}
-            portMap={new Map(portOptions.map((o: any) => [o.value, o.label]))}
+            portMap={portMap}
             berthOptions={detailRecord ? [{ value: detailRecord.id, label: detailRecord.berthName || detailRecord.berthCode || '' }] : []}
             symbolMap={symbolMap}
             symbolImageMap={symbolImageMap}

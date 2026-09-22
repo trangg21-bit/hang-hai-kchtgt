@@ -1098,7 +1098,7 @@ export default function NavigationChannelList() {
             <DatePicker.RangePicker
               placeholder={['Từ ngày', 'Đến ngày']}
               format="DD/MM/YYYY"
-              popupClassName="chk-range-datepicker-popup"
+              classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
               value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
               onChange={(range) => {
                 setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD 00:00:00') : '');

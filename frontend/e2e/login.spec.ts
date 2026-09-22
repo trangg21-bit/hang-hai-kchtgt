@@ -9,14 +9,14 @@ test.describe('Đăng nhập', () => {
     });
   });
 
-  test('Đăng nhập thành công với admin/admin123', async ({ page }) => {
+  test('Đăng nhập thành công với admin/Asdqwe@123', async ({ page }) => {
     // 1. Vào trang login
     await page.goto('/login');
     await expect(page.getByRole('button', { name: /Đăng nhập/i })).toBeVisible();
 
     // 2. Fill credentials
     await page.getByPlaceholder('Tên đăng nhập').fill('admin');
-    await page.getByPlaceholder('Mật khẩu').fill('admin123');
+    await page.getByPlaceholder('Mật khẩu').fill('Asdqwe@123');
 
     // 3. Submit form
     await page.getByRole('button', { name: /Đăng nhập/i }).click();
@@ -29,7 +29,7 @@ test.describe('Đăng nhập', () => {
   test('Đăng nhập thất bại — sai mật khẩu', async ({ page }) => {
     await page.goto('/login');
 
-    await page.getByPlaceholder('Tên đăng nhập').fill('admin');
+    await page.getByPlaceholder('Tên đăng nhập').fill('test_wrong_account');
     await page.getByPlaceholder('Mật khẩu').fill('sai');
 
     await page.getByRole('button', { name: /Đăng nhập/i }).click();
@@ -42,7 +42,7 @@ test.describe('Đăng nhập', () => {
     await page.goto('/login');
 
     await page.getByPlaceholder('Tên đăng nhập').fill('notexist');
-    await page.getByPlaceholder('Mật khẩu').fill('admin123');
+    await page.getByPlaceholder('Mật khẩu').fill('Asdqwe@123');
 
     await page.getByRole('button', { name: /Đăng nhập/i }).click();
 
@@ -53,7 +53,7 @@ test.describe('Đăng nhập', () => {
     // Login
     await page.goto('/login');
     await page.getByPlaceholder('Tên đăng nhập').fill('admin');
-    await page.getByPlaceholder('Mật khẩu').fill('admin123');
+    await page.getByPlaceholder('Mật khẩu').fill('Asdqwe@123');
     await page.getByRole('button', { name: /Đăng nhập/i }).click();
     // LoginPage redirects to '/' (home page)
     await page.waitForURL(/\/$/);
@@ -61,6 +61,8 @@ test.describe('Đăng nhập', () => {
     // Logout — click avatar dropdown
     await page.locator('css=.ant-avatar').click();
     await page.getByText('Đăng xuất').click();
+    // Confirm modal
+    await page.locator('.ant-modal-footer').getByRole('button', { name: /Đăng xuất/i }).click();
     await page.waitForURL(/\/login/);
   });
 });

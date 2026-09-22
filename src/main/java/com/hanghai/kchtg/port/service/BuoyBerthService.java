@@ -15,6 +15,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.port.dto.buoyberth.AttachmentDto;
+import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.CreateBuoyBerthRequest;
 import com.hanghai.kchtg.port.dto.buoyberth.UpdateBuoyBerthRequest;
@@ -790,5 +791,10 @@ public class BuoyBerthService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<BuoyBerthOptionResponse> getOptions() {
+        return buoyBerthRepository.findActiveOptions();
     }
 }

@@ -384,7 +384,8 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const isEdit = mode === 'edit';
   const isCreate = mode === 'create';
 
-  const user = useAuthStore((s: AuthState) => s.user);
+  const authStoreUser = useAuthStore((s: AuthState) => s.user);
+  const user = authStoreUser || useAuthStore.getState().user;
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   // User permission level (chuẩn VTS / Inmarsat)
@@ -709,6 +710,18 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       populateFormFromRecord(initialData);
     }
   }, [open, editId, isCreate, initialData]);
+
+  useEffect(() => {
+    if (isCreate && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('unitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultFormOrgUnitId(user, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('unitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreate, open, effectiveOrgUnits, user, form]);
 
   const handleClose = () => {
     onCancel?.();

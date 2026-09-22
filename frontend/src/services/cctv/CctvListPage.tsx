@@ -173,10 +173,10 @@ import dayjs from "dayjs";
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
   DELETED: 'Đã xóa',
 };
 
@@ -1621,9 +1621,10 @@ const CctvListPage = () => {
       }
 
       // PENDING_APPROVAL + cctv:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
+      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
       if (hasPerm?.("cctv:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC1",
           label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
@@ -1651,9 +1652,10 @@ const CctvListPage = () => {
       }
 
       // APPROVED_LEVEL1 + cctv:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
-      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
+      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2 (trừ tài khoản cấp Cục).
       if (hasPerm?.("cctv:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
-        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC2",
           label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
@@ -2388,7 +2390,7 @@ const CctvListPage = () => {
 
                 <SidebarFilterField label="Ngày cập nhật" labelGap={spaceSm}>
                   <DatePicker.RangePicker format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']} allowClear popupClassName="chk-range-datepicker-popup"
+                    placeholder={['Từ ngày', 'Đến ngày']} allowClear classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
                     value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
                     onChange={(dates) => { setFilterValues(prev => ({ ...prev, updatedFrom: dates?.[0]? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1]? dates[1].format('YYYY-MM-DD 23:59:59') : undefined })); }}
                     style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
@@ -2439,7 +2441,7 @@ const CctvListPage = () => {
           },
           {
             key: "APPROVED_LEVEL1",
-            label: "Chờ phê duyệt cấp cục",
+            label: "Chờ phê duyệt cấp Cục",
             count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
@@ -2460,7 +2462,7 @@ const CctvListPage = () => {
           },
           {
             key: "REJECTED_LEVEL2",
-            label: "Từ chối cấp cục",
+            label: "Từ chối cấp Cục",
             count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
               ? total
               : (tabCounts["REJECTED_LEVEL2"] ?? 0),
@@ -2522,7 +2524,7 @@ const CctvListPage = () => {
       <Drawer
         {...drawerProps}
         size={undefined}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
       rootClassName={THEME_SCOPE_CLASS}
       className="cctv-drawer-scope"
       title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -3359,7 +3361,7 @@ const CctvListPage = () => {
           },
           body: { padding: '0 24px 12px 24px' },
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <style>{requiredMarkStyle}</style>
         {createModalOpen && (
@@ -3485,7 +3487,7 @@ const CctvListPage = () => {
       rootClassName={THEME_SCOPE_CLASS}
       className="cctv-drawer-scope"
         size={undefined}
-        width={isIframeModal ? '100%' : DRAWER_WIDTH}
+        size={isIframeModal ? '100%' : DRAWER_WIDTH}
         mask={!isIframeModal}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

@@ -452,17 +452,63 @@ export default function AnchorageListPage() {
     });
     return map;
   }, [rawUsers, orgMap]);
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
-  const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
-  const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
-  const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
-  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
-
+  const [allPorts, setAllPorts] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const portMap = useMemo(() => {
     const m = new Map<string, string>();
-    portOptions.forEach((o) => m.set(o.value, o.label));
+    allPorts.forEach((o) => m.set(o.id, o.portName || o.portCode || ''));
     return m;
-  }, [portOptions]);
+  }, [allPorts]);
+  const portOptions = useMemo(() => {
+    const filtered = (!orgUnit || orgUnit === '__all__')
+      ? allPorts
+      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
+    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || '' }));
+  }, [allPorts, orgUnit]);
+
+  const [allBuoyBerths, setAllBuoyBerths] = useState<Array<{ id: string; buoyBerthName?: string; buoyBerthCode?: string; orgUnitId?: string; portId?: string }>>([]);
+  const buoyStationMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allBuoyBerths.forEach((b) => {
+      m.set(b.id, b.buoyBerthName || b.buoyBerthCode || '');
+    });
+    return m;
+  }, [allBuoyBerths]);
+  const buoyStationOptions = useMemo(() => {
+    let filtered = allBuoyBerths;
+    if (orgUnit && orgUnit !== '__all__') {
+      filtered = filtered.filter((b) => !b.orgUnitId || b.orgUnitId === orgUnit);
+    }
+    if (filterPortId) {
+      filtered = filtered.filter((b) => !b.portId || b.portId === filterPortId);
+    }
+    return filtered.map((b) => ({
+      value: b.id,
+      label: b.buoyBerthName || b.buoyBerthCode || b.id,
+    }));
+  }, [allBuoyBerths, orgUnit, filterPortId]);
+
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; channelName?: string; channelCode?: string; orgUnitId?: string }>>([]);
+  const waterwayMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allWaterways.forEach((n) => {
+      const code = n.channelCode?.trim();
+      const name = n.channelName?.trim();
+      const label = code && name ? `${code} - ${name}` : (code || name || '');
+      m.set(n.id, label);
+    });
+    return m;
+  }, [allWaterways]);
+  const waterwayOptions = useMemo(() => {
+    const filtered = (!orgUnit || orgUnit === '__all__')
+      ? allWaterways
+      : allWaterways.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnit);
+    return filtered.map((n) => {
+      const code = n.channelCode?.trim();
+      const name = n.channelName?.trim();
+      const label = code && name ? `${code} - ${name}` : (code || name || '');
+      return { value: n.id, label };
+    });
+  }, [allWaterways, orgUnit]);
 
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -714,75 +760,25 @@ export default function AnchorageListPage() {
   }, [authUser]);
 
 
-  // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
+  // Luồng hàng hải options
   useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => {
-        const items = r.items || [];
-        setWaterwayOptions(items.map(n => {
-          const code = n.channelCode?.trim();
-          const name = n.channelName?.trim();
-          const label = code && name ? `${code} - ${name}` : (code || name || '');
-          return { value: n.id, label };
-        }));
-      })
+    navigationChannelCRUD.getOptions()
+      .then((items) => setAllWaterways(items || []))
       .catch(() => {});
   }, []);
 
-  // Luồng hàng hải (map hiển thị tên bảng & lịch sử)
+  // Cảng biển options
   useEffect(() => {
-    navigationChannelCRUD.search({ page: 0, size: 1000 })
-      .then((r) => {
-        const m = new Map<string, string>();
-        (r.items || []).forEach(n => {
-          const code = n.channelCode?.trim();
-          const name = n.channelName?.trim();
-          const label = code && name ? `${code} - ${name}` : (code || name || '');
-          m.set(n.id, label);
-        });
-        setWaterwayMap(m);
-      })
+    portCRUD.getOptions()
+      .then((items) => setAllPorts(items || []))
       .catch(() => {});
   }, []);
 
-  // Cảng biển
+  // Bến phao options
   useEffect(() => {
-    (async () => {
-      try {
-        const p: any = { page: 1, pageSize: 1000 };
-        if (orgUnit && orgUnit !== '__all__') p.orgUnitId = orgUnit;
-        const r = await portCRUD.search(p);
-        setPortOptions((r.data || []).map((x: any) => ({ value: x.id, label: x.portName })));
-      } catch {}
-    })();
-  }, [orgUnit]);
-
-  // Bến phao (bộ lọc: chỉ lấy đã phê duyệt, lọc theo orgUnit và portId)
-  useEffect(() => {
-    (async () => {
-      try {
-        const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
-        if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit;
-        if (filterPortId) params.portId = filterPortId;
-        const r = await buoyBerthCRUD.search(params);
-        setBuoyStationOptions((r.data || []).map((b: any) => ({
-          value: b.id,
-          label: b.buoyBerthName || b.buoyBerthCode || b.id,
-        })));
-      } catch {}
-    })();
-  }, [orgUnit, filterPortId]);
-
-  // Bến phao (map hiển thị tên bảng & lịch sử)
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await buoyBerthCRUD.search({ page: 1, pageSize: 1000 });
-        const m = new Map<string, string>();
-        (r.data || []).forEach((b: any) => { m.set(b.id, b.buoyBerthName || b.buoyBerthCode || ''); });
-        setBuoyStationMap(m);
-      } catch {}
-    })();
+    buoyBerthCRUD.getOptions()
+      .then((items) => setAllBuoyBerths(items || []))
+      .catch(() => {});
   }, []);
 
   const fetchCounts = useCallback(async (unitIdOverride?: string) => {
@@ -1355,18 +1351,18 @@ export default function AnchorageListPage() {
       },
       {
         label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,
-        cellTitle: (record: Anchorage) => record.portName || portMap.get(record.portId) || record.portId || '',
-        render: (v: string) => renderCellWithTooltip(portMap.get(v || '') || v || null),
+        cellTitle: (record: Anchorage) => record.portName || portMap.get(record.portId) || (record.portId && !record.portId.includes('-') ? record.portId : '') || '',
+        render: (v: string) => renderCellWithTooltip(portMap.get(v || '') || (!v || v.includes('-') ? '-' : v) || null),
       },
       {
         label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
-        cellTitle: (record: Anchorage) => (record as any).navigationChannelName || waterwayMap.get(record.navigationChannelId) || record.navigationChannelId || '',
-        render: (v: string) => renderCellWithTooltip(v ? (waterwayMap.get(v) || v) : null),
+        cellTitle: (record: Anchorage) => (record as any).navigationChannelName || waterwayMap.get(record.navigationChannelId) || (record.navigationChannelId && !record.navigationChannelId.includes('-') ? record.navigationChannelId : '') || '',
+        render: (v: string) => renderCellWithTooltip(v ? (waterwayMap.get(v) || (v.includes('-') ? '-' : v)) : null),
       },
       {
         label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
-        cellTitle: (record: Anchorage) => record.buoyStationName || buoyStationMap.get(record.buoyStationId) || record.buoyStationId || '',
-        render: (v: string, r: Anchorage) => renderCellWithTooltip(r.buoyStationName || (v ? buoyStationMap.get(v) || v : null)),
+        cellTitle: (record: Anchorage) => record.buoyStationName || buoyStationMap.get(record.buoyStationId) || (record.buoyStationId && !record.buoyStationId.includes('-') ? record.buoyStationId : '') || '',
+        render: (v: string, r: Anchorage) => renderCellWithTooltip(r.buoyStationName || (v ? buoyStationMap.get(v) || (v.includes('-') ? '-' : v) : null)),
       },
       {
         label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
@@ -1622,10 +1618,10 @@ export default function AnchorageListPage() {
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
           size={1000}
-          width="min(1000px, 96vw)"
+          size="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editAnchorageId ? 'Chỉnh sửa thông tin Khu neo đậu' : 'Thêm mới Khu neo đậu'}</span>}
           open={createDrawerVisible}
-          destroyOnClose
+          destroyOnHidden
           onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }}
           afterOpenChange={(open) => { if (!open) { setEditAnchorageId(undefined); setEditBaseStatus(undefined); } }}
           extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }} style={drawerCloseBtnStyle}>✕</Button>}
@@ -1689,7 +1685,7 @@ export default function AnchorageListPage() {
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
           size={1000}
-          width="min(1000px, 96vw)"
+          size="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); notifyEmbeddedActionClosed(); }}

@@ -11,16 +11,16 @@
  * | APPROVED_LEVEL1 (Chờ Cục duyệt)     | ❌      | —                       |
  * | REJECTED_LEVEL1 (Bị Cảng vụ trả về) | ✅      | `<resource>:update`     |
  * | REJECTED_LEVEL2 (Bị Cục trả về)     | ✅      | `<resource>:update`     |
- * | APPROVED (Đã duyệt)                 | ✅      | `<resource>:approvec2`  |
+ * | APPROVED (Đã duyệt)                 | ✅      | `<resource>:update` hoặc `<resource>:approvec2` |
  * | ARCHIVED (Đã xóa)                   | ❌      | —                       |
  *
  * Vì sao cấm sửa khi đang chờ duyệt: nếu cho sửa, người nhập có thể đổi nội dung sau khi
  * cán bộ đã đọc, khiến cán bộ ký duyệt vào nội dung mình chưa từng xem — mất tính toàn vẹn
  * của vòng duyệt và mất trách nhiệm giải trình.
  *
- * Vì sao sửa hồ sơ "Đã duyệt" cần quyền phê duyệt: theo T12, thao tác này là
- * "Lưu và phê duyệt" — hồ sơ giữ nguyên `APPROVED`, bản cũ ghi vào nhật ký thay đổi.
- * Người không có thẩm quyền duyệt không được tự ý đổi nội dung đã có hiệu lực.
+ * Sửa hồ sơ "Đã duyệt": theo Backend @PreAuthorize("@auth.checkAny(authentication, '<res>:update', '<res>:approvec2')"),
+ * cán bộ có quyền update hoặc quyền approvec2 đều được phép cập nhật. Thao tác này lưu lại lịch sử thay đổi
+ * và giữ nguyên trạng thái APPROVED (quy tắc 12/T12).
  *
  * CẤM tự viết lại điều kiện này ở từng màn hình.
  */
@@ -133,16 +133,31 @@ export function canEditApprovalRecord(
     }
   };
 
-  // Đã duyệt: cần đủ quyền cập nhật và phê duyệt C2. C2 không thay thế quyền cập nhật.
-  if (st === 'APPROVED') {
-    return Boolean(resource)
-      && checkPerm(`${resource}:update`)
-      && checkPerm(`${resource}:approvec2`);
+  const extraUpdatePerms = (optionsOrResource && typeof optionsOrResource === 'object' && optionsOrResource.extraUpdatePerms) || [];
+
+  // Điều kiện tiên quyết: BẮT BUỘC phải có quyền cập nhật (<resource>:update)
+  // Khi người quản trị bỏ tích quyền cập nhật thì nút Chỉnh sửa phải ẩn 100% trên toàn bộ các dòng.
+  const hasUpdatePerm = Boolean(resource) && (
+    checkPerm(`${resource}:update`) || extraUpdatePerms.some((p) => checkPerm(p))
+  );
+
+  if (!hasUpdatePerm) {
+    return false;
   }
 
-  // Lưu tạm / Bị trả về: chỉ `<resource>:update` mới cho phép sửa.
+  // Đã duyệt (APPROVED): cần đủ cả 2 quyền update và phê duyệt C2 (quy tắc 12/T12)
+  if (st === 'APPROVED') {
+    const hasApproveC2 =
+      checkPerm(`${resource}:approvec2`) ||
+      checkPerm(`${resource}:approve:c2`) ||
+      checkPerm(`${resource}:approvel2`) ||
+      checkPerm(`${resource}:approve_level2`);
+    return Boolean(hasApproveC2);
+  }
+
+  // Lưu tạm / Bị trả về: đã có quyền update -> cho phép sửa
   if (isEditableByOwner(st)) {
-    return Boolean(resource) && checkPerm(`${resource}:update`);
+    return true;
   }
 
   // Trạng thái lạ: mặc định an toàn là không cho sửa.
@@ -229,7 +244,7 @@ export function editFooterMode(status?: string | null): 'approve' | 'draft' {
  * Quy chuẩn:
  * - KHÔNG ĐƯỢC CHỈNH SỬA: Record có trạng thái:
  *   + Đã xóa (ARCHIVED, DELETED, 7, 6...)
- *   + Chờ phê duyệt cấp cục (APPROVED_LEVEL1, APPROVED_L1, 3...)
+ *   + Chờ phê duyệt cấp Cục (APPROVED_LEVEL1, APPROVED_L1, 3...)
  *   + Chờ phê duyệt cấp Cảng vụ/Chi cục (PENDING_APPROVAL, PROPOSED, PENDING, 1, 2...)
  * - ĐƯỢC PHÉP CHỈNH SỬA: Tất cả các trạng thái còn lại:
  *   + Lưu tạm (DRAFT, 0)

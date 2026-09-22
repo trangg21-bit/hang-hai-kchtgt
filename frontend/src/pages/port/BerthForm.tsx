@@ -285,13 +285,9 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     }
     setLoadingWaterways(true);
     try {
-      const r = await navigationChannelCRUD.search({
-        orgUnitId,
-        approvalStatus: 'APPROVED',
-        page: 0,
-        size: 1000,
-      });
-      const options = (r.items || []).map((n) => {
+      const items = await navigationChannelCRUD.getOptions();
+      const filtered = items.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnitId);
+      const options = filtered.map((n) => {
         const code = n.channelCode?.trim();
         const name = n.channelName?.trim();
         const label = code && name ? `${code} - ${name}` : (code || name || '');
@@ -312,10 +308,9 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
     try {
-      const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
-      if (orgUnitId) params.orgUnitId = orgUnitId;
-      const r = await portCRUD.search(params);
-      const ports = (r.data || []).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
+      const allPorts = await portCRUD.getOptions();
+      const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId);
+      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
       setPortOptions(ports);
       if (ports.length === 0) toast.warning('Đơn vị quản lý chưa có cảng biển được phê duyệt');
     } catch { setPortOptions([]); }
@@ -1011,7 +1006,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyOnHidden={false} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
       <Modal
@@ -1025,7 +1020,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

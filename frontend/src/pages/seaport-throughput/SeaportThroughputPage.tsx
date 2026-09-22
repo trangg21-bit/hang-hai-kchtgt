@@ -100,6 +100,7 @@ const SeaportThroughputPage: React.FC = () => {
   const canApprove = hasPermission('seaportthroughput:approve');
   const canApproveLevel2 = hasPermission('seaportthroughput:approve_level2');
   const canReject = hasPermission('seaportthroughput:reject');
+  const canHistory = hasPermission('seaportthroughput:history');
 
   // ── Organizations (cây đơn vị — DataScope) ───────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -459,12 +460,14 @@ const SeaportThroughputPage: React.FC = () => {
           : []),
       );
     }
-    actions.push({
-      key: 'history',
-      label: 'Lịch sử',
-      icon: <HistoryOutlined />,
-      onClick: () => openHistory(record),
-    });
+    if (canHistory) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: <HistoryOutlined />,
+        onClick: () => openHistory(record),
+      });
+    }
     if (status === 'DRAFT' && canDelete) {
       actions.push({
         key: 'delete',

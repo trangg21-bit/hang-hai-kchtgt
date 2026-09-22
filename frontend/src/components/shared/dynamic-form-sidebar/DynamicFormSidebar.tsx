@@ -405,6 +405,7 @@ export function DynamicFormSidebar<
   onSubmit,
   onValuesChange,
   destroyOnClose = true,
+  destroyOnHidden = destroyOnClose,
   rootClassName,
   className,
   loading = false,
@@ -565,7 +566,7 @@ export function DynamicFormSidebar<
       onClose={onClose}
       width={width || DRAWER_FORM_WIDTH}
       size={size}
-      destroyOnHidden={destroyOnClose}
+      destroyOnHidden={destroyOnHidden}
       rootClassName={rootClassName}
       className={className}
       footer={drawerFooter}

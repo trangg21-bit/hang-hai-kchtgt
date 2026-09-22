@@ -324,8 +324,8 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
   // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt — đồng bộ với Cầu cảng
   useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
+    navigationChannelCRUD.getOptions()
+      .then(items => setWaterwayOptions(items.map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
       .catch(() => {});
   }, []);
   useEffect(() => { api.get('/common/options/operating-units').then(r => { const list = r.data?.data; if (Array.isArray(list) && list.length) setOperatingOrgs(list); }).catch(() => {}); }, []);
@@ -333,8 +333,9 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
     try {
-      const r = await portCRUD.findAll({ orgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 });
-      setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+      const allPorts = await portCRUD.getOptions();
+      const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId);
+      setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
     } catch { setPortOptions([]); }
     finally { setLoadingPorts(false); }
   };
@@ -1215,7 +1216,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

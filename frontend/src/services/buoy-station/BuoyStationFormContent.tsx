@@ -289,9 +289,9 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     setLoadingPorts(true);
     try {
       // Chỉ load cảng biển đã được phê duyệt (approvalStatus = APPROVED) — đồng bộ BerthForm
-      const r = await portCRUD.findAll({ page: 1, size: 1000, orgUnitId, approvalStatus: 'APPROVED' });
-      const list = r.data || (r as any).content || [];
-      const ports = (orgUnitId ? list.filter((p: any) => p.orgUnitId === orgUnitId) : list).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
+      const list = await portCRUD.getOptions({ approvalStatus: 'APPROVED' });
+      const filtered = orgUnitId ? (list || []).filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId) : (list || []);
+      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portName || p.portCode || p.name || p.id }));
       setPortOptions(ports);
     } catch { setPortOptions([]); }
     finally { setLoadingPorts(false); }
@@ -565,7 +565,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}><Form.Item name="address" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }} rules={[{ max: 500, message: 'Tối đa 500 ký tự' }]}><Input placeholder="Nhập Địa điểm chi tiết" maxLength={500} showCount style={inputStyle} /></Form.Item></Col>
-          <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker popupClassName="buoy-station-date-picker" placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="constructionDate" {...labelProps('Thời điểm xây dựng')} style={{ marginBottom: spaceFormField }}><DatePicker classNames={{ popup: { root: 'buoy-station-date-picker' } }} placeholder="Chọn ngày..." format="DD/MM/YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}><Form.Item name="condition" {...labelProps('Tình trạng')} required style={{ marginBottom: spaceFormField }} initialValue="Chưa khai thác/vận hành" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={CONDITION_OPTIONS} style={selectStyle} /></Form.Item></Col>
@@ -586,7 +586,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}><Form.Item name="staffCount" {...labelProps('Số lượng nhân sự bố trí')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Số lượng nhân sự bố trí là bắt buộc' }]}><NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberInputStyle} /></Form.Item></Col>
-          <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" popupClassName="buoy-station-date-picker" placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="lastMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}><DatePicker picker="year" classNames={{ popup: { root: 'buoy-station-date-picker' } }} placeholder="Chọn năm..." format="YYYY" style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={24}><Form.Item name="note" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Tối đa 2000 ký tự' }]}><Input.TextArea rows={3} placeholder="Nhập ghi chú" maxLength={2000} showCount style={textAreaStyle} /></Form.Item></Col>
@@ -817,7 +817,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

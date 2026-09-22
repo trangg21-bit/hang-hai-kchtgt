@@ -1311,7 +1311,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

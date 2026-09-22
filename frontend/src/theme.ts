@@ -575,11 +575,25 @@ export const globalCssVars = `
   box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06) !important;
 }
 
+.list-view-table.ant-table-ping-left .ant-table-thead > tr > th.ant-table-cell-fix-left-last,
+.list-view-table.ant-table-ping-left .ant-table-thead > tr > th.ant-table-cell-fix-start-last,
+.list-view-table.ant-table-ping-left .ant-table-tbody > tr > td.ant-table-cell-fix-left-last,
+.list-view-table.ant-table-ping-left .ant-table-tbody > tr > td.ant-table-cell-fix-start-last {
+  box-shadow: 6px 0 12px -4px rgba(15, 23, 42, 0.12), 1px 0 0 rgba(226, 232, 240, 1) !important;
+}
+
 .list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-right-first,
 .list-view-table .ant-table-thead > tr > th.ant-table-cell-fix-end-first,
 .list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-right-first,
 .list-view-table .ant-table-tbody > tr > td.ant-table-cell-fix-end-first {
   box-shadow: -1px 0 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.list-view-table.ant-table-ping-right .ant-table-thead > tr > th.ant-table-cell-fix-right-first,
+.list-view-table.ant-table-ping-right .ant-table-thead > tr > th.ant-table-cell-fix-end-first,
+.list-view-table.ant-table-ping-right .ant-table-tbody > tr > td.ant-table-cell-fix-right-first,
+.list-view-table.ant-table-ping-right .ant-table-tbody > tr > td.ant-table-cell-fix-end-first {
+  box-shadow: -6px 0 12px -4px rgba(15, 23, 42, 0.12), -1px 0 0 rgba(226, 232, 240, 1) !important;
 }
 
 /* Gắn icon sort ngay sau title của cột (antd mặc định đẩy icon ra mép phải,

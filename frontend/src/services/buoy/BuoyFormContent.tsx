@@ -600,7 +600,7 @@ export default function BuoyFormContent({
               </Col>
               <Col span={12}>
                 <Form.Item name="commissionedDate" {...labelProps('Thời điểm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
-                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
+                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" classNames={{ popup: { root: 'buoy-date-picker' } }} style={datePickerStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -859,7 +859,7 @@ export default function BuoyFormContent({
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

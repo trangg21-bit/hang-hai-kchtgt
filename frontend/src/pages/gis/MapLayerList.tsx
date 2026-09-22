@@ -503,33 +503,43 @@ export default function MapLayerList() {
   ], [page, pageSize, openDetailDrawer]);
 
   // ── Row Actions ──────────────────────────────────────────────────
-  const rowActions = useCallback((record: MapLayer) => [
-    {
-      key: 'view',
-      label: 'Xem chi tiết',
-      icon: icons.view,
-      onClick: () => openDetailDrawer(record),
-    },
-    {
-      key: 'edit',
-      label: 'Chỉnh sửa',
-      icon: icons.edit,
-      onClick: () => openEditDrawer(record),
-    },
-    {
-      key: 'history',
-      label: 'Lịch sử',
-      icon: icons.history,
-      onClick: () => void openHistoryDrawer(record),
-    },
-    {
-      key: 'delete',
-      label: 'Xóa',
-      icon: icons.delete,
-      danger: true,
-      onClick: () => openDeleteModal(record),
-    },
-  ], [openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
+  const rowActions = useCallback((record: MapLayer) => {
+    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
+    if (hasPerm('maplayer:read') || hasPerm('map:read') || hasPerm('data:read')) {
+      actions.push({
+        key: 'view',
+        label: 'Xem chi tiết',
+        icon: icons.view,
+        onClick: () => openDetailDrawer(record),
+      });
+    }
+    if (hasPerm('maplayer:update') || hasPerm('map:update') || hasPerm('data:update')) {
+      actions.push({
+        key: 'edit',
+        label: 'Chỉnh sửa',
+        icon: icons.edit,
+        onClick: () => openEditDrawer(record),
+      });
+    }
+    if (hasPerm('maplayer:history') || hasPerm('map:history')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => void openHistoryDrawer(record),
+      });
+    }
+    if (hasPerm('maplayer:delete') || hasPerm('map:delete') || hasPerm('data:delete')) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa',
+        icon: icons.delete,
+        danger: true,
+        onClick: () => openDeleteModal(record),
+      });
+    }
+    return actions;
+  }, [hasPerm, openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
 
   // ── Header Actions ───────────────────────────────────────────────
   const headerActions = useMemo(() => {

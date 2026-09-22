@@ -36,6 +36,8 @@ import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, 
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
 
 const fontSizeMd = 13.5;
 
@@ -228,6 +230,9 @@ const formatHistoryValue = (field: string, val: unknown): string => {
     const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
     return found ? found.name : sVal;
   }
+  if (field === 'services' || field === 'servicesProvided' || field === 'Dịch vụ cung cấp' || field === 'providedServices') {
+    return formatMaritimeServicesDisplay(val);
+  }
   return String(val);
 };
 
@@ -302,9 +307,10 @@ export default function InmarsatStationList() {
 
   // User levels
   const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType));
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all') || currentUser?.role === 'ADMIN' || currentUser?.roleName === 'ADMIN';
+  const isCucLevel = isCucLevelUser(currentUser) || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = hasPerm('coastalstationinmarsat:approvec1') && (isCangVuLevel || !isCucLevel);
+  const canApproveL1 = hasPerm('coastalstationinmarsat:approvec1');
   const canApproveL2 = hasPerm('coastalstationinmarsat:approvec2');
 
   useEffect(() => {
@@ -869,7 +875,7 @@ export default function InmarsatStationList() {
       );
     }
 
-    if (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && canApproveL2 && (!isApproverL1 || isCucLevel)) {
+    if (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && canApproveL2 && (!isApproverL1 || isCucLevel) && (!isCreator || isCucLevel)) {
       actions.push(
         {
           key: 'approve_l2',

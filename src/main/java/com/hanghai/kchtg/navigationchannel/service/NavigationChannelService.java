@@ -1018,6 +1018,11 @@ public class NavigationChannelService {
         return (fileName == null ? "" : fileName.trim()) + "|" + (filePath == null ? "" : filePath.trim());
     }
 
+    @Transactional(readOnly = true)
+    public List<NavigationChannelOptionResponse> getOptions() {
+        return repo.findActiveOptions();
+    }
+
     private String nullToEmpty(Object value) {
         return value == null ? "" : String.valueOf(value);
     }

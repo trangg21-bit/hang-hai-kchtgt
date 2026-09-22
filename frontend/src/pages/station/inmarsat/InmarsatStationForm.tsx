@@ -415,7 +415,7 @@ export default function InmarsatStationForm({
       const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       form.setFieldsValue({
         conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
-        orgUnitId: defOrgId || (currentUser?.orgUnitId ? String(currentUser.orgUnitId) : undefined),
+        orgUnitId: defOrgId,
       });
       inmarsatStationService.generateCode()
         .then((res) => {
@@ -1013,6 +1013,10 @@ export default function InmarsatStationForm({
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
                               name="locationDetail"
+                              rules={[
+                                { required: true, whitespace: true, message: 'Vui lòng nhập địa điểm chi tiết' },
+                                { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
+                              ]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
@@ -1352,7 +1356,7 @@ export default function InmarsatStationForm({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

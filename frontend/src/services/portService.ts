@@ -76,9 +76,24 @@ export const portCRUD = {
     inFlightPortPromise = (async () => {
       try {
         const res = await api.get('/common/options/ports', { params });
-        const list = res.data.data || [];
-        getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: list };
-        return list;
+        const list = res.data?.data || [];
+        if (Array.isArray(list) && list.length > 0) {
+          getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: list };
+          return list;
+        }
+        const fallbackRes = await api.get('/v1/ports/options');
+        const fallbackList = fallbackRes.data?.data || [];
+        getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: fallbackList };
+        return fallbackList;
+      } catch {
+        try {
+          const fallbackRes = await api.get('/v1/ports/options');
+          const fallbackList = fallbackRes.data?.data || [];
+          getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: fallbackList };
+          return fallbackList;
+        } catch {
+          return [];
+        }
       } finally {
         inFlightPortPromise = null;
       }
@@ -1325,6 +1340,11 @@ export const stormShelterApproval = {
 // ── Buoy Berth (Bến phao) CRUD ─────────────────────────
 
 export const buoyBerthCRUD = {
+  async getOptions(params?: { portId?: string; orgUnitId?: string }): Promise<Array<{ id: string; buoyBerthCode?: string; buoyBerthName?: string; portId?: string; orgUnitId?: string }>> {
+    const res = await api.get('/common/options/buoy-berths', { params });
+    return res.data?.data || [];
+  },
+
   list(params?: {
     page?: number;
     size?: number;

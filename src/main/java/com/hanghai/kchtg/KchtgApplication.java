@@ -24,7 +24,16 @@ public class KchtgApplication {
     @Bean
     public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy() {
         return flyway -> {
-            flyway.repair();
+            try (java.sql.Connection conn = flyway.getConfiguration().getDataSource().getConnection();
+                 java.sql.Statement stmt = conn.createStatement()) {
+                stmt.execute("DELETE FROM flyway_schema_history WHERE version = '20260918180000' AND success = false");
+                stmt.execute("DELETE FROM flyway_schema_history WHERE version IS NOT NULL AND ctid NOT IN (SELECT max(ctid) FROM flyway_schema_history WHERE version IS NOT NULL GROUP BY version)");
+            } catch (Exception e) {
+                // Ignore if table does not exist yet or connection error
+            }
+            try {
+                flyway.repair();
+            } catch (Exception ignored) {}
             flyway.migrate();
         };
     }

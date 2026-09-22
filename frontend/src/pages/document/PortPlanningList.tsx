@@ -975,7 +975,7 @@ export default function PortPlanningList() {
         }
         open={drawerMode !== null}
         onClose={closeDrawer}
-        destroyOnClose
+        destroyOnHidden
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '16px 24px 32px', overflowY: 'auto' },

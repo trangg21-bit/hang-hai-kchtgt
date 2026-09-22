@@ -48,7 +48,7 @@ import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -166,8 +166,6 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationlrit',
-    extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const isDetailMode = mode === 'detail';
@@ -356,8 +354,9 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         displayRule: undefined,
       });
 
-      if ((currentUser as any)?.orgUnitId) {
-        form.setFieldValue('orgUnitId', String((currentUser as any).orgUnitId));
+      const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
+      if (defOrgId) {
+        form.setFieldValue('orgUnitId', defOrgId);
       }
 
       lritStationService.generateCode().then((res) => {
@@ -386,7 +385,19 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         setLoading(false);
       });
     }
-  }, [open, editId, initialData, mode, isCreateMode]);
+  }, [open, editId, initialData, mode, isCreateMode, currentUser, effectiveOrgUnits]);
+
+  useEffect(() => {
+    if (isCreateMode && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('orgUnitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('orgUnitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreateMode, open, effectiveOrgUnits, currentUser, form]);
 
   const populateForm = (data: LritStationItem) => {
     setRecord(data);
@@ -964,6 +975,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             <Form.Item
                               name="provinceId"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/TP)' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
@@ -997,7 +1009,10 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             <Form.Item
                               name="locationAddress"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                              rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
+                              rules={[
+                                { required: true, whitespace: true, message: 'Vui lòng nhập địa điểm chi tiết' },
+                                { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
+                              ]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input
@@ -1357,7 +1372,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

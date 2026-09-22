@@ -4,7 +4,7 @@ test.describe('Quản lý nhóm', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
     await page.getByPlaceholder('Tên đăng nhập').fill('admin');
-    await page.getByPlaceholder('Mật khẩu').fill('admin123');
+    await page.getByPlaceholder('Mật khẩu').fill('Asdqwe@123');
     await page.getByRole('button', { name: /đăng nhập/i }).click();
     await page.waitForURL(/\/$/);
   });

@@ -479,12 +479,12 @@ export default function PolygonObjectList() {
       icon: icons.edit,
       onClick: () => openEditDrawer(record),
     },
-    {
+    ...(hasPerm('polygonobject:history') || hasPerm('gispolygon:history') || hasPerm('data:history') ? [{
       key: 'history',
       label: 'Lịch sử',
       icon: icons.history,
       onClick: () => void openHistoryDrawer(record),
-    },
+    }] : []),
     {
       key: 'delete',
       label: 'Xóa',

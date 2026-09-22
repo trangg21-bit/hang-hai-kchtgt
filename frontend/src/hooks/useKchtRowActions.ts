@@ -73,8 +73,8 @@ export function useKchtRowActions<T extends KchtRecordLike = KchtRecordLike>({
     (record: T): RowActionItem[] => {
       const actions: RowActionItem[] = [];
 
-      // 1. Chi tiết (Detail)
-      if (handlers.onDetail && perms.canRead) {
+      // 1. Chi tiết (Detail) — luôn hiển thị theo quy chuẩn AGENTS.md
+      if (handlers.onDetail) {
         actions.push({
           key: 'view',
           label: customLabels.detail || 'Xem chi tiết',

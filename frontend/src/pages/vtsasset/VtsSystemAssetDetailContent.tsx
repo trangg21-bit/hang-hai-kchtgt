@@ -7,6 +7,7 @@ import {
   SlidersOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { fmtNum } from '../../utils/numFmt';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   CommonTable,

@@ -60,6 +60,11 @@ import {
   isServicesProvidedHistoryField,
   getServicesProvidedHistoryDelta,
 } from '../../utils/serviceHistoryDelta';
+import {
+  formatMaritimeServicesDisplay,
+  resolveMaritimeServiceLabel,
+  parseMaritimeServiceTokens,
+} from '../../constants/maritimeServices';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 
 export interface HistoryChangeItem {
@@ -575,6 +580,33 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
   }
   const normKey = field.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
   
+  // Dịch vụ cung cấp viễn thông hàng hải: dịch 100% sang tên tiếng Việt đầy đủ từng dòng, không viền màu
+  if (isServicesProvidedHistoryField(field) || normKey.includes('services') || normKey.includes('dich vu') || normKey.includes('dichvu')) {
+    const tokens = parseMaritimeServiceTokens(val);
+    const labels = tokens.map((t) => resolveMaritimeServiceLabel(t)).filter(Boolean);
+    const uniqueLabels = Array.from(new Set(labels));
+    if (uniqueLabels.length > 0) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+          {uniqueLabels.map((lbl, idx) => (
+            <div
+              key={idx}
+              style={{
+                color: isOld ? textSecondary : textPrimary,
+                fontWeight: isOld ? 400 : fontWeightMedium,
+                lineHeight: '20px',
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+              }}
+            >
+              {lbl}
+            </div>
+          ))}
+        </div>
+      );
+    }
+  }
+
   // Chuẩn hóa hiển thị tiếng Việt cho các mã enum
   let displayVal = val;
   const rawUpper = val.trim().toUpperCase();
@@ -1495,11 +1527,16 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
   const resolveFieldValue = (field: string, val: any): string => {
     if (val === null || val === undefined || val === '') return '';
+    let custom: string | undefined;
     if (formatValue) {
-      const custom = formatValue(field, val);
-      if (custom !== undefined) return custom;
+      custom = formatValue(field, val);
     }
     const fLower = (field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    if (isServicesProvidedHistoryField(field) || fLower.includes('services') || fLower.includes('dich vu') || fLower.includes('dichvu')) {
+      const formatted = formatMaritimeServicesDisplay(custom !== undefined ? custom : val);
+      return formatted === '—' ? '' : formatted;
+    }
+    if (custom !== undefined) return custom;
     if (fLower.includes('tinh') || fLower.includes('province') || fLower.includes('thanh pho') || fLower === 'provinceid') {
       const provName = getProvinceNameById(val);
       if (provName) return provName;
@@ -1990,14 +2027,16 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
 
                           const ov = resolveFieldValue(change.field, change.oldValue);
                           const nv = resolveFieldValue(change.field, change.newValue);
+                          const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+                          const normField = (change.field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+                          const isServicesField = isServicesProvidedHistoryField(change.field)
+                            || normLabel.includes('dich vu') || normField.includes('services');
 
                           const renderFormattedContent = (content: string, isOld: boolean = false) => {
                             if (!content || content === '—' || content === '-' || content === 'null' || content === '(null)' || content === '(trống)' || content === '— (Trống)' || content === 'Chưa có') {
                               return <span style={{ color: textTertiary }}>—</span>;
                             }
                             const str = String(content).trim();
-                            const normLabel = (label || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-                            const normField = (change.field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
                             const isSymbolField = normLabel.includes('bieu tuong') || normLabel.includes('symbol') || normLabel.includes('icon')
                               || normField.includes('bieu tuong') || normField === 'symbol' || normField === 'mapsymbolid' || normField === 'symbolid' || normField === 'mapsymbol' || normField === 'icon';
 
@@ -2013,8 +2052,31 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                               return renderCoordinatesDisplay(str);
                             }
 
-                            const isServicesField = isServicesProvidedHistoryField(change.field)
-                              || normLabel.includes('dich vu') || normField.includes('services');
+                            if (isServicesField) {
+                              const tokens = parseMaritimeServiceTokens(str);
+                              const labels = tokens.map((t) => resolveMaritimeServiceLabel(t)).filter(Boolean);
+                              const uniqueLabels = Array.from(new Set(labels));
+                              if (uniqueLabels.length > 0) {
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                                    {uniqueLabels.map((item, idx) => (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          color: isOld ? textSecondary : textPrimary,
+                                          fontWeight: isOld ? 400 : fontWeightMedium,
+                                          lineHeight: '20px',
+                                          wordBreak: 'break-word',
+                                          overflowWrap: 'anywhere',
+                                        }}
+                                      >
+                                        {item}
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                            }
 
                             if (str.includes('\n')) {
                               const items = str.split(/[\r\n]+/).map((s) => s.trim()).filter(Boolean);
@@ -2171,13 +2233,44 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                                 >
                                   {label ? `${label}:` : ''}
                                 </div>
-                                <span title={ov ?? ''} style={variant === 'berth' ? historyOldValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5, color: textSecondary }}>
+                                <span
+                                  title={ov ?? ''}
+                                  style={variant === 'berth'
+                                    ? historyOldValueStyle
+                                    : {
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'flex-start',
+                                      minWidth: 0,
+                                      width: '100%',
+                                      overflowWrap: 'anywhere',
+                                      wordBreak: 'break-word',
+                                      whiteSpace: 'normal',
+                                      lineHeight: 1.5,
+                                      color: textSecondary,
+                                    }}
+                                >
                                   {renderFormattedContent(ov, true) ?? (ov ?? '')}
                                 </span>
                                 <span style={variant === 'berth' ? historyArrowStyle : { color: textTertiary, textAlign: 'center', fontWeight: fontWeightBold, userSelect: 'none', paddingTop: 2 }}>
                                   →
                                 </span>
-                                <span title={nv ?? ''} style={variant === 'berth' ? historyNewValueStyle : { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, width: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: 1.5 }}>
+                                <span
+                                  title={typeof nv === 'string' ? nv : undefined}
+                                  style={variant === 'berth'
+                                    ? historyNewValueStyle
+                                    : {
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'flex-start',
+                                      minWidth: 0,
+                                      width: '100%',
+                                      overflowWrap: 'anywhere',
+                                      wordBreak: 'break-word',
+                                      whiteSpace: 'normal',
+                                      lineHeight: 1.5,
+                                    }}
+                                >
                                   {renderFormattedContent(nv, false) ?? (nv ?? '')}
                                 </span>
                               </div>

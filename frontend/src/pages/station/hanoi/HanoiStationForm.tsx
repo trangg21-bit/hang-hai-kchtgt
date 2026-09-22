@@ -165,8 +165,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationhaiphong',
-    extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const isDetailMode = mode === 'detail';
@@ -294,8 +292,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       if (defOrgId) {
         form.setFieldValue('orgUnitId', defOrgId);
-      } else if ((currentUser as any)?.orgUnitId) {
-        form.setFieldValue('orgUnitId', String((currentUser as any).orgUnitId));
       }
 
       // Generate code
@@ -325,7 +321,19 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         setLoading(false);
       });
     }
-  }, [open, editId, initialData, mode, isCreateMode]);
+  }, [open, editId, initialData, mode, isCreateMode, currentUser, effectiveOrgUnits]);
+
+  useEffect(() => {
+    if (isCreateMode && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('orgUnitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('orgUnitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreateMode, open, effectiveOrgUnits, currentUser, form]);
 
   const populateForm = (data: HanoiStationItem) => {
     setRecord(data);
@@ -1287,7 +1295,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

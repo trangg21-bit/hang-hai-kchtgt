@@ -40,6 +40,14 @@ export function isCucLevelUser(currentUser: any): boolean {
   const orgCode = String(currentUser?.orgUnitCode || '').toUpperCase().trim();
   const orgName = String(currentUser?.orgUnitName || '').toLowerCase().trim();
   const userUnitType = String(currentUser?.unitType || '').toUpperCase().trim();
+  const roles = Array.isArray(currentUser?.roles)
+    ? currentUser.roles.map((r: string) => String(r).toUpperCase())
+    : [String(currentUser?.role || '').toUpperCase()];
+
+  // 0. Quản trị viên hệ thống (Admin)
+  if (roles.includes('ADMIN') || String(currentUser?.username).toLowerCase() === 'admin') {
+    return true;
+  }
 
   // 1. Cấp Bộ (G17)
   const isMinistryRoot =
@@ -82,6 +90,8 @@ export function useKchtPermissions(
   const currentUser = (options.currentUser !== undefined ? options.currentUser : (authStoreUser || useAuthStore.getState().user)) as AuthState['user'];
   const storeHasExplicitPerm = usePermissionStore((s: PermissionState) => s.hasExplicitPermission);
   const hasExplicitPerm = storeHasExplicitPerm || usePermissionStore.getState().hasExplicitPermission;
+  const storeHasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const hasPerm = storeHasPerm || usePermissionStore.getState().hasPermission;
 
   // FE phải dùng đúng tập quyền hiệu lực mà backend dùng. Role hiển thị
   // "ADMIN" chỉ là metadata tài khoản, không được tự biến thành toàn quyền.
@@ -104,8 +114,8 @@ export function useKchtPermissions(
 
   // Base Capabilities
   const canRead = useMemo(() => {
-    return hasExplicitPerm(`${resource}:read`);
-  }, [hasExplicitPerm, resource]);
+    return hasPerm(`${resource}:read`);
+  }, [hasPerm, resource]);
 
   const canCreate = useMemo(() => {
     return hasExplicitPerm(`${resource}:create`);
@@ -169,7 +179,7 @@ export function useKchtPermissions(
   const canEdit = (record?: KchtRecordLike | null): boolean => {
     if (!record) return canCreate;
     return canEditApprovalRecord(record.approvalStatus, {
-      hasPerm: hasExplicitPerm,
+      hasPerm,
       resource,
     });
   };
@@ -199,7 +209,7 @@ export function useKchtPermissions(
     const isPending = st === 'PENDING_APPROVAL';
     if (!isPending) return false;
     if (approvalLevels === 1) {
-      return (hasApprovePerm || hasApproveL1Perm) && !isCreator(record);
+      return (hasApprovePerm || hasApproveL1Perm) && (!isCreator(record) || isCucLevel);
     }
     return hasApproveL1Perm && (!isCreator(record) || isCucLevel);
   };
@@ -209,7 +219,7 @@ export function useKchtPermissions(
     const st = normalizeApprovalStatus(record.approvalStatus);
     const isApprovedL1 = st === 'APPROVED_LEVEL1';
     if (!isApprovedL1) return false;
-    return hasApproveL2Perm && (!isApproverL1(record) || isCucLevel);
+    return hasApproveL2Perm && (!isApproverL1(record) || isCucLevel) && (!isCreator(record) || isCucLevel);
   };
 
   const canReject = (record?: KchtRecordLike | null): boolean => {

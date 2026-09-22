@@ -76,4 +76,11 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
     List<NavigationChannel> searchFiltered(
             @org.springframework.data.repository.query.Param("orgUnitId") UUID orgUnitId,
             @org.springframework.data.repository.query.Param("search") String search);
+
+    @Query("SELECT new com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse(" +
+            "l.id, l.channelCode, l.channelName, l.orgUnitId, l.seaportId) " +
+            "FROM NavigationChannel l WHERE l.deletedAt IS NULL " +
+            "AND l.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED " +
+            "ORDER BY l.channelName ASC")
+    List<com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse> findActiveOptions();
 }

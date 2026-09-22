@@ -565,6 +565,13 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                         </span>
                       </div>
 
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">
+                          {record.approvalContentLevel1 || (record as any).level1ApprovalContent || '—'}
+                        </span>
+                      </div>
+
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
@@ -575,6 +582,13 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                         <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
                           {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                        </span>
+                      </div>
+
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">
+                          {record.approvalContentLevel2 || (record as any).level2ApprovalContent || '—'}
                         </span>
                       </div>
 
@@ -1006,7 +1020,7 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

@@ -62,7 +62,7 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
     );
 
     const canUpdate = Boolean(
-      canManage ||
+      hasExplicitPerm?.('*') ||
       checkAny((res) =>
         Boolean(
           hasExplicitPerm?.(`${res}:update`) ||
@@ -84,8 +84,7 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
     );
 
     const canHistory = Boolean(
-      canManage ||
-      canRead ||
+      hasExplicitPerm?.('*') ||
       checkAny((res) =>
         Boolean(
           hasExplicitPerm?.(`${res}:history`) ||

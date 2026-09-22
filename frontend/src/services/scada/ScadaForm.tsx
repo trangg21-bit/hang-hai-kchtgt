@@ -1578,7 +1578,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         }
         open={gisModalVisible}
         onCancel={handleCancelGisMap}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ maxWidth: 1400, top: 20 }}
         footer={[

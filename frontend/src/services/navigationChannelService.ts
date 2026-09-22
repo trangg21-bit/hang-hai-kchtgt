@@ -58,6 +58,11 @@ export const navigationChannelCRUD = {
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
   },
 
+  async getOptions(): Promise<Array<{ id: string; channelCode?: string; channelName?: string; orgUnitId?: string; seaportId?: string }>> {
+    const res = await api.get('/common/options/navigation-channels');
+    return res.data?.data || [];
+  },
+
   async create(data: CreateNavigationChannelRequest): Promise<NavigationChannelResponse> {
     const res = await api.post('/v1/navigation-channel', data);
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;

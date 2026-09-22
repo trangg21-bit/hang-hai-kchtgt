@@ -35,4 +35,20 @@ describe('useAssetPermissions', () => {
 
     expect(renderAssetPermissions(['cctv', 'cctvasset']).canUpdate).toBe(true);
   });
+
+  it('does not turn manage or read into history permission', () => {
+    usePermissionStore.setState({
+      permissions: ['cctv:manage', 'cctv:read', 'cctvasset:read'],
+    });
+
+    const permissions = renderAssetPermissions(['cctv', 'cctvasset']);
+    expect(permissions.canRead).toBe(true);
+    expect(permissions.canHistory).toBe(false);
+  });
+
+  it('shows history only for an explicit history permission', () => {
+    usePermissionStore.setState({ permissions: ['cctv:history'] });
+
+    expect(renderAssetPermissions(['cctv', 'cctvasset']).canHistory).toBe(true);
+  });
 });

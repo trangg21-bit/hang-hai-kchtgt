@@ -478,7 +478,7 @@ export default function PointObjectList() {
         onClick: () => openEditDrawer(record),
       });
     }
-    if (hasPerm('history:read') || hasPerm('history:view')) {
+    if (hasPerm('pointobject:history') || hasPerm('gispoint:history') || hasPerm('data:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',

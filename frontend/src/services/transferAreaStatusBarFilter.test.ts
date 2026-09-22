@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import dayjs from 'dayjs';
 import { isTransferAreaDeleted } from '../pages/transfer-area/TransferAreaListPage';
 
@@ -7,10 +7,10 @@ describe('TransferArea Status Bar Filter and Count Logic (/transfer-area)', () =
     { key: 'all', label: 'Tất cả', color: '#0E6FD6' },
     { key: 'DRAFT', label: 'Lưu tạm', color: '#93A3B3' },
     { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: '#0E6FD6' },
-    { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: '#EDA100' },
+    { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: '#EDA100' },
     { key: 'APPROVED', label: 'Đã phê duyệt', color: '#1BAF7A' },
     { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: '#E34948' },
-    { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: '#E34948' },
+    { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: '#E34948' },
     { key: 'DELETED', label: 'Đã xóa', color: '#E34948' },
   ];
 

@@ -501,7 +501,7 @@ function MaintenanceList() {
       <Drawer
         open={drawerMode === 'create' || drawerMode === 'edit'}
         onClose={closeDrawer}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         title={drawerMode === 'create' ? 'Thêm mới kế hoạch bảo trì' : 'Chỉnh sửa kế hoạch bảo trì'}
         footer={[
           <Button key="cancel" style={{ ...primaryButtonStyle, background: t.borderDefault, borderColor: t.borderDefault, color: t.textSecondary, marginRight: spaceSm }} onClick={closeDrawer}>
@@ -597,7 +597,7 @@ function MaintenanceList() {
       <Drawer
         open={drawerMode === 'view'}
         onClose={closeDrawer}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         title="Chi tiết kế hoạch bảo trì"
       >
         {viewRecord && (

@@ -15,7 +15,7 @@ import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService, type Organization } from '../services/organizationService';
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
-import { getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
+import { expandPermissionAliases, getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
 import {
   actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
   fontWeightBold, fontWeightMedium, radiusPill, radiusMd, radiusTextArea, borderDefault,
@@ -358,7 +358,8 @@ export default function UsersPage() {
     setPermissionSaving(true);
     try {
       const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
-      const keysToSave = selectedPermissionKeys.filter((k) => {
+      const expandedKeys = expandPermissionAliases(selectedPermissionKeys, validCodes);
+      const keysToSave = Array.from(expandedKeys).filter((k) => {
         if (k === '*' || k.startsWith('group_')) return false;
         return validCodes.size === 0 || validCodes.has(k.toLowerCase());
       });

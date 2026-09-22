@@ -202,6 +202,11 @@ export default function VtsSystemDetailContent({
       setAttachmentList(selectedRecord.attachments);
     }
 
+    // Nếu selectedRecord đã được nạp đầy đủ (từ form cha hoặc getById trước đó), không gọi lại API lần 2
+    if (selectedRecord.zones !== undefined && selectedRecord.attachments !== undefined) {
+      return () => { mounted = false; };
+    }
+
     vtsSystemCRUD.getById(selectedRecord.id, { includeZones: true, includeAttachments: true })
       .then((data) => {
         if (!mounted || !data) return;
@@ -1136,7 +1141,7 @@ export default function VtsSystemDetailContent({
         ]}
         width="min(800px, 90vw)"
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 8 }}>
           {previewLoading ? (

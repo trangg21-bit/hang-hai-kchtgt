@@ -984,10 +984,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                 placeholder="Chọn đơn vị quản lý"
                                 disabled={isEditMode}
                                 allowClear
-                                treeDefaultExpandAll
-                                listHeight={256}
-                                onChange={() => form.setFieldValue('locationId', undefined)}
-                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                                onChange={(val) => {
+                                  form.setFieldsValue({ orgUnitId: val, locationId: undefined });
+                                }}
                               />
                             </Form.Item>
                           </Col>
@@ -1458,7 +1457,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

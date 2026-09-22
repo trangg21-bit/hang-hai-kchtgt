@@ -29,8 +29,10 @@ import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
+import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
 import { getOperatingOrgName } from './CospasSarsatStationDetailContent';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
 
 const fontSizeMd = 13.5;
 
@@ -783,9 +785,8 @@ export default function CospasSarsatStationList() {
     const uid = currentUser?.userId || currentUser?.id;
     const isCreator = Boolean(uid && (record.createdBy === uid || record.submittedBy === uid));
     const isApproverL1 = Boolean(uid && (record.approverLevel1 === uid || (record as any).approverLevel1Id === uid));
-    const userUnitType = currentUser?.unitType || '';
     const isAdmin = hasPerm('*') || hasPerm('admin:all');
-    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+    const isCucLevel = isCucLevelUser(currentUser) || isAdmin;
 
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [];
     if (hasPerm('coastalstationcospassarsat:read') || hasPerm('specialstation:read') || hasPerm('data:read')) {
@@ -804,8 +805,6 @@ export default function CospasSarsatStationList() {
     if (canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource: 'coastalstationcospassarsat',
-      extraUpdatePerms: ['specialstation:update', 'data:update'],
-      extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
     })) {
       actions.push({
         key: 'edit',
@@ -819,13 +818,7 @@ export default function CospasSarsatStationList() {
         },
       });
     }
-    if (
-      hasPerm('coastalstationcospassarsat:history') ||
-      hasPerm('specialstation:history') ||
-      hasPerm('coastalstationcospassarsat:read') ||
-      hasPerm('specialstation:read') ||
-      hasPerm('data:read')
-    ) {
+    if (hasPerm('coastalstationcospassarsat:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',
@@ -865,7 +858,7 @@ export default function CospasSarsatStationList() {
       });
     }
     const canApproveC2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
-    if (canApproveC2 && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin)) {
+    if (canApproveC2 && record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && (!isApproverL1 || isCucLevel || isAdmin) && (!isCreator || isCucLevel || isAdmin)) {
       actions.push({
         key: 'approveC2',
         label: 'Phê duyệt cấp Cục',
@@ -1193,6 +1186,9 @@ export default function CospasSarsatStationList() {
             }
             if (fn.includes('operatingorg') || fn.includes('khai thac') || fn.includes('khaithac')) {
               return getOperatingOrgName(String(value), String(value));
+            }
+            if (fn.includes('service') || fn.includes('dich vu') || fn.includes('dichvu')) {
+              return formatMaritimeServicesDisplay(value);
             }
             return String(value);
           }}

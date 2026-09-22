@@ -70,7 +70,6 @@ export function expandPermissionAliases(
     ? (allowedKeys === null ? null : (allowedKeys instanceof Set ? allowedKeys : new Set(Array.from(allowedKeys).map((k) => normalizePermissionKey(String(k))))))
     : activeCatalogKeys;
 
-
   const expanded = new Set<string>();
   for (const key of keys) {
     const k = String(key);
@@ -79,13 +78,19 @@ export function expandPermissionAliases(
     if (!allowedSet || allowedSet.has(normK)) {
       expanded.add(k);
     }
-    getEquivalentPermissionKeys(k).forEach((eq) => {
+    const eqKeys = getEquivalentPermissionKeys(k);
+    eqKeys.forEach((eq) => {
       const normEq = normalizePermissionKey(eq);
       if (!allowedSet || allowedSet.has(normEq)) {
         expanded.add(eq);
       }
     });
-
+    // Nếu k là key hợp lệ từ UI nhưng bản thân k không nằm trực tiếp trong allowedSet
+    // (do trong catalog chỉ lưu alias tương đương của nó), mà một trong các equivalent aliases có trong allowedSet:
+    // ta vẫn thêm k vào expanded để UI giữ được checked state trên cây.
+    if (allowedSet && !allowedSet.has(normK) && eqKeys.some((eq) => allowedSet.has(normalizePermissionKey(eq)))) {
+      expanded.add(k);
+    }
   }
   return expanded;
 }
@@ -102,8 +107,11 @@ export function mergePermissionKeys(
   nodes: readonly MenuTreeNode[],
   allowedKeys?: Set<string> | Iterable<string> | null,
 ): string[] {
-  // 1. Tập quyền (kèm alias) thuộc phạm vi cây hiển thị hiện tại
-  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes), allowedKeys);
+  // 1. Tập quyền (kèm MỌI alias tương đương) thuộc phạm vi cây hiển thị hiện tại.
+  // Không giới hạn allowedKeys khi xác định visibleEquivKeys vì mục đích là nhận diện
+  // TẤT CẢ các mã quyền và alias tương đương (kể cả mã cũ hoặc mã alias khác) đại diện bởi các node hiển thị,
+  // để nếu người dùng bỏ chọn trên UI thì chúng phải bị loại bỏ hoàn toàn khỏi remainingKeys.
+  const visibleEquivKeys = expandPermissionAliases(getPermissionTreeKeys(nodes), null);
 
   // 2. Giữ lại các quyền nằm ngoài phạm vi cây lọc hiện tại
   const remainingKeys = currentKeys.filter(
@@ -112,7 +120,6 @@ export function mergePermissionKeys(
 
   // 3. Mở rộng các quyền được tích chọn (đồng bộ cả canonical lẫn alias tồn tại hợp lệ)
   const nextExpandedKeys = expandPermissionAliases(nextVisibleKeys, allowedKeys);
-
 
   return [...new Set([...remainingKeys, ...nextExpandedKeys])];
 }
@@ -272,6 +279,47 @@ const HIDDEN_PERMISSIONS = new Set([
   'approve:action',
 ]);
 
+const TREE_RESOURCE_CANONICAL_MAP: Record<string, string> = {
+  dryportasset: 'dryport',
+  berthasset: 'berth',
+  pierasset: 'pier',
+  buoyberthasset: 'buoyberth',
+  anchorageasset: 'anchorage',
+  transferareaasset: 'transferarea',
+  stormshelterasset: 'stormshelter',
+  cctvasset: 'cctv',
+  scadaasset: 'scada',
+  transmissionasset: 'transmission',
+  vtsassistasset: 'vtsassist',
+  radarasset: 'radarstation',
+  tramradar: 'radarstation',
+  aisasset: 'aissystem',
+  vhfasset: 'vhf',
+  daittdhasset: 'daittdh',
+  channelasset: 'navigationchannel',
+  channel: 'navigationchannel',
+  dikerevetmentasset: 'dikerevetment',
+  buoyasset: 'buoy',
+  buoystation: 'buoy',
+  lighthouseasset: 'beaconstation',
+  beaconlight: 'beaconstation',
+  lighthousestation: 'beaconstation',
+  lighthouse: 'beaconstation',
+  shiprepair: 'shiprepairfacility',
+  shiprepairyard: 'shiprepairfacility',
+  inmarsatasset: 'coastalstationinmarsat',
+  inmarsat: 'coastalstationinmarsat',
+  cospassarsatasset: 'coastalstationcospassarsat',
+  cospassarsat: 'coastalstationcospassarsat',
+  lritasset: 'coastalstationlrit',
+  lrit: 'coastalstationlrit',
+  ttxlttasset: 'coastalstationhaiphong',
+  ttxltt: 'coastalstationhaiphong',
+  vtsasset: 'vts',
+  vtssystem: 'vts',
+  waterarea: 'waterzone',
+};
+
 const KCHT_RESOURCES_WITHOUT_MANAGE = new Set([
   'port', 'berth', 'pier', 'buoyberth', 'anchorage', 'anchorageasset', 'transferarea', 'stormshelter',
   'dryport', 'waterzone', 'waterarea', 'navigationchannel', 'dikerevetment', 'shiprepair',
@@ -289,10 +337,13 @@ const KCHT_RESOURCES_WITHOUT_MANAGE = new Set([
 function isHiddenPermission(key: string): boolean {
   if (HIDDEN_PERMISSIONS.has(key)) return true;
   const [resource, action] = normalizePermissionKey(key).split(':', 2);
-  if (action === 'manage' && KCHT_RESOURCES_WITHOUT_MANAGE.has(canonicalResource(resource))) return true;
+  const baseCanonical = canonicalResource(resource);
+  const treeCanonical = TREE_RESOURCE_CANONICAL_MAP[baseCanonical] || TREE_RESOURCE_CANONICAL_MAP[resource] || baseCanonical;
+  if (action === 'manage' && (KCHT_RESOURCES_WITHOUT_MANAGE.has(treeCanonical) || KCHT_RESOURCES_WITHOUT_MANAGE.has(resource))) return true;
   if (key === 'anchoragearea' || key.startsWith('anchoragearea:')) return true;
   if (key.endsWith(':read:restricted') || key.endsWith(':read:confidential')) return true;
   if (key.endsWith(':restricted') || key.endsWith(':confidential')) return true;
+  if (action === 'reject' || action === 'rejectc1' || action === 'rejectc2') return true;
   return false;
 }
 
@@ -376,15 +427,16 @@ const RESOURCE_ORDER: string[] = [
   'vhf',
   'coastalstation',
   'specialstation',
+  'coastalstationinmarsat',
   'inmarsat',
-  'cospassarsat',
   'coastalstationcospassarsat',
-  'ttxltt',
+  'cospassarsat',
   'coastalstationhaiphong',
-  'lrit',
+  'ttxltt',
   'coastalstationlrit',
-  'shiprepair',
+  'lrit',
   'shiprepairfacility',
+  'shiprepair',
   'shiprepairyard',
   'berthasset',
   'pierasset',
@@ -469,9 +521,12 @@ export function usePermissions(options?: { enabled?: boolean }) {
     if (!perms.length) return [];
     const groups: Record<string, Map<string, MenuTreeNode>> = {};
 
+
+
     perms.forEach((p) => {
       const rawRes = (p.resource || p.key.split(':')[0] || 'other').toLowerCase();
-      const canonicalRes = canonicalResource(rawRes);
+      const baseCanonicalRes = canonicalResource(rawRes);
+      const canonicalRes = TREE_RESOURCE_CANONICAL_MAP[baseCanonicalRes] || TREE_RESOURCE_CANONICAL_MAP[rawRes] || baseCanonicalRes;
       const action = (p.key.split(':').slice(1).join(':') || p.action || '').toLowerCase();
       const canonicalKey = action ? `${canonicalRes}:${action}` : canonicalRes;
 

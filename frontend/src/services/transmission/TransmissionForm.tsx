@@ -1469,7 +1469,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         }
         open={gisModalOpen}
         onCancel={handleCancelGisMap}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

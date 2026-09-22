@@ -77,4 +77,11 @@ public interface BuoyBerthRepository extends JpaRepository<BuoyBerth, UUID> {
             @Param("updatedFrom") java.time.LocalDateTime updatedFrom,
             @Param("updatedTo") java.time.LocalDateTime updatedTo,
             Pageable pageable);
+
+    @Query("SELECT new com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse(" +
+            "b.id, b.buoyBerthCode, b.buoyBerthName, b.portId, b.orgUnitId) " +
+            "FROM BuoyBerth b WHERE b.deletedAt IS NULL " +
+            "AND b.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED " +
+            "ORDER BY b.buoyBerthName ASC")
+    List<com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse> findActiveOptions();
 }

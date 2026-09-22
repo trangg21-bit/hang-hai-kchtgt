@@ -1132,7 +1132,7 @@ export default function DryPortListPage() {
     const isDraft = status === 'DRAFT' || status === 'NHAP';
     const isPending = status === 'PENDING' || status === 'PENDING_APPROVAL';
     actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailModal(record) });
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport', extraUpdatePerms: ['dryport:update'] })) {
+    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport' })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',

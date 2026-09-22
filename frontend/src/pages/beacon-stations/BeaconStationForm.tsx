@@ -1314,7 +1314,7 @@ export default forwardRef(function BeaconStationForm(
         }
         open={gisModalOpen}
         onCancel={handleCancelGisMap}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ maxWidth: 1400, top: 20 }}
         footer={[

@@ -75,7 +75,7 @@ import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } 
 import { formatHistoryNumber } from '../../utils/numFmt';
 import DaiTtdhDetailContent from './DaiTtdhDetailContent';
 import DaiTtdhForm, { DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
-import { resolveMaritimeServiceLabel } from '../../constants/maritimeServices';
+import { resolveMaritimeServiceLabel, formatMaritimeServicesDisplay } from '../../constants/maritimeServices';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ─────
 const fontSizeMd = 13.5;
@@ -285,12 +285,11 @@ function histVal(
   if (
     normKey === 'servicesprovided' ||
     normKey === 'services_provided' ||
+    normKey === 'services' ||
     normKey === 'dichvucungcap' ||
     normKey === 'dich vu cung cap'
   ) {
-    const parts = trimmedVal.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
-    const mappedParts = parts.map((code) => resolveMaritimeServiceLabel(code));
-    return mappedParts.join(', ');
+    return formatMaritimeServicesDisplay(trimmedVal);
   }
 
   if (
@@ -1646,14 +1645,14 @@ export default function DaiTtdhListPage() {
           {...drawerProps}
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
-          width={DRAWER_WIDTH}
+          size={DRAWER_WIDTH}
           title={
             <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
               {editDaiTtdhId ? 'Chỉnh sửa thông tin Đài TTDH' : 'Thêm mới Đài TTDH'}
             </span>
           }
           open={createDrawerVisible}
-          destroyOnClose
+          destroyOnHidden
           onClose={closeFormDrawer}
           afterOpenChange={(open) => {
             if (!open) {
@@ -1759,7 +1758,7 @@ export default function DaiTtdhListPage() {
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
           size={undefined}
-          width={DRAWER_WIDTH}
+          size={DRAWER_WIDTH}
           title={<span style={drawerTitleStyle}>Chi tiết đài TTDH{detailRecord ? ` - ${detailRecord.daiTtdhName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}

@@ -103,11 +103,15 @@ public class VtsSystemService {
         }
         if (operatingOrganizationRepository != null) {
             Optional<OperatingOrganization> op = operatingOrganizationRepository.findById(operatingOrgId);
-            if (op.isPresent()) {
+            if (op.isPresent() && op.get().getName() != null && !op.get().getName().isBlank()) {
                 return op.get().getName();
             }
         }
-        return orgUnitCacheService.getName(operatingOrgId);
+        String orgName = orgUnitCacheService.getName(operatingOrgId);
+        if (orgName != null && !orgName.isBlank()) {
+            return orgName;
+        }
+        return null;
     }
 
     @Value("${app.upload.attachment-path:uploads/vts-attachments}")
@@ -267,18 +271,6 @@ public class VtsSystemService {
             saved = repository.save(saved);
         }
 
-        // Phê duyệt trực tiếp khi tạo là một sự kiện workflow, không phải một
-        // "trường dữ liệu thay đổi". Để changedField null, lịch sử hiển thị
-        // đúng một mốc phê duyệt và không trộn vào lịch sử cập nhật.
-        if (isApproved) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(saved.getId())
-                    .refType(InfrastructureType.VTS_SYSTEM)
-                    .status(InfrastructureHistoryStatus.APPROVED)
-                    .approvedBy(userId)
-                    .approvedDate(now)
-                    .build());
-        }
 
         if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
             GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType()
@@ -373,7 +365,6 @@ public class VtsSystemService {
         if (scope.enabled()) {
             validateAllowedOrgUnit(scope, orgUnitId, "Đơn vị quản lý");
             validateAllowedOrgUnit(scope, owningOrgId, "Đơn vị chủ quản");
-            validateAllowedOrgUnit(scope, operatingOrgId, "Đơn vị vận hành");
         }
 
         if (portId == null) {
@@ -1518,13 +1509,7 @@ public class VtsSystemService {
                 if (entity.getLevel2ApprovalContent() == null || entity.getLevel2ApprovalContent().isBlank()) {
                     entity.setLevel2ApprovalContent("Lưu và phê duyệt trực tiếp");
                 }
-                historyRepository.save(InfrastructureHistory.builder()
-                        .refId(entity.getId())
-                        .refType(InfrastructureType.VTS_SYSTEM)
-                        .status(InfrastructureHistoryStatus.APPROVED)
-                        .approvedBy(effectiveUserId)
-                        .approvedDate(now)
-                        .build());
+
             }
         }
 

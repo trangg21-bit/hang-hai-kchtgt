@@ -27,7 +27,7 @@ class RadarStationRepositoryTest {
     private RadarStationRepository repository;
 
     @Test
-    void testFindAllApprovedOptions_IncludesAllConditionStatusesWhenApproved() {
+    void testFindAllApprovedOptions_OnlyIncludesOperationalAndApproved() {
         RadarStation r1 = createRadar("RADAR-01", "Trạm Radar A", ApprovalStatus.APPROVED, "1");
         repository.save(r1);
 
@@ -49,8 +49,8 @@ class RadarStationRepositoryTest {
         List<RadarStation> options = repository.findAllApprovedOptions(false, List.of());
         List<String> names = options.stream().map(RadarStation::getStationName).toList();
 
-        assertEquals(3, options.size());
-        assertEquals(List.of("Trạm Radar A", "Trạm Radar B", "Trạm Radar C"), names);
+        assertEquals(1, options.size());
+        assertEquals(List.of("Trạm Radar A"), names);
     }
 
     @Test

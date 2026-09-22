@@ -36,6 +36,8 @@ class CommonOptionsServiceTest {
     @Mock private MapSymbolService mapSymbolService;
     @Mock private RadarStationService radarStationService;
     @Mock private VtsOperationCenterService vtsOperationCenterService;
+    @Mock private com.hanghai.kchtg.navigationchannel.service.NavigationChannelService navigationChannelService;
+    @Mock private com.hanghai.kchtg.port.service.BuoyBerthService buoyBerthService;
 
     @InjectMocks private CommonOptionsService service;
 
@@ -62,5 +64,21 @@ class CommonOptionsServiceTest {
         assertThat(service.getPortOptions(ApprovalStatus.APPROVED)).containsExactly(option);
         verify(portRepository).findOptionsByOrgUnitIdsAndApprovalStatus(
                 List.of(orgUnitId), ApprovalStatus.APPROVED);
+    }
+
+    @Test
+    void getNavigationChannelOptionsDelegatesToNavigationChannelService() {
+        var opt = new com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse();
+        when(navigationChannelService.getOptions()).thenReturn(List.of(opt));
+        assertThat(service.getNavigationChannelOptions()).containsExactly(opt);
+        verify(navigationChannelService).getOptions();
+    }
+
+    @Test
+    void getBuoyBerthOptionsDelegatesToBuoyBerthService() {
+        var opt = new com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse();
+        when(buoyBerthService.getOptions()).thenReturn(List.of(opt));
+        assertThat(service.getBuoyBerthOptions()).containsExactly(opt);
+        verify(buoyBerthService).getOptions();
     }
 }

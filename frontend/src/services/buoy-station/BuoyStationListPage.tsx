@@ -364,10 +364,9 @@ export default function BuoyStationListPage() {
     })();
     (async () => {
       try {
-        const r = await portCRUD.findAll({ page: 1, size: 1000 });
+        const list = await portCRUD.getOptions();
         const m = new Map<string, string>();
-        const list = r.data || (r as any).content || [];
-        list.forEach((p: any) => { m.set(p.id, p.portName || p.name); });
+        (list || []).forEach((p: any) => { m.set(p.id, p.portName || p.portCode || p.name); });
         setPortMap(m);
       } catch { /* */ }
     })();
@@ -614,7 +613,7 @@ export default function BuoyStationListPage() {
     if (fn === 'type') { const o = BUOY_TYPE_OPTIONS.find((x) => x.value === val); return o?.label || val; }
     if (fn === 'status') { const s = APPROVAL_STYLE_MAP[val]; return s?.label || val; }
     if (fn === 'approvalStatus') {
-      const m: Record<string, string> = { DRAFT: 'Lưu tạm', PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp cục' };
+      const m: Record<string, string> = { DRAFT: 'Lưu tạm', PROPOSED: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục', APPROVED: 'Đã phê duyệt', REJECTED: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục', REJECTED_LEVEL2: 'Từ chối cấp Cục' };
       return m[val] || val;
     }
     if (fn === 'approvalLevel') return val === 'LEVEL_1' ? 'Cấp Cảng vụ/Chi cục' : val === 'LEVEL_2' ? 'Cấp Cục' : val;
@@ -1009,10 +1008,12 @@ export default function BuoyStationListPage() {
     const a: any[] = [];
     a.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => void openDetail(r) });
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(r.status, { hasPerm, resource: 'buoystation', extraUpdatePerms: ['data:update'] })) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => void openEdit(r) });
+    if (canEditApprovalRecord(r.status, { hasPerm, resource: 'buoystation' })) a.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => void openEdit(r) });
     if (r.latitude != null && r.longitude != null) a.push({ key: 'loc', label: 'Xem vị trí', icon: icons.location, onClick: () => window.open(`https://www.google.com/maps?q=${r.latitude},${r.longitude}`, '_blank') });
-    // Lịch sử — luôn hiển thị khi có quyền
-    a.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => void openHistoryDrawer(r) });
+    // Lịch sử — hiển thị khi có quyền
+    if (hasPerm('buoystation:history')) {
+      a.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => void openHistoryDrawer(r) });
+    }
     // Phê duyệt / Từ chối — theo trạng thái
     if ((hasPerm('buoystation:create') || hasPerm('buoystation:update')) && (r.status === 'DRAFT' || r.status === 'NHAP')) a.push({ key: 'submit', label: 'Gửi Cảng vụ phê duyệt', icon: icons.submit, onClick: () => openSubmit(r) });
     if ((hasPerm('buoystation:create') || hasPerm('buoystation:update')) && (r.status === 'REJECTED' || r.status === 'REJECTED_L1' || r.status === 'REJECTED_L2')) a.push({ key: 'resubmit', label: 'Gửi lại phê duyệt', icon: icons.submit, onClick: () => openSubmit(r) });
@@ -1210,7 +1211,7 @@ export default function BuoyStationListPage() {
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
+              <DatePicker.RangePicker className="range-single-panel" classNames={{ popup: { root: 'range-single-panel' } }} format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']} allowClear
                 value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
                 onChange={(dates) => setFilterValues((prev) => ({

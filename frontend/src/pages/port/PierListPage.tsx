@@ -84,7 +84,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 const OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -96,10 +96,10 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -389,7 +389,6 @@ export default function PierListPage() {
   const [filterBerthId, setFilterBerthId] = useState<string | undefined>();
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
   const [filterPierType, setFilterPierType] = useState<string | undefined>();
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
@@ -434,11 +433,21 @@ export default function PierListPage() {
   }, [rawUsers, orgMap]);
   const [berthOptions, setBerthOptions] = useState<{ value: string; label: string }[]>([]);
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+  const [allPorts, setAllPorts] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const portMap = useMemo(() => {
     const m = new Map<string, string>();
-    portOptions.forEach((o) => m.set(o.value, o.label));
+    allPorts.forEach((o) => m.set(o.id, o.portName || o.portCode || o.id));
     return m;
-  }, [portOptions]);
+  }, [allPorts]);
+  const allPortOptions = useMemo(() => {
+    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts]);
+  const portOptions = useMemo(() => {
+    const filtered = (!orgUnit || orgUnit === '__all__')
+      ? allPorts
+      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
+    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts, orgUnit]);
   const [historyBerthMap, setHistoryBerthMap] = useState<Map<string, string>>(new Map());
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -664,10 +673,10 @@ export default function PierListPage() {
   }, []);
 
   useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => {
+    navigationChannelCRUD.getOptions()
+      .then((items) => {
         const m = new Map<string, string>();
-        r.items.forEach(n => {
+        items.forEach(n => {
           const code = n.channelCode?.trim();
           const name = n.channelName?.trim();
           const label = code && name ? `${code} - ${name}` : (code || name || '');
@@ -679,8 +688,19 @@ export default function PierListPage() {
   }, []);
 
   useEffect(() => {
-    (async () => { try { const p: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') p.orgUnitId = orgUnit; const r = await portCRUD.search(p); setPortOptions((r.data || []).map((x: any) => ({ value: x.id, label: x.portName }))); } catch {} })();
-  }, [orgUnit]);
+    portCRUD.getOptions()
+      .then((items) => setAllPorts(items || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (filterPortId && orgUnit && orgUnit !== '__all__') {
+      const match = allPorts.find((p) => p.id === filterPortId);
+      if (match && match.orgUnitId && match.orgUnitId !== orgUnit) {
+        setFilterPortId(undefined);
+      }
+    }
+  }, [orgUnit, filterPortId, allPorts]);
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
@@ -966,7 +986,7 @@ export default function PierListPage() {
             format="DD/MM/YYYY"
             placeholder={['Từ ngày', 'Đến ngày']}
             allowClear
-            popupClassName="chk-range-datepicker-popup"
+            classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
             classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
             value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
             onChange={(dates) => {
@@ -986,10 +1006,13 @@ export default function PierListPage() {
   const rowActions = useCallback((record: Pier) => {
     const actions: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) }];
     if (isDeletedPier(record)) {
-      return [
+      const deletedActions: any[] = [
         { key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailDrawer(record) },
-        { key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) },
       ];
+      if (hasPerm('pier:history')) {
+        deletedActions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+      }
+      return deletedActions;
     }
     const st = record.approvalStatus || '';
     const editable = canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'pier' });
@@ -1335,7 +1358,7 @@ export default function PierListPage() {
             organizations={organizations}
             symbolMap={symbolMap}
             symbolImageMap={symbolImageMap}
-            portOptions={portOptions}
+            portOptions={allPortOptions}
             userMap={userMap}
             detailFiles={[]}
             ddToDms={dd2dms}

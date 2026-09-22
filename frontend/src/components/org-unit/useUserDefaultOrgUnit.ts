@@ -19,7 +19,9 @@ export function getFirstOrgUnitId(
   if (tree.length > 0 && tree[0]?.value) {
     return String(tree[0].value);
   }
-  const first = organizations.find((o) => o && o.id !== undefined && o.id !== null);
+  const first = organizations.find(
+    (o) => o && o.id !== undefined && o.id !== null && o.code !== 'G17' && String(o.id) !== MINISTRY_ROOT_ID
+  );
   return first ? String(first.id) : undefined;
 }
 
@@ -82,7 +84,7 @@ export function resolveDefaultOrgUnitId(
  * Xác định giá trị orgUnitId mặc định cho Form THÊM MỚI / SỬA (Drawer / Modal form):
  * Trường "Đơn vị quản lý *" trong Form là bắt buộc:
  * - Nếu user trực thuộc đơn vị cấp dưới cụ thể: chọn chính đơn vị của user (user.orgUnitId).
- * - Nếu user là cấp cao nhất / Admin: tự động chọn giá trị đầu tiên trong danh mục (getFirstOrgUnitId(organizations)).
+ * - Nếu user là cấp cao nhất / Admin: tự động chọn đơn vị con đầu tiên trong danh mục (getFirstOrgUnitId(organizations)).
  */
 export function resolveDefaultFormOrgUnitId(
   user: User | null | undefined,
@@ -102,8 +104,8 @@ export function resolveDefaultFormOrgUnitId(
     return orgIdStr;
   }
 
-  // Tài khoản Admin / Cấp cao nhất: tự động chọn đơn vị đầu tiên trong dropdown
-  return getFirstOrgUnitId(organizations) || (user.orgUnitId ? String(user.orgUnitId) : undefined);
+  // Tài khoản Admin / Cấp cao nhất: tự động chọn đơn vị con đầu tiên trong dropdown (tuyệt đối không chọn G17)
+  return getFirstOrgUnitId(organizations);
 }
 
 /**

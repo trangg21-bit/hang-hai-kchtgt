@@ -102,7 +102,7 @@ class VtsOperationCenterRepositoryTest {
     }
 
     @Test
-    void testFindOptions_IncludesAllConditionStatusesWhenApproved() {
+    void testFindOptions_OnlyIncludesOperationalAndApproved() {
         VtsOperationCenter op1 = createCenter("VTSOC-OP1", "TT Đang vận hành");
         op1.setApprovalStatus(ApprovalStatus.APPROVED);
         op1.setConditionStatus(ConditionStatus.OPERATIONAL);
@@ -134,8 +134,8 @@ class VtsOperationCenterRepositoryTest {
         var options = repository.findOptions(false, List.of(), false, List.of());
         List<String> names = options.stream().map(com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse::getName).toList();
 
-        assertEquals(3, options.size());
-        assertEquals(List.of("TT Bảo trì cấp 2", "TT Dừng vận hành", "TT Đang vận hành"), names);
+        assertEquals(1, options.size());
+        assertEquals(List.of("TT Đang vận hành"), names);
     }
 
     @Test
