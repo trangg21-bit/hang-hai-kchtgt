@@ -104,6 +104,10 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   coordinates: 'Tọa độ GPS',
   latitude: 'Vĩ độ',
   longitude: 'Kinh độ',
+  geometryType: 'Loại đối tượng',
+  mapSymbolId: 'Biểu tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
 
   // Technical & dimensions
   length: 'Chiều dài (m)',

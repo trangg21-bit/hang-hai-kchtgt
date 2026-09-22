@@ -169,7 +169,8 @@ describe('CCTV Status Bar & Tab Tất cả Logic (/cctv)', () => {
       (counts.APPROVED_LEVEL1 || 0) +
       (counts.APPROVED || 0) +
       (counts.REJECTED_LEVEL1 || 0) +
-      (counts.REJECTED_LEVEL2 || 0)
+      (counts.REJECTED_LEVEL2 || 0) +
+      (counts.ARCHIVED || counts.DELETED || 0)
     );
   };
 
@@ -184,7 +185,7 @@ describe('CCTV Status Bar & Tab Tất cả Logic (/cctv)', () => {
     return records.filter((r) => !r.deletedAt && !r.deletedBy && r.approvalStatus === tabKey);
   };
 
-  it('totalAll only sums active sub-tabs and does NOT include ARCHIVED/DELETED counts', () => {
+  it('totalAll sums all sub-tabs including ARCHIVED/DELETED counts', () => {
     const counts = {
       DRAFT: 5,
       PENDING_APPROVAL: 3,
@@ -196,8 +197,8 @@ describe('CCTV Status Bar & Tab Tất cả Logic (/cctv)', () => {
       DELETED: 8,
     };
     const totalAll = computeTotalAll(counts);
-    // 5 + 3 + 2 + 10 + 1 + 1 = 22. ARCHIVED (8) MUST NOT be included.
-    expect(totalAll).toBe(22);
+    // 5 + 3 + 2 + 10 + 1 + 1 + 8 = 30. ARCHIVED (8) MUST be included.
+    expect(totalAll).toBe(30);
   });
 
   it('tab Tất cả filters out records with deletedAt or deletedBy ("Đã xóa")', () => {

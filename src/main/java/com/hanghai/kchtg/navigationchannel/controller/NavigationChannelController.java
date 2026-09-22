@@ -169,10 +169,16 @@ public class NavigationChannelController {
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "approvalStatus", required = false) String approvalStatus,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
-            @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
+            @RequestParam(name = "size", required = false, defaultValue = "20") int size,
+            @RequestParam(name = "sortBy", required = false) String sortBy,
+            @RequestParam(name = "sortDir", required = false) String sortDir,
+            @RequestParam(name = "sortField", required = false) String sortField,
+            @RequestParam(name = "sortOrder", required = false) String sortOrder) {
+        String effectiveSortBy = (sortBy != null && !sortBy.isBlank()) ? sortBy : sortField;
+        String effectiveSortDir = (sortDir != null && !sortDir.isBlank()) ? sortDir : sortOrder;
         return ResponseEntity.ok(ApiResponse.success(
                 service.searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus,
-                        keyword, approvalStatus, page, size)));
+                        keyword, approvalStatus, page, size, effectiveSortBy, effectiveSortDir)));
     }
 
     private UUID currentUserId(Authentication authentication) {

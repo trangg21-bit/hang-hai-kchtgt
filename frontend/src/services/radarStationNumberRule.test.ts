@@ -7,6 +7,8 @@ describe('RadarStation Number Input Rules (Chuẩn Chiều cao tháp radar lấy
     it('chỉ chấp nhận chữ số và dấu ".", loại bỏ ký tự khác', () => {
       expect(normalizeDecimal20_4('abc123xyz')).toBe('123');
       expect(normalizeDecimal20_4('12,345.67')).toBe('12345.67');
+      expect(normalizeDecimal20_4('12.345,67')).toBe('12345.67');
+      expect(normalizeDecimal20_4('1,5')).toBe('1.5');
       expect(normalizeDecimal20_4('12a.3b4c')).toBe('12.34');
       expect(normalizeDecimal20_4('-15.2')).toBe('15.2');
     });
@@ -64,14 +66,14 @@ describe('RadarStation Number Input Rules (Chuẩn Chiều cao tháp radar lấy
       await expect(validator({}, '123')).resolves.toBeUndefined();
       await expect(validator({}, '12345678901234567890')).resolves.toBeUndefined();
       await expect(validator({}, '12.34')).resolves.toBeUndefined();
+      await expect(validator({}, '12,34')).resolves.toBeUndefined();
       await expect(validator({}, '12.3456')).resolves.toBeUndefined();
       await expect(validator({}, '1234567890123456.3456')).resolves.toBeUndefined();
     });
 
     it('từ chối ký tự không hợp lệ', async () => {
-      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
-      await expect(validator({}, '12,34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
-      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
+      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
+      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
     });
 
     it('từ chối khi số sau dấu "." vượt quá 4 chữ số', async () => {
@@ -105,6 +107,7 @@ describe('RadarStation Number Input Rules (Chuẩn Chiều cao tháp radar lấy
     it('safeDecimal giữ nguyên chuỗi số chính xác để submit API', () => {
       expect(safeDecimal('1100')).toBe('1100');
       expect(safeDecimal('1100.5')).toBe('1100.5');
+      expect(safeDecimal('1100,5')).toBe('1100.5');
       expect(safeDecimal('1100.')).toBe('1100');
       expect(safeDecimal('')).toBeUndefined();
       expect(safeDecimal(null)).toBeUndefined();

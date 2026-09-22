@@ -377,8 +377,6 @@ export const isDeletedAnchorage = (record?: Partial<Anchorage> | null): boolean 
     (record.deletedBy && String(record.deletedBy).trim() !== '' && String(record.deletedBy) !== 'null')
   );
 };
-const isDeletedRecord = isDeletedAnchorage;
-
 export default function AnchorageListPage() {
   const [searchParams] = useSearchParams();
   const linkedAction = searchParams.get('action');
@@ -828,7 +826,7 @@ export default function AnchorageListPage() {
         c[tabKey] = r.status === 'fulfilled' ? r.value.total : 0;
       });
       const sumChildCounts = TAB_STATUS_LIST
-        .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+        .filter((t) => t.key !== 'all')
         .reduce((acc, t) => acc + (c[t.key] || 0), 0);
       c['all'] = sumChildCounts;
       setTabCounts(c);
@@ -1361,21 +1359,21 @@ export default function AnchorageListPage() {
         render: (v: string) => renderCellWithTooltip(v ? (waterwayMap.get(v) || v) : null),
       },
       {
-        label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
+        label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220,
         cellTitle: (record: Anchorage) => record.buoyStationName || buoyStationMap.get(record.buoyStationId) || record.buoyStationId || '',
         render: (v: string, r: Anchorage) => renderCellWithTooltip(r.buoyStationName || (v ? buoyStationMap.get(v) || v : null)),
       },
       {
-        label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
+        label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230,
         cellTitle: (record: Anchorage) => record.provinceId ? (VIETNAM_PROVINCES[Number(record.provinceId) - 1] || '') : '',
         render: (v: number) => renderCellWithTooltip(v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : null),
       },
       {
-        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
+        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false,
         render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; },
       },
       {
-        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false, sortable: true,
+        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 320, ellipsis: false,
         render: (v: string, record: Anchorage) => {
           if (isDeletedAnchorage(record)) {
             return (
@@ -1436,7 +1434,7 @@ export default function AnchorageListPage() {
 
   const statusTabs = useMemo(() => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
@@ -1565,17 +1563,6 @@ export default function AnchorageListPage() {
             .anchorage-drawer-scope .chk-detail-value {
               width: 100% !important;
             }
-          }
-          .anchorage-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label {
-            height: auto !important;
-            min-height: 44px !important;
-            align-items: flex-start !important;
-          }
-          .anchorage-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label > label {
-            height: auto !important;
-            white-space: normal !important;
-            line-height: 1.45 !important;
-            overflow-wrap: break-word;
           }
         `}</style>
         <ScreenHeader breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu neo đậu' }]}

@@ -19,6 +19,11 @@ import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.station.dto.buoy.StationBuoySummary;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.EntityNotFoundException;
@@ -46,6 +51,9 @@ public class BuoyStationService {
     private final PortRepository portRepository;
     private final UserRepository userRepository;
     private final BuoyRepository buoyRepository;
+    private final OrgUnitCacheService orgUnitCacheService;
+    private final OrgUnitRepository orgUnitRepository;
+    private final OperatingOrganizationRepository operatingOrganizationRepository;
 
     // -- READ --
 
@@ -553,6 +561,28 @@ public class BuoyStationService {
     }
 
     private BuoyStationResponse toResponse(BuoyStation entity) {
+        String unitName = null;
+        if (entity.getUnitId() != null) {
+            unitName = orgUnitCacheService != null ? orgUnitCacheService.getName(entity.getUnitId()) : null;
+            if (unitName == null && orgUnitRepository != null) {
+                unitName = orgUnitRepository.findById(entity.getUnitId()).map(OrgUnit::getName).orElse(null);
+            }
+        }
+        String operatingOrgName = null;
+        if (entity.getOperatingOrgId() != null) {
+            if (operatingOrganizationRepository != null) {
+                operatingOrgName = operatingOrganizationRepository.findById(entity.getOperatingOrgId())
+                        .map(OperatingOrganization::getName)
+                        .orElse(null);
+            }
+            if (operatingOrgName == null && orgUnitCacheService != null) {
+                operatingOrgName = orgUnitCacheService.getName(entity.getOperatingOrgId());
+            }
+            if (operatingOrgName == null && orgUnitRepository != null) {
+                operatingOrgName = orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
+            }
+        }
+
         BuoyStationResponse.BuoyStationResponseBuilder builder = BuoyStationResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -564,7 +594,10 @@ public class BuoyStationService {
                 .range(entity.getRange())
                 .description(entity.getDescription())
                 .unitId(entity.getUnitId())
+                .unitName(unitName)
+                .orgUnitName(unitName)
                 .operatingOrgId(entity.getOperatingOrgId())
+                .operatingOrgName(operatingOrgName)
                 .portId(entity.getPortId())
                 .waterwayId(entity.getWaterwayId())
                 .waterwayRouteId(entity.getWaterwayRouteId())

@@ -158,6 +158,11 @@ public class InfrastructureHistory {
             return this;
         }
 
+        public Builder approvalContent(String approvalContent) {
+            this.reason = approvalContent;
+            return this;
+        }
+
         public Builder changedField(String changedField) {
             this.changedField = changedField;
             return this;
@@ -265,6 +270,14 @@ public class InfrastructureHistory {
 
     public void setReason(String reason) {
         this.reason = reason;
+    }
+
+    public String getApprovalContent() {
+        return reason;
+    }
+
+    public void setApprovalContent(String approvalContent) {
+        this.reason = approvalContent;
     }
 
 }

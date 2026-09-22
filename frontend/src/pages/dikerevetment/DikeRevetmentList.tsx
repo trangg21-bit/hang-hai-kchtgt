@@ -1045,6 +1045,10 @@ export default function DikeRevetmentList() {
         counts[STATUS_TAB_LIST[i].key] = res.value.total;
       }
     });
+    const sumChildCounts = STATUS_TAB_LIST
+      .filter((t) => t.key !== '')
+      .reduce((acc, t) => acc + (counts[t.key] || 0), 0);
+    counts[''] = sumChildCounts;
     setTabCounts(counts);
   }, [filterName, filterCode, filterSeaportId, filterLocation, filterType, filterStatusVal, filterUnitId, filterCommissioningYear, filterUpdatedRange]);
 
@@ -1053,14 +1057,17 @@ export default function DikeRevetmentList() {
   }, [fetchTabCounts, orgUnitReady]);
 
   // Tab items: đồng bộ số lượng tức thì trên tab active bằng state total
-  const statusTabs = useMemo(
-    () => STATUS_TAB_LIST.map((tab) => ({
+  const statusTabs = useMemo(() => {
+    const allChildSum = STATUS_TAB_LIST
+      .filter((t) => t.key !== '')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return STATUS_TAB_LIST.map((tab) => ({
       ...tab,
-      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? (tab.key === '' ? total : 0)),
+      count: tab.key === '' ? (tabCounts[''] ?? allChildSum) : (tab.key === activeTab ? total : (tabCounts[tab.key] ?? 0)),
       active: activeTab === tab.key,
-    })),
-    [tabCounts, activeTab, total],
-  );
+    }));
+  }, [tabCounts, activeTab, total]);
 
   const handleTabChange = (key: string) => {
     setActiveTab(key);
@@ -1271,7 +1278,7 @@ export default function DikeRevetmentList() {
     try {
       const detail = await dikeRevetmentCRUD.getById(record.id);
       setDetailRecord(detail);
-    } catch (err) {
+    } catch {
       console.error('Failed to load detail', err);
     }
   }, []);
@@ -1430,7 +1437,7 @@ export default function DikeRevetmentList() {
       setPendingDeletedAttachments([]);
       fetchData();
       fetchTabCounts();
-    } catch (err) {
+    } catch {
       if ((err as any)?.errorFields) return; // validation errors handled by Form
       toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
@@ -1476,7 +1483,7 @@ export default function DikeRevetmentList() {
       setSubmittingRecord(null);
       fetchData();
       fetchTabCounts();
-    } catch (err) {
+    } catch {
       // Lỗi đã được api.ts interceptor hiển thị — không toast trùng
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
@@ -1505,7 +1512,7 @@ export default function DikeRevetmentList() {
       setApprovingRecord(null);
       fetchData();
       fetchTabCounts();
-    } catch (err) {
+    } catch {
       // Lỗi đã được api.ts interceptor hiển thị (showUniqueError) — không toast trùng
       setApproveModalOpen(false);
       setApprovingRecord(null);
@@ -1535,7 +1542,7 @@ export default function DikeRevetmentList() {
       setRejectReason('');
       fetchData();
       fetchTabCounts();
-    } catch (err) {
+    } catch {
       // Lỗi đã được api.ts interceptor hiển thị — không toast trùng
       setRejectModalOpen(false);
       setRejectingRecord(null);
@@ -2219,8 +2226,7 @@ export default function DikeRevetmentList() {
       label: 'Tình trạng',
       dataIndex: 'status',
       width: 220,
-      sortOrder: sortOrderFor('status'),
-      render: (val: string) => {
+            render: (val: string) => {
         if (!val) return '';
         const st = OPERATIONAL_STATUS_STYLE_MAP[val];
         return st ? <span style={statusBadgeStyle(st.color)}>{st.label}</span> : val;
@@ -2240,8 +2246,7 @@ export default function DikeRevetmentList() {
       label: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
       width: 300,
-      sortOrder: sortOrderFor('approvalStatus'),
-      render: (status: string, record: DikeRevetmentResponse) => {
+            render: (status: string, record: DikeRevetmentResponse) => {
         if (isDikeRevetmentDeleted(record)) {
           return (
             <span

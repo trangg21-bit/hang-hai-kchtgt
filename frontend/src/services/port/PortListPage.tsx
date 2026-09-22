@@ -2058,7 +2058,7 @@ export default function PortListPage() {
                 const lo = ddToDms(p.lng);
                 return { latD: la.d, latM: la.m, latS: la.s, lngD: lo.d, lngM: lo.m, lngS: lo.s };
               }));
-            } catch (err) {
+            } catch {
               toast.error('Không thể tải thông tin chỉnh sửa cảng biển');
               setUpdateModalVisible(false);
             }
@@ -2188,8 +2188,6 @@ export default function PortListPage() {
         dataIndex: 'province',
         width: 250,
         ellipsis: false,
-        sortable: true,
-        sortOrder: sortField === 'province' ? sortOrder : null,
         render: (v: string | null) => v || '',
       },
       {
@@ -2197,8 +2195,6 @@ export default function PortListPage() {
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 170,
-        sortable: true,
-        sortOrder: sortField === 'approvalStatus' ? sortOrder : null,
         render: (v: string, record: CangBienResponse) => {
           if (isDeletedRecord(record)) {
             return (

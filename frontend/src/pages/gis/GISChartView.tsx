@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Card,
-  Row,
-  Col,
   Grid,
   Space,
   Typography,
@@ -10,15 +7,12 @@ import {
   Select,
   Form,
   Input,
-  InputNumber,
-  Tag,
-  List,
   Drawer,
   Checkbox,
   Radio,
   Modal,
 } from 'antd';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   InfoCircleOutlined,
   FilterOutlined,
@@ -36,14 +30,10 @@ import {
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
 import api from '../../services/api';
-import {
-  portCRUD,
-  berthCRUD,
-} from '../../services/portService';
-import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import { portCRUD } from '../../services/portService';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
-import { userService } from '../../services/userService';
+import { resolveGisDefaultOrgUnitId } from './gisDefaultOrgUnit';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import {
   getKchtGisTypeByCategoryId,
@@ -63,28 +53,20 @@ import type { DataTableColumn } from '../../components/list-view/DataTable';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import {
   actionPrimary,
-  actionHover,
-  statusOperational,
   statusAttention,
-  statusCritical,
-  statusDraft,
   borderDefault,
   sidebarBg,
   radiusSm,
   radiusMd,
-  radiusLg,
   radiusPill,
   spaceXs,
   spaceSm,
   spaceMd,
-  spaceFormField,
   spaceLg,
-  spaceXl,
   fontSizeSm,
   fontSizeMd,
   fontSizeLg,
   fontSizeXl,
-  fontSizeHeading,
   fontWeightNormal,
   fontWeightMedium,
   fontWeightBold,
@@ -93,7 +75,6 @@ import {
   drawerProps,
   drawerCloseBtnStyle,
   drawerTitleStyle,
-  drawerFooterStyle,
   filterLabelStyle,
   formFieldStyle,
   inputStyle,
@@ -112,7 +93,7 @@ import {
 import { colors } from '../../theme';
 import Flatbush from 'flatbush';
 import MapToolbar from '../../components/gis/MapToolbar';
-import { getVmdPopupFields, type VmdPopupField } from './vmdPopupFields';
+import { getPopupValueByPath, resolveVmdPopupFields } from './vmdPopupFields';
 import DrawSaveModal from '../../components/gis/DrawSaveModal';
 import type { DrawResult } from '../../components/gis/DrawSaveModal';
 import { pointObjectService } from '../../services/pointObjectService';
@@ -346,11 +327,11 @@ const CELL_COORDINATES: Record<string, [number, number]> = {
 function getCenterByCellName(cellName: string): [number, number] | null {
   if (!cellName) return null;
   const cleanName = cellName.toUpperCase().trim();
-  
+
   if (CELL_COORDINATES[cleanName]) {
     return CELL_COORDINATES[cleanName];
   }
-  
+
   const keys = Object.keys(CELL_COORDINATES).sort((a, b) => b.length - a.length);
   for (const prefix of keys) {
     if (cleanName.startsWith(prefix) || cleanName.includes(prefix)) {
@@ -367,7 +348,7 @@ function getCenterByCellName(cellName: string): [number, number] | null {
       return baseCenter;
     }
   }
-  
+
   let hash = 0;
   for (let i = 0; i < cleanName.length; i++) {
     hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
@@ -530,71 +511,6 @@ const BASE_MAP_OPTIONS = [
   },
 ] as const;
 
-const LAYER_ICONS: Record<string, string> = {
-  'ACHARE': '⚓',
-  'ACHBRT': '⛵',
-  'BRIDGE': '🌉',
-  'CTNARE': '📦',
-  'DEPARE': '🌊',
-  'FAIRWY': '🛣️',
-  'M_COVR': '🗺️',
-  'MARCUL': '🐟',
-  'OBSTRN': '⚠️',
-  'OFSPLF': '🏗️',
-  'PILPNT': '☸️',
-  'PILBOP': '🧭',
-  'SLCONS': '🧱',
-  'RESARE': '🚫',
-  'WRECKS': '☠️',
-  'CBLOHD': '⚡',
-  'CBLSUB': '🔌',
-  'DEPCNT': '〰️',
-  'FSHFAC': '🎣',
-  'NAVLNE': '🚢',
-  'BOYCAR': '🧭',
-  'BOYLAT': '🟢',
-  'BOYSAW': '🛟',
-  'BOYISD': '🛑',
-  'BOYSPP': '🟡',
-  'BCNCAR': '🗼',
-  'BCNLAT': '🔴',
-  'BCNSAW': '⛳',
-  'BCNSPP': '🚩',
-  'BUAARE': '🏡',
-  'CBLARE': '🕸️',
-  'CONVYR': '⚙️',
-  'CTSARE': '🛂',
-  'DAYMAR': '☀️',
-  'LIGHTS': '💡',
-  'LNDARE': '🏝️',
-  'COALNE': '〰️',
-  'LNDMRK': '🏰',
-  'ROADWY': '🚗',
-  'SBDARE': '🪨',
-  'SEAARE': '🌐',
-  'SMCGDW': '🚨',
-  'SOUNDG': '📉',
-  'TSSLPT': '🔄',
-  'UWTROC': '🪨',
-  'UNSARE': '❓',
-  'LNDRGN': '⛰️',
-  'MIPARE': '🪖',
-  'MORFAC': '🪝',
-  'M_NPUB': '📖',
-  'M_NSYS': '📡',
-  'M_QUAL': '🛡️',
-  'PIPOHC': '🚰',
-  'PIPSOL': '⛓️',
-  'PRCARE': '🔔',
-  'PRDARE': '🏭',
-  'PRDPNT': '🔥',
-  'RADRFL': '🎯',
-  'RDOSTA': '📻',
-  'RECTRC': '🛤️',
-  'ZONEEX': '🔰',
-  'TSSBND': '🚧',
-};
-
 const formatDateTime = (dtStr?: string) => {
   if (!dtStr) return '—';
   try {
@@ -606,7 +522,7 @@ const formatDateTime = (dtStr?: string) => {
     const minutes = String(d.getMinutes()).padStart(2, '0');
     const seconds = String(d.getSeconds()).padStart(2, '0');
     return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
-  } catch (e) {
+  } catch {
     return dtStr;
   }
 };
@@ -619,7 +535,7 @@ const formatDate = (dStr?: string) => {
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const year = d.getFullYear();
     return `${day}/${month}/${year}`;
-  } catch (e) {
+  } catch {
     return dStr;
   }
 };
@@ -707,343 +623,11 @@ const resolveName = async (id: string, type: 'org' | 'Port' | 'Berth' | 'Navigat
   return '';
 };
 
-const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[] => {
-  const normType = type.trim();
-  
-  if (normType === 'Cảng biển') {
-    return [
-      { key: 'portCode', label: 'Mã cảng biển' },
-      { key: 'portName', label: 'Tên cảng biển' },
-      { key: 'portGroup', label: 'Nhóm cảng biển' },
-      { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
-      { key: 'area', label: 'Diện tích (ha)' },
-      { key: 'maxVesselCapacity', label: 'Khả năng tiếp nhận tàu lớn nhất' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' },
-      { key: 'waterAreaScope', label: 'Phạm vi vùng nước' },
-      { key: 'totalBerths', label: 'Tổng số bến cảng' },
-      { key: 'totalAnchoragesTransshipment', label: 'Tổng số khu neo đậu, chuyển tải' },
-      { key: 'totalPublicChannels', label: 'Tổng số tuyến luồng hàng hải công cộng' },
-      { key: 'totalDedicatedChannels', label: 'Tổng số tuyến luồng hàng hải chuyên dùng' },
-      { key: 'totalPublicChannelLength', label: 'Tổng chiều dài tuyến luồng hàng hải công cộng (km)' },
-      { key: 'totalDedicatedChannelLength', label: 'Tổng số chiều dài tuyến luồng hàng hải chuyên dùng (km)' },
-      { key: 'totalBuoysBeacons', label: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng' },
-      { key: 'totalDikes', label: 'Tổng số đê, kè' },
-      { key: 'totalDikeLength', label: 'Tổng chiều dài hệ thống đê, kè (km)' },
-      { key: 'totalLighthouses', label: 'Tổng số đèn biển, đăng tiêu độc lập' },
-      { key: 'buoyBerthCount', label: 'Số lượng bến phao' },
-      { key: 'anchorageCount', label: 'Số lượng khu neo đậu' },
-      { key: 'transshipmentCount', label: 'Số lượng khu chuyển tải' },
-      { key: 'otherWaterAreas', label: 'Các khu nước vùng nước khác' },
-      { key: 'remarks', label: 'Ghi chú' }
-    ];
-  }
-  
-  if (normType === 'Bến cảng') {
-    return [
-      { key: 'berthCode', label: 'Mã bến cảng' },
-      { key: 'berthName', label: 'Tên bến cảng' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)' },
-      { key: 'detailedLocation', label: 'Địa điểm chi tiết' },
-      { key: 'updatedAt', label: 'Ngày cập nhật' },
-      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
-      { key: 'portId', label: 'Thuộc cảng biển' },
-      { key: 'waterway', label: 'Thuộc luồng hàng hải' },
-      { key: 'structureType', label: 'Loại kết cấu cầu cảng' },
-      { key: 'operationalFunction', label: 'Công năng khai thác' },
-      { key: 'operationalStatus', label: 'Tình trạng' },
-      { key: 'approvalStatus', label: 'Trạng thái' },
-      { key: 'operator', label: 'Đơn vị khai thác' },
-      { key: 'totalArea', label: 'Tổng diện tích (ha)' },
-      { key: 'designThroughput', label: 'Năng lực thông qua thiết kế' },
-      { key: 'currentThroughput', label: 'Năng lực thông qua hiện trạng (tấn/năm)' },
-      { key: 'maxVesselSize', label: 'Cỡ tàu tiếp nhận lớn nhất theo quy hoạch (DWT)' },
-      { key: 'plannedThroughput', label: 'Quy hoạch năng lực thông qua (tấn/năm)' },
-      { key: 'latestCargoVolume', label: 'Sản lượng hàng hóa thực tế thông qua trong năm gần nhất' },
-      { key: 'openingAnnouncementDate', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
-      { key: 'openingDecision', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
-      { key: 'investmentAgreement', label: 'Văn bản thỏa thuận đầu tư xây dựng' }
-    ];
-  }
-
-  if (normType === 'Cầu cảng') {
-    return [
-      { key: 'pierCode', label: 'Mã cầu cảng' },
-      { key: 'pierName', label: 'Tên cầu cảng' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'location', label: 'Địa điểm (Tỉnh/ Thành phố)' },
-      { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
-      { key: 'ngayCapNhat', label: 'Ngày cập nhật' },
-      { key: 'canBoCapNhat', label: 'Cán bộ cập nhật' },
-      { key: 'portId', label: 'Thuộc cảng biển' },
-      { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
-      { key: 'structureType', label: 'Loại kết cấu cầu cảng' },
-      { key: 'operationalCapacity', label: 'Công năng khai thác' },
-      { key: 'operationalStatus', label: 'Tình trạng' },
-      { key: 'approvalStatus', label: 'Trạng thái' },
-      { key: 'thoiDiemCongBoMo', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
-      { key: 'quyetDinhCongBo', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
-      { key: 'vanBanThoaThuanDauTu', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
-      { key: 'berthId', label: 'Thuộc bến cảng' },
-      { key: 'phanCap', label: 'Phân cấp công trình' },
-      { key: 'length', label: 'Chiều dài (m)' },
-      { key: 'width', label: 'Chiều rộng (m)' },
-      { key: 'thoiDiemPheDuyetQuyTrinhBaoTriCongTrinh', label: 'Thời điểm phê duyệt quy trình bảo trì công trình' },
-      { key: 'thoiDiemDuocChapThuanHoSoBaoCaoDanhGiaAnToanCongTrinh', label: 'Thời điểm được chấp thuận hồ sơ báo cáo đánh giá an toàn công trình (gần nhất)' },
-      { key: 'thoiDiemKiemDinhGanNhat', label: 'Thời điểm kiểm định gần nhất' },
-      { key: 'quantityCauCangDangKhaiThac', label: 'Số lượng cầu cảng đang khai thác' },
-      { key: 'quantityCauCangDaCongBo', label: 'Số lượng cầu cảng đã công bố' },
-      { key: 'quantityCauCangDangDuocThoaThuanDauTuXayDung', label: 'Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng' },
-      { key: 'sanLuongHangThongQua', label: 'Sản lượng hàng thông qua' },
-      { key: 'tiepNhanTauCoTrongTaiLonHonThongSoTaiQuyetDinhCongBo', label: 'Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố' },
-      { key: 'soVanBan', label: 'Số văn bản' },
-      { key: 'ngayVanBan', label: 'Ngày văn bản' },
-      { key: 'phamViKhuNuocNeoBuocTau', label: 'Phạm vi khu nước neo buộc tàu' }
-    ];
-  }
-
-  if (normType === 'Cảng cạn') {
-    return [
-      { key: 'dryPortCode', label: 'Mã cảng cạn' },
-      { key: 'dryPortName', label: 'Tên cảng cạn' },
-      { key: 'viTri', label: 'Vị trí' },
-      { key: 'dienTichDat', label: 'Diện tích đất (ha)' },
-      { key: 'dienTichNuoc', label: 'Diện tích nước (ha)' },
-      { key: 'nangLucThongQua', label: 'Năng lực thông qua' },
-      { key: 'congSuatTEU', label: 'Công suất (TEU)' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
-    ];
-  }
-
-  if (
-    normType === 'Vùng nước' ||
-    normType === 'Khu neo đậu' ||
-    normType === 'Khu chuyển tải' ||
-    normType === 'Khu tránh trú bão' ||
-    normType === 'Khu tránh, trú bão' ||
-    normType === 'Bến phao'
-  ) {
-    return [
-      { key: 'waterZoneCode', label: 'Mã vùng nước' },
-      { key: 'waterZoneName', label: 'Tên vùng nước' },
-      { key: 'loaiVungNuoc', label: 'Loại vùng nước' },
-      { key: 'portId', label: 'Thuộc cảng biển' },
-      { key: 'chieuDaiVungNuoc', label: 'Chiều dài vùng nước (m)' },
-      { key: 'chieuRongVungNuoc', label: 'Chiều rộng vùng nước (m)' },
-      { key: 'doSauVungNuoc', label: 'Độ sâu vùng nước (m)' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
-    ];
-  }
-
-  if (normType === 'Đèn biển') {
-    return [
-      { key: 'code', label: 'Mã đèn biển' },
-      { key: 'name', label: 'Tên đèn biển' },
-      { key: 'type', label: 'Loại đèn biển' },
-      { key: 'lightRange', label: 'Tầm hiệu lực (hải lý)' },
-      { key: 'lightColor', label: 'Màu sắc ánh sáng' },
-      { key: 'lightCharacteristic', label: 'Đặc tính ánh sáng' },
-      { key: 'description', label: 'Mô tả vị trí' },
-      { key: 'unitId', label: 'Đơn vị quản lý' },
-      { key: 'isActive', label: 'Trạng thái hoạt động' },
-      { key: 'status', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
-    ];
-  }
-
-  if (normType === 'Phao tiêu') {
-    return [
-      { key: 'code', label: 'Mã phao, tiêu' },
-      { key: 'name', label: 'Tên phao, tiêu' },
-      { key: 'unitId', label: 'Đơn vị quản lý' },
-      { key: 'updatedAt', label: 'Ngày cập nhật' },
-      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
-      { key: 'condition', label: 'Tình trạng' },
-      { key: 'approvalStatus', label: 'Trạng thái' },
-      { key: 'classification', label: 'Phân loại' },
-      { key: 'commissionedDate', label: 'Thời điểm đưa vào sử dụng' },
-      { key: 'lastRepairDate', label: 'Thời điểm sửa chữa gần nhất' },
-      { key: 'structure', label: 'Kết cấu' },
-      { key: 'area', label: 'Diện tích (m2)' },
-      { key: 'lightHeight', label: 'Chiều cao tâm sáng (hải đồ)' },
-      { key: 'towerColor', label: 'Màu sắc bên ngoài của tháp đèn' },
-      { key: 'powerSupply', label: 'Nguồn cung cấp năng lượng cho đèn' },
-      { key: 'buoyStationId', label: 'Thuộc nhà trạm quản lý vận hành phao, tiêu' },
-      { key: 'classificationBuoy', label: 'Phân loại phao' },
-      { key: 'classificationMark', label: 'Phân loại tiêu' },
-      { key: 'shape', label: 'Hình dáng' },
-      { key: 'bodyHeight', label: 'Chiều cao thân phao (m)' },
-      { key: 'beaconLight', label: 'Đèn biển' },
-      { key: 'towerHeight', label: 'Chiều cao tháp đèn' },
-      { key: 'range', label: 'Phạm vi chiếu sáng' },
-      { key: 'lightColor', label: 'Màu sắc' },
-      { key: 'flashType', label: 'Kiểu chớp' },
-      { key: 'diameter', label: 'Đường kính phao (m)' },
-      { key: 'lightModel', label: 'Chủng loại đèn (Thiết bị báo hiệu)' },
-      { key: 'period', label: 'Chu kỳ' }
-    ];
-  }
-
-  if (normType === 'Đê kè') {
-    return [
-      { key: 'maDeKe', label: 'Mã đê kè' },
-      { key: 'tenDeKe', label: 'Tên đê kè' },
-      { key: 'loaiDe', label: 'Loại đê/kè' },
-      { key: 'ketCau', label: 'Kết cấu đê/kè' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
-    ];
-  }
-
-  if (normType === 'Luồng hàng hải') {
-    return [
-      { key: 'maLuong', label: 'Mã luồng hàng hải' },
-      { key: 'tenLuong', label: 'Tên luồng hàng hải' },
-      { key: 'chieuDaiLuong', label: 'Chiều dài luồng (km)' },
-      { key: 'doSauThietKe', label: 'Độ sâu thiết kế (m)' },
-      { key: 'chieuRongThietKe', label: 'Chiều rộng thiết kế (m)' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
-    ];
-  }
-
-  if (normType === 'Trạm radar') {
-    return [
-      { key: 'maTram', label: 'Mã trạm' },
-      { key: 'tenTram', label: 'Tên trạm radar' },
-      { key: 'radarModel', label: 'Model radar' },
-      { key: 'frequencyBand', label: 'Băng tần' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
-    ];
-  }
-
-  if (normType === 'Hệ thống VTS') {
-    return [
-      { key: 'code', label: 'Mã hệ thống' },
-      { key: 'systemName', label: 'Tên hệ thống VTS' },
-      { key: 'scope', label: 'Phạm vi hoạt động' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'conditionStatus', label: 'Trạng thái hoạt động' },
-      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
-      { key: 'geometryType', label: 'Loại hình học' }
-    ];
-  }
-
-  if (normType === 'Cơ sở sửa chữa' || normType === 'Cơ sở sửa chữa/đóng tàu') {
-    return [
-      { key: 'maCoSo', label: 'Mã cơ sở sửa chữa, đóng tàu' },
-      { key: 'facilityName', label: 'Tên cơ sở sửa chữa, đóng tàu' },
-      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
-      { key: 'address', label: 'Địa điểm chi tiết' },
-      { key: 'updatedDate', label: 'Ngày cập nhật' },
-      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
-      { key: 'remarks', label: 'Ghi chú' },
-      { key: 'portId', label: 'Thuộc cảng biển' },
-      { key: 'operationalStatus', label: 'Tình trạng' },
-      { key: 'approvalStatus', label: 'Trạng thái' },
-      { key: 'cauCangId', label: 'Thuộc cầu cảng' },
-      { key: 'congNangSuDung', label: 'Công năng sử dụng' },
-      { key: 'dienTichNhaXuongKhoBai', label: 'Diện tích nhà xưởng, kho bãi' },
-      { key: 'loaiTauDongMoiSuaChua', label: 'Loại tàu đóng mới, sửa chữa' },
-      { key: 'coTau', label: 'Cỡ tàu' },
-      { key: 'loaiHinhDoanhNghiep', label: 'Loại hình doanh nghiệp' },
-      { key: 'hoatDong', label: 'Hoạt động' },
-      { key: 'quantityTrienDa', label: 'Số lượng triền đà' }
-    ];
-  }
-
-  return [];
-};
-
-const normalizePopupLabel = (label: string) => label
-  .toLocaleLowerCase('vi')
-  .replace(/\s*\/\s*/g, '/')
-  .replace(/\s+/g, ' ')
-  .trim();
-
-const getPopupValueByPath = (data: Record<string, unknown>, path: string): unknown => {
-  const directValue = path.split('.').reduce<unknown>((value, key) => {
-    if (!value || typeof value !== 'object') return undefined;
-    return (value as Record<string, unknown>)[key];
-  }, data);
-  if (directValue !== undefined && directValue !== null) return directValue;
-  if (!path.includes('.')) {
-    const legacyDetails = data.zobjDataSub;
-    if (legacyDetails && typeof legacyDetails === 'object') {
-      return (legacyDetails as Record<string, unknown>)[path];
-    }
-  }
-  return undefined;
-};
-
-const resolveVmdPopupFields = (
-  infrastructureType: string,
-  displayType: string,
-  data: Record<string, unknown>,
-): VmdPopupField[] => {
-  const vmdFields = getVmdPopupFields(infrastructureType);
-  if (vmdFields.length === 0) return getOrderedKeysAndLabels(displayType);
-
-  const currentFieldsByLabel = new Map(
-    getOrderedKeysAndLabels(displayType).map((field) => [normalizePopupLabel(field.label), field.key]),
-  );
-  const genericCodeKeys = ['code', 'portCode', 'berthCode', 'pierCode', 'dryPortCode', 'waterZoneCode', 'buoyBerthCode', 'anchorageCode', 'transferAreaCode', 'stormShelterCode', 'facilityCode', 'beaconCode', 'systemCode'];
-  const genericNameKeys = ['name', 'portName', 'berthName', 'pierName', 'dryPortName', 'waterZoneName', 'buoyBerthName', 'anchorageName', 'transferAreaName', 'stormShelterName', 'facilityName', 'beaconName', 'systemName'];
-  const commonAliases: Record<string, string[]> = {
-    fkDonViQl: ['orgUnitId', 'unitId'],
-    updatedDate: ['updatedAt', 'updatedDate'],
-    updatedUser: ['updatedBy', 'updatedUser'],
-    diaDiemChiTiet: ['detailedLocation', 'locationDetail', 'address'],
-    fkCangBien: ['portId'],
-    fkLuongHh: ['waterway', 'navigationChannelId', 'waterwayId'],
-    fkBenPhao: ['buoyBerthId', 'buoyStationId'],
-    fkNhaTram: ['buoyStationId'],
-    fkCauCang: ['pierId', 'cauCangId'],
-    fkDonViKt: ['operatingOrgId', 'operatorId'],
-    fkDonViVh: ['operatingOrgId', 'operatorId'],
-  };
-
-  return vmdFields.map((field) => {
-    const legacyLeafKey = field.key.split('.').pop() || field.key;
-    const normalizedLabel = normalizePopupLabel(field.label);
-    const candidates = [
-      currentFieldsByLabel.get(normalizedLabel),
-      field.key,
-      legacyLeafKey,
-      ...(commonAliases[field.key] || []),
-      ...(commonAliases[legacyLeafKey] || []),
-      ...(normalizedLabel.startsWith('mã ') ? genericCodeKeys : []),
-      ...(normalizedLabel.startsWith('tên ') ? genericNameKeys : []),
-    ].filter((key): key is string => !!key);
-    const resolvedKey = candidates.find((key) => getPopupValueByPath(data, key) !== undefined)
-      || candidates[0]
-      || legacyLeafKey;
-    return { ...field, key: resolvedKey };
-  });
-};
-
 const fetchAndFormatPopupDetails = async (record: any, includeActions = true) => {
   const type = record.kchtTypeLabel || '';
   const id = record.id;
   const infrastructureType = resolveKchtInfrastructureType(record);
-  
+
   const headerHtml = `
     <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-width: 450px; padding: 4px;">
       <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(11,46,79,0.09); font-size: 15px; font-weight: 600; color: #12468C; text-transform: uppercase;">
@@ -1077,7 +661,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           </thead>
           <tbody>
   `;
-  
+
   const footerHtml = `
           </tbody>
         </table>
@@ -1087,16 +671,18 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
 
   const getApprovalStatusText = (status?: string) => {
     if (!status) return '—';
-    const s = status.toUpperCase();
-    if (s === 'DUOC_PHE_DUYET' || s === 'APPROVED') return 'Đã phê duyệt';
-    if (s === 'CHO_PHE_DUYET' || s === 'PENDING') return 'Chờ phê duyệt';
-    if (s === 'DRAFT') return 'Bản nháp';
-    if (s === 'PENDING_APPROVAL') return 'Chờ phê duyệt';
-    if (s === 'APPROVED_L1') return 'Đã duyệt L1';
-    if (s === 'APPROVED_L2') return 'Đã duyệt L2';
-    if (s === 'PUBLISHED') return 'Đã công bố';
+    const s = String(status).toUpperCase();
+    if (s === 'DUOC_PHE_DUYET' || s === 'APPROVED' || s === 'DEPARTMENT_APPROVED' || s === '3') return 'Đã phê duyệt';
+    if (s === 'CHO_PHE_DUYET' || s === 'PENDING' || s === 'PENDING_APPROVAL' || s === 'SUBMITTED' || s === 'PENDING_PORT_AUTHORITY' || s === '1') return 'Chờ phê duyệt cấp Cảng vụ/Chi cục';
+    if (s === 'PENDING_DEPARTMENT' || s === 'PORT_AUTHORITY_APPROVED' || s === '2') return 'Chờ phê duyệt cấp Cục';
+    if (s === 'DRAFT' || s === '0') return 'Lưu tạm';
+    if (s === 'APPROVED_L1') return 'Đã phê duyệt cấp Cảng vụ/Chi cục';
+    if (s === 'APPROVED_L2') return 'Đã phê duyệt';
+    if (s === 'REJECTED_PORT_AUTHORITY' || s === 'REJECTED_LEVEL1' || s === '4') return 'Từ chối cấp Cảng vụ/Chi cục';
+    if (s === 'REJECTED_DEPARTMENT' || s === 'REJECTED_LEVEL2' || s === '5') return 'Từ chối cấp Cục';
     if (s === 'REJECTED') return 'Từ chối';
-    if (s === 'DELETED') return 'Đã xóa';
+    if (s === 'DELETED' || s === '6') return 'Đã xóa';
+    if (s === 'PUBLISHED') return 'Đã công bố';
     return status;
   };
 
@@ -1391,10 +977,17 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     'approvedDateLevel1',
     'approvedDateLevel2',
     'openingAnnouncementDate',
+    'thoiDiemCongBoMo',
+    'thoiDiemCongBo',
   ]);
   const DATE_FIELDS = new Set([
     'commissionedDate',
     'lastRepairDate',
+    'announcementDecisionDate',
+    'ngayRaQuyetDinhCongBo',
+    'ngayVanBan',
+    'namDauTuXayDung',
+    'namDuaVaoSuDung',
   ]);
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -1430,7 +1023,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
       let cangBienNameResolved = data.portName || data.tenCangBien || '';
       let benCangNameResolved = data.berthName || data.tenBenCang || '';
       let waterwayNameResolved = data.waterway || data.waterwayName || data.navigationChannelName || data.channelName || '';
-      
+
       const orgId = data.orgUnitId || data.unitId || data.donViQuanLy;
       if (orgId) {
         const rawOrgName = data.donViQuanLy || data.orgName || data.orgUnitName || data.unitName || '';
@@ -1471,8 +1064,12 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
         if (USER_REFERENCE_FIELDS.has(field)) {
           return userNamesResolved[field] || 'Không xác định';
         }
-        if (field === 'provinceId') {
-          return getProvinceNameById(Number(value)) || value;
+        if (field === 'provinceId' || field === 'province' || field === 'location' || field === 'tinhThanh') {
+          const num = Number(value);
+          if (!isNaN(num) && num > 0) {
+            return getProvinceNameById(num) || value;
+          }
+          return value;
         }
         if (DATE_TIME_FIELDS.has(field)) {
           return formatDateTime(value);
@@ -1500,7 +1097,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           const rawValue = getPopupValueByPath(data, k);
           const valExists = rawValue !== undefined && rawValue !== null && rawValue !== '';
           let val = valExists ? rawValue : '';
-          
+
           if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
             val = orgUnitNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
           } else if (k === 'portId' || k === 'fkCangBien') {
@@ -1511,8 +1108,15 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             val = waterwayNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
           } else if (k === 'buoyStationId' || k === 'fkNhaTram') {
             val = data.buoyStationName || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+          } else if (k === 'buoyBerthId' || k === 'fkBenPhao') {
+            val = data.buoyBerthName || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+          } else if (k === 'provinceId' || k === 'province') {
+            const num = Number(val);
+            if (!isNaN(num) && num > 0) {
+              val = getProvinceNameById(num) || val;
+            }
           }
-          
+
           if (valExists) {
             const isLegacyDateField = fieldType === 'date' || fieldType === 'dateTime' || fieldType === 'monthYear';
             if (fieldType === 'date') {
@@ -1538,7 +1142,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
               val = '';
             }
           }
-          
+
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
           renderedKeys.add(k);
         });
@@ -1553,13 +1157,13 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           'approvalStatus',
           'loaiHinhHoc', 'geomType',
         ];
-        
+
         orderedKeys.forEach(k => {
           const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
           if (valExists) {
             const label = KEY_LABELS[k] || k;
             let val = data[k];
-            
+
             if (['orgUnitId', 'orgName', 'orgUnitName', 'unitId', 'donViQuanLy', 'unitName'].includes(k)) {
               val = orgUnitNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
             } else if (k === 'portId' || k === 'fkCangBien') {
@@ -1568,8 +1172,17 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
               val = benCangNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
             } else if (k === 'waterway' || k === 'navigationChannelId' || k === 'fkLuongHh') {
               val = waterwayNameResolved || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+            } else if (k === 'buoyStationId' || k === 'fkNhaTram') {
+              val = data.buoyStationName || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+            } else if (k === 'buoyBerthId' || k === 'fkBenPhao') {
+              val = data.buoyBerthName || (UUID_PATTERN.test(String(val).trim()) ? '' : val);
+            } else if (k === 'provinceId' || k === 'province') {
+              const num = Number(val);
+              if (!isNaN(num) && num > 0) {
+                val = getProvinceNameById(num) || val;
+              }
             }
-            
+
             if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
             if (k === 'berthType') val = getLoaiBenText(val);
             if (k === 'loaiCau') val = getLoaiCauText(val);
@@ -1578,7 +1191,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             if (typeof val === 'string' && UUID_PATTERN.test(val.trim())) {
               val = '';
             }
-            
+
             rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
             renderedKeys.add(k);
           }
@@ -1588,7 +1201,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
       if (customOrdered.length === 0) {
         Object.entries(data).forEach(([k, val]) => {
           if (renderedKeys.has(k)) return;
-        
+
         const lowerK = k.toLowerCase();
         if (
           lowerK === 'id' || lowerK === 'uuid' || lowerK === 'geom' || lowerK === 'geometry' ||
@@ -1866,31 +1479,10 @@ const buildPlanningPopupContent = (featuresAtPoint: any[]): string => {
   return `<div style="font-family: ${fontSans}; padding: ${spaceSm}px; width: 390px; color: ${textPrimary}; max-height: 390px; overflow-y: auto;">${itemsHtml}</div>`;
 };
 
-function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: string): string {
-  const codeUpper = featureCode.toUpperCase();
-  const emoji = LAYER_ICONS[codeUpper] || '🌐';
-  
-  return `
-    <div style="
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      font-size: 20px;
-      line-height: 1;
-      filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.4));
-    ">
-      ${emoji}
-    </div>
-  `;
-}
-
 export default function GISChartView() {
   const screens = Grid.useBreakpoint();
   const desktopSearchPanelWidth = 560;
   const searchPanelWidth = screens.md ? desktopSearchPanelWidth : '100%';
-  const navigate = useNavigate();
   const [activeModalUrl, setActiveModalUrl] = useState<string | null>(null);
   const [activeFallbackDetailHtml, setActiveFallbackDetailHtml] = useState<string | null>(null);
 
@@ -1951,7 +1543,7 @@ export default function GISChartView() {
           fetchCustomGisFeaturesRef.current();
         }
       }
-    } catch (err) {
+    } catch {
       // Cross-origin iframe — ignore
     }
   }, []);
@@ -2008,12 +1600,12 @@ export default function GISChartView() {
     };
   }, []);
 
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [cells, setCells] = useState<ChartCell[]>([]);
-  const [selectedCellId, setSelectedCellId] = useState<string | undefined>();
-  const [palette, setPalette] = useState<string>('DAY');
+  const [selectedCellId] = useState<string | undefined>();
+  const [palette] = useState<string>('DAY');
   const [features, setFeatures] = useState<ChartFeature[]>([]);
-  const [selectedFeature, setSelectedFeature] = useState<ChartFeature | null>(null);
+  const [, setSelectedFeature] = useState<ChartFeature | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>(() => (
     getDefaultEncLayerVisibility(ENC_LAYER_DETAILS.map(({ code }) => code))
@@ -2047,11 +1639,6 @@ export default function GISChartView() {
     }));
   }, []);
 
-  // Coordinate Calibrator State
-  const [calibrationForm] = Form.useForm();
-  const [calibrating, setCalibrating] = useState(false);
-  const [calibratedPoint, setCalibratedPoint] = useState<{ lon: number; lat: number } | null>(null);
-
   const [searchParams] = useSearchParams();
   const urlProvince = searchParams.get('province') || '';
   const urlKchtType = searchParams.get('kchtType')
@@ -2076,6 +1663,7 @@ export default function GISChartView() {
   const [orgUnitsReady, setOrgUnitsReady] = useState(false);
   const hasSearchedRef = useRef(false);
   const initialInfrastructureSearchRef = useRef(false);
+  const defaultGisOrgUnitIdRef = useRef<string | undefined>(undefined);
   const [searchPanelVisible, setSearchPanelVisible] = useState(true);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [quickMapMode, setQuickMapMode] = useState<QuickMapMode>(null);
@@ -2127,7 +1715,7 @@ export default function GISChartView() {
   ], [searchPage, searchPageSize]);
 
   // Drawing state
-  const [drawnGeometry, setDrawnGeometry] = useState<{
+  const [, setDrawnGeometry] = useState<{
     type: string;
     wkt: string;
     coordinates: Array<{ lat: number; lng: number }>;
@@ -2241,6 +1829,9 @@ export default function GISChartView() {
         const data = resp.data || [];
         setOrgUnits(data);
         orgUnitsGlobalCache = data;
+        const defaultOrgUnitId = resolveGisDefaultOrgUnitId(data);
+        defaultGisOrgUnitIdRef.current = defaultOrgUnitId;
+        searchForm.setFieldValue('orgUnitId', defaultOrgUnitId);
       } catch (err) {
         console.error('Failed to load org units', err);
       } finally {
@@ -2248,7 +1839,7 @@ export default function GISChartView() {
       }
     })();
     void fetchSymbols();
-  }, [fetchSymbols]);
+  }, [fetchSymbols, searchForm]);
 
   useEffect(() => {
     (window as any).kchtOrgUnits = orgUnits;
@@ -2264,9 +1855,8 @@ export default function GISChartView() {
     };
   }, [symbols]);
 
-  // Màn hình mặc định để "Tất cả đơn vị" và tự tải danh sách. URL vẫn có thể
-  // bổ sung các điều kiện loại KCHT/tỉnh/từ khóa cho lần tải đầu tiên. Backend
-  // giới hạn dữ liệu theo phạm vi quyền của tài khoản.
+  // Mặc định chọn Cục Hàng hải và tự tải toàn bộ loại KCHT thuộc cây đơn vị này.
+  // Backend tiếp tục giao phạm vi đã chọn với DataScope của tài khoản.
   useEffect(() => {
     if (!orgUnitsReady || initialInfrastructureSearchRef.current) return;
 
@@ -2338,7 +1928,6 @@ export default function GISChartView() {
   const searchMarkersGroupRef = useRef<any>(null);
   const planningGroupRef = useRef<any>(null);
   const planningRendererRef = useRef<any>(null);
-  const calibratorMarkerRef = useRef<any>(null);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
   const renderChartFeaturesRef = useRef<() => void>();
   const searchMarkerRenderGenerationRef = useRef(0);
@@ -2958,7 +2547,7 @@ export default function GISChartView() {
               ) {
                 popup.setContent(getPopupHtml(port?.portName || '—'));
               }
-            } catch (err) {
+            } catch {
               console.error(err);
               if (
                 requestId === activePopupRequestRef.current
@@ -3022,7 +2611,7 @@ export default function GISChartView() {
       planningLayersCacheRef.current = {};
       planningStyleZoomBandRef.current = styleZoomBand;
     }
-    
+
     planningFeatures.forEach((feature) => {
       if (!feature.geojson) return;
       if (!shouldRenderPlanningFeature(feature.geomType, feature.tableName, zoom)) return;
@@ -3061,7 +2650,7 @@ export default function GISChartView() {
           feature.color,
           zoom,
         );
-        
+
         const layer = L.geoJSON(geojsonObj, {
           pane: GIS_LAYER_INTERACTION_POLICY.planningPane,
           renderer: planningRendererRef.current,
@@ -3384,7 +2973,7 @@ export default function GISChartView() {
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
 
     // Feature group for search markers
-    searchMarkersGroupRef.current = (L as any).markerClusterGroup 
+    searchMarkersGroupRef.current = (L as any).markerClusterGroup
       ? (L as any).markerClusterGroup({
           showCoverageOnHover: false,
           chunkedLoading: true,
@@ -3502,7 +3091,7 @@ export default function GISChartView() {
               if (fetchPlanningFeaturesRef.current) {
                 await fetchPlanningFeaturesRef.current();
               }
-            } catch (err) {
+            } catch {
               toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
               throw err;
             }
@@ -3544,14 +3133,14 @@ export default function GISChartView() {
                 await polygonObjectService.delete(id);
               }
               toast.success('Xóa đối tượng KCHT thành công');
-              
+
               if (mapRef.current) {
                 mapRef.current.closePopup();
               }
               if (fetchCustomGisFeaturesRef.current) {
                 await fetchCustomGisFeaturesRef.current();
               }
-            } catch (err) {
+            } catch {
               toast.error('Lỗi khi xóa đối tượng KCHT');
             }
           }
@@ -3564,7 +3153,7 @@ export default function GISChartView() {
       if (editBtn) {
         evt.preventDefault();
         evt.stopPropagation();
-        
+
         const id = editBtn.getAttribute('data-id');
         if (!id) return;
 
@@ -3741,7 +3330,7 @@ export default function GISChartView() {
 
       map.on('pm:create', (e: any) => {
         const { layer, shape } = e;
-        
+
         // Disable draw mode asynchronously to return cursor to normal navigation and prevent Geoman race conditions
         setTimeout(() => {
           if (pm && typeof pm.disableDraw === 'function') {
@@ -3944,7 +3533,7 @@ export default function GISChartView() {
             });
           }
           searchMarkerIconCacheRef.current.set(iconCacheKey, markerIcon);
-          
+
           // Every record keeps a representative symbol so the overview can be
           // clustered without drawing country-scale vector geometry.
           const marker = L.marker([lat, lon], {
@@ -4095,7 +3684,7 @@ export default function GISChartView() {
           mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [selectedInfrastructureResults, leafletLoaded]);
@@ -4109,7 +3698,7 @@ export default function GISChartView() {
     maxLon: number;
     featureCode: string;
   }>>([]);
-  
+
   const flatbushIndexRef = useRef<Flatbush | null>(null);
   const layersCacheRef = useRef<Record<string, any>>({});
   const prevPaletteRef = useRef<string>('DAY');
@@ -4148,7 +3737,7 @@ export default function GISChartView() {
 
       const { geometryType, coordinates, s52Style, featureName, featureCode } = feature;
       const minZoom = FEATURE_ZOOM_RULES[featureCode] ?? 13;
-      const { fillColor, strokeColor, strokeWidth, strokeDashArray, iconSymbol, fillOpacity } = s52Style;
+      const { fillColor, strokeColor, strokeWidth, strokeDashArray, fillOpacity } = s52Style;
 
       // Determine circle radius dynamically based on feature type
       let radius = 5;
@@ -4252,12 +3841,12 @@ export default function GISChartView() {
           });
           layer.on('click', () => setSelectedFeature(feature));
           const parsedItem = { minZoom, layer, minLat, minLon, maxLat, maxLon, featureCode };
-          
+
           // Write to cache
           layersCacheRef.current[feature.id] = parsedItem;
           tempLayers.push(parsedItem);
         }
-      } catch (err) {
+      } catch {
         // skip
       }
     });
@@ -4330,94 +3919,6 @@ export default function GISChartView() {
       return () => clearTimeout(timer);
     }
   }, [leafletLoaded, parsedLayers, renderChartFeatures, visibleLayers, showChart]);
-
-  // 6. Coordinate Calibration Form Submission
-  const handleCalibrate = useCallback(async (values: any) => {
-    try {
-      setCalibrating(true);
-      
-      const payload = {
-        systemType: values.systemType,
-        coord1: values.coord1,
-        coord2: values.coord2,
-        zoneOrCm: values.zoneOrCm,
-        dx: values.dx || 0.0,
-        dy: values.dy || 0.0,
-      };
-
-      const result = await chartService.calibrate(payload);
-      if (result.valid) {
-        setCalibratedPoint({ lon: result.longitude, lat: result.latitude });
-        toast.success('Đã hiệu chỉnh tọa độ thành công sang WGS84');
-        
-        // Render Marker on Map
-        try {
-          const L = leafletRuntime;
-          if (L && mapRef.current) {
-            if (calibratorMarkerRef.current) {
-              mapRef.current.removeLayer(calibratorMarkerRef.current);
-            }
-            
-            calibratorMarkerRef.current = L.marker([result.latitude, result.longitude], {
-              icon: L.icon({
-                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41],
-                popupAnchor: [1, -34],
-                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                shadowSize: [41, 41],
-              })
-            })
-              .addTo(mapRef.current)
-              .bindPopup(`
-                <strong>Tọa độ hiệu chỉnh (WGS84)</strong><br/>
-                Kinh độ: ${result.longitude.toFixed(6)}°<br/>
-                Vĩ độ: ${result.latitude.toFixed(6)}°<br/>
-                Gốc: ${values.systemType} [X: ${values.coord1}, Y: ${values.coord2}]
-              `)
-              .openPopup();
-
-            mapRef.current.setView([result.latitude, result.longitude], 13);
-          }
-        } catch (mapErr) {
-          console.error('Lỗi vẽ marker bản đồ:', mapErr);
-        }
-      } else {
-        toast.error(result.errorMessage || 'Tọa độ không hợp lệ');
-      }
-    } catch (err: any) {
-      console.error('Lỗi hiệu chuẩn tọa độ:', err);
-    } finally {
-      setCalibrating(false);
-    }
-  }, []);
-
-  // 7. File uploads for importing
-  const handleUploadS57 = async (options: any) => {
-    const { file, onSuccess, onError } = options;
-    try {
-      await chartService.importS57(file);
-      toast.success(`Đã nhập hải đồ S-57 "${file.name}" thành công`);
-      onSuccess(null, file);
-      void fetchCells();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Nhập hải đồ S-57 thất bại');
-      onError(err);
-    }
-  };
-
-  const handleUploadS63 = async (options: any) => {
-    const { file, onSuccess, onError } = options;
-    try {
-      await chartService.importS63(file);
-      toast.success(`Đã nhập hải đồ bảo mật S-63 "${file.name}" thành công`);
-      onSuccess(null, file);
-      void fetchCells();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Giải mã hoặc nhập hải đồ S-63 thất bại');
-      onError(err);
-    }
-  };
 
   return (
     <div style={{ position: 'relative', height: 'calc(100vh - 64px)', boxSizing: 'border-box', overflow: 'hidden' }}>
@@ -4890,6 +4391,7 @@ export default function GISChartView() {
                             setSearchError(undefined);
                             setSearchPage(1);
                             searchForm.resetFields();
+                            searchForm.setFieldValue('orgUnitId', defaultGisOrgUnitIdRef.current);
                             setSelectedRowKeys([]);
                             if (searchMarkersGroupRef.current) {
                               searchMarkersGroupRef.current.clearLayers();
@@ -4921,7 +4423,7 @@ export default function GISChartView() {
                         >
                           Tìm kiếm
                         </Button>
-                        <Button 
+                        <Button
                           icon={<FilterOutlined />}
                           onClick={() => setShowAdvancedSearch(prev => !prev)}
                           shape="circle"
@@ -5025,7 +4527,7 @@ export default function GISChartView() {
                             <Radio.Button value="WGS84" style={{ width: '33.4%' }}>WGS84</Radio.Button>
                           </Radio.Group>
                         </Form.Item>
-  
+
                         <Form.Item noStyle shouldUpdate={(prev, curr) => prev.systemType !== curr.systemType}>
                           {({ getFieldValue }) => {
                             const type = getFieldValue('systemType');
@@ -5038,7 +4540,7 @@ export default function GISChartView() {
                                 >
                                   <Input placeholder={type === 'WGS84' ? 'Ví dụ: 106°37\'46" E' : 'Ví dụ: 568390.0'} />
                                 </Form.Item>
-  
+
                                 <Form.Item
                                   name="coord2"
                                   label={type === 'WGS84' ? 'Vĩ độ (Decimal / DMS / DDM)' : 'Tọa độ Y (Northing)'}
@@ -5046,7 +4548,7 @@ export default function GISChartView() {
                                 >
                                   <Input placeholder={type === 'WGS84' ? 'Ví dụ: 20°40\'0" N' : 'Ví dụ: 2322890.0'} />
                                 </Form.Item>
-  
+
                                 {type !== 'WGS84' && (
                                   <Form.Item
                                     name="zoneOrCm"
@@ -5060,10 +4562,10 @@ export default function GISChartView() {
                             );
                           }}
                         </Form.Item>
-  
-                        <Collapse 
-                          size="small" 
-                          bordered={false} 
+
+                        <Collapse
+                          size="small"
+                          bordered={false}
                           style={{ marginBottom: 16 }}
                           items={[
                             {
@@ -5086,7 +4588,7 @@ export default function GISChartView() {
                             }
                           ]}
                         />
-  
+
                         <Form.Item style={{ marginBottom: 0 }}>
                           <Button
                             type="primary"
@@ -5099,7 +4601,7 @@ export default function GISChartView() {
                           </Button>
                         </Form.Item>
                       </Form>
-  
+
                       {calibratedPoint && (
                         <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
                           <Typography.Text strong>Kết quả hiệu chuẩn (EPSG:4326):</Typography.Text><br/>
@@ -5126,7 +4628,7 @@ export default function GISChartView() {
                             </Button>
                           </Upload>
                         </Card>
-  
+
                         <Card size="small" title="Nhập hải đồ bảo mật (S-63)" style={{ width: '100%' }}>
                           <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
                             Nhập file hải đồ mã hóa S-63 (`.000`). File yêu cầu phải có giấy phép Cell Permit tương ứng đã được đăng ký trước.
@@ -5190,9 +4692,9 @@ export default function GISChartView() {
             <Typography.Text style={{ display: 'block', marginBottom: spaceSm, fontSize: fontSizeMd, fontWeight: fontWeightBold, color: colors.sidebarBg }}>
               Lớp dữ liệu (Overlay)
             </Typography.Text>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-              <Checkbox 
+              <Checkbox
                 checked={showChart}
                 onChange={(e) => {
                   const checked = e.target.checked;
@@ -5210,7 +4712,7 @@ export default function GISChartView() {
                 </Space>
               </Checkbox>
 
-              <Checkbox 
+              <Checkbox
                 checked={showPlanning}
                 onChange={(e) => setShowPlanning(e.target.checked)}
               >
@@ -5232,7 +4734,7 @@ export default function GISChartView() {
 
               return (
                 <div key={code} style={{ padding: `${spaceXs}px 0`, display: 'flex', alignItems: 'center' }}>
-                  <Checkbox 
+                  <Checkbox
                     checked={isChecked}
                     onChange={(e) => {
                       const checked = e.target.checked;
@@ -5394,55 +4896,6 @@ export default function GISChartView() {
           opacity: 0 !important;
         }
       `}} />
-    </div>
-  );
-}
-
-function DescriptionsPanel({ feature }: { feature: ChartFeature }) {
-  const { featureName, featureCode, geometryType, coordinates, attributes } = feature;
-  return (
-    <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-      <Typography.Paragraph style={{ marginBottom: spaceXs, color: textPrimary, fontSize: fontSizeMd }}>
-        <strong style={{ color: colors.sidebarBg }}>Tên:</strong> {getFeatureNameVi(featureCode, featureName)}
-      </Typography.Paragraph>
-      <Typography.Paragraph style={{ marginBottom: spaceXs, color: textPrimary, fontSize: fontSizeMd }}>
-        <strong style={{ color: colors.sidebarBg }}>Mã đối tượng:</strong>{' '}
-        <span style={{
-          display: 'inline-flex',
-          padding: `${spaceXs}px ${spaceSm}px`,
-          border: `1px solid ${actionPrimary}40`,
-          borderRadius: radiusPill,
-          fontSize: fontSizeSm,
-          fontWeight: fontWeightMedium,
-          background: `${actionPrimary}15`,
-          color: actionPrimary,
-        }}>{featureCode}</span>
-      </Typography.Paragraph>
-      <Typography.Paragraph style={{ marginBottom: spaceXs, color: textPrimary, fontSize: fontSizeMd }}>
-        <strong style={{ color: colors.sidebarBg }}>Kiểu hình học:</strong> <code>{geometryType}</code>
-      </Typography.Paragraph>
-      <Typography.Paragraph style={{ marginBottom: spaceSm, fontSize: fontSizeSm, color: textTertiary }}>
-        <strong style={{ color: textSecondary }}>Tọa độ:</strong> <code>{coordinates.length > 50 ? `${coordinates.substring(0, 50)}...` : coordinates}</code>
-      </Typography.Paragraph>
-
-      <Typography.Text strong style={{ display: 'block', marginBottom: spaceXs, color: colors.sidebarBg, fontSize: fontSizeMd }}>
-        Thuộc tính S-57:
-      </Typography.Text>
-      {attributes && Object.keys(attributes).length > 0 ? (
-        <List
-          size="small"
-          bordered
-          style={{ borderColor: borderDefault, borderRadius: radiusSm }}
-          dataSource={Object.entries(attributes)}
-          renderItem={([key, val]) => (
-            <List.Item style={{ padding: `${spaceXs}px ${spaceSm}px`, fontSize: fontSizeSm, borderColor: borderDefault }}>
-              <strong style={{ color: textSecondary }}>{key}:</strong> <span style={{ color: textPrimary }}>{String(val)}</span>
-            </List.Item>
-          )}
-        />
-      ) : (
-        <Typography.Text type="secondary" italic style={{ fontSize: fontSizeSm, color: textTertiary }}>Không có thuộc tính</Typography.Text>
-      )}
     </div>
   );
 }

@@ -15,6 +15,13 @@ export interface DryPortListResponse {
   pageSize: number;
 }
 
+export function normalizeDryPortIdentityFilters(name?: string, code?: string) {
+  return {
+    name: name?.trim() || undefined,
+    code: code?.trim() || undefined,
+  };
+}
+
 export async function fetchDryPortList(params: DryPortFilterParams): Promise<DryPortListResponse> {
   const query: Record<string, any> = {
     page: (params.page ?? 1) - 1,

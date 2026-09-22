@@ -85,3 +85,75 @@ describe('VMD popup field configuration', () => {
   });
 });
 
+describe('resolveVmdPopupFields and getPopupValueByPath', () => {
+  it('prevents name collision where portName overrides anchorageName for Khu neo đậu', async () => {
+    const { resolveVmdPopupFields, getPopupValueByPath } = await import('../pages/gis/vmdPopupFields');
+    const mockAnchorageData = {
+      id: 'mock-1',
+      anchorageCode: 'ND01',
+      anchorageName: 'Neo đậu 01 TB',
+      portName: 'Cảng biển nhỏ',
+      shapeDescription: 'Hình chữ nhật',
+      currentWaterDepth: -12.5,
+      designWaterDepth: -15.0,
+      maxDraft: 11.2,
+      maxTonnage: 30000,
+      area: 25.5,
+      operationalStatus: 'OPERATIONAL',
+      approvalStatus: 'APPROVED',
+    };
+
+    const resolvedFields = resolveVmdPopupFields('ANCHORAGE_AREA', 'Khu neo đậu', mockAnchorageData);
+
+    // Check "Tên khu neo đậu"
+    const nameField = resolvedFields.find((f) => f.label === 'Tên khu neo đậu');
+    expect(nameField).toBeDefined();
+    const resolvedName = getPopupValueByPath(mockAnchorageData, nameField!.key);
+    expect(resolvedName).toBe('Neo đậu 01 TB');
+
+    // Check "Mã khu neo đậu"
+    const codeField = resolvedFields.find((f) => f.label === 'Mã khu neo đậu');
+    expect(codeField).toBeDefined();
+    const resolvedCode = getPopupValueByPath(mockAnchorageData, codeField!.key);
+    expect(resolvedCode).toBe('ND01');
+
+    // Check alias mappings for zobjDataSub.*
+    const shapeField = resolvedFields.find((f) => f.label === 'Hình dạng');
+    expect(shapeField).toBeDefined();
+    expect(getPopupValueByPath(mockAnchorageData, shapeField!.key)).toBe('Hình chữ nhật');
+
+    const depthField = resolvedFields.find((f) => f.label.includes('Độ sâu khu nước hiện tại'));
+    expect(depthField).toBeDefined();
+    expect(getPopupValueByPath(mockAnchorageData, depthField!.key)).toBe(-12.5);
+
+    const designDepthField = resolvedFields.find((f) => f.label.includes('Độ sâu khu nước theo thiết kế'));
+    expect(designDepthField).toBeDefined();
+    expect(getPopupValueByPath(mockAnchorageData, designDepthField!.key)).toBe(-15.0);
+
+    const vesselDwtField = resolvedFields.find((f) => f.label.includes('Cỡ tàu khai thác theo công bố'));
+    expect(vesselDwtField).toBeDefined();
+    expect(getPopupValueByPath(mockAnchorageData, vesselDwtField!.key)).toBe(30000);
+
+    const areaField = resolvedFields.find((f) => f.label.includes('Diện tích'));
+    expect(areaField).toBeDefined();
+    expect(getPopupValueByPath(mockAnchorageData, areaField!.key)).toBe(25.5);
+  });
+
+  it('prevents name collision for Pier (Cầu cảng) having both portName and berthName', async () => {
+    const { resolveVmdPopupFields, getPopupValueByPath } = await import('../pages/gis/vmdPopupFields');
+    const mockPierData = {
+      id: 'pier-1',
+      pierCode: 'CC-01',
+      pierName: 'Cầu cảng A1',
+      berthName: 'Bến cảng Tiên Sa',
+      portName: 'Cảng biển Đà Nẵng',
+      structureType: 'GRAVITY',
+      approvalStatus: 'APPROVED',
+    };
+
+    const resolvedFields = resolveVmdPopupFields('PIER', 'Cầu cảng', mockPierData);
+    const nameField = resolvedFields.find((f) => f.label === 'Tên cầu cảng');
+    expect(nameField).toBeDefined();
+    expect(getPopupValueByPath(mockPierData, nameField!.key)).toBe('Cầu cảng A1');
+  });
+});

@@ -537,8 +537,6 @@ export default function VtsSystemList() {
 
   const isRejectedTab = filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL1 || filterApprovalStatus === ApprovalStatus.REJECTED_LEVEL2;
 
-  const serverSideSorter = () => 0;
-
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | undefined => {
     if (sortField === key && sortDirection) return sortDirection === 'asc' ? 'ascend' : 'descend';
     return undefined;
@@ -562,7 +560,6 @@ export default function VtsSystemList() {
       width: 260,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('systemName'),
       fixed: 'left' as const,
       render: (val: string, record: VtsSystemResponse) => (
@@ -595,7 +592,6 @@ export default function VtsSystemList() {
       width: 240,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('orgUnitName'),
       render: (val: string) => (
         <span style={{ fontWeight: fontWeightBold }} title={val}>{val || '—'}</span>
@@ -608,7 +604,6 @@ export default function VtsSystemList() {
       width: 220,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('portName'),
       render: (val: string) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
@@ -623,7 +618,6 @@ export default function VtsSystemList() {
       width: 260,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('provinceId'),
       render: (_: unknown, record: VtsSystemResponse) => {
         const provinceName = record.provinceId ? getProvinceNameById(record.provinceId) : '—';
@@ -640,9 +634,6 @@ export default function VtsSystemList() {
       dataIndex: 'operationStartDate',
       width: 280,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('operationStartDate'),
       render: (val: string) => (val ? dayjs(val).format('DD/MM/YYYY') : '—'),
     },
     {
@@ -652,9 +643,6 @@ export default function VtsSystemList() {
       // Badge dài nhất "Chưa khai thác/vận hành" cần đủ chỗ cả padding của ô.
       width: 220,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
       render: (val: ConditionStatus | string) => {
         const s = CONDITION_STYLE_MAP[val] || { color: textTertiary, label: val || '—' };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
@@ -666,9 +654,6 @@ export default function VtsSystemList() {
       dataIndex: 'approvalStatus',
       width: 180,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
     {
@@ -678,7 +663,6 @@ export default function VtsSystemList() {
       width: 260,
       hidden: !isRejectedTab,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('rejectionReason'),
       render: (val: string) => (
         <span title={val || ''} style={{ color: textSecondary }}>{val || '—'}</span>
@@ -691,7 +675,6 @@ export default function VtsSystemList() {
       width: 220,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('updatedByName'),
       render: (val: string, record: VtsSystemResponse) => {
         const name = val || record.updatedByName || record.createdByName || '—';
@@ -725,7 +708,6 @@ export default function VtsSystemList() {
       width: 200,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('owningOrgName'),
       render: (val: string) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
@@ -740,7 +722,6 @@ export default function VtsSystemList() {
       width: 200,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('operatingOrgName'),
       render: (val: string) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>

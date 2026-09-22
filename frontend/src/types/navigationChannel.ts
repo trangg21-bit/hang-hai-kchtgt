@@ -250,6 +250,8 @@ export interface ListParams {
   updatedBy?: string; // #49
   sortField?: string;
   sortOrder?: string;
+  sortBy?: string;
+  sortDir?: string;
 }
 
 export interface SearchResponse<T> {

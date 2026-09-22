@@ -491,6 +491,8 @@ export default function NavigationChannelList() {
         updatedBy: filterUpdatedBy,
         sortField,
         sortOrder: sortOrder || undefined,
+        sortBy: sortField,
+        sortDir: sortOrder || undefined,
       };
       const res = await navigationChannelCRUD.search(params);
       setDataSource(res.items);
@@ -521,6 +523,8 @@ export default function NavigationChannelList() {
       STATUS_TAB_LIST.forEach((tab, i) => {
         next[tab.key] = results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<number>).value : 0;
       });
+      const subTotal = STATUS_TAB_LIST.filter((t) => t.key !== 'all').reduce((sum, t) => sum + (next[t.key] || 0), 0);
+      next['all'] = subTotal;
       setTabCounts(next);
     } catch (err) {
       console.error('Không tính được số lượng theo trạng thái', err);
@@ -549,6 +553,11 @@ export default function NavigationChannelList() {
     setActiveTab(key);
     setPage(1);
   }, []);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | undefined => {
+    if (sortField === key && sortOrder) return sortOrder === 'asc' ? 'ascend' : 'descend';
+    return undefined;
+  }, [sortField, sortOrder]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc' | null) => {
     if (!order) {
@@ -863,7 +872,7 @@ export default function NavigationChannelList() {
         width: 260,
         fixed: 'left' as const,
         sortable: true,
-        sortOrder: sortField === 'channelName' && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
+        sortOrder: sortOrderFor('channelName'),
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -910,8 +919,6 @@ export default function NavigationChannelList() {
         label: 'Tình trạng',
         dataIndex: 'conditionStatus',
         width: 150,
-        sortable: true,
-        sortOrder: sortField === 'conditionStatus' && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
         render: (v: string | undefined) => {
           if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
@@ -934,7 +941,7 @@ export default function NavigationChannelList() {
         dataIndex: 'updatedAt',
         width: 220,
         sortable: true,
-        sortOrder: sortField === 'updatedAt' && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : undefined,
+        sortOrder: sortOrderFor('updatedAt'),
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => {
           const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
@@ -949,7 +956,7 @@ export default function NavigationChannelList() {
         },
       },
     ];
-  }, [page, pageSize, seaportOptions, openDetail, userMap, sortField, sortOrder]);
+  }, [page, pageSize, seaportOptions, openDetail, userMap, sortOrderFor]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
@@ -1129,30 +1136,9 @@ export default function NavigationChannelList() {
     [hasPerm, openModal],
   );
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'seaportId') return seaportOptions.find((o) => o.id === r.seaportId)?.portName ?? r.seaportId ?? '';
-    if (field === 'provinceId') return VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label ?? '';
-    if (field === 'orgUnitId') return r.orgUnitName ?? r.orgUnitId ?? '';
-    if (field === 'updatedAt') return new Date(r.updatedAt || r.createdAt || 0).getTime();
-    if (field === 'submittedAt') return new Date(r.submittedAt || 0).getTime();
-    return r[field] ?? '';
-  }, [seaportOptions]);
-
-  const sortedData = useMemo(() => {
-    return [...dataSource].sort((a: any, b: any) => {
-      if (!sortField || !sortOrder) return 0;
-      const aVal = getSortValue(a, sortField);
-      const bVal = getSortValue(b, sortField);
-      const cmp = typeof aVal === 'number' && typeof bVal === 'number'
-        ? aVal - bVal
-        : String(aVal).localeCompare(String(bVal), 'vi');
-      return sortOrder === 'asc' ? cmp : -cmp;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
-
   const tableData = useMemo(
-    () => sortedData.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
-    [sortedData, page, pageSize],
+    () => dataSource.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
+    [dataSource, page, pageSize],
   );
 
   // ── orgMap / seaportMap cho timeline lịch sử ────────────────────────

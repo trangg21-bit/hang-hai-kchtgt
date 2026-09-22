@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { isShipRepairYardDeleted } from '../pages/ship-repair-yard/ShipRepairYardListPage';
 
 describe('ShipRepairYard Status Bar Filter and Count Logic (/ship-repair-yard)', () => {
@@ -30,7 +30,7 @@ describe('ShipRepairYard Status Bar Filter and Count Logic (/ship-repair-yard)',
     total: number,
   ) => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
@@ -60,7 +60,7 @@ describe('ShipRepairYard Status Bar Filter and Count Logic (/ship-repair-yard)',
     expect(isShipRepairYardDeleted({ id: '5', approvalStatus: 'ARCHIVED' })).toBe(true);
   });
 
-  it('tab Tất cả tính bằng tổng các tab con đang hoạt động (không cộng tab Đã xóa DELETED)', () => {
+  it('tab Tất cả tính bằng tổng tất cả các tab con (bao gồm cả tab Đã xóa DELETED)', () => {
     const counts: Record<string, number> = {
       DRAFT: 4,
       PENDING_APPROVAL: 2,
@@ -72,8 +72,8 @@ describe('ShipRepairYard Status Bar Filter and Count Logic (/ship-repair-yard)',
     };
     const tabs = computeStatusTabs(counts, 'all', 26);
     const allTab = tabs.find((t) => t.key === 'all');
-    // 4 + 2 + 3 + 15 + 1 + 1 = 26 (DELETED = 6 is excluded)
-    expect(allTab?.count).toBe(26);
+    // 4 + 2 + 3 + 15 + 1 + 1 + 6 = 32 (DELETED = 6 is included)
+    expect(allTab?.count).toBe(32);
     expect(allTab?.active).toBe(true);
 
     const deletedTab = tabs.find((t) => t.key === 'DELETED');

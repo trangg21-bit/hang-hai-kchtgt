@@ -296,6 +296,21 @@ public class StormShelterAreaService {
         return toResponse(entity);
     }
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return null;
+        return switch (sortBy.trim()) {
+            case "stormShelterCode", "code" -> "stormShelterCode";
+            case "stormShelterName", "name" -> "stormShelterName";
+            case "classification" -> "classification";
+            case "provinceId" -> "provinceId";
+            case "operationalStatus", "status", "conditionStatus" -> "operationalStatus";
+            case "approvalStatus" -> "approvalStatus";
+            case "updatedAt", "updatedByName" -> EntityFields.UPDATED_AT;
+            case "createdAt", "createdDate" -> EntityFields.CREATED_AT;
+            default -> null;
+        };
+    }
+
     @Transactional(readOnly = true)
     public Page<StormShelterAreaResponse> findAll(int page, int size, UUID orgUnitId,
                                                   String search, String stormShelterCode, String stormShelterName,
@@ -303,11 +318,31 @@ public class StormShelterAreaService {
                                                   String classification, Integer provinceId,
                                                   String operationalStatus, String approvalStatus,
                                                   String updatedFrom, String updatedTo, Boolean isDeleted) {
+        return findAll(page, size, orgUnitId, search, stormShelterCode, stormShelterName, portId,
+                navigationChannelId, buoyStationId, classification, provinceId,
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<StormShelterAreaResponse> findAll(int page, int size, UUID orgUnitId,
+                                                  String search, String stormShelterCode, String stormShelterName,
+                                                  UUID portId, UUID navigationChannelId, UUID buoyStationId,
+                                                  String classification, Integer provinceId,
+                                                  String operationalStatus, String approvalStatus,
+                                                  String updatedFrom, String updatedTo, Boolean isDeleted,
+                                                  String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                        Sort.Order.desc(EntityFields.CREATED_AT),
-                        Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                Sort.Order.desc(EntityFields.CREATED_AT),
+                Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         if (Boolean.TRUE.equals(isDeleted)) {
             approvalEnum = ApprovalStatus.ARCHIVED;
@@ -319,10 +354,11 @@ public class StormShelterAreaService {
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
         String searchTrim = search != null ? search.trim() : null;
+        String classificationTrim = (classification != null && !classification.trim().isEmpty()) ? classification.trim() : null;
         Page<StormShelterArea> result = stormShelterAreaRepository.searchStormShelterAreas(
                 includeAll, orgUnitIds,
                 searchTrim, stormShelterCode, stormShelterName, portId,
-                navigationChannelId, buoyStationId, classification, provinceId,
+                navigationChannelId, buoyStationId, classificationTrim, provinceId,
                 approvalEnum, statusEnum, false,
                 updatedFromDt, updatedToDt,
                 pageable);
@@ -539,11 +575,21 @@ public class StormShelterAreaService {
     private String buildMooringWaterAreaSummary(List<StormShelterMooringWaterArea> areas) {
         if (areas == null || areas.isEmpty()) return "";
         List<String> parts = new ArrayList<>();
-        for (StormShelterMooringWaterArea wa : areas) {
-            String desc = (wa.getDescription() == null || wa.getDescription().isBlank())
-                    ? "(khu nước không mô tả)" : wa.getDescription().trim();
-            long pointCount = stormShelterMooringWaterAreaAnchorPointRepository.findByStormShelterMooringWaterAreaId(wa.getId()).size();
-            parts.add(desc + " (" + pointCount + " điểm)");
+        for (int i = 0; i < areas.size(); i++) {
+            StormShelterMooringWaterArea wa = areas.get(i);
+            String desc = (wa.getDescription() != null && !wa.getDescription().isBlank())
+                    ? wa.getDescription().trim() : ("Khu nước " + (i + 1));
+            List<StormShelterMooringWaterAreaAnchorPoint> points =
+                    stormShelterMooringWaterAreaAnchorPointRepository.findByStormShelterMooringWaterAreaId(wa.getId());
+            if (points.isEmpty()) {
+                parts.add(desc + " (0 điểm)");
+            } else {
+                String ptDetails = points.stream()
+                        .map(p -> (p.getName() != null && !p.getName().isBlank() ? p.getName().trim() : "Điểm neo")
+                                + (p.getLatitude() != null && p.getLongitude() != null ? " [" + p.getLatitude() + ", " + p.getLongitude() + "]" : ""))
+                        .collect(Collectors.joining(", "));
+                parts.add(desc + " (" + points.size() + " điểm: " + ptDetails + ")");
+            }
         }
         return areas.size() + " khu nước: " + String.join("; ", parts);
     }

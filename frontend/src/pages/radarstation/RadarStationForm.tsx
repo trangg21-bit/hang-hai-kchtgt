@@ -22,6 +22,7 @@ import toast from '../../components/ToastNotification';
 import { radarStationCRUD, radarStationApproval, radarStationAttachment } from '../../services/radarStationService';
 import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import api from '../../services/api';
 import type {
   RadarStationResponse,
@@ -43,7 +44,7 @@ import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
 
 import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle, readonlyInputStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -170,18 +171,18 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
   const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<Array<{ id: string; code?: string; name?: string; vtsSystemId?: string }>>([]);
+  const [operatingUnitOptions, setOperatingUnitOptions] = useState<Array<{ id: string; code?: string; name?: string }>>([]);
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedVtsSystemId = Form.useWatch('vtsSystemId', form);
   const watchedSeaportId = Form.useWatch('seaportId', form);
   const editSeaportIdRef = useRef<string | undefined>(undefined);
   const [codeLoading, setCodeLoading] = useState(false);
-  const filteredSeaportOptions = useMemo(() => {
-    if (!selectedOrgUnitId) return [];
-    const rawSet = resolveOrgSubtreeIds(orgOptions, String(selectedOrgUnitId));
-    const normalizedSet = new Set<string>();
-    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
-    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
-  }, [orgOptions, seaportOptions, selectedOrgUnitId]);
+  const filteredSeaportOptions = seaportOptions;
+  const filteredVtsOperationCenterOptions = useMemo(
+    () => vtsOperationCenterOptions.filter((center) => !selectedVtsSystemId || center.vtsSystemId === selectedVtsSystemId),
+    [selectedVtsSystemId, vtsOperationCenterOptions],
+  );
 
   useEffect(() => {
     (async () => {
@@ -192,38 +193,41 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         console.error('Không tải được cây đơn vị quản lý', err);
       }
       try {
-        const ports = await vtsSystemCRUD.getScopedPortOptions();
-        setSeaportOptions(ports || []);
+        const operatingRes = await api.get('/common/options/operating-units');
+        const operatingUnits = operatingRes.data?.data || operatingRes.data || [];
+        setOperatingUnitOptions(Array.isArray(operatingUnits) ? operatingUnits : []);
       } catch (err) {
-        console.error('Không tải được danh sách cảng biển', err);
-      }
-      try {
-        const vts = await vtsSystemCRUD.getOptions();
-        setVtsOptions(
-          (vts || []).map((item) => ({
-            id: item.id,
-            code: item.code,
-            systemName: item.name,
-          })),
-        );
-      } catch (err) {
-        console.error('Không tải được danh sách hệ thống VTS', err);
-      }
-      try {
-        const opRes = await api.get('/common/options/vts-operation-centers');
-        const opCenters = opRes.data?.data || opRes.data || [];
-        setVtsOperationCenterOptions(
-          (Array.isArray(opCenters) ? opCenters : []).map((item: any) => ({
-            id: item.id,
-            code: item.code,
-            name: item.name,
-          })),
-        );
-      } catch (err) {
-        console.error('Không tải được danh sách trung tâm điều hành VTS', err);
+        console.error('Không tải được danh sách đơn vị khai thác', err);
       }
     })();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedOrgUnitId) {
+      setSeaportOptions([]);
+      setVtsOptions([]);
+      setVtsOperationCenterOptions([]);
+      return () => { cancelled = true; };
+    }
+    Promise.all([
+      vtsSystemCRUD.getScopedPortOptions({ approvalStatus: 'APPROVED', orgUnitId: String(selectedOrgUnitId) }),
+      vtsSystemCRUD.getOptions({ orgUnitId: String(selectedOrgUnitId) }),
+      vtsOperationCenterService.getOptions(String(selectedOrgUnitId)),
+    ]).then(([ports, systems, centers]) => {
+      if (cancelled) return;
+      setSeaportOptions(ports || []);
+      setVtsOptions((systems || []).map((item) => ({ id: item.id, code: item.code, systemName: item.name })));
+      setVtsOperationCenterOptions(centers || []);
+    }).catch((err) => {
+      if (cancelled) return;
+      setSeaportOptions([]);
+      setVtsOptions([]);
+      setVtsOperationCenterOptions([]);
+      console.error('Không tải được danh mục theo đơn vị quản lý đã chọn', err);
+    });
+    return () => { cancelled = true; };
+  }, [selectedOrgUnitId]);
 
   const loadHistory = useCallback(async (stationId: string) => {
     setIsLoadingHistory(true);
@@ -587,6 +591,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     const org = orgOptions.find((o) => o.id === orgUnitId);
     return org ? (org.code ? `${org.code} - ${org.name}` : org.name) : orgUnitId;
   };
+  const operatingUnitNameById = (operatingUnitId?: string): string => {
+    if (!operatingUnitId) return '—';
+    const unit = operatingUnitOptions.find((item) => item.id === operatingUnitId);
+    return unit ? (unit.code ? `${unit.code} - ${unit.name || ''}` : unit.name || unit.id) : operatingUnitId;
+  };
 
   const seaportLabelById = (seaportId?: string): string => {
     if (!seaportId) return '—';
@@ -627,7 +636,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           <Descriptions.Item label="Trung tâm điều hành VTS">
             {record.vtsOperationCenterName || vtsOpCenterLabelById(record.vtsOperationCenterId)}
           </Descriptions.Item>
-          <Descriptions.Item label="Đơn vị khai thác">{orgNameById(record.operatingUnitId)}</Descriptions.Item>
+          <Descriptions.Item label="Đơn vị khai thác">{operatingUnitNameById(record.operatingUnitId)}</Descriptions.Item>
           <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
           <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
           <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
@@ -635,10 +644,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             {record.conditionStatus ? (CONDITION_STATUS_MAP[record.conditionStatus]?.label || record.conditionStatus) : '—'}
           </Descriptions.Item>
           <Descriptions.Item label="Chiều cao tháp radar (m)">
-            {record.towerHeight != null ? fmtNum(record.towerHeight) : '—'}
+            {record.towerHeight != null ? fmtNum(record.towerHeight, 4) : '—'}
           </Descriptions.Item>
           <Descriptions.Item label="Tầm hiệu lực radar">
-            {record.radarRange != null ? fmtNum(record.radarRange) : '—'}
+            {record.radarRange != null ? fmtNum(record.radarRange, 4) : '—'}
           </Descriptions.Item>
           <Descriptions.Item label="Trạng thái">
             {(() => {
@@ -793,25 +802,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               onChange={(orgUnitId) => {
                 form.setFieldValue('orgUnitId', orgUnitId);
-                const seaportId = form.getFieldValue('seaportId');
-                if (!orgUnitId) {
-                  form.setFieldValue('seaportId', undefined);
-                  if (!isEdit) {
-                    form.setFieldValue('code', undefined);
-                  }
-                } else if (seaportId) {
-                  const rawSet = resolveOrgSubtreeIds(orgOptions, String(orgUnitId));
-                  const normalizedSet = new Set<string>();
-                  rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
-                  const isValidSeaport = seaportOptions.some((port) =>
-                    port.id === seaportId && !!port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()),
-                  );
-                  if (!isValidSeaport) {
-                    form.setFieldValue('seaportId', undefined);
-                    if (!isEdit) {
-                      form.setFieldValue('code', undefined);
-                    }
-                  }
+                form.setFieldValue('seaportId', undefined);
+                form.setFieldValue('vtsSystemId', undefined);
+                form.setFieldValue('vtsOperationCenterId', undefined);
+                if (!isEdit) {
+                  form.setFieldValue('code', undefined);
                 }
               }}
             />
@@ -876,6 +871,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               allowClear
               showSearch
               optionFilterProp="label"
+              disabled={!selectedOrgUnitId}
               options={vtsOptions.map((vts) => ({
                 value: vts.id,
                 label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id,
@@ -892,7 +888,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               allowClear
               showSearch
               optionFilterProp="label"
-              options={vtsOperationCenterOptions.map((oc) => ({
+              disabled={!selectedOrgUnitId}
+              options={filteredVtsOperationCenterOptions.map((oc) => ({
                 value: oc.id,
                 label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id,
               }))}
@@ -905,11 +902,15 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       <Row gutter={16}>
         <Col span={12}>
           <Form.Item label="Đơn vị khai thác" name="operatingUnitId">
-            <OrgUnitTreeSelect
-              organizations={orgOptions}
+            <Select
               placeholder="Chọn đơn vị khai thác"
               allowClear
               showSearch
+              optionFilterProp="label"
+              options={operatingUnitOptions.map((unit) => ({
+                value: unit.id,
+                label: unit.code ? `${unit.code} - ${unit.name || ''}` : unit.name || unit.id,
+              }))}
               style={{ width: '100%', ...selectStyle }}
             />
           </Form.Item>

@@ -598,6 +598,8 @@ class RadarStationServiceTest {
             assertThat(service.formatDisplayValue("stationType", "INDEPENDENT")).isEqualTo("Trạm độc lập");
             assertThat(service.formatDisplayValue("stationType", "DEPENDENT")).isEqualTo("Trạm phụ thuộc");
             assertThat(service.formatDisplayValue("conditionStatus", "1")).isEqualTo("Đang khai thác/vận hành");
+            assertThat(service.formatDisplayValue("conditionStatus", "0")).isEqualTo("Chưa khai thác/vận hành");
+            assertThat(service.formatDisplayValue("conditionStatus", "2")).isEqualTo("Dừng khai thác/vận hành");
             assertThat(service.formatDisplayValue("geometryType", "POINT")).isEqualTo("Đối tượng điểm");
             assertThat(service.formatDisplayValue("approvalStatus", "APPROVED")).isEqualTo("Đã duyệt");
             assertThat(service.formatDisplayValue("coordinateSystem", "1")).isEqualTo("WGS 84");
@@ -611,7 +613,6 @@ class RadarStationServiceTest {
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
             org.springframework.mock.web.MockMultipartFile file =
                     new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
-
             when(attachmentRepository.save(any())).thenAnswer(inv -> {
                 InfrastructureAttachment att = inv.getArgument(0);
                 att.setId(UUID.randomUUID());
@@ -631,6 +632,8 @@ class RadarStationServiceTest {
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
             org.springframework.mock.web.MockMultipartFile file =
                     new org.springframework.mock.web.MockMultipartFile("file", "test.pdf", "application/pdf", "content".getBytes());
+            org.springframework.mock.web.MockMultipartFile secondFile =
+                    new org.springframework.mock.web.MockMultipartFile("file", "diagram.png", "image/png", "image".getBytes());
 
             when(attachmentRepository.save(any())).thenAnswer(inv -> {
                 InfrastructureAttachment att = inv.getArgument(0);
@@ -638,14 +641,16 @@ class RadarStationServiceTest {
                 return att;
             });
 
-            service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
+            service.uploadAttachments(TEST_ID, List.of(file, secondFile), USER_ID);
 
-            verify(historyRepository, times(1)).save(any());
+            ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+            verify(historyRepository, times(1)).save(historyCaptor.capture());
+            assertThat(historyCaptor.getValue().getNewValue()).contains("test.pdf", "diagram.png");
         }
 
         @Test
-        @DisplayName("Uploading attachments on newly created approved entity within 30s should NOT record history")
-        void uploadAttachments_onNewlyCreatedApprovedEntity_shouldNotRecordHistory() {
+        @DisplayName("Uploading attachments on newly created approved entity records the initial attachment history")
+        void uploadAttachments_onNewlyCreatedApprovedEntity_shouldRecordHistory() {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
             entity.setCreatedAt(LocalDateTime.now().minusSeconds(5));
             when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -660,7 +665,7 @@ class RadarStationServiceTest {
 
             service.uploadAttachments(TEST_ID, List.of(file), USER_ID);
 
-            verify(historyRepository, never()).save(any());
+            verify(historyRepository, times(1)).save(any());
         }
 
         @Test

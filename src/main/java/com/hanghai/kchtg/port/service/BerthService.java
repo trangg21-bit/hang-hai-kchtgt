@@ -167,6 +167,24 @@ public class BerthService {
                 null, null);
     }
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return null;
+        return switch (sortBy.trim()) {
+            case "berthCode", "code" -> "berthCode";
+            case "berthName", "name" -> "berthName";
+            case "waterway" -> "waterway";
+            case "berthType" -> "berthType";
+            case "operationalStatus", "status", "conditionStatus" -> "operationalStatus";
+            case "approvalStatus" -> "approvalStatus";
+            case "structureType" -> "structureType";
+            case "operationalFunction" -> "operationalFunction";
+            case "provinceId" -> "provinceId";
+            case "updatedAt", "updatedByName" -> EntityFields.UPDATED_AT;
+            case "createdAt", "createdDate" -> EntityFields.CREATED_AT;
+            default -> null;
+        };
+    }
+
     @Transactional(readOnly = true)
     public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId,
             String berthCode, String berthName, UUID portId,
@@ -174,9 +192,30 @@ public class BerthService {
             String operationalStatus, String approvalStatus, String search,
             Integer structureType, String operationalFunction,
             Integer provinceId, String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, berthCode, berthName, portId, waterway, waterwayId, berthType,
+                operationalStatus, approvalStatus, search, structureType, operationalFunction, provinceId,
+                updatedFrom, updatedTo, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BerthResponse> findAll(int page, int size, UUID orgUnitId,
+            String berthCode, String berthName, UUID portId,
+            String waterway, UUID waterwayId, String berthType,
+            String operationalStatus, String approvalStatus, String search,
+            Integer structureType, String operationalFunction,
+            Integer provinceId, String updatedFrom, String updatedTo,
+            String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus)
                 : null;
         ApprovalStatus approvalEnum = approvalStatus != null && !approvalStatus.trim().isEmpty()

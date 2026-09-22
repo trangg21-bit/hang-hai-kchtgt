@@ -82,15 +82,17 @@ public class StormShelterAreaController {
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) Boolean isDeleted,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing StormShelterAreas: page={}, size={}, orgUnitId={}, search={}, stormShelterCode={}, stormShelterName={}, portId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, stormShelterCode, stormShelterName, portId, operationalStatus, approvalStatus);
+                "Listing StormShelterAreas: page={}, size={}, orgUnitId={}, search={}, stormShelterCode={}, stormShelterName={}, portId={}, status={}, approvalStatus={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, stormShelterCode, stormShelterName, portId, operationalStatus, approvalStatus, sortBy, sortDir);
         Page<StormShelterAreaResponse> result = stormShelterAreaService.findAll(
                 page, size, orgUnitId,
                 search, stormShelterCode, stormShelterName, portId, navigationChannelId, buoyStationId,
                 classification, provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, isDeleted, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách khu tránh, trú bão thành công", result));
     }
 

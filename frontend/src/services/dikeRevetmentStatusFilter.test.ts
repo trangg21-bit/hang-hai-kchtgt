@@ -78,12 +78,11 @@ describe('Dike Revetment Status Filter and Tab Counts (/dike-revetment)', () => 
       };
 
       const sumChildCounts = STATUS_TAB_LIST
-        .filter((t) => t.key !== '' && t.key !== 'ARCHIVED')
+        .filter((t) => t.key !== '')
         .reduce((acc, t) => acc + (counts[t.key] || 0), 0);
 
-      // 4 + 2 + 3 + 15 + 1 + 1 = 26
-      expect(sumChildCounts).toBe(26);
-      expect(sumChildCounts).not.toBe(26 + 7);
+      // 4 + 2 + 3 + 15 + 1 + 1 + 7 = 33
+      expect(sumChildCounts).toBe(33);
     });
   });
 

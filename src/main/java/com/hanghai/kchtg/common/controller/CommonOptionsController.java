@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /** Shared authenticated reference-data endpoints for selectors and filters. */
 @RestController
@@ -37,9 +38,10 @@ public class CommonOptionsController {
     @GetMapping("/ports")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<PortOptionResponse>>> getPortOptions(
-            @RequestParam(required = false) ApprovalStatus approvalStatus) {
+            @RequestParam(required = false) ApprovalStatus approvalStatus,
+            @RequestParam(required = false) UUID orgUnitId) {
         return ResponseEntity.ok(ApiResponse.success("Danh sách cảng biển theo phạm vi phân quyền",
-                service.getPortOptions(approvalStatus)));
+                service.getPortOptions(approvalStatus, orgUnitId)));
     }
 
     @GetMapping("/operating-organizations")

@@ -54,8 +54,8 @@ public interface BuoyBerthRepository extends JpaRepository<BuoyBerth, UUID> {
             "AND (:portId IS NULL OR a.portId = :portId) " +
             "AND (:waterwayId IS NULL OR a.waterwayId = :waterwayId) " +
             "AND (CAST(:classification AS string) IS NULL OR " +
-            "  CAST(function('immutable_unaccent', LOWER(a.classification)) AS string) LIKE " +
-            "  CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:classification AS string), '%'))) AS string)) " +
+            "  CAST(function('immutable_unaccent', LOWER(TRIM(a.classification))) AS string) = " +
+            "  CAST(function('immutable_unaccent', LOWER(TRIM(CAST(:classification AS string)))) AS string)) " +
             "AND (:provinceId IS NULL OR a.provinceId = :provinceId) " +
             "AND ((:operationalStatusNull = true AND a.operationalStatus IS NULL) OR " +
             "  (:operationalStatusNull = false AND (:operationalStatus IS NULL OR a.operationalStatus = :operationalStatus))) " +
