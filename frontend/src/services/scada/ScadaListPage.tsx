@@ -1211,7 +1211,7 @@ const ScadaListPage = () => {
     }
 
     // Bỏ qua nếu sau khi định dạng số hiển thị cả 2 bằng nhau
-    const isYear = isYearField(field);
+    const isYear = isYearField(fn);
     const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? (isYear ? formatYearValue(cleanOv) : fmtNum(cleanOv)) : ov;
     const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? (isYear ? formatYearValue(cleanNv) : fmtNum(cleanNv)) : nv;
     if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
