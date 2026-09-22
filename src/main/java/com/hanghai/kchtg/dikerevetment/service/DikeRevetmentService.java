@@ -953,8 +953,17 @@ public class DikeRevetmentService {
         } catch (IOException e) {
             throw new RuntimeException("Không thể tạo thư mục lưu trữ file", e);
         }
-        long existing = attachmentRepository
-                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.DIKE_REVETMENT).size();
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.DIKE_REVETMENT);
+        long existing = existingAtts.size();
+        List<String> fileListBefore = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+        List<String> uploadedFileNames = new ArrayList<>();
+
         String uploaderName = userId == null ? null : userResolverService.resolveName(userId);
         List<VtsSystemAttachmentResponse> uploaded = new ArrayList<>();
         for (MultipartFile f : files) {
@@ -987,7 +996,22 @@ public class DikeRevetmentService {
                     .build();
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
             uploaded.add(toAttachmentResponse(saved, uploaderName));
-            if (approvalHistoryRepo != null && wasApproved) {
+            uploadedFileNames.add(originalFilename);
+        }
+
+        // 2. Snapshot danh sách file sau khi upload
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        if (approvalHistoryRepo != null && wasApproved && !uploadedFileNames.isEmpty()) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal)) {
                 approvalHistoryRepo.save(InfrastructureHistory.builder()
                         .refId(id)
                         .refType(InfrastructureType.DIKE_REVETMENT)
@@ -996,8 +1020,9 @@ public class DikeRevetmentService {
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
                         .changedField("Tài liệu đính kèm")
-                        .previousValue("—")
-                        .newValue(originalFilename)
+                        .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
                         .build());
             }
         }
@@ -1032,6 +1057,23 @@ public class DikeRevetmentService {
         if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.DIKE_REVETMENT) {
             throw new IllegalArgumentException("File đính kèm không thuộc đê kè này");
         }
+        String fileName = att.getFileName();
+
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.DIKE_REVETMENT);
+        String oldFilesSummary = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attId))
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             Files.deleteIfExists(Paths.get(att.getFilePath()));
         } catch (IOException ignored) {
@@ -1040,6 +1082,8 @@ public class DikeRevetmentService {
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
         if (approvalHistoryRepo != null && wasApproved) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
             approvalHistoryRepo.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.DIKE_REVETMENT)
@@ -1048,8 +1092,9 @@ public class DikeRevetmentService {
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
                     .changedField("Tài liệu đính kèm")
-                    .previousValue(att.getFileName())
-                    .newValue("—")
+                    .approvalContent("Xóa tệp: " + fileName)
+                    .previousValue(oldVal != null ? oldVal : "—")
+                    .newValue(newVal != null ? newVal : "—")
                     .build());
         }
     }

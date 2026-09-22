@@ -26,7 +26,7 @@ import {
   actionPrimary, textSecondary, textTertiary,
   fontWeightBold, fontWeightMedium,
   spaceSm, spaceMd, spaceFormField,
-  statusOperational, statusCritical, statusAttention, statusDraft,
+  statusOperational, statusCritical, statusAttention,
   statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
   textAreaStyle, colors, radiusPill,
   getRangePickerProps,
@@ -823,9 +823,6 @@ export function AisSystemList() {
       width: 170,
       align: 'center' as const,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('commissioningYear'),
       render: (v: number) => <span>{v || '—'}</span>,
     },
     {
@@ -835,9 +832,6 @@ export function AisSystemList() {
       width: 220,
       align: 'left' as const,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
       render: (val: ConditionStatus | string) => {
         const s = CONDITION_STYLE_MAP[val] || { color: textTertiary, label: val || '—' };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
@@ -850,9 +844,6 @@ export function AisSystemList() {
       width: 180,
       align: 'left' as const,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
       render: (val: ApprovalStatus | string) => <ApprovalStatusBadge status={val as ApprovalStatus} />,
     },
     {

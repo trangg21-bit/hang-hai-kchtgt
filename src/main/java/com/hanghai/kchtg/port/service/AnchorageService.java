@@ -1070,11 +1070,21 @@ public class AnchorageService {
     private String buildMooringWaterAreaSummary(List<MooringWaterArea> areas) {
         if (areas == null || areas.isEmpty()) return "";
         List<String> parts = new ArrayList<>();
-        for (MooringWaterArea wa : areas) {
-            String desc = (wa.getDescription() == null || wa.getDescription().isBlank())
-                    ? "(khu nước không mô tả)" : wa.getDescription().trim();
-            long pointCount = mooringWaterAreaAnchorPointRepository.findByMooringWaterAreaId(wa.getId()).size();
-            parts.add(desc + " (" + pointCount + " điểm)");
+        for (int i = 0; i < areas.size(); i++) {
+            MooringWaterArea wa = areas.get(i);
+            String desc = (wa.getDescription() != null && !wa.getDescription().isBlank())
+                    ? wa.getDescription().trim() : ("Khu nước " + (i + 1));
+            List<MooringWaterAreaAnchorPoint> points =
+                    mooringWaterAreaAnchorPointRepository.findByMooringWaterAreaId(wa.getId());
+            if (points.isEmpty()) {
+                parts.add(desc + " (0 điểm)");
+            } else {
+                String ptDetails = points.stream()
+                        .map(p -> (p.getName() != null && !p.getName().isBlank() ? p.getName().trim() : "Điểm neo")
+                                + (p.getLatitude() != null && p.getLongitude() != null ? " [" + p.getLatitude() + ", " + p.getLongitude() + "]" : ""))
+                        .collect(Collectors.joining(", "));
+                parts.add(desc + " (" + points.size() + " điểm: " + ptDetails + ")");
+            }
         }
         return areas.size() + " khu nước: " + String.join("; ", parts);
     }

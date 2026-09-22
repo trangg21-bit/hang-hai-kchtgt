@@ -58,6 +58,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -1064,6 +1065,17 @@ public class ScadaService {
     }
     List<Attachment> saved = new ArrayList<>();
     java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+
+    // 1. Snapshot danh sách file trước khi upload
+    List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+    List<String> fileListBefore = existingAtts.stream()
+            .map(Attachment::getFileName)
+            .filter(fn -> fn != null && !fn.isBlank())
+            .map(String::trim)
+            .collect(Collectors.toList());
+    String oldFilesSummary = String.join(", ", fileListBefore);
+    List<String> uploadedFileNames = new ArrayList<>();
+
     // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_UPLOADED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
     // Guard: Thêm mới không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát thời điểm hiện tại).
     Scada entity = scadaRepository.findById(entityId).orElse(null);
@@ -1092,7 +1104,22 @@ public class ScadaService {
       attachment.setContentType(file.getContentType());
       attachment.setUploadedBy(userId);
       saved.add(attachmentRepository.save(attachment));
-      if (wasApproved) {
+      uploadedFileNames.add(originalFilename);
+    }
+
+    // 2. Snapshot danh sách file sau khi upload
+    List<String> fileListAfter = new ArrayList<>(fileListBefore);
+    for (String fn : uploadedFileNames) {
+      if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+        fileListAfter.add(fn.trim());
+      }
+    }
+    String newFilesSummary = String.join(", ", fileListAfter);
+
+    if (wasApproved && !uploadedFileNames.isEmpty()) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+      if (!Objects.equals(oldVal, newVal)) {
         historyRepository.save(InfrastructureHistory.builder()
             .refId(entityId)
             .refType(InfrastructureType.SCADA)
@@ -1101,8 +1128,9 @@ public class ScadaService {
             .approvedBy(userId)
             .approvedDate(LocalDateTime.now())
             .changedField("Tài liệu đính kèm")
-            .previousValue("—")
-            .newValue(originalFilename)
+            .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+            .previousValue(oldVal != null ? oldVal : "—")
+            .newValue(newVal != null ? newVal : "—")
             .build());
       }
     }
@@ -1137,6 +1165,22 @@ public class ScadaService {
     if (!attachment.getEntityId().equals(entityId)) {
       throw new IllegalArgumentException("File không thuộc hệ thống SCADA này");
     }
+    String fileName = attachment.getFileName();
+    final String entityType = "SCADA";
+    List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+    String oldFilesSummary = existingAtts.stream()
+        .map(Attachment::getFileName)
+        .filter(fn -> fn != null && !fn.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(", "));
+
+    String newFilesSummary = existingAtts.stream()
+        .filter(att -> !att.getId().equals(attachmentId))
+        .map(Attachment::getFileName)
+        .filter(fn -> fn != null && !fn.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(", "));
+
     try {
       java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
     } catch (Exception e) {
@@ -1149,6 +1193,8 @@ public class ScadaService {
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     if (wasApproved) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
       historyRepository.save(InfrastructureHistory.builder()
           .refId(entityId)
           .refType(InfrastructureType.SCADA)
@@ -1157,8 +1203,9 @@ public class ScadaService {
           .approvedBy(userId)
           .approvedDate(LocalDateTime.now())
           .changedField("Tài liệu đính kèm")
-          .previousValue(attachment.getFileName())
-          .newValue("—")
+          .approvalContent("Xóa tệp: " + fileName)
+          .previousValue(oldVal != null ? oldVal : "—")
+          .newValue(newVal != null ? newVal : "—")
           .build());
     }
   }

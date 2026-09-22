@@ -27,6 +27,13 @@ export interface SearchResponse<T> {
   size: number;
 }
 
+export function normalizeRadarIdentityFilters(stationName?: string, code?: string) {
+  return {
+    stationName: stationName?.trim() || undefined,
+    code: code?.trim() || undefined,
+  };
+}
+
 export const radarStationCRUD = {
   async getById(id: string): Promise<RadarStationResponse> {
     const res = await api.get(`${BASE_PATH}/${id}`);
@@ -49,7 +56,7 @@ export const radarStationCRUD = {
     return toSingle<Record<string, number>>(res.data) || {};
   },
 
-  async search(params?: any): Promise<any> {
+  async search(params?: ListParams): Promise<SearchResponse<RadarStationResponse>> {
     return radarStationCRUD.searchPaged(params);
   },
 
@@ -140,11 +147,13 @@ export const radarStationApproval = {
   },
 
   // Legacy aliases
-  async approveL1(id: string, _approverId?: string): Promise<RadarStationResponse> {
+  async approveL1(id: string, approverId?: string): Promise<RadarStationResponse> {
+    void approverId;
     return this.approveLevel1(id);
   },
 
-  async reject(id: string, rejectReason: string, _approverId?: string): Promise<RadarStationResponse> {
+  async reject(id: string, rejectReason: string, approverId?: string): Promise<RadarStationResponse> {
+    void approverId;
     return this.rejectLevel1(id, rejectReason);
   },
 

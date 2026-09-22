@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.vtssystem.service;
 
 import com.hanghai.kchtg.common.entity.*;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
@@ -1666,6 +1667,15 @@ public class VtsSystemService {
             throw new RuntimeException("Không thể lưu tài liệu đính kèm", ex);
         }
 
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(vtsSystemId, InfrastructureType.VTS_SYSTEM);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         String relativeFilePath = "uploads/vts-attachments/" + vtsSystemId + "/" + safeName;
         InfrastructureAttachment saved = attachmentRepository.save(InfrastructureAttachment.builder()
                 .refId(vtsSystemId)
@@ -1678,6 +1688,12 @@ public class VtsSystemService {
                 .uploadedDate(LocalDateTime.now())
                 .build());
 
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        if (originalName != null && !originalName.isBlank() && !fileListAfter.contains(originalName.trim())) {
+            fileListAfter.add(originalName.trim());
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
         UUID effectiveUserId = userId != null ? userId : SecurityUtils.getCurrentUserId();
         entity.setUpdatedBy(effectiveUserId);
         repository.save(entity);
@@ -1686,16 +1702,22 @@ public class VtsSystemService {
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
         if (historyRepository != null && wasApproved) {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(vtsSystemId)
-                    .refType(InfrastructureType.VTS_SYSTEM)
-                    .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
-                    .approvedBy(effectiveUserId)
-                    .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(null)
-                    .newValue(originalName)
-                    .build());
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal)) {
+                historyRepository.save(InfrastructureHistory.builder()
+                        .refId(vtsSystemId)
+                        .refType(InfrastructureType.VTS_SYSTEM)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                        .approvedBy(effectiveUserId)
+                        .approvedDate(LocalDateTime.now())
+                        .changedField("Tài liệu đính kèm")
+                        .approvalContent("Tải lên tệp: " + originalName)
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
+                        .build());
+            }
         }
 
         return toAttachmentResponse(saved);
@@ -1724,6 +1746,21 @@ public class VtsSystemService {
             }
         } catch (Exception ignored) {
         }
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(vtsSystemId, InfrastructureType.VTS_SYSTEM);
+        String oldFilesSummary = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attachmentId))
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         attachmentRepository.delete(attachment);
 
         UUID effectiveUserId = SecurityUtils.getCurrentUserId();
@@ -1734,15 +1771,19 @@ public class VtsSystemService {
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
         if (historyRepository != null && wasApproved) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(vtsSystemId)
                     .refType(InfrastructureType.VTS_SYSTEM)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(effectiveUserId)
                     .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(fileName)
-                    .newValue(null)
+                    .changedField("Tài liệu đính kèm")
+                    .approvalContent("Xóa tệp: " + fileName)
+                    .previousValue(oldVal != null ? oldVal : "—")
+                    .newValue(newVal != null ? newVal : "—")
                     .build());
         }
     }

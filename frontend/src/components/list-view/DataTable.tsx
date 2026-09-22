@@ -37,10 +37,48 @@ function extractHeaderLabel(val: any): string {
   return '';
 }
 
+export function isStatusOrConditionColumn(column: any): boolean {
+  if (!column) return false;
+  if (column.type === 'status') return true;
+  const key = String(column.key || '').trim().toLowerCase();
+  const dataKey = String(column.dataIndex || '').trim().toLowerCase();
+  const statusKeys = [
+    'status',
+    'approvalstatus',
+    'approval_status',
+    'condition',
+    'conditionstatus',
+    'condition_status',
+    'operationalstatus',
+    'operational_status',
+    'assetcondition',
+    'portstatus',
+    'port_status',
+    'statusoperation',
+    'status_operation',
+    'operatingstatus',
+    'operating_status',
+    'validitystatus',
+  ];
+  if (statusKeys.includes(key) || statusKeys.includes(dataKey)) return true;
+
+  const rawTitle = extractHeaderLabel(column.title ?? column.label).trim().toLowerCase();
+  if (
+    rawTitle.includes('trạng thái') ||
+    rawTitle.includes('tình trạng') ||
+    rawTitle === 'status' ||
+    rawTitle === 'condition'
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function headerMinWidth(column: any): number {
   const label = extractHeaderLabel(column?.label ?? column?.title);
   if (!label) return 0;
-  const sorterSpace = (column.sortable || column.sorter) ? HEADER_SORTER_WIDTH : 0;
+  const isStatusOrCond = isStatusOrConditionColumn(column);
+  const sorterSpace = (!isStatusOrCond && (column.sortable || column.sorter)) ? HEADER_SORTER_WIDTH : 0;
   const lines = label.split('\n');
   const maxLineLength = Math.max(...lines.map((l: string) => l.trim().length));
   return Math.ceil(maxLineLength * HEADER_CHAR_WIDTH) + HEADER_HORIZONTAL_PADDING + sorterSpace;
@@ -230,7 +268,7 @@ const DataTable: React.FC<DataTableProps> = ({
     // that stable identity so a click on "Cán bộ cập nhật" cannot be applied
     // to the preceding Name/Code column.
     const activeColumn = (columns as DataTableColumn[] | undefined)?.find(
-      (column) => column.sortOrder === 'ascend' || column.sortOrder === 'descend',
+      (column) => !isStatusOrConditionColumn(column) && (column.sortOrder === 'ascend' || column.sortOrder === 'descend'),
     );
     if (activeColumn) {
       lastServerSortRef.current = {
@@ -338,7 +376,8 @@ const DataTable: React.FC<DataTableProps> = ({
     const dataKey = col.dataIndex || col.key;
     // Theme quyết định có bật sắp xếp sẵn hay không. Chỉ áp cho cột có
     // `dataIndex` — STT và cột thao tác không có nên luôn nằm ngoài, đúng như chk.
-    const isSortable = col.sortable ?? Boolean(col.sorter || (tableSortableByDefault && col.dataIndex));
+    const isStatusOrCond = isStatusOrConditionColumn(col);
+    const isSortable = isStatusOrCond ? false : (col.sortable ?? Boolean(col.sorter || (tableSortableByDefault && col.dataIndex)));
     // Khi màn hình truyền `onSort`, mọi thứ tự phải do API quyết định. Không dùng
     // comparator tại client vì AntD sẽ vừa đổi thứ tự cục bộ vừa phát event sort,
     // làm một lần click bị xử lý hai lần và trạng thái icon nhảy sang cột khác.
@@ -362,12 +401,12 @@ const DataTable: React.FC<DataTableProps> = ({
       width: widthlessStretchColumns.some((column) => column.key === col.key)
         ? widthlessStretchColumnWidth
         : (col.key === explicitStretchColumn?.key ? explicitStretchColumnWidth : col.width),
-      sorter: sorterFn,
+      sorter: isSortable ? sorterFn : undefined,
       // AntD supplies the standard sorter affordance. Server-side columns
       // intercept the click below, because AntD itself has only two concrete
       // directions and cannot reliably represent the third cleared state.
-      sortDirections: ['ascend', 'descend'],
-      ...(tableSortIcon ? { sortIcon: tableSortIcon } : null),
+      sortDirections: isSortable ? ['ascend', 'descend'] : undefined,
+      ...(isSortable && tableSortIcon ? { sortIcon: tableSortIcon } : null),
       showSorterTooltip: false,
       align: col.align,
       fixed: col.fixed,
@@ -426,7 +465,7 @@ const DataTable: React.FC<DataTableProps> = ({
           onSort(field, nextOrder);
         } : undefined,
       }),
-      title: <span style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{((col as any).title ?? col.label)}</span>,
+      title: <span style={{ whiteSpace: 'nowrap' }}>{((col as any).title ?? col.label)}</span>,
       onCell: (record: any) => {
         let cellTitleText: string | undefined = undefined;
         if (col.cellTitle) {
@@ -464,12 +503,14 @@ const DataTable: React.FC<DataTableProps> = ({
       },
     };
 
-    if (col.sortOrder !== undefined) {
-      colObj.sortOrder = col.sortOrder;
-    } else if (onSort && isSortable) {
-      colObj.sortOrder = null;
-    } else if (isSortable) {
-      colObj.sortOrder = localSort.field === dataKey ? localSort.order ?? null : null;
+    if (isSortable) {
+      if (col.sortOrder !== undefined) {
+        colObj.sortOrder = col.sortOrder;
+      } else if (onSort) {
+        colObj.sortOrder = null;
+      } else {
+        colObj.sortOrder = localSort.field === dataKey ? localSort.order ?? null : null;
+      }
     }
 
     return colObj;

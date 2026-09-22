@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Typography, Modal, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer, Row, Col } from 'antd';
+import { Typography, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer, Row, Col } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
@@ -45,8 +45,6 @@ import {
   fontWeightBold,
   fontWeightMedium,
   fontSizeMd,
-  fontSizeLg,
-  cardStyle,
   radiusPill,
   borderDefault,
   spaceFormField,
@@ -85,16 +83,6 @@ const VALIDITY_STATUS_MAP: Record<string, string> = {
   EFFECTIVE: 'Còn hiệu lực',
   EXPIRING_SOON: 'Sắp hết hiệu lực',
   EXPIRED: 'Đã hết hiệu lực',
-};
-
-const HISTORY_ACTION_MAP: Record<string, string> = {
-  CREATED: 'Tạo mới',
-  UPDATED: 'Cập nhật',
-  DELETED: 'Xóa',
-  EXPIRED: 'Hết hiệu lực',
-  DRAFT_SAVED: 'Lưu bản nháp',
-  ATTACHMENT_UPLOADED: 'Tải lên tệp đính kèm',
-  ATTACHMENT_DELETED: 'Xóa tệp đính kèm',
 };
 
 const VALIDITY_STATUS_COLOR: Record<string, string> = {
@@ -137,7 +125,7 @@ export default function LegalDocumentList() {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [isError, setIsError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [, setErrorMessage] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
@@ -410,7 +398,7 @@ export default function LegalDocumentList() {
     { key: 'issuingAuthority', label: 'Cơ quan ban hành', dataIndex: 'issuingAuthority', width: 200, sortable: true },
     { key: 'signer', label: 'Người ký', dataIndex: 'signer', width: 140 },
     {
-      key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, sortable: true, align: 'center' as const,
+      key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, align: 'center' as const,
       render: (val: string) => {
         const color = VALIDITY_STATUS_COLOR[val] || textSecondary;
         const label = VALIDITY_STATUS_MAP[val] || val || '';

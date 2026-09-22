@@ -208,15 +208,52 @@ public class PierService {
                 operationalFunction, updatedFrom, updatedTo, null);
     }
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return null;
+        return switch (sortBy.trim()) {
+            case "pierCode", "code" -> "pierCode";
+            case "pierName", "name" -> "pierName";
+            case "pierType" -> "pierType";
+            case "province", "provinceId" -> "province";
+            case "status", "conditionStatus", "operationalStatus" -> "operationalStatus";
+            case "approvalStatus" -> "approvalStatus";
+            case "constructionGrade" -> "constructionGrade";
+            case "structureType" -> "structureType";
+            case "operationalFunction" -> "operationalFunction";
+            case "updatedAt", "updatedByName" -> EntityFields.UPDATED_AT;
+            case "createdAt", "createdDate" -> EntityFields.CREATED_AT;
+            default -> null;
+        };
+    }
+
     @Transactional(readOnly = true)
     public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
             String search, String pierCode, String pierName, UUID berthId, UUID portId, PierType pierType, String province,
             String status, String approvalStatus, UUID navigationChannelId,
             Integer constructionGrade, Integer structureType, String operationalFunction,
             String updatedFrom, String updatedTo, Boolean isDeleted) {
+        return findAll(page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province,
+                status, approvalStatus, navigationChannelId, constructionGrade, structureType,
+                operationalFunction, updatedFrom, updatedTo, isDeleted, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<PierResponse> findAll(int page, int size, UUID orgUnitId,
+            String search, String pierCode, String pierName, UUID berthId, UUID portId, PierType pierType, String province,
+            String status, String approvalStatus, UUID navigationChannelId,
+            Integer constructionGrade, Integer structureType, String operationalFunction,
+            String updatedFrom, String updatedTo, Boolean isDeleted,
+            String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         boolean deletedOnly = "DELETED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)
                 || "ARCHIVED".equalsIgnoreCase(approvalStatus != null ? approvalStatus.trim() : null)

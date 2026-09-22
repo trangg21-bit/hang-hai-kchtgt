@@ -394,8 +394,6 @@ export default function VtsOperationCenterList() {
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
     (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
 
-  const serverSideSorter = () => 0;
-
   const refreshList = useCallback(() => {
     if (!isOptionsReady) return;
     statusCountFilterKey.current = null;
@@ -606,7 +604,6 @@ export default function VtsOperationCenterList() {
       width: 260,
       fixed: 'left' as const,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('name'),
       render: (_: unknown, record: VtsOperationCenterListItem) => (
         <div
@@ -630,7 +627,6 @@ export default function VtsOperationCenterList() {
       width: 220,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('orgUnitName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: fontWeightBold }} title={v}>{v || '—'}</div>,
     },
@@ -641,7 +637,6 @@ export default function VtsOperationCenterList() {
       width: 200,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('portName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
     },
@@ -652,7 +647,6 @@ export default function VtsOperationCenterList() {
       width: 220,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('vtsSystemName'),
       render: (v: string) => <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>{v || '—'}</div>,
     },
@@ -663,7 +657,6 @@ export default function VtsOperationCenterList() {
       width: 260,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('provinceId'),
       render: (_: unknown, record: VtsOperationCenterListItem) => {
         const provinceName = record.provinceName || (record.provinceId ? getProvinceNameById(record.provinceId) : '') || '—';
@@ -680,9 +673,6 @@ export default function VtsOperationCenterList() {
       dataIndex: 'conditionStatus',
       width: 220,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
         const s = CONDITION_STYLE_MAP[v] || {
           color: themeTokenChk.getVtsConditionStatusColor(v),
@@ -697,9 +687,6 @@ export default function VtsOperationCenterList() {
       dataIndex: 'approvalStatus',
       width: 180,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
     {
@@ -709,7 +696,6 @@ export default function VtsOperationCenterList() {
       width: 260,
       hidden: !isRejectedTab,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('rejectionReason'),
       render: (val: string) => (
         <span title={val || ''} style={{ color: textSecondary }}>{val || '—'}</span>
@@ -722,7 +708,6 @@ export default function VtsOperationCenterList() {
       width: 200,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('submittedByName'),
       render: (_: unknown, record: VtsOperationCenterListItem) => {
         const name = record.submittedByName || '—';
@@ -756,7 +741,6 @@ export default function VtsOperationCenterList() {
       width: 240,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('approverLevel1Name'),
       render: (_: unknown, record: VtsOperationCenterListItem) => {
         const name = record.approverLevel1Name || '—';
@@ -790,7 +774,6 @@ export default function VtsOperationCenterList() {
       width: 200,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('approverLevel2Name'),
       render: (_: unknown, record: VtsOperationCenterListItem) => {
         const name = record.approverLevel2Name || '—';
@@ -824,7 +807,6 @@ export default function VtsOperationCenterList() {
       width: 200,
       ellipsis: false,
       sortable: true,
-      sorter: serverSideSorter,
       sortOrder: sortOrderFor('updatedByName'),
       render: (_: unknown, record: VtsOperationCenterListItem) => {
         const name = record.updatedByName || record.createdByName || '—';

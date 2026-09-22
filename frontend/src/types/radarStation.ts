@@ -190,9 +190,4 @@ export const CONDITION_STATUS_OPTIONS = [
   { value: '2', label: 'Dừng khai thác/vận hành' },
 ];
 
-export const UNIT_OF_MEASURE_OPTIONS = [
-  { value: 'Cái', label: 'Cái' },
-  { value: 'Trạm', label: 'Trạm' },
-  { value: 'Bộ', label: 'Bộ' },
-  { value: 'Hệ thống', label: 'Hệ thống' },
-];
+export { ASSET_QUANTITY_UNIT_OPTIONS as UNIT_OF_MEASURE_OPTIONS } from '../constants/assetDropdown';

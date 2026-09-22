@@ -29,7 +29,10 @@ public class BuoyStationResponse {
     private Double range;
     private String description;
     private UUID unitId;
+    private String unitName;
+    private String orgUnitName;
     private UUID operatingOrgId;
+    private String operatingOrgName;
     private UUID portId;
     private UUID waterwayId;
     private UUID waterwayRouteId;

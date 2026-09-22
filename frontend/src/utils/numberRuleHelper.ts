@@ -2,14 +2,29 @@ import type { Rule } from 'antd/es/form';
 
 /**
  * Chuẩn hóa số thập phân theo quy chuẩn:
- * - Chỉ chấp nhận chữ số và dấu "."
+ * - Chấp nhận dấu thập phân "." hoặc "," và chuẩn hóa về "."
  * - Số sau dấu "." tối đa 4 chữ số
  * - Giới hạn 20 chữ số khi không có dấu "."
  * - Giới hạn chữ số phần nguyên khi có dấu "." là 16 (vẫn cho điền tối đa 4 chữ số sau dấu chấm)
  */
 export const normalizeDecimal20_4 = (val: unknown): string => {
   if (val === null || val === undefined || val === '') return '';
-  const s = String(val).replace(/,/g, '').replace(/[^0-9.]/g, '');
+  const raw = String(val).replace(/[^0-9.,]/g, '');
+  const lastDot = raw.lastIndexOf('.');
+  const lastComma = raw.lastIndexOf(',');
+  const hasMixedSeparators = lastDot !== -1 && lastComma !== -1;
+  const separatorCount = (raw.match(/[.,]/g) || []).length;
+  const decimalIndex = hasMixedSeparators
+    ? Math.max(lastDot, lastComma)
+    : separatorCount === 1
+      ? Math.max(lastDot, lastComma)
+      : lastDot !== -1
+        ? raw.indexOf('.')
+        : -1;
+  const hasDecimalSeparator = decimalIndex !== -1;
+  const s = hasDecimalSeparator
+    ? `${raw.slice(0, decimalIndex).replace(/[.,]/g, '')}.${raw.slice(decimalIndex + 1).replace(/[.,]/g, '')}`
+    : raw.replace(/,/g, '').replace(/[^0-9.]/g, '');
   if (!s) return '';
 
   const dotIdx = s.indexOf('.');
@@ -37,10 +52,11 @@ export const getValueFromEvent20 = (val: unknown): string | null => {
 export const decimalNumberRule: Rule = {
   validator: (_: unknown, value: unknown) => {
     if (value === null || value === undefined || value === '') return Promise.resolve();
-    const s = String(value).trim();
-    if (!/^\d+(\.\d+)?$/.test(s) && !/^\d+\.$/.test(s) && !/^\.\d+$/.test(s)) {
-      return Promise.reject(new Error('Chỉ chấp nhận chữ số và dấu "."'));
+    const raw = String(value).trim();
+    if (!/^\d+([.,]\d+)?$/.test(raw) && !/^\d+[.,]$/.test(raw) && !/^[.,]\d+$/.test(raw)) {
+      return Promise.reject(new Error('Chỉ chấp nhận chữ số và dấu "." hoặc ","'));
     }
+    const s = raw.replace(',', '.');
     const dotIdx = s.indexOf('.');
     if (dotIdx !== -1) {
       const intPart = s.slice(0, dotIdx);
@@ -139,4 +155,3 @@ export const integer5NonNegativeRule: Rule = {
     return Promise.resolve();
   },
 };
-

@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Shared authenticated option lookups used by forms and filters across modules.
@@ -76,18 +77,28 @@ public class CommonOptionsService {
     }
 
     public List<PortOptionResponse> getPortOptions(ApprovalStatus approvalStatus) {
+        return getPortOptions(approvalStatus, null);
+    }
+
+    public List<PortOptionResponse> getPortOptions(ApprovalStatus approvalStatus, UUID orgUnitId) {
         OrgUnitScopeService.Scope scope = orgUnitScopeService.currentUserScope();
-        if (scope.unrestricted()) {
+        if (orgUnitId == null && scope.unrestricted()) {
             return approvalStatus == null
                     ? portCacheService.getOptions()
                     : portRepository.findOptionsByApprovalStatus(approvalStatus);
         }
-        if (scope.orgUnitIds().isEmpty()) {
+
+        List<UUID> requestedIds = orgUnitId == null
+                ? scope.orgUnitIds()
+                : orgUnitScopeService.resolveSubtreeIds(orgUnitId).stream()
+                        .filter(scope::allows)
+                        .toList();
+        if (requestedIds.isEmpty()) {
             return List.of();
         }
         return approvalStatus == null
-                ? portRepository.findOptionsByOrgUnitIds(scope.orgUnitIds())
-                : portRepository.findOptionsByOrgUnitIdsAndApprovalStatus(scope.orgUnitIds(), approvalStatus);
+                ? portRepository.findOptionsByOrgUnitIds(requestedIds)
+                : portRepository.findOptionsByOrgUnitIdsAndApprovalStatus(requestedIds, approvalStatus);
     }
 
     public List<OperatingOrganizationOptionResponse> getOperatingOrganizationOptions(String keyword) {

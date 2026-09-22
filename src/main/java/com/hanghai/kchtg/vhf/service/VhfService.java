@@ -57,6 +57,7 @@ import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Service for VHF communication system CRUD operations.
@@ -1009,6 +1010,17 @@ public class VhfService {
     }
     List<Attachment> saved = new ArrayList<>();
     java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+
+    // 1. Snapshot danh sách file trước khi upload
+    List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+    List<String> fileListBefore = existingAtts.stream()
+            .map(Attachment::getFileName)
+            .filter(fn -> fn != null && !fn.isBlank())
+            .map(String::trim)
+            .collect(Collectors.toList());
+    String oldFilesSummary = String.join(", ", fileListBefore);
+    List<String> uploadedFileNames = new ArrayList<>();
+
     Vhf entity = vhfRepository.findById(entityId).orElse(null);
     boolean isNewlyCreated = entity != null && entity.getCreatedAt() != null
         && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
@@ -1035,16 +1047,33 @@ public class VhfService {
       attachment.setContentType(file.getContentType());
       attachment.setUploadedBy(userId);
       saved.add(attachmentRepository.save(attachment));
-      if (wasApproved) {
+      uploadedFileNames.add(originalFilename);
+    }
+
+    // 2. Snapshot danh sách file sau khi upload
+    List<String> fileListAfter = new ArrayList<>(fileListBefore);
+    for (String fn : uploadedFileNames) {
+      if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+        fileListAfter.add(fn.trim());
+      }
+    }
+    String newFilesSummary = String.join(", ", fileListAfter);
+
+    if (wasApproved && !uploadedFileNames.isEmpty()) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+      if (!Objects.equals(oldVal, newVal)) {
         historyRepository.save(InfrastructureHistory.builder()
             .refId(entityId)
             .refType(InfrastructureType.VHF)
-            .approvalLevel(ApprovalLevel.LEVEL_2)
+            .approvalLevel(ApprovalLevel.LEVEL_0)
             .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
             .approvedBy(userId)
+            .approvedDate(LocalDateTime.now())
             .changedField("Tài liệu đính kèm")
-            .previousValue(null)
-            .newValue(originalFilename)
+            .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+            .previousValue(oldVal != null ? oldVal : "—")
+            .newValue(newVal != null ? newVal : "—")
             .build());
       }
     }
@@ -1069,6 +1098,22 @@ public class VhfService {
     Attachment attachment = attachmentRepository.findById(attachmentId)
         .filter(a -> "VHF".equalsIgnoreCase(a.getEntityType()) && entityId.equals(a.getEntityId()))
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file đính kèm với id: " + attachmentId));
+    String fileName = attachment.getFileName();
+    final String entityType = "VHF";
+    List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+    String oldFilesSummary = existingAtts.stream()
+        .map(Attachment::getFileName)
+        .filter(fn -> fn != null && !fn.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(", "));
+
+    String newFilesSummary = existingAtts.stream()
+        .filter(att -> !att.getId().equals(attachmentId))
+        .map(Attachment::getFileName)
+        .filter(fn -> fn != null && !fn.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(", "));
+
     try {
       java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
     } catch (Exception ignored) {}
@@ -1078,15 +1123,19 @@ public class VhfService {
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     if (wasApproved) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
       historyRepository.save(InfrastructureHistory.builder()
           .refId(entityId)
           .refType(InfrastructureType.VHF)
-          .approvalLevel(ApprovalLevel.LEVEL_2)
+          .approvalLevel(ApprovalLevel.LEVEL_0)
           .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
           .approvedBy(userId)
+          .approvedDate(LocalDateTime.now())
           .changedField("Tài liệu đính kèm")
-          .previousValue(attachment.getFileName())
-          .newValue(null)
+          .approvalContent("Xóa tệp: " + fileName)
+          .previousValue(oldVal != null ? oldVal : "—")
+          .newValue(newVal != null ? newVal : "—")
           .build());
     }
   }

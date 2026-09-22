@@ -85,15 +85,17 @@ public class PierController {
             @RequestParam(required = false) Integer structureType,
             @RequestParam(required = false) String operationalFunction,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, pierCode={}, pierName={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, isDeleted={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}",
+                "Listing Piers: page={}, size={}, orgUnitId={}, search={}, pierCode={}, pierName={}, berthId={}, portId={}, pierType={}, province={}, status={}, approvalStatus={}, isDeleted={}, navigationChannelId={}, constructionGrade={}, structureType={}, operationalFunction={}, updatedFrom={}, updatedTo={}, sortBy={}, sortDir={}",
                 page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status, approvalStatus, isDeleted,
-                navigationChannelId, constructionGrade, structureType, operationalFunction, updatedFrom, updatedTo);
+                navigationChannelId, constructionGrade, structureType, operationalFunction, updatedFrom, updatedTo, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
                 pierService.findAll(page, size, orgUnitId, search, pierCode, pierName, berthId, portId, pierType, province, status,
                         approvalStatus, navigationChannelId, constructionGrade, structureType,
-                        operationalFunction, updatedFrom, updatedTo, isDeleted)));
+                        operationalFunction, updatedFrom, updatedTo, isDeleted, sortBy, sortDir)));
     }
 
     @GetMapping("/code/{pierCode}")

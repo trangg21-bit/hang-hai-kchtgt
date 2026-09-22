@@ -540,7 +540,7 @@ export default function BeaconStationList() {
         counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
       });
       const sumChildCounts = STATUS_TAB_LIST
-        .filter((t) => t.key !== '' && t.key !== 'ARCHIVED')
+        .filter((t) => t.key !== '')
         .reduce((acc, t) => acc + (counts[t.key] || 0), 0);
       counts[''] = sumChildCounts;
       setTabCounts(counts);
@@ -1019,8 +1019,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 230,
-      sortOrder: sortOrderFor('operationalStatus'),
-      render: (v: number) => {
+            render: (v: number) => {
         const s = OPERATIONAL_STATUS_STYLE_MAP[v];
         return s
           ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
@@ -1041,8 +1040,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
-      sortOrder: sortOrderFor('status'),
-      render: (status: string, record: BeaconStation) => {
+            render: (status: string, record: BeaconStation) => {
         const isDeleted = Boolean(
           record.deletedAt ||
           record.deletedBy ||
@@ -1341,7 +1339,7 @@ export default function BeaconStationList() {
   // ── Status tabs config (FilterTableLayout renders StatusTabs itself) ──
   const statusTabs = useMemo(() => {
     const allChildSum = STATUS_TAB_LIST
-      .filter((t) => t.key !== '' && t.key !== 'ARCHIVED')
+      .filter((t) => t.key !== '')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return STATUS_TAB_LIST.map((tab) => {

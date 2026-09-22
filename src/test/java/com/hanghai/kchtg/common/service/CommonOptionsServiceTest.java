@@ -63,4 +63,19 @@ class CommonOptionsServiceTest {
         verify(portRepository).findOptionsByOrgUnitIdsAndApprovalStatus(
                 List.of(orgUnitId), ApprovalStatus.APPROVED);
     }
+
+    @Test
+    void approvedPortOptionsUseSelectedOrganizationSubtree() {
+        UUID parentId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        PortOptionResponse option = new PortOptionResponse();
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(orgUnitScopeService.resolveSubtreeIds(parentId)).thenReturn(List.of(parentId, childId));
+        when(portRepository.findOptionsByOrgUnitIdsAndApprovalStatus(
+                List.of(parentId, childId), ApprovalStatus.APPROVED)).thenReturn(List.of(option));
+
+        assertThat(service.getPortOptions(ApprovalStatus.APPROVED, parentId)).containsExactly(option);
+        verify(portRepository).findOptionsByOrgUnitIdsAndApprovalStatus(
+                List.of(parentId, childId), ApprovalStatus.APPROVED);
+    }
 }

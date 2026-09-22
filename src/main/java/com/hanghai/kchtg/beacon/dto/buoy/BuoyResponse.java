@@ -32,6 +32,7 @@ public class BuoyResponse {
     private UUID orgUnitId;
     private UUID navigationChannelId;
     private String unitName;
+    private String orgUnitName;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;

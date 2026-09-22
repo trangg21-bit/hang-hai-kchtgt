@@ -39,8 +39,8 @@ export const vtsSystemCRUD = {
     return Array.isArray(orgs) ? orgs : [];
   },
 
-  async getScopedPortOptions(): Promise<Array<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }>> {
-    return portCRUD.getOptions();
+  async getScopedPortOptions(params?: { approvalStatus?: string; orgUnitId?: string }): Promise<Array<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }>> {
+    return portCRUD.getOptions(params);
   },
 
   async getOperatingOrganizationOptions(): Promise<Array<{ id: string; name: string; code: string }>> {

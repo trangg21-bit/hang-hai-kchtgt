@@ -86,13 +86,15 @@ public class BerthController {
             @RequestParam(required = false) String operationalFunction,
             @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, berthCode, berthName, portId, operationalStatus, approvalStatus);
+                "Listing Berths: page={}, size={}, orgUnitId={}, search={}, berthCode={}, berthName={}, portId={}, status={}, approvalStatus={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, berthCode, berthName, portId, operationalStatus, approvalStatus, sortBy, sortDir);
         Page<BerthResponse> result = berthService.findAll(page, size, orgUnitId,
                 berthCode, berthName, portId, waterway, waterwayId, berthType, operationalStatus, approvalStatus, search,
-                structureType, operationalFunction, provinceId, updatedFrom, updatedTo);
+                structureType, operationalFunction, provinceId, updatedFrom, updatedTo, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến cảng thành công", result));
     }
 

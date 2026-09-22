@@ -39,6 +39,8 @@ export const navigationChannelCRUD = {
         updatedBy: params?.updatedBy,
         sortField: params?.sortField,
         sortOrder: params?.sortOrder,
+        sortBy: params?.sortBy || params?.sortField,
+        sortDir: params?.sortDir || params?.sortOrder,
         page: params?.page || 0,
         size: params?.size || 20,
       },

@@ -185,11 +185,6 @@ const renderDmsGroup = (
     </div>
   );
 };
-const parseInteger = (v: string | undefined): number => {
-  const intPart = (v ?? '').replace(/,/g, '').split('.')[0];
-  return intPart === '' ? 0 : Number(intPart);
-};
-
 const ddToDms = (v: number | null | undefined): { d: number | null; m: number | null; s: number | null } => {
   if (v == null || isNaN(v)) return { d: null, m: null, s: null };
   const abs = Math.abs(v);
@@ -257,8 +252,20 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   onFinish,
 }, ref) {
   const currentUser = useAuthStore((s) => s.user);
-  const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [operatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
+  const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/common/options/operating-organizations');
+        const data = res.data?.data;
+        if (Array.isArray(data) && data.length > 0 && !cancelled) setOperatingOrgs(data);
+      } catch {
+        // Giữ danh sách mặc định nếu endpoint lỗi
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Dữ liệu cây đơn vị cho OrgUnitTreeSelect: ưu tiên organizations từ parent, fallback danh sách tự fetch
   const orgUnitTreeData = useMemo<OrgUnitTreeOption[]>(() => {
@@ -274,7 +281,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   const [coordinateList, setCoordinateList] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [gpsPage, setGpsPage] = useState(1);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   const editPortIdRef = useRef<string | undefined>(undefined);

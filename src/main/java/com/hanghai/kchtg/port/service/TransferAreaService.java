@@ -744,6 +744,15 @@ public class TransferAreaService {
         }).collect(Collectors.toList());
     }
 
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) {
+            return GisSpatialObjectType.POINT_OTHER;
+        } else if (geomType == GisGeometryType.LINE) {
+            return GisSpatialObjectType.LINE_OTHER;
+        }
+        return GisSpatialObjectType.POLYGON_TRANSSHIPMENT;
+    }
+
     private void persistGisAndMooring(TransferArea saved, GisGeometryType geometryType, String coordinates,
                                       BigDecimal longitude, BigDecimal latitude,
                                       List<TransferAreaMooringWaterAreaRequest> mooringWaterAreas) {
@@ -755,7 +764,7 @@ public class TransferAreaService {
             GisGeometryType geomType = geometryType;
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(), saved.getTransferAreaName(), "TRANSFER_AREA_" + saved.getTransferAreaCode(),
-                    geomType, GisSpatialObjectType.POLYGON_TRANSSHIPMENT, wkt, saved.getId(),
+                    geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
                     InfrastructureType.TRANSSHIPMENT_AREA);
             saved.setSpatialId(spatialObj.getId());
             transferAreaRepository.saveAndFlush(saved);
@@ -870,11 +879,21 @@ public class TransferAreaService {
     private String buildMooringWaterAreaSummary(List<TransferAreaMooringWaterArea> areas) {
         if (areas == null || areas.isEmpty()) return "";
         List<String> parts = new ArrayList<>();
-        for (TransferAreaMooringWaterArea wa : areas) {
-            String desc = (wa.getDescription() == null || wa.getDescription().isBlank())
-                    ? "(khu nước không mô tả)" : wa.getDescription().trim();
-            long pointCount = transferAreaMooringWaterAreaAnchorPointRepository.findByTransferAreaMooringWaterAreaId(wa.getId()).size();
-            parts.add(desc + " (" + pointCount + " điểm)");
+        for (int i = 0; i < areas.size(); i++) {
+            TransferAreaMooringWaterArea wa = areas.get(i);
+            String desc = (wa.getDescription() != null && !wa.getDescription().isBlank())
+                    ? wa.getDescription().trim() : ("Khu nước " + (i + 1));
+            List<TransferAreaMooringWaterAreaAnchorPoint> points =
+                    transferAreaMooringWaterAreaAnchorPointRepository.findByTransferAreaMooringWaterAreaId(wa.getId());
+            if (points.isEmpty()) {
+                parts.add(desc + " (0 điểm)");
+            } else {
+                String ptDetails = points.stream()
+                        .map(p -> (p.getName() != null && !p.getName().isBlank() ? p.getName().trim() : "Điểm neo")
+                                + (p.getLatitude() != null && p.getLongitude() != null ? " [" + p.getLatitude() + ", " + p.getLongitude() + "]" : ""))
+                        .collect(Collectors.joining(", "));
+                parts.add(desc + " (" + points.size() + " điểm: " + ptDetails + ")");
+            }
         }
         return areas.size() + " khu nước: " + String.join("; ", parts);
     }

@@ -925,9 +925,10 @@ public class RadarStationService {
             return rawValue;
         }
         if ("conditionStatus".equals(field) || "Tình trạng".equals(field) || "Tình trạng hoạt động".equals(field)) {
+            if ("0".equals(rawValue) || "NOT_YET_OPERATIONAL".equalsIgnoreCase(rawValue)) return "Chưa khai thác/vận hành";
             if ("1".equals(rawValue) || "OPERATIONAL".equalsIgnoreCase(rawValue)) return "Đang khai thác/vận hành";
-            if ("2".equals(rawValue) || "MAINTENANCE".equalsIgnoreCase(rawValue)) return "Đang bảo trì";
-            if ("3".equals(rawValue) || "STOPPED".equalsIgnoreCase(rawValue)) return "Dừng khai thác/vận hành";
+            if ("2".equals(rawValue) || "STOPPED".equalsIgnoreCase(rawValue) || "SUSPENDED".equalsIgnoreCase(rawValue)) return "Dừng khai thác/vận hành";
+            if ("3".equals(rawValue) || "MAINTENANCE".equalsIgnoreCase(rawValue)) return "Đang bảo trì";
             if ("4".equals(rawValue) || "UNDER_CONSTRUCTION".equalsIgnoreCase(rawValue)) return "Đang xây dựng";
             return rawValue;
         }
@@ -975,15 +976,23 @@ public class RadarStationService {
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
-        boolean isNewlyCreated = entity.getCreatedAt() != null
-                && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
-        boolean wasApproved = !isNewlyCreated && (entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2);
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
-        long existingCount = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION).size();
+        List<InfrastructureAttachment> existingAtts = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION);
+        long existingCount = existingAtts.size();
         if (existingCount + files.size() > 10) {
             throw new IllegalArgumentException("Tối đa 10 file đính kèm");
         }
+
+        // 1. Snapshot danh sách file trước khi upload
+        List<String> fileListBefore = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+        List<String> uploadedFileNames = new ArrayList<>();
 
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
         List<InfrastructureAttachment> savedAttachments = new ArrayList<>();
@@ -1011,8 +1020,22 @@ public class RadarStationService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+            uploadedFileNames.add(originalFilename);
+        }
 
-            if (historyRepository != null && wasApproved) {
+        // 2. Snapshot danh sách file sau khi upload
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        if (historyRepository != null && wasApproved && !uploadedFileNames.isEmpty()) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal)) {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(id)
                         .refType(InfrastructureType.RADAR_STATION)
@@ -1021,8 +1044,9 @@ public class RadarStationService {
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
                         .changedField("Tài liệu đính kèm")
-                        .previousValue("—")
-                        .newValue(originalFilename)
+                        .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
                         .build());
             }
         }
@@ -1043,6 +1067,21 @@ public class RadarStationService {
         InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.RADAR_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
         String fileName = attachment.getFileName();
+
+        List<InfrastructureAttachment> existingAtts = attachmentRepository.findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.RADAR_STATION);
+        String oldFilesSummary = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -1054,6 +1093,8 @@ public class RadarStationService {
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
         if (historyRepository != null && wasApproved) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.RADAR_STATION)
@@ -1062,8 +1103,9 @@ public class RadarStationService {
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
                     .changedField("Tài liệu đính kèm")
-                    .previousValue(fileName)
-                    .newValue("—")
+                    .approvalContent("Xóa tệp: " + fileName)
+                    .previousValue(oldVal != null ? oldVal : "—")
+                    .newValue(newVal != null ? newVal : "—")
                     .build());
         }
     }

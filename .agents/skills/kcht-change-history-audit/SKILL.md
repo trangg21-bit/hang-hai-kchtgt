@@ -85,6 +85,54 @@ private boolean isSkippedField(Field field, Object oldEntity, Object newEntity) 
   - `changeHistory`: Biến động trường dữ liệu (`changedField != null`).
   - `approvalLog`: Lịch sử phê duyệt (`changedField == null && status != null`).
 
+### 3.4. Quy chuẩn lưu vết lịch sử tệp đính kèm (Attachment Snapshot Standard)
+Khi thực hiện tải lên (`uploadAttachments`) hoặc xóa (`deleteAttachment`) tệp đính kèm của hồ sơ **ĐÃ PHÊ DUYỆT**:
+- **Bắt buộc Snapshot toàn bộ danh sách tệp**:
+  - `previousValue`: Chuỗi danh sách toàn bộ tệp đính kèm **TRƯỚC** khi thao tác (ngăn cách bởi dấu phẩy `, `, nếu chưa có tệp nào thì lưu `"—"` hoặc `null`).
+  - `newValue`: Chuỗi danh sách toàn bộ tệp đính kèm **SAU** khi thao tác (ngăn cách bởi dấu phẩy `, `, nếu đã xóa hết tệp thì lưu `"—"` hoặc `null`).
+- **TUYỆT ĐỐI CẤM**:
+  - ❌ **CẤM** hardcode `previousValue("—")` hoặc `previousValue(null)` khi tải lên tệp mới mà thực thể đã có sẵn tệp đính kèm trước đó. Phải hiển thị được danh sách các tệp có sẵn ở vế trước!
+  - ❌ **CẤM** lưu rời rạc từng dòng history cho từng tệp trong vòng lặp upload (làm rác audit log và mất ngữ cảnh snapshot danh sách tệp). Chỉ lưu 1 bản ghi duy nhất cho toàn bộ đợt upload/xóa.
+  - ❌ **CẤM** hardcode `newValue("—")` khi xóa một tệp mà thực thể vẫn còn các tệp đính kèm khác.
+- **Mẫu triển khai chuẩn Backend (chuẩn PortService & BerthService)**:
+  ```java
+  // 1. Snapshot danh sách file TRƯỚC khi upload/xóa
+  List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+  String oldFilesSummary = existingAtts.stream()
+          .map(Attachment::getFileName)
+          .filter(fn -> fn != null && !fn.isBlank())
+          .map(String::trim)
+          .collect(Collectors.joining(", "));
+
+  // Thực hiện lưu tệp mới hoặc xóa tệp...
+
+  // 2. Snapshot danh sách file SAU KHI upload/xóa
+  List<Attachment> allAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+  String newFilesSummary = allAtts.stream()
+          .map(Attachment::getFileName)
+          .filter(fn -> fn != null && !fn.isBlank())
+          .map(String::trim)
+          .collect(Collectors.joining(", "));
+
+  // 3. Ghi 1 bản ghi duy nhất vào infrastructure_history khi hồ sơ ĐÃ PHÊ DUYỆT
+  if (wasApproved && !Objects.equals(oldFilesSummary, newFilesSummary)) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? "—" : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? "—" : newFilesSummary.trim();
+      historyRepository.save(InfrastructureHistory.builder()
+              .refId(entityId)
+              .refType(refType)
+              .approvalLevel(ApprovalLevel.LEVEL_0)
+              .status(isUpload ? InfrastructureHistoryStatus.ATTACHMENT_UPLOADED : InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+              .approvedBy(userId)
+              .approvedDate(LocalDateTime.now())
+              .changedField("Tài liệu đính kèm")
+              .previousValue(oldVal)
+              .newValue(newVal)
+              .reason(isUpload ? "Tải lên tài liệu đính kèm: " + String.join(", ", uploadedFileNames) : "Xóa tài liệu đính kèm: " + deletedFileName)
+              .build());
+  }
+  ```
+
 ---
 
 ## 4. Quy chuẩn Frontend (React / TypeScript)
@@ -235,3 +283,4 @@ renderStandardHistoryCards({
 7. [ ] **Frontend UUID Resolution**: Khớp đúng trường code/name trong interface TypeScript (`transferAreaName`, `stormShelterName`...) để resolve sang tên tiếng Việt trong `formatValue`.
 8. [ ] **Frontend Unit Header**: Có hiển thị tên đơn vị quản lý qua `resolveUnitName`.
 9. [ ] **Badge Count**: Số lượng "Tổng cộng" trên header Drawer đếm chính xác số lần update (số thẻ hiển thị thực tế qua `countStandardHistoryCards`), không đếm số trường raw.
+10. [ ] **Attachment Snapshot History**: Khi upload/xóa file trên bản ghi đã duyệt, `previousValue` và `newValue` phải lưu toàn bộ snapshot danh sách file (`file1, file2` -> `file1, file2, file3`), không hardcode `"—"` hoặc `null` làm mất file có sẵn.

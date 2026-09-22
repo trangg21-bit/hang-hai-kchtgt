@@ -29,7 +29,7 @@ describe('Anchorage Status Bar Filter and Count Logic (/anchorage vs /beacon-sta
     total: number,
   ) => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
@@ -49,7 +49,7 @@ describe('Anchorage Status Bar Filter and Count Logic (/anchorage vs /beacon-sta
     });
   };
 
-  it('tab Tất cả tính bằng tổng các tab con đang hoạt động (không cộng tab Đã xóa DELETED)', () => {
+  it('tab Tất cả tính bằng tổng tất cả các tab con (bao gồm cả tab Đã xóa DELETED)', () => {
     const counts: Record<string, number> = {
       DRAFT: 5,
       PENDING_APPROVAL: 3,
@@ -61,8 +61,8 @@ describe('Anchorage Status Bar Filter and Count Logic (/anchorage vs /beacon-sta
     };
     const tabs = computeStatusTabs(counts, 'all', 32);
     const allTab = tabs.find((t) => t.key === 'all');
-    // 5 + 3 + 2 + 20 + 1 + 1 = 32
-    expect(allTab?.count).toBe(32);
+    // 5 + 3 + 2 + 20 + 1 + 1 + 8 = 40
+    expect(allTab?.count).toBe(40);
     expect(allTab?.active).toBe(true);
 
     const deletedTab = tabs.find((t) => t.key === 'DELETED');
