@@ -28,6 +28,7 @@ import type {
   AssetIncreaseResponse,
 } from '../../services/assetmovement/types';
 import type { VtsSystemAsset } from '../../services/vtsasset/types';
+import { fmtNum } from '../../utils/numFmt';
 import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,

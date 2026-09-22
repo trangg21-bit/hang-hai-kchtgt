@@ -1141,12 +1141,16 @@ export default function CctvSystemAssetList() {
           operationForm.resetFields();
         },
       },
-      {
-        key: 'history',
-        label: 'Lịch sử thay đổi',
-        icon: <HistoryOutlined />,
-        onClick: () => void openHistory(record),
-      },
+      ...(perms.canHistory
+        ? [
+            {
+              key: 'history',
+              label: 'Lịch sử thay đổi',
+              icon: <HistoryOutlined />,
+              onClick: () => void openHistory(record),
+            },
+          ]
+        : []),
       {
         key: 'delete',
         label: 'Xóa',
@@ -1154,7 +1158,7 @@ export default function CctvSystemAssetList() {
         onClick: () => setDeleteTarget(record),
       },
     ],
-  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap]);
+  }), [openDetail, openEdit, operationForm, openHistory, orgName, cctvDeviceMap, perms]);
 
   const headerActions: ScreenHeaderAction[] = useMemo(() => {
     if (!perms.canCreate) return [];

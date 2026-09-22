@@ -90,9 +90,9 @@ export function useKchtPermissions(
   // Base Capabilities
   const canRead = useMemo(() => {
     if (isAdmin) return true;
-    if (hasPerm(`${resource}:read`) || hasPerm('data:read')) return true;
-    return extraReadPerms.some((p) => hasPerm(p));
-  }, [isAdmin, hasPerm, resource, extraReadPerms]);
+    if (hasExplicitPerm(`${resource}:read`) || hasExplicitPerm('data:read')) return true;
+    return extraReadPerms.some((p) => hasExplicitPerm(p));
+  }, [isAdmin, hasExplicitPerm, resource, extraReadPerms]);
 
   const canCreate = useMemo(() => {
     if (isAdmin) return true;

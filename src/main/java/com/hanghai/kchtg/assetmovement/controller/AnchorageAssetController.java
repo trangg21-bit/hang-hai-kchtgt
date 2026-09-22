@@ -111,7 +111,7 @@ public class AnchorageAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'anchorageasset:manage', 'anchorageasset:read', 'anchorage:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'anchorageasset:manage', 'anchorageasset:history', 'anchorage:history', 'anchoragearea:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

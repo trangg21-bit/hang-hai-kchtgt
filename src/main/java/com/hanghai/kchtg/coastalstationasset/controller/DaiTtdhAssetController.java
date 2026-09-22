@@ -128,7 +128,7 @@ public class DaiTtdhAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'daittdhasset:manage', 'daittdhasset:history', 'daittdh:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
     }

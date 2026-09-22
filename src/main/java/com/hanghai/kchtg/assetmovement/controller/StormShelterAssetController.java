@@ -111,7 +111,7 @@ public class StormShelterAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'stormshelterasset:manage', 'stormshelterasset:read', 'stormshelter:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'stormshelterasset:manage', 'stormshelterasset:history', 'stormshelter:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

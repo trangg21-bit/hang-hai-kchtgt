@@ -81,7 +81,7 @@ public class VhfAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'vhfasset:manage', 'vhfasset:read', 'vhf:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vhfasset:manage', 'vhfasset:history', 'vhf:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
     }

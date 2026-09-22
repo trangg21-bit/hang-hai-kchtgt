@@ -112,7 +112,7 @@ public class BuoyAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'buoyasset:manage', 'buoyasset:read', 'buoy:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'buoyasset:manage', 'buoyasset:history', 'buoy:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

@@ -113,7 +113,7 @@ public class EffectivePermissionService {
             Map.entry("lritasset", Set.of("lritasset", "lrit", "coastalstationlrit")),
             Map.entry("lrit", Set.of("lritasset", "lrit", "coastalstationlrit")),
             Map.entry("coastalstationlrit", Set.of("lritasset", "lrit", "coastalstationlrit")),
-            Map.entry("coastalstationinmarsat", Set.of("coastalstationinmarsat")),
+            Map.entry("coastalstationinmarsat", Set.of("inmarsatasset", "inmarsat", "coastalstationinmarsat")),
             Map.entry("cospassarsatasset", Set.of("cospassarsatasset", "cospassarsat", "coastalstationcospassarsat")),
             Map.entry("cospassarsat", Set.of("cospassarsatasset", "cospassarsat", "coastalstationcospassarsat")),
             Map.entry("coastalstationcospassarsat", Set.of("cospassarsatasset", "cospassarsat", "coastalstationcospassarsat")),
@@ -131,8 +131,8 @@ public class EffectivePermissionService {
             Map.entry("transmission", Set.of("transmissionasset", "transmission")),
             Map.entry("daittdhasset", Set.of("daittdhasset", "daittdh")),
             Map.entry("daittdh", Set.of("daittdhasset", "daittdh")),
-            Map.entry("inmarsatasset", Set.of("inmarsatasset", "inmarsat")),
-            Map.entry("inmarsat", Set.of("inmarsatasset", "inmarsat")),
+            Map.entry("inmarsatasset", Set.of("inmarsatasset", "inmarsat", "coastalstationinmarsat")),
+            Map.entry("inmarsat", Set.of("inmarsatasset", "inmarsat", "coastalstationinmarsat")),
             Map.entry("port", Set.of("port", "seaport")),
             Map.entry("seaport", Set.of("port", "seaport")));
 
@@ -188,7 +188,7 @@ public class EffectivePermissionService {
             Map.entry("inmarsatasset", Set.of("infraasset", "inmarsat", "specialstation", "coastalstation", "data")),
             Map.entry("infraasset", Set.of("data")),
             Map.entry("coastalstationlrit", Set.of("specialstation", "coastalstation", "station", "lritasset", "lrit", "infraasset", "data")),
-            Map.entry("coastalstationinmarsat", Set.of()),
+            Map.entry("coastalstationinmarsat", Set.of("specialstation", "coastalstation", "station", "inmarsatasset", "inmarsat", "infraasset", "data")),
             Map.entry("coastalstationhaiphong", Set.of("specialstation", "coastalstation", "station", "infraasset", "data")),
             Map.entry("coastalstationcospassarsat", Set.of("specialstation", "coastalstation", "station", "cospassarsatasset", "cospassarsat", "infraasset", "data")),
             Map.entry("portplanning", Set.of("document")),
@@ -199,6 +199,57 @@ public class EffectivePermissionService {
             Map.entry("shiprepairfacility", Set.of("infraasset", "shiprepairyard", "shiprepair", "port", "data")),
             Map.entry("shiprepair", Set.of("infraasset", "shiprepairyard", "shiprepairfacility", "port", "data")),
             Map.entry("user", Set.of("data", "admin", "infraasset")));
+
+    /**
+     * Bản đồ quan hệ Cha/Ông -> Con/Cháu (Ancestor to Descendants Map)
+     * Khi người dùng được cấp bất kỳ quyền nào của tài nguyên con/cháu,
+     * mặc định được quyền xem danh sách (read) của các cấp cha và ông.
+     */
+    private static final Map<String, Set<String>> RESOURCE_DESCENDANTS = Map.ofEntries(
+            Map.entry("port", Set.of(
+                    "berth", "pier", "shiprepairfacility", "shiprepairyard", "shiprepair",
+                    "anchorage", "transferarea", "stormshelter", "dryport",
+                    "berthasset", "pierasset", "anchorageasset", "transferareaasset", "stormshelterasset", "dryportasset")),
+            Map.entry("seaport", Set.of(
+                    "berth", "pier", "shiprepairfacility", "shiprepairyard", "shiprepair",
+                    "anchorage", "transferarea", "stormshelter", "dryport",
+                    "berthasset", "pierasset", "anchorageasset", "transferareaasset", "stormshelterasset", "dryportasset")),
+            Map.entry("berth", Set.of("pier", "pierasset")),
+            Map.entry("berthasset", Set.of("pier", "pierasset")),
+
+            Map.entry("navigationchannel", Set.of(
+                    "buoyberth", "buoystation", "buoy", "beaconstation", "lighthouse", "beaconlight", "dikerevetment", "vhf",
+                    "buoyberthasset", "buoyasset", "lighthouseasset", "dikerevetmentasset", "vhfasset", "channelasset")),
+            Map.entry("channel", Set.of(
+                    "buoyberth", "buoystation", "buoy", "beaconstation", "lighthouse", "beaconlight", "dikerevetment", "vhf",
+                    "buoyberthasset", "buoyasset", "lighthouseasset", "dikerevetmentasset", "vhfasset", "channelasset")),
+            Map.entry("channelasset", Set.of(
+                    "buoyberth", "buoystation", "buoy", "beaconstation", "lighthouse", "beaconlight", "dikerevetment", "vhf",
+                    "buoyberthasset", "buoyasset", "lighthouseasset", "dikerevetmentasset", "vhfasset")),
+            Map.entry("buoystation", Set.of("buoy", "buoyasset")),
+
+            Map.entry("vts", Set.of(
+                    "vtsoperationcenter", "radarstation", "tramradar", "aissystem", "cctv", "scada", "transmission", "vtsassist",
+                    "vtsasset", "radarasset", "aisasset", "cctvasset", "scadaasset", "transmissionasset", "vtsassistasset")),
+            Map.entry("vtssystem", Set.of(
+                    "vtsoperationcenter", "radarstation", "tramradar", "aissystem", "cctv", "scada", "transmission", "vtsassist",
+                    "vtsasset", "radarasset", "aisasset", "cctvasset", "scadaasset", "transmissionasset", "vtsassistasset")),
+            Map.entry("vtsasset", Set.of(
+                    "vtsoperationcenter", "radarstation", "tramradar", "aissystem", "cctv", "scada", "transmission", "vtsassist",
+                    "radarasset", "aisasset", "cctvasset", "scadaasset", "transmissionasset", "vtsassistasset")),
+
+            Map.entry("coastalstation", Set.of(
+                    "daittdh", "inmarsat", "cospassarsat", "lrit", "ttxltt",
+                    "daittdhasset", "inmarsatasset", "cospassarsatasset", "lritasset", "ttxlttasset")),
+            Map.entry("station", Set.of(
+                    "daittdh", "inmarsat", "cospassarsat", "lrit", "ttxltt",
+                    "daittdhasset", "inmarsatasset", "cospassarsatasset", "lritasset", "ttxlttasset")),
+            Map.entry("specialstation", Set.of(
+                    "daittdh", "inmarsat", "cospassarsat", "lrit", "ttxltt",
+                    "daittdhasset", "inmarsatasset", "cospassarsatasset", "lritasset", "ttxlttasset")),
+            Map.entry("coastalstationasset", Set.of(
+                    "daittdh", "inmarsat", "cospassarsat", "lrit", "ttxltt",
+                    "daittdhasset", "inmarsatasset", "cospassarsatasset", "lritasset", "ttxlttasset")));
 
     /**
      * Tập các Action thuộc nhóm xem/đọc dữ liệu phục vụ quy tắc Implicit Read.
@@ -584,7 +635,31 @@ public class EffectivePermissionService {
             }
         }
 
-        // 3. Implicit Read: Có bất kỳ quyền thao tác nào trên resource (hoặc domain bao trùm) thì mặc định có quyền xem
+        // 3. Implicit Read: Khi kiểm tra quyền xem danh sách (read / view / search):
+        // a) Có bất kỳ quyền thao tác nào trên resource hoặc equivalent resources -> mặc định có quyền xem danh sách
+        // b) Có bất kỳ quyền nào trên con/cháu (descendants) -> cha và ông mặc định có quyền xem danh sách
+        if (READ_ACTIONS.contains(action)) {
+            for (String perm : permissions) {
+                if (perm == null || perm.isBlank()) continue;
+                String permResource = resourceOf(perm);
+                if (targetResources.contains(permResource)) {
+                    return true;
+                }
+            }
+
+            Set<String> descendants = RESOURCE_DESCENDANTS.get(canonicalResource(resource));
+            if (descendants != null && !descendants.isEmpty()) {
+                for (String perm : permissions) {
+                    if (perm == null || perm.isBlank()) continue;
+                    String permResource = resourceOf(perm);
+                    String canonicalPermRes = canonicalResource(permResource);
+                    if (descendants.contains(permResource) || descendants.contains(canonicalPermRes)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         // 4. Legacy write match
         boolean isWriteAction = Set.of(ACTION_CREATE, ACTION_UPDATE, ACTION_DELETE).contains(action);
         if (isWriteAction) {

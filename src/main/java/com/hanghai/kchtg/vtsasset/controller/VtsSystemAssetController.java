@@ -110,7 +110,7 @@ public class VtsSystemAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'vts:read', 'vtssystem:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'vtsasset:history', 'vts:history', 'vtssystem:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

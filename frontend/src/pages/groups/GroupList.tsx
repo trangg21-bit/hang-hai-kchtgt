@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
-import { getPermissionTreeKeys, getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../../hooks/usePermissions';
+import { getPermissionTreeKeys, getVisiblePermissionKeys, handleTreeCheck, isHiddenPermission, isStructuralNodeKey, usePermissions } from '../../hooks/usePermissions';
 import type { MenuTreeNode } from '../../types/permission';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -361,7 +361,7 @@ export default function GroupList() {
 
   const openPermissionModal = useCallback(async (group: Group) => {
     setPermissionGroup(group); setAppliedPermissionSearch(''); setPermissionLoading(true);
-    try { const permissions = await groupService.getPermissions(group.id); setSelectedPermissionKeys(permissions); }
+    try { const permissions = await groupService.getPermissions(group.id); setSelectedPermissionKeys((permissions || []).filter((p: string) => !isHiddenPermission(p))); }
     catch (err: unknown) { setSelectedPermissionKeys([]); toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền'); }
     finally { setPermissionLoading(false); }
   }, []);
@@ -371,12 +371,19 @@ export default function GroupList() {
     try {
       const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
       const selected = selectedPermissionKeys.filter((key) => {
-        if (key.startsWith('group_') || NON_INHERITABLE_GROUP_PERMISSIONS.has(key)) return false;
+        if (isStructuralNodeKey(key) || NON_INHERITABLE_GROUP_PERMISSIONS.has(key)) return false;
         return validCodes.size === 0 || validCodes.has(key.toLowerCase());
       });
       await groupService.updatePermissions(permissionGroup.id, selected);
-      toast.success('Đã cập nhật phân quyền'); setPermissionGroup(null); fetchGroups();
-    } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Cập nhật phân quyền thất bại'); } finally { setPermissionSaving(false); }
+      toast.success('Đã cập nhật phân quyền');
+      setPermissionGroup(null);
+      fetchGroups();
+      await useAuthStore.getState().refreshPermissions();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Cập nhật phân quyền thất bại');
+    } finally {
+      setPermissionSaving(false);
+    }
   }, [permissionGroup, selectedPermissionKeys, fetchGroups, apiPermissions, validCodesSet]);
 
 
@@ -386,16 +393,36 @@ export default function GroupList() {
       const children = sanitize(node.children || []);
       return [{ ...node, children }];
     });
-    const groupNode = rawPermissionTree.find((n) => n.key === 'group_group');
-    const groupMemberNode = rawPermissionTree.find((n) => n.key === 'group_groupmember');
-    const groupChildren = [...(groupNode ? sanitize(groupNode.children || []) : []), ...(groupMemberNode ? sanitize(groupMemberNode.children || []) : [])];
-    return rawPermissionTree.flatMap((node) => {
-      if (node.key === 'group_groupmember') return [];
-      if (node.key === 'group_group') return groupChildren.length ? [{ ...node, children: groupChildren }] : [];
-      if (NON_INHERITABLE_GROUP_PERMISSIONS.has(String(node.key))) return [];
-      const children = sanitize(node.children || []);
-      return children.length || !String(node.key).startsWith('group_') ? [{ ...node, children }] : [];
-    });
+
+    const findDeep = (nodes: typeof rawPermissionTree, targetKey: string): MenuTreeNode | undefined => {
+      for (const node of nodes) {
+        if (node.key === targetKey) return node;
+        if (node.children?.length) {
+          const found = findDeep(node.children, targetKey);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+
+    const groupNode = findDeep(rawPermissionTree, 'group_group');
+    const groupMemberNode = findDeep(rawPermissionTree, 'group_groupmember');
+    const groupChildren = [
+      ...(groupNode ? sanitize(groupNode.children || []) : []),
+      ...(groupMemberNode ? sanitize(groupMemberNode.children || []) : []),
+    ];
+
+    const transformTree = (nodes: typeof rawPermissionTree): typeof rawPermissionTree => {
+      return nodes.flatMap((node) => {
+        if (node.key === 'group_groupmember') return [];
+        if (node.key === 'group_group') return groupChildren.length ? [{ ...node, children: groupChildren }] : [];
+        if (NON_INHERITABLE_GROUP_PERMISSIONS.has(String(node.key))) return [];
+        const children = transformTree(node.children || []);
+        return children.length || !isStructuralNodeKey(String(node.key)) ? [{ ...node, children }] : [];
+      });
+    };
+
+    return transformTree(rawPermissionTree);
   }, [rawPermissionTree]);
 
   const indexedGroupPermissionTree = useMemo(() => {
@@ -414,9 +441,13 @@ export default function GroupList() {
     return filter(indexedGroupPermissionTree);
   }, [indexedGroupPermissionTree, assignablePermissionTree, appliedPermissionSearch]);
 
-  const allGroupPermissionKeys = useMemo(() => Array.from(getPermissionTreeKeys(assignablePermissionTree)).filter((k) => !k.startsWith('group_')), [assignablePermissionTree]);
-  const allGroupPermissionsSelected = allGroupPermissionKeys.length > 0 && allGroupPermissionKeys.every((k) => selectedPermissionKeys.includes(k));
-  const someGroupPermissionsSelected = allGroupPermissionKeys.some((k) => selectedPermissionKeys.includes(k));
+  const allGroupPermissionKeys = useMemo(() => Array.from(getPermissionTreeKeys(assignablePermissionTree)).filter((k) => !isStructuralNodeKey(k)), [assignablePermissionTree]);
+  const visibleGroupSelectedKeys = useMemo(
+    () => getVisiblePermissionKeys(selectedPermissionKeys, assignablePermissionTree),
+    [selectedPermissionKeys, assignablePermissionTree],
+  );
+  const allGroupPermissionsSelected = allGroupPermissionKeys.length > 0 && allGroupPermissionKeys.every((k) => visibleGroupSelectedKeys.includes(k));
+  const someGroupPermissionsSelected = visibleGroupSelectedKeys.length > 0 && !allGroupPermissionsSelected;
 
   const handleFilterSearch = useCallback(() => { setSearch(searchInput.trim()); setCode(codeInput.trim()); setFilterOrganizationId(filterOrganizationInput); setPage(1); }, [filterOrganizationInput, searchInput, codeInput]);
   const handleFilterReset = useCallback(() => { setSearchInput(''); setSearch(''); setCodeInput(''); setCode(''); setFilterStatus(undefined); setFilterOrganizationInput(undefined); setFilterOrganizationId(undefined); setPage(1); }, []);
@@ -629,7 +660,7 @@ export default function GroupList() {
         </Drawer>
 
         <Drawer {...drawerProps} size="50%" open={!!permissionGroup} onClose={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} title={<span style={drawerTitleStyle}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>} extra={<Button type="text" onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={outlineButtonStyle}>Đóng</Button><Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button></div>}>
-          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={!allGroupPermissionsSelected && someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={(e) => setSelectedPermissionKeys(e.target.checked ? allGroupPermissionKeys : [])}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c) => { const ks = Array.isArray(c) ? c : (c as any).checked; setSelectedPermissionKeys(mergePermissionKeys(selectedPermissionKeys, ks.map(String), permissionTreeData, validCodesSet)); }} /></div></div>)}</div></Spin>
+          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={() => setSelectedPermissionKeys(allGroupPermissionsSelected || someGroupPermissionsSelected ? [] : allGroupPermissionKeys)}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c, info) => { const next = handleTreeCheck(c, info, selectedPermissionKeys, assignablePermissionTree, validCodesSet); setSelectedPermissionKeys(next); }} /></div></div>)}</div></Spin>
 
         </Drawer>
 

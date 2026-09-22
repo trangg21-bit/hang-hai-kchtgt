@@ -128,7 +128,7 @@ public class InmarsatAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'inmarsatasset:manage', 'inmarsatasset:history', 'inmarsat:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
     }

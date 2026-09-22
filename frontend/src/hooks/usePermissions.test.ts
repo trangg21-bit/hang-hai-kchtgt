@@ -1,15 +1,19 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { permissionService } from '../services/permissionService';
+import { usePermissionStore } from '../store/permissionStore';
+import type { MenuTreeNode } from '../types/permission';
+import { useAssetPermissions } from './useAssetPermissions';
 import {
-  usePermissions,
+  getNodeLeafKeys,
   getVisiblePermissionKeys,
+  handleTreeCheck,
   mergePermissionKeys,
   setActiveCatalogKeys,
+  usePermissions,
 } from './usePermissions';
-import { permissionService } from '../services/permissionService';
-import type { MenuTreeNode } from '../types/permission';
 
 vi.mock('../services/permissionService', () => ({
   permissionService: {
@@ -33,12 +37,12 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
   const sampleTree: MenuTreeNode[] = [
     {
-      key: 'group_dryport',
-      code: 'group_dryport',
-      title: 'Quản lý Cảng cạn',
+      key: 'group_vts',
+      code: 'group_vts',
+      title: 'Quản lý Hệ thống VTS',
       children: [
-        { key: 'dryport:read', code: 'dryport:read', title: 'Xem cảng cạn (dryport:read)', children: [] },
-        { key: 'dryport:create', code: 'dryport:create', title: 'Thêm cảng cạn (dryport:create)', children: [] },
+        { key: 'vts:read', code: 'vts:read', title: 'Xem hệ thống VTS (vts:read)', children: [] },
+        { key: 'vts:create', code: 'vts:create', title: 'Thêm hệ thống VTS (vts:create)', children: [] },
       ],
     },
     {
@@ -52,18 +56,18 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
   ];
 
   describe('getVisiblePermissionKeys', () => {
-    it('should mark canonical node checked if user has equivalent alias key (dryportasset:read)', () => {
-      const userPermissions = ['dryportasset:read'];
+    it('should mark canonical node checked if user has equivalent alias key (vtssystem:read)', () => {
+      const userPermissions = ['vtssystem:read'];
       const visible = getVisiblePermissionKeys(userPermissions, sampleTree);
-      expect(visible).toContain('dryport:read');
-      expect(visible).not.toContain('dryport:create');
+      expect(visible).toContain('vts:read');
+      expect(visible).not.toContain('vts:create');
       expect(visible).not.toContain('user:read');
     });
 
-    it('should mark canonical node checked if user has direct canonical key (dryport:read)', () => {
-      const userPermissions = ['dryport:read'];
+    it('should mark canonical node checked if user has direct canonical key (vts:read)', () => {
+      const userPermissions = ['vts:read'];
       const visible = getVisiblePermissionKeys(userPermissions, sampleTree);
-      expect(visible).toContain('dryport:read');
+      expect(visible).toContain('vts:read');
     });
 
     it('should return empty if user has no matching permissions in tree', () => {
@@ -76,21 +80,21 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
   describe('mergePermissionKeys', () => {
     it('should expand both canonical and alias keys when a node is checked', () => {
       const currentKeys = ['user:read'];
-      const nextVisibleKeys = ['user:read', 'dryport:read'];
+      const nextVisibleKeys = ['user:read', 'vts:read'];
       const merged = mergePermissionKeys(currentKeys, nextVisibleKeys, sampleTree);
 
-      expect(merged).toContain('dryport:read');
-      expect(merged).toContain('dryportasset:read');
+      expect(merged).toContain('vts:read');
+      expect(merged).toContain('vtssystem:read');
       expect(merged).toContain('user:read');
     });
 
     it('should remove both canonical and alias keys when a node is unchecked', () => {
-      const currentKeys = ['dryport:read', 'dryportasset:read', 'user:read', 'system:out_of_scope'];
+      const currentKeys = ['vts:read', 'vtssystem:read', 'user:read', 'system:out_of_scope'];
       const nextVisibleKeys = ['user:read'];
       const merged = mergePermissionKeys(currentKeys, nextVisibleKeys, sampleTree);
 
-      expect(merged).not.toContain('dryport:read');
-      expect(merged).not.toContain('dryportasset:read');
+      expect(merged).not.toContain('vts:read');
+      expect(merged).not.toContain('vtssystem:read');
       expect(merged).toContain('user:read');
       expect(merged).toContain('system:out_of_scope');
     });
@@ -141,24 +145,70 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
 
     it('should only expand aliases that exist in allowedKeys (explicit filter)', () => {
       const currentKeys: string[] = [];
-      const nextVisibleKeys = ['dryport:read'];
-      // allowedKeys only contains dryport:read, not dryportasset:read
-      const allowedKeys = new Set(['dryport:read', 'user:read']);
+      const nextVisibleKeys = ['vts:read'];
+      // allowedKeys only contains vts:read, not vtssystem:read
+      const allowedKeys = new Set(['vts:read', 'user:read']);
       const merged = mergePermissionKeys(currentKeys, nextVisibleKeys, sampleTree, allowedKeys);
 
-      expect(merged).toContain('dryport:read');
-      expect(merged).not.toContain('dryportasset:read');
+      expect(merged).toContain('vts:read');
+      expect(merged).not.toContain('vtssystem:read');
     });
 
+    it('should cleanly uncheck a leaf node and its equivalents using handleTreeCheck', () => {
+      const currentKeys = ['vts:read', 'vtssystem:read', 'user:read'];
+      const nextChecked = ['user:read'];
+      const uncheckInfo = {
+        checked: false,
+        node: { key: 'vtssystem:read', children: [] },
+      };
+
+      const result = handleTreeCheck(nextChecked, uncheckInfo, currentKeys, sampleTree);
+      expect(result).not.toContain('vtssystem:read');
+      expect(result).not.toContain('vts:read');
+      expect(result).toContain('user:read');
+    });
+
+    it('should cleanly uncheck a module group node and all its children/equivalents using handleTreeCheck', () => {
+      const currentKeys = ['vts:read', 'vtssystem:read', 'vts:create', 'vtssystem:create', 'user:read'];
+      const nextChecked = ['user:read'];
+      const uncheckInfo = {
+        checked: false,
+        node: sampleTree[0], // group_vts
+      };
+
+      const result = handleTreeCheck(nextChecked, uncheckInfo, currentKeys, sampleTree);
+      expect(result).not.toContain('vts:read');
+      expect(result).not.toContain('vtssystem:read');
+      expect(result).not.toContain('vts:create');
+      expect(result).toContain('user:read');
+    });
+
+    it('should extract leaf keys from a node tree using getNodeLeafKeys', () => {
+      const leaves = getNodeLeafKeys(sampleTree[0]);
+      expect(leaves).toEqual(['vts:read', 'vts:create']);
+    });
   });
 
   describe('usePermissions dynamic tree building', () => {
-    it('should consolidate duplicate asset groups and deduplicate actions into a single group', async () => {
+    const findModule = (tree: MenuTreeNode[], key: string): MenuTreeNode | undefined => {
+      for (const domain of tree) {
+        if (domain.key === key) return domain;
+        const found = domain.children?.find((m) => m.key === key);
+        if (found) return found;
+      }
+      return undefined;
+    };
+
+    const getAllModuleKeys = (tree: MenuTreeNode[]): string[] => {
+      return tree.flatMap((domain) => (domain.children || []).map((m) => String(m.key)));
+    };
+
+    it('should organize permissions into 3-level tree with separate KCHT and Asset domains', async () => {
       const mockPerms = [
         // Canonical dryport
         { id: '1', key: 'dryport:read', name: 'Xem cảng cạn', resource: 'dryport', action: 'read' },
         { id: '2', key: 'dryport:create', name: 'Thêm cảng cạn', resource: 'dryport', action: 'create' },
-        // Alias dryportasset
+        // Asset dryportasset
         { id: '3', key: 'dryportasset:read', name: 'Xem Tài sản cảng cạn', resource: 'dryportasset', action: 'read' },
         { id: '4', key: 'dryportasset:create', name: 'Thêm Tài sản cảng cạn', resource: 'dryportasset', action: 'create' },
         { id: '5', key: 'dryportasset:manage', name: 'Quản lý Tài sản cảng cạn', resource: 'dryportasset', action: 'manage' },
@@ -172,9 +222,12 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         { id: '11', key: 'vhf:approvec1', name: 'Phê duyệt C1 hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'approvec1' },
         { id: '12', key: 'vhf:approvec2', name: 'Phê duyệt C2 hệ thống thông tin liên lạc VHF', resource: 'vhf', action: 'approvec2' },
         { id: '13', key: 'vhf:history', name: 'Lịch sử phê duyệt VHF', resource: 'vhf', action: 'history' },
+        // Asset parent
+        { id: '14', key: 'asset:read', name: 'Xem Quản lý tài sản', resource: 'asset', action: 'read' },
+        { id: '15', key: 'asset:create', name: 'Thêm Quản lý tài sản', resource: 'asset', action: 'create' },
       ];
 
-      vi.mocked(permissionService.list).mockResolvedValue(mockPerms as Permission[]);
+      vi.mocked(permissionService.list).mockResolvedValue(mockPerms as unknown as Awaited<ReturnType<typeof permissionService.list>>);
       queryClient.setQueryData(['permission-catalog'], mockPerms);
 
       let hookResult: ReturnType<typeof usePermissions> | undefined;
@@ -190,29 +243,48 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      // Check group consolidation: NO separate group_dryportasset or group_berthasset
-      const groupKeys = tree.map((g) => g.key);
-      expect(groupKeys).toContain('group_dryport');
-      expect(groupKeys).not.toContain('group_dryportasset');
-      expect(groupKeys).toContain('group_berth');
-      expect(groupKeys).not.toContain('group_berthasset');
-      expect(groupKeys).toContain('group_vhf');
+      // 1. Level 1 domains: domain_kcht and domain_asset
+      const domainKeys = tree.map((g) => g.key);
+      expect(domainKeys).toContain('domain_kcht');
+      expect(domainKeys).toContain('domain_asset');
 
-      // Check dryport group title & children
-      const dryportGroup = tree.find((g) => g.key === 'group_dryport');
+      const assetDomain = tree.find((d) => d.key === 'domain_asset');
+      expect(assetDomain?.title).toBe('Quản lý tài sản KCHT hàng hải');
+
+      // 2. Level 2 modules: KCHT and Asset modules exist in their respective domains
+      const groupKeys = getAllModuleKeys(tree);
+      // 'Quản lý tài sản' (asset) và 'Quản lý tài sản kết cấu hạ tầng' (infraasset) bị loại bỏ khỏi cây phân quyền
+      expect(groupKeys).not.toContain('group_asset');
+      expect(groupKeys).not.toContain('group_infraasset');
+      expect(groupKeys).toContain('group_dryport');
+      expect(groupKeys).toContain('group_dryportasset');
+      expect(groupKeys).toContain('group_berth');
+      expect(groupKeys).toContain('group_berthasset');
+      expect(groupKeys).toContain('group_vhf');
+      expect(groupKeys).toContain('group_vhfasset');
+
+      // 3. Check dryport group title & children under group_kcht
+      const dryportGroup = findModule(tree, 'group_dryport');
       expect(dryportGroup).toBeDefined();
       expect(dryportGroup?.title).toBe('Quản lý Cảng cạn');
+      expect(dryportGroup?.children?.map((c) => c.key)).toEqual(['dryport:read', 'dryport:create']);
 
-      // Inside dryportGroup, actions must be deduplicated (read, create, manage)
-      const dryportActions = dryportGroup?.children?.map((c) => c.key);
-      expect(dryportActions).toEqual(['dryport:read', 'dryport:create']);
+      // 4. Check dryportasset group title & children under group_asset
+      const dryportAssetGroup = findModule(tree, 'group_dryportasset');
+      expect(dryportAssetGroup).toBeDefined();
+      expect(dryportAssetGroup?.title).toBe('Tài sản cảng cạn');
+      // dryportasset:manage is hidden by KCHT_RESOURCES_WITHOUT_MANAGE
+      expect(dryportAssetGroup?.children?.map((c) => c.key)).toEqual([
+        'dryportasset:read',
+        'dryportasset:create',
+      ]);
 
-      // Check berth group
-      const berthGroup = tree.find((g) => g.key === 'group_berth');
+      // 5. Check berth group
+      const berthGroup = findModule(tree, 'group_berth');
       expect(berthGroup?.children?.map((c) => c.key)).toEqual(['berth:read']);
 
-      // Check VHF group: must contain approvec1, approvec2, history
-      const vhfGroup = tree.find((g) => g.key === 'group_vhf');
+      // 6. Check VHF group: must contain approvec1, approvec2, history
+      const vhfGroup = findModule(tree, 'group_vhf');
       expect(vhfGroup?.children?.map((c) => c.key)).toEqual([
         'vhf:read',
         'vhf:create',
@@ -221,7 +293,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         'vhf:history',
       ]);
 
-      // Check allKeys contains both canonical and equivalent keys
+      // 7. Check allKeys contains both canonical and equivalent keys
       expect(hookResult!.allKeys).toContain('dryport:read');
       expect(hookResult!.allKeys).toContain('dryportasset:read');
       expect(hookResult!.allKeys).toContain('berth:read');
@@ -269,18 +341,18 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       const tree = hookResult!.tree;
 
       // 1. MUST NOT create a separate group_anchoragearea
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_anchorage');
       expect(groupKeys).not.toContain('group_anchoragearea');
 
-      // 2. Exactly ONE group for Khu neo đậu
-      const anchorageGroups = tree.filter((g) => g.title === 'Quản lý Khu neo đậu');
-      expect(anchorageGroups).toHaveLength(1);
+      // 2. Exactly ONE group for Khu neo đậu under group_kcht
+      const anchorageGroup = findModule(tree, 'group_anchorage');
+      expect(anchorageGroup).toBeDefined();
+      expect(anchorageGroup?.title).toBe('Quản lý Khu neo đậu');
 
-      const anchorageGroup = anchorageGroups[0];
-      const childKeys = (anchorageGroup.children || []).map((c) => c.key);
+      const childKeys = (anchorageGroup?.children || []).map((c) => c.key);
 
-      // 3. Must contain valid 2-level approval and standard CRUD permissions (8 permissions)
+      // 3. Must contain valid 2-level approval and standard CRUD permissions (7 permissions)
       expect(childKeys).toEqual([
         'anchorage:read',
         'anchorage:create',
@@ -328,10 +400,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_transferarea');
 
-      const transferAreaGroup = tree.find((g) => g.key === 'group_transferarea');
+      const transferAreaGroup = findModule(tree, 'group_transferarea');
       expect(transferAreaGroup).toBeDefined();
       expect(transferAreaGroup?.title).toBe('Quản lý Khu chuyển tải');
 
@@ -379,10 +451,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_lighthouse');
 
-      const beaconGroup = tree.find((g) => g.key === 'group_lighthouse');
+      const beaconGroup = findModule(tree, 'group_lighthouse');
       expect(beaconGroup).toBeDefined();
       expect(beaconGroup?.title).toBe('Quản lý Đèn biển và nhà trạm gắn liền đèn biển');
 
@@ -430,10 +502,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_dikerevetment');
 
-      const dikeGroup = tree.find((g) => g.key === 'group_dikerevetment');
+      const dikeGroup = findModule(tree, 'group_dikerevetment');
       expect(dikeGroup).toBeDefined();
       expect(dikeGroup?.title).toBe('Quản lý Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ');
 
@@ -480,10 +552,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_vhf');
 
-      const vhfGroup = tree.find((g) => g.key === 'group_vhf');
+      const vhfGroup = findModule(tree, 'group_vhf');
       expect(vhfGroup).toBeDefined();
       expect(vhfGroup?.title).toBe('Quản lý Hệ thống thông tin liên lạc VHF');
 
@@ -533,11 +605,11 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_radarstation');
       expect(groupKeys).not.toContain('group_tramradar');
 
-      const radarGroup = tree.find((g) => g.key === 'group_radarstation');
+      const radarGroup = findModule(tree, 'group_radarstation');
       expect(radarGroup).toBeDefined();
       expect(radarGroup?.title).toBe('Quản lý Trạm radar');
 
@@ -569,8 +641,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         // Legacy deprecated single-level approval (must be hidden)
         { id: '9', key: 'cctv:approve', name: 'Phê duyệt hệ thống CCTV', resource: 'cctv', action: 'approve' },
         { id: '10', key: 'cctvasset:approve', name: 'Phê duyệt hệ thống CCTV (cũ)', resource: 'cctvasset', action: 'approve' },
-        // Legacy alias permissions mapping to canonical cctv
-        { id: '11', key: 'cctvasset:read', name: 'Xem tài sản CCTV cũ', resource: 'cctvasset', action: 'read' },
       ];
 
       queryClient.setQueryData(['permission-catalog'], mockPerms);
@@ -588,11 +658,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_cctv');
-      expect(groupKeys).not.toContain('group_cctvasset');
 
-      const cctvGroup = tree.find((g) => g.key === 'group_cctv');
+      const cctvGroup = findModule(tree, 'group_cctv');
       expect(cctvGroup).toBeDefined();
       expect(cctvGroup?.title).toBe('Quản lý Hệ thống CCTV');
 
@@ -624,8 +693,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         // Legacy deprecated single-level approval (must be hidden)
         { id: '9', key: 'scada:approve', name: 'Phê duyệt hệ thống SCADA', resource: 'scada', action: 'approve' },
         { id: '10', key: 'scadaasset:approve', name: 'Phê duyệt hệ thống SCADA (cũ)', resource: 'scadaasset', action: 'approve' },
-        // Legacy alias permissions mapping to canonical scada
-        { id: '11', key: 'scadaasset:read', name: 'Xem tài sản SCADA cũ', resource: 'scadaasset', action: 'read' },
       ];
 
       queryClient.setQueryData(['permission-catalog'], mockPerms);
@@ -643,11 +710,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_scada');
-      expect(groupKeys).not.toContain('group_scadaasset');
 
-      const scadaGroup = tree.find((g) => g.key === 'group_scada');
+      const scadaGroup = findModule(tree, 'group_scada');
       expect(scadaGroup).toBeDefined();
       expect(scadaGroup?.title).toBe('Quản lý Hệ thống SCADA');
 
@@ -679,8 +745,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         // Legacy deprecated single-level approval (must be hidden)
         { id: '9', key: 'transmission:approve', name: 'Phê duyệt hệ thống truyền dẫn', resource: 'transmission', action: 'approve' },
         { id: '10', key: 'transmissionasset:approve', name: 'Phê duyệt hệ thống truyền dẫn (cũ)', resource: 'transmissionasset', action: 'approve' },
-        // Legacy alias permissions mapping to canonical transmission
-        { id: '11', key: 'transmissionasset:read', name: 'Xem tài sản truyền dẫn cũ', resource: 'transmissionasset', action: 'read' },
       ];
 
       queryClient.setQueryData(['permission-catalog'], mockPerms);
@@ -698,11 +762,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_transmission');
-      expect(groupKeys).not.toContain('group_transmissionasset');
 
-      const transmissionGroup = tree.find((g) => g.key === 'group_transmission');
+      const transmissionGroup = findModule(tree, 'group_transmission');
       expect(transmissionGroup).toBeDefined();
       expect(transmissionGroup?.title).toBe('Quản lý Hệ thống truyền dẫn');
 
@@ -734,8 +797,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
         // Legacy deprecated single-level approval (must be hidden)
         { id: '9', key: 'vtsassist:approve', name: 'Phê duyệt hệ thống phụ trợ VTS', resource: 'vtsassist', action: 'approve' },
         { id: '10', key: 'vtsassistasset:approve', name: 'Phê duyệt hệ thống phụ trợ VTS (cũ)', resource: 'vtsassistasset', action: 'approve' },
-        // Legacy alias permissions mapping to canonical vtsassist
-        { id: '11', key: 'vtsassistasset:read', name: 'Xem tài sản phụ trợ VTS cũ', resource: 'vtsassistasset', action: 'read' },
       ];
 
       queryClient.setQueryData(['permission-catalog'], mockPerms);
@@ -753,11 +814,10 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_vtsassist');
-      expect(groupKeys).not.toContain('group_vtsassistasset');
 
-      const vtsAssistGroup = tree.find((g) => g.key === 'group_vtsassist');
+      const vtsAssistGroup = findModule(tree, 'group_vtsassist');
       expect(vtsAssistGroup).toBeDefined();
       expect(vtsAssistGroup?.title).toBe('Quản lý Hệ thống phụ trợ VTS');
 
@@ -807,13 +867,13 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(hookResult).toBeDefined();
       const tree = hookResult!.tree;
 
-      const groupKeys = tree.map((g) => g.key);
+      const groupKeys = getAllModuleKeys(tree);
       expect(groupKeys).toContain('group_shiprepairfacility');
       expect(groupKeys).not.toContain('group_shiprepairyard');
 
-      const shipRepairGroup = tree.find((g) => g.key === 'group_shiprepairfacility');
+      const shipRepairGroup = findModule(tree, 'group_shiprepairfacility');
       expect(shipRepairGroup).toBeDefined();
-      expect(shipRepairGroup?.title).toBe('Quản lý Cơ sở sửa chữa & đóng tàu');
+      expect(shipRepairGroup?.title).toBe('Quản lý Cơ sở sửa chữa, đóng tàu');
 
       const childKeys = (shipRepairGroup?.children || []).map((c) => c.key);
       expect(childKeys).toEqual([
@@ -831,4 +891,179 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(childKeys).not.toContain('shiprepairfacility:approve');
     });
   });
+
+  describe('useAssetPermissions - History & Read separation', () => {
+    it('returns canHistory = false when user only has read permission', () => {
+      usePermissionStore.setState({
+        permissions: ['buoyberthasset:read'],
+        isSuperAdmin: false,
+      });
+
+      let hookRes: any;
+      function TestHook() {
+        hookRes = useAssetPermissions(['buoyberth', 'buoyberthasset']);
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHook));
+      expect(hookRes.canRead).toBe(true);
+      expect(hookRes.canHistory).toBe(false);
+    });
+
+    it('returns canHistory = true only when explicit history permission is granted', () => {
+      usePermissionStore.setState({
+        permissions: ['buoyberthasset:read', 'buoyberthasset:history'],
+        isSuperAdmin: false,
+      });
+
+      let hookRes: any;
+      function TestHook() {
+        hookRes = useAssetPermissions(['buoyberth', 'buoyberthasset']);
+        return null;
+      }
+
+      renderToStaticMarkup(React.createElement(TestHook));
+      expect(hookRes.canRead).toBe(true);
+      expect(hookRes.canHistory).toBe(true);
+    });
+  });
+
+  describe('Hierarchical Ancestor Access (Ông - Cha - Con)', () => {
+    it('grants read permission to parent (berth) and grandparent (port) when child (pier) has any permission', async () => {
+      const { canAccessMenu } = await import('../components/appLayoutMenu');
+      const { NAV_GROUPS, accessibleTree } = await import('../config/navigation');
+
+      // User chỉ có 1 quyền duy nhất: pier:create
+      usePermissionStore.setState({
+        permissions: ['pier:create'],
+        isSuperAdmin: false,
+      });
+
+      const store = usePermissionStore.getState();
+
+      // 1. Quyền xem danh sách của chính con
+      expect(store.hasPermission('pier:read')).toBe(true);
+      // 2. Quyền xem danh sách của cha (berth)
+      expect(store.hasPermission('berth:read')).toBe(true);
+      // 3. Quyền xem danh sách của ông (port)
+      expect(store.hasPermission('port:read')).toBe(true);
+
+      // 4. canAccessMenu trả về true cho cả con, cha, ông
+      expect(canAccessMenu('/pier')).toBe(true);
+      expect(canAccessMenu('/berth')).toBe(true);
+      expect(canAccessMenu('/port')).toBe(true);
+
+      // 5. accessibleTree giữ nguyên route của cha và ông
+      const kchtGroup = NAV_GROUPS.find((g) => g.id === 'kcht')!;
+      const tree = accessibleTree(kchtGroup.tree, canAccessMenu);
+
+      const portNode = tree.find((n) => n.key === '/port');
+      expect(portNode).toBeDefined();
+      expect(portNode?.route).toBe('/port'); // Ông không bị xóa route
+
+      const berthNode = portNode?.children?.find((n) => n.key === '/berth');
+      expect(berthNode).toBeDefined();
+      expect(berthNode?.route).toBe('/berth'); // Cha không bị xóa route
+
+      const pierNode = berthNode?.children?.find((n) => n.key === '/pier');
+      expect(pierNode).toBeDefined();
+      expect(pierNode?.route).toBe('/pier'); // Con có route đầy đủ
+
+      // 6. Quyền đặc thù (write, approve, history) TUYỆT ĐỐI KHÔNG bị thừa kế sai
+      expect(store.hasPermission('berth:create')).toBe(false);
+      expect(store.hasPermission('port:create')).toBe(false);
+      expect(store.hasPermission('berth:approvec1')).toBe(false);
+      expect(store.hasPermission('port:approvec1')).toBe(false);
+      expect(store.hasPermission('berth:history')).toBe(false);
+      expect(store.hasPermission('port:history')).toBe(false);
+    });
+
+    it('grants read permission to buoy-station and navigation-channel when child buoy has permission', async () => {
+      const { canAccessMenu } = await import('../components/appLayoutMenu');
+
+      // User chỉ có quyền buoy:approvec1
+      usePermissionStore.setState({
+        permissions: ['buoy:approvec1'],
+        isSuperAdmin: false,
+      });
+
+      const store = usePermissionStore.getState();
+
+      // Quyền xem danh sách con, cha, ông
+      expect(store.hasPermission('buoy:read')).toBe(true);
+      expect(store.hasPermission('buoystation:read')).toBe(true);
+      expect(store.hasPermission('navigationchannel:read')).toBe(true);
+
+      expect(canAccessMenu('/buoys')).toBe(true);
+      expect(canAccessMenu('/buoy-station')).toBe(true);
+      expect(canAccessMenu('/navigation-channel')).toBe(true);
+
+      // Không thừa kế quyền approvec1 lên cha/ông
+      expect(store.hasPermission('buoystation:approvec1')).toBe(false);
+      expect(store.hasPermission('navigationchannel:approvec1')).toBe(false);
+    });
+
+    it('allows accessing list screen but hides "Xem chi tiết" action when user only has update permission', () => {
+      // User CHỈ có duy nhất quyền cập nhật tài sản bến cảng (berthasset:update)
+      usePermissionStore.setState({
+        permissions: ['berthasset:update'],
+        isSuperAdmin: false,
+      });
+
+      const store = usePermissionStore.getState();
+
+      // 1. Quyền xem danh sách (implicit read) để hiển thị menu và truy cập bảng
+      expect(store.hasPermission('berthasset:read')).toBe(true);
+
+      // 2. Quyền chi tiết tường minh (explicitOnly) KHÔNG được gán ngầm
+      expect(store.hasExplicitPermission('berthasset:read')).toBe(false);
+
+      // 3. Hook useAssetPermissions: canUpdate = true, canRead = false
+      let hookRes: any;
+      function TestHook() {
+        hookRes = useAssetPermissions(['berth', 'berthasset']);
+        return null;
+      }
+      renderToStaticMarkup(React.createElement(TestHook));
+
+      expect(hookRes.canUpdate).toBe(true);
+      expect(hookRes.canRead).toBe(false);
+      expect(hookRes.canCreate).toBe(false);
+      expect(hookRes.canDelete).toBe(false);
+    });
+
+    it('does NOT grant reject permission when only approveC1 is checked (rejectc1 is unchecked)', () => {
+      // User CHỈ có berthasset:update và berthasset:approvec1 (không có rejectc1)
+      usePermissionStore.setState({
+        permissions: ['berthasset:update', 'berthasset:approvec1'],
+        isSuperAdmin: false,
+      });
+
+      let hookRes: any;
+      function TestHook() {
+        hookRes = useAssetPermissions(['berth', 'berthasset']);
+        return null;
+      }
+      renderToStaticMarkup(React.createElement(TestHook));
+
+      expect(hookRes.canApproveC1).toBe(true);
+      expect(hookRes.canRejectC1).toBe(false);
+      expect(hookRes.canApproveC2).toBe(false);
+      expect(hookRes.canRejectC2).toBe(false);
+      expect(hookRes.canReject).toBe(false);
+
+      // Khi người dùng được cấp thêm berthasset:rejectc1
+      usePermissionStore.setState({
+        permissions: ['berthasset:update', 'berthasset:approvec1', 'berthasset:rejectc1'],
+        isSuperAdmin: false,
+      });
+      renderToStaticMarkup(React.createElement(TestHook));
+
+      expect(hookRes.canApproveC1).toBe(true);
+      expect(hookRes.canRejectC1).toBe(true);
+      expect(hookRes.canReject).toBe(true);
+      expect(hookRes.canRejectC2).toBe(false);
+    });
+  });
 });
+

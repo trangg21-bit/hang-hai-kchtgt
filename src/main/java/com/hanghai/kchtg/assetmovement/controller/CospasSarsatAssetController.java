@@ -111,7 +111,7 @@ public class CospasSarsatAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'cospassarsatasset:manage', 'cospassarsatasset:history', 'cospassarsat:history', 'coastalstationcospassarsat:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
