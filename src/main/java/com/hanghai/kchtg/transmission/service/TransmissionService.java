@@ -965,7 +965,7 @@ public class TransmissionService {
   }
 
   private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, Consumer<T> setter, Map<String, String> previousValues) {
-    if (newValue != null && !EntityUpdateUtils.areEqual(oldValue, newValue)) {
+    if (!EntityUpdateUtils.areEqual(oldValue, newValue)) {
       previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : "Chưa có");
       setter.accept(newValue);
     }

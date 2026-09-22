@@ -1267,7 +1267,7 @@ export const VtsZoneLocationDrawer: React.FC<VtsZoneLocationDrawerProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         zIndex={1020}
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}

@@ -5,8 +5,6 @@ import { globalCssVars } from './theme';
 import { registerPdfPreviewServiceWorker } from './components/shared/infrastructureAttachmentUtils';
 import './index.css';
 
-console.log('[main] JS loaded, starting React...');
-
 // Đăng ký Service Worker phục vụ xem trước PDF với đúng tên tệp
 void registerPdfPreviewServiceWorker();
 
@@ -61,7 +59,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 }
 
 const rootEl = document.getElementById('root')!;
-console.log('[main] root element:', rootEl ? 'found' : 'MISSING');
 
 try {
   createRoot(rootEl).render(
@@ -71,7 +68,6 @@ try {
       </ErrorBoundary>
     </StrictMode>,
   );
-  console.log('[main] React render called successfully');
 } catch (e) {
   console.error('[main] FATAL render error:', e);
   rootEl.innerHTML = `<div style="padding:40px;font-family:monospace;color:red"><h2>FATAL: ${(e as Error).message}</h2><pre>${(e as Error).stack}</pre></div>`;

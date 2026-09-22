@@ -74,6 +74,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { ShipRepairYard } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import ShipRepairYardForm from './ShipRepairYardForm';
@@ -91,7 +92,7 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
   DELETED: { color: statusCritical, label: 'Đã xóa' },
   ARCHIVED: { color: statusCritical, label: 'Đã xóa' },
 };
@@ -103,7 +104,7 @@ const TAB_STATUS_LIST = [
   { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -320,6 +321,11 @@ export const HISTORY_FIELD_ORDER = [
 export default function ShipRepairYardList() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const authUser = useAuthStore((s) => s.user);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove =
+    checkCanSaveAndApprove('shiprepairyard', hasPerm, authUser) ||
+    checkCanSaveAndApprove('shiprepairfacility', hasPerm, authUser) ||
+    (isAdmin && isCucLevelUser(authUser));
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
@@ -393,14 +399,23 @@ export default function ShipRepairYardList() {
   }, [rawUsers, orgMap]);
 
   // ── Port options ─────────────────────────────────────────────────
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
+  const [allPorts, setAllPorts] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const portMap = useMemo(() => {
     const map = new Map<string, string>();
-    portOptions.forEach((o) => {
-      map.set(o.value, o.label);
+    allPorts.forEach((o) => {
+      map.set(o.id, o.portName || o.portCode || o.id);
     });
     return map;
-  }, [portOptions]);
+  }, [allPorts]);
+  const allPortOptions = useMemo(() => {
+    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts]);
+  const portOptions = useMemo(() => {
+    const filtered = (!managingUnitId || managingUnitId === '__all__')
+      ? allPorts
+      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === managingUnitId);
+    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts, managingUnitId]);
 
   // ── Pier options (Thuộc cầu cảng) ──
   const [pierOptions, setPierOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -687,18 +702,21 @@ export default function ShipRepairYardList() {
     })();
   }, [authUser]);
 
-  // ── Load port options ──────────────────────────────────────────
+  // ── Load port options via lightweight options endpoint ──────────
   useEffect(() => {
-    if (!orgUnitReady) return;
-    (async () => {
-      try {
-        const params: any = { page: 1, pageSize: 1000 };
-        if (managingUnitId && managingUnitId !== '__all__') params.orgUnitId = managingUnitId;
-        const res = await portCRUD.search(params);
-        setPortOptions((res.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
-      } catch { /* ignore */ }
-    })();
-  }, [managingUnitId, orgUnitReady]);
+    portCRUD.getOptions()
+      .then((items) => setAllPorts(items || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (filterPortId && managingUnitId && managingUnitId !== '__all__') {
+      const match = allPorts.find((p) => p.id === filterPortId);
+      if (match && match.orgUnitId && match.orgUnitId !== managingUnitId) {
+        setFilterPortId(undefined);
+      }
+    }
+  }, [managingUnitId, filterPortId, allPorts]);
 
   // ── Load pier options (Thuộc cầu cảng) ─────────────────────────
   useEffect(() => {
@@ -1056,7 +1074,7 @@ export default function ShipRepairYardList() {
               format="DD/MM/YYYY"
               placeholder={['Từ ngày', 'Đến ngày']}
               allowClear
-              popupClassName="chk-range-datepicker-popup"
+              classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
               classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
               value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
               onChange={(dates) => {
@@ -1242,8 +1260,8 @@ export default function ShipRepairYardList() {
         dataIndex: 'portId',
         width: 200,
         sortable: true,
-        cellTitle: (record: ShipRepairYard) => portOptions.find(o => o.value === record?.portId)?.label || record?.portId || '',
-        render: (v: string | null) => renderCellWithTooltip(portOptions.find(o => o.value === v)?.label || v || null),
+        cellTitle: (record: ShipRepairYard) => record?.portId ? portMap.get(record.portId) || record.portId : '',
+        render: (v: string | null) => renderCellWithTooltip(v ? portMap.get(v) || v : null),
       },
       {
         key: 'pierId',
@@ -1396,7 +1414,7 @@ export default function ShipRepairYardList() {
     userMap,
     page,
     pageSize,
-    portOptions,
+    portMap,
     pierOptions,
     sortField,
     sortOrder,
@@ -1422,7 +1440,7 @@ export default function ShipRepairYardList() {
         organizations={organizations}
         symbolMap={symbolMap}
         symbolImageMap={symbolImageMap}
-        portOptions={portOptions}
+        portOptions={allPortOptions}
         pierOptions={pierOptions}
         userMap={userMap}
         detailFiles={detailFiles}
@@ -1564,7 +1582,7 @@ export default function ShipRepairYardList() {
             {(() => {
               const st = !editShipRepairYardId ? 'DRAFT' : (editBaseStatus ? String(editBaseStatus).toUpperCase() : 'DRAFT');
               if (st === 'APPROVED') {
-                return (
+                return canSaveAndApprove ? (
                   <Button
                     htmlType="button"
                     type="primary"
@@ -1574,7 +1592,7 @@ export default function ShipRepairYardList() {
                   >
                     Lưu và phê duyệt
                   </Button>
-                );
+                ) : null;
               }
               if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'TU_CHOI') {
                 return (
@@ -1608,15 +1626,17 @@ export default function ShipRepairYardList() {
                   >
                     Lưu và gửi phê duyệt
                   </Button>
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
-                    loading={submitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
+                  {canSaveAndApprove && (
+                    <Button
+                      htmlType="button"
+                      type="primary"
+                      onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
+                      loading={submitting && actionType === 'approve'}
+                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                    >
+                      Lưu và phê duyệt
+                    </Button>
+                  )}
                 </>
               );
             })()}

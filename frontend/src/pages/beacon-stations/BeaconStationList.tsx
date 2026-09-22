@@ -667,7 +667,7 @@ export default function BeaconStationList() {
   }, [createForm, hasPerm, currentUser, organizations]);
 
   const openEditDrawer = useCallback((record: BeaconStation) => {
-    if (!canEditApprovalRecord(record.status || '', { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update'] })) {
+    if (!canEditApprovalRecord(record.status || '', { hasPerm, resource: 'beaconstation' })) {
       toast.error('Bạn không có quyền chỉnh sửa bản ghi này');
       return;
     }
@@ -863,7 +863,7 @@ export default function BeaconStationList() {
       actions.push({ key: 'view', label: 'Xem chi tiết', icon: themeTokenChk.icons.view, onClick: () => openDetailDrawer(record) });
     }
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(st, { hasPerm, resource: 'beaconstation', extraUpdatePerms: ['data:update'] })) {
+    if (canEditApprovalRecord(st, { hasPerm, resource: 'beaconstation' })) {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: themeTokenChk.icons.edit, onClick: () => openEditDrawer(record) });
     }
     if (hasPerm('beaconstation:history')) {
@@ -2751,7 +2751,7 @@ export default function BeaconStationList() {
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <style>{requiredMarkStyle}</style>
         {createDrawerVisible && (

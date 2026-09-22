@@ -312,8 +312,9 @@ export default function VtsSystemForm({
     toast.success('Đã xóa tệp đính kèm');
   };
 
-  // Load options
+  // Load options (chỉ cần cho chế độ create hoặc edit)
   useEffect(() => {
+    if (isDetailMode) return;
     let mounted = true;
     const fetchLookups = async () => {
       try {
@@ -343,7 +344,7 @@ export default function VtsSystemForm({
     };
     fetchLookups();
     return () => { mounted = false; };
-  }, [propOrgUnits]);
+  }, [propOrgUnits, isDetailMode]);
 
   // Load record detail or generate code on create
   useEffect(() => {
@@ -389,14 +390,24 @@ export default function VtsSystemForm({
       return () => { mounted = false; };
     }
 
+    if (initialData) {
+      setRecord(initialData);
+      populateForm(initialData);
+    }
+
     setIsLoading(true);
     setZonesLoaded(false);
     setFilesLoaded(false);
     vtsSystemCRUD.getById(editId, { includeZones: true, includeAttachments: true })
       .then((data) => {
         if (!mounted) return;
-        setRecord(data);
-        populateForm(data);
+        const mergedData = {
+          ...data,
+          operatingOrgName: data.operatingOrgName || initialData?.operatingOrgName || (initialData as any)?.operatingUnitName,
+          operatingOrgCode: (data as any)?.operatingOrgCode || (initialData as any)?.operatingOrgCode,
+        };
+        setRecord(mergedData);
+        populateForm(mergedData);
         if (Array.isArray(data.zones)) {
           setZoneList(data.zones.map((z: any, idx: number) => ({
             ...z,
@@ -549,36 +560,54 @@ export default function VtsSystemForm({
 
   const operatingUnitOptions = useMemo(() => {
     const list: Array<{ value: string; label: string }> = [];
-    const seen = new Set<string>();
+    const seenIds = new Set<string>();
+
+    const addOption = (id?: string | null, name?: string | null, code?: string | null) => {
+      if (!id || !name) return;
+      const strId = String(id).trim();
+      if (seenIds.has(strId)) return;
+      seenIds.add(strId);
+
+      list.push({
+        value: strId,
+        label: code ? `${code} - ${name}` : name,
+      });
+    };
+
+    // 1. Ưu tiên đưa đơn vị vận hành của bản ghi hiện tại lên đầu tiên
+    const currentOpId = record?.operatingOrgId || initialData?.operatingOrgId;
+    const currentOpName =
+      record?.operatingOrgName ||
+      initialData?.operatingOrgName ||
+      (record as any)?.operatingUnitName ||
+      (initialData as any)?.operatingUnitName;
+    const currentOpCode = (record as any)?.operatingOrgCode || (initialData as any)?.operatingOrgCode;
+
+    if (currentOpId) {
+      addOption(String(currentOpId), currentOpName || 'Đơn vị vận hành', currentOpCode);
+    }
 
     if (Array.isArray(organizations)) {
       organizations.forEach((o) => {
-        if (o.id && o.name && !seen.has(String(o.id))) {
-          seen.add(String(o.id));
-          list.push({ value: String(o.id), label: o.code ? `${o.code} - ${o.name}` : o.name });
-        }
+        addOption(o.id, o.name, o.code);
       });
     }
 
     if (Array.isArray(operatingOrganizations)) {
       operatingOrganizations.forEach((o) => {
-        if (o.id && o.name && !seen.has(String(o.id))) {
-          seen.add(String(o.id));
-          list.push({ value: String(o.id), label: o.code ? `${o.code} - ${o.name}` : o.name });
-        }
-      });
-    }
-
-    if (record?.operatingOrgId && !seen.has(String(record.operatingOrgId))) {
-      seen.add(String(record.operatingOrgId));
-      list.push({
-        value: String(record.operatingOrgId),
-        label: record.operatingOrgName || (record as any).operatingUnitName || 'Đơn vị vận hành',
+        addOption(o.id, o.name, o.code);
       });
     }
 
     return list;
-  }, [organizations, operatingOrganizations, record?.operatingOrgId, record?.operatingOrgName]);
+  }, [
+    organizations,
+    operatingOrganizations,
+    record?.operatingOrgId,
+    record?.operatingOrgName,
+    initialData?.operatingOrgId,
+    initialData?.operatingOrgName,
+  ]);
 
 
 
@@ -816,6 +845,8 @@ export default function VtsSystemForm({
           record={record}
           loading={isSubmitting}
           activeAction={actionType}
+          showCancelButton={true}
+          onCancel={onCancel}
           onSubmit={(action) => {
             actionTypeRef.current = action;
             setActionType(action);

@@ -63,14 +63,14 @@ describe('BeaconStation Number Input Rules', () => {
       await expect(validator({}, '123')).resolves.toBeUndefined();
       await expect(validator({}, '12345678901234567890')).resolves.toBeUndefined();
       await expect(validator({}, '12.34')).resolves.toBeUndefined();
+      await expect(validator({}, '12,34')).resolves.toBeUndefined();
       await expect(validator({}, '12.3456')).resolves.toBeUndefined();
       await expect(validator({}, '1234567890123456.3456')).resolves.toBeUndefined();
     });
 
     it('từ chối ký tự không hợp lệ', async () => {
-      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
-      await expect(validator({}, '12,34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
-      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
+      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
+      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
     });
 
     it('từ chối khi số sau dấu "." vượt quá 4 chữ số', async () => {

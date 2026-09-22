@@ -18,6 +18,10 @@ import com.hanghai.kchtg.radarstation.dto.RadarStationOptionResponse;
 import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse;
 import com.hanghai.kchtg.vtsoperationcenter.service.VtsOperationCenterService;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse;
+import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
+import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse;
+import com.hanghai.kchtg.port.service.BuoyBerthService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +46,8 @@ public class CommonOptionsService {
     private final MapSymbolService mapSymbolService;
     private final RadarStationService radarStationService;
     private final VtsOperationCenterService vtsOperationCenterService;
+    private final NavigationChannelService navigationChannelService;
+    private final BuoyBerthService buoyBerthService;
 
     public CommonOptionsService(OrgUnitCacheService orgUnitCacheService,
             OrgUnitScopeService orgUnitScopeService,
@@ -51,7 +57,9 @@ public class CommonOptionsService {
             OperatingUnitRepository operatingUnitRepository,
             MapSymbolService mapSymbolService,
             RadarStationService radarStationService,
-            VtsOperationCenterService vtsOperationCenterService) {
+            VtsOperationCenterService vtsOperationCenterService,
+            NavigationChannelService navigationChannelService,
+            BuoyBerthService buoyBerthService) {
         this.orgUnitCacheService = orgUnitCacheService;
         this.orgUnitScopeService = orgUnitScopeService;
         this.portCacheService = portCacheService;
@@ -61,6 +69,8 @@ public class CommonOptionsService {
         this.mapSymbolService = mapSymbolService;
         this.radarStationService = radarStationService;
         this.vtsOperationCenterService = vtsOperationCenterService;
+        this.navigationChannelService = navigationChannelService;
+        this.buoyBerthService = buoyBerthService;
     }
 
     public List<OrgUnitResponse> getOrgUnitOptions() {
@@ -145,5 +155,13 @@ public class CommonOptionsService {
 
     public List<VtsOperationCenterOptionResponse> getVtsOperationCenterOptions() {
         return vtsOperationCenterService.getOptions(null);
+    }
+
+    public List<NavigationChannelOptionResponse> getNavigationChannelOptions() {
+        return navigationChannelService.getOptions();
+    }
+
+    public List<BuoyBerthOptionResponse> getBuoyBerthOptions() {
+        return buoyBerthService.getOptions();
     }
 }

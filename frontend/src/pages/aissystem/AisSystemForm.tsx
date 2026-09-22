@@ -56,6 +56,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
@@ -247,9 +248,10 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
   const canCreate = hasPerm('aissystem:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, { hasPerm, resource: 'aissystem' });
-  const canSaveAndApprove = hasPerm('aissystem:approvec2');
+  const canSaveAndApprove = checkCanSaveAndApprove('aissystem', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -982,10 +984,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                 placeholder="Chọn đơn vị quản lý"
                                 disabled={isEditMode}
                                 allowClear
-                                treeDefaultExpandAll
-                                listHeight={256}
-                                onChange={() => form.setFieldValue('locationId', undefined)}
-                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                                onChange={(val) => {
+                                  form.setFieldsValue({ orgUnitId: val, locationId: undefined });
+                                }}
                               />
                             </Form.Item>
                           </Col>
@@ -1456,7 +1457,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

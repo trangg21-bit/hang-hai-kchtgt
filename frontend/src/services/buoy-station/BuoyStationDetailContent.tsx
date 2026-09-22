@@ -608,7 +608,7 @@ export default function BuoyStationDetailContent({
       }
       open={gisModalOpen}
       onCancel={() => setGisModalOpen(false)}
-      destroyOnClose
+      destroyOnHidden
       width="94vw"
       style={{ top: 20, maxWidth: '1400px' }}
       footer={[

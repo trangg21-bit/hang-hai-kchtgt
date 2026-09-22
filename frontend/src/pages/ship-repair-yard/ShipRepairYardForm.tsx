@@ -359,10 +359,11 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
     try {
-      const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
-      if (orgUnitId) params.orgUnitId = orgUnitId;
-      const r = await portCRUD.search(params);
-      const ports = (r.data || []).map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
+      const allPorts = await portCRUD.getOptions({ approvalStatus: 'APPROVED' });
+      const filtered = orgUnitId
+        ? (allPorts || []).filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId)
+        : (allPorts || []);
+      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portName || p.portCode || p.name || p.id }));
       setPortOptions(ports);
       if (ports.length === 0) toast.warning('Đơn vị quản lý chưa có cảng biển được phê duyệt');
     } catch { setPortOptions([]); }
@@ -1126,7 +1127,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

@@ -479,7 +479,7 @@ const SeaportThroughputDrawer: React.FC<SeaportThroughputDrawerProps> = ({
     <Drawer
       open={open}
       onClose={onClose}
-      width={DRAWER_WIDTH}
+      size={DRAWER_WIDTH}
       title={<span style={drawerTitleStyle}>{title}</span>}
       closeIcon={<span style={drawerCloseBtnStyle}>×</span>}
       destroyOnHidden

@@ -117,7 +117,7 @@ public class CctvController {
   }
 
   @PutMapping
-  @PreAuthorize("@auth.checkAny(authentication, 'cctv:update', 'cctv:approvec2')")
+  @PreAuthorize("@auth.check(authentication, 'cctv:update')")
   public ResponseEntity<ApiResponse<CctvResponse>> update(
     @Valid @RequestBody UpdateCctvRequest request) {
     log.info("Updating CCTV: id={}", request.getId());

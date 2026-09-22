@@ -35,6 +35,9 @@ public class VtsSystemListItemResponse {
     private String createdByName;
 
     private LocalDateTime updatedDate;
+    private LocalDateTime createdDate;
+    private LocalDateTime updatedAt;
+    private LocalDateTime createdAt;
     private String updatedByName;
 
     private UUID owningOrgId;

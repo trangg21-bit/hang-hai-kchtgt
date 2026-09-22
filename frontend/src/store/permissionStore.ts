@@ -16,8 +16,8 @@ const KCHT_RESOURCE_CANONICALS = new Set([
   // Infrastructure (28 modules)
   'port', 'berth', 'pier', 'buoyberth', 'anchorage', 'transferarea', 'stormshelter', 'dryport',
   'waterzone', 'waterarea', 'navigationchannel', 'dikerevetment', 'shiprepairfacility', 'radarstation',
-  'lighthouse', 'buoy', 'vts', 'vtsoperationcenter', 'vtsassist', 'aissystem', 'cctv', 'scada',
-  'transmission', 'vhf', 'daittdh', 'cospassarsat', 'lrit', 'ttxltt', 'coastalstation',
+  'beaconstation', 'lighthouse', 'buoy', 'vts', 'vtsoperationcenter', 'vtsassist', 'aissystem', 'cctv', 'scada',
+  'transmission', 'vhf', 'daittdh', 'inmarsat', 'cospassarsat', 'lrit', 'ttxltt', 'coastalstation',
   'specialstation', 'station', 'coastalstationinmarsat', 'coastalstationcospassarsat', 'coastalstationhaiphong',
   'coastalstationlrit',
 
@@ -49,17 +49,20 @@ export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
   channel: 'navigationchannel',
   vtssystem: 'vts',
   tramradar: 'radarstation',
+  anchoragearea: 'anchorage',
   shiprepair: 'shiprepairfacility',
   shiprepairyard: 'shiprepairfacility',
-  beaconstation: 'lighthouse',
-  beaconlight: 'lighthouse',
-  lighthousestation: 'lighthouse',
+  beaconlight: 'beaconstation',
+  lighthousestation: 'beaconstation',
+  lighthouse: 'beaconstation',
   coastalstationlrit: 'lrit',
   coastalstationcospassarsat: 'cospassarsat',
   coastalstationhaiphong: 'ttxltt',
+  coastalstationinmarsat: 'inmarsat',
 
   // System & shared resources
   interconnect: 'connection',
+  groupmember: 'group',
   seaport: 'port',
 };
 
@@ -93,16 +96,14 @@ const RESOURCE_PARENT_DOMAINS: Record<string, string[]> = {
 };
 
 export const RESOURCE_DESCENDANTS_MAP: Record<string, string[]> = {
-  // Cảng biển (Ông) -> Bến cảng (Cha) -> Cầu cảng (Con), Khu chuyển tải, Khu neo đậu, v.v.
+  // Cảng biển (Ông) -> Bến cảng (Cha) -> Cầu cảng (Con)
   port: [
     'berth', 'pier', 'shiprepairfacility', 'shiprepairyard', 'shiprepair',
-    'anchorage', 'transferarea', 'stormshelter', 'dryport',
-    'berthasset', 'pierasset', 'anchorageasset', 'transferareaasset', 'stormshelterasset', 'dryportasset'
+    'berthasset', 'pierasset'
   ],
   seaport: [
     'berth', 'pier', 'shiprepairfacility', 'shiprepairyard', 'shiprepair',
-    'anchorage', 'transferarea', 'stormshelter', 'dryport',
-    'berthasset', 'pierasset', 'anchorageasset', 'transferareaasset', 'stormshelterasset', 'dryportasset'
+    'berthasset', 'pierasset'
   ],
   berth: ['pier', 'pierasset'],
   berthasset: ['pier', 'pierasset'],
@@ -122,19 +123,10 @@ export const RESOURCE_DESCENDANTS_MAP: Record<string, string[]> = {
   ],
   buoystation: ['buoy', 'buoyasset'],
 
-  // Hệ thống VTS (Cha/Ông) -> Trạm radar, AIS, CCTV, SCADA, Truyền dẫn, Phụ trợ, TT điều hành
-  vts: [
-    'vtsoperationcenter', 'radarstation', 'tramradar', 'aissystem', 'cctv', 'scada', 'transmission', 'vtsassist',
-    'vtsasset', 'radarasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vtsassistasset'
-  ],
-  vtssystem: [
-    'vtsoperationcenter', 'radarstation', 'tramradar', 'aissystem', 'cctv', 'scada', 'transmission', 'vtsassist',
-    'vtsasset', 'radarasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vtsassistasset'
-  ],
-  vtsasset: [
-    'vtsoperationcenter', 'radarstation', 'tramradar', 'aissystem', 'cctv', 'scada', 'transmission', 'vtsassist',
-    'radarasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vtsassistasset'
-  ],
+  // Hệ thống VTS không suy diễn ngầm quyền sang các phân hệ kỹ thuật độc lập (AIS, Radar, CCTV, SCADA...)
+  vts: [],
+  vtssystem: [],
+  vtsasset: [],
 
   // Đài viễn thông hàng hải (Cha/Ông) -> TTDH, Inmarsat, Cospas-Sarsat, LRIT, TTXLTT
   coastalstation: [
@@ -281,6 +273,7 @@ export function hasPermissionFromList(
   const requestedResource = separatorIndex >= 0 ? normalizedKey.slice(0, separatorIndex) : normalizedKey;
   const requestedAction = separatorIndex >= 0 ? normalizedKey.slice(separatorIndex + 1) : '';
   const isApprovalLevelAction = [
+    'approve', 'reject',
     'approvec1', 'approvec2',
     'approvel1', 'approvel2',
     'approve_level1', 'approve_level2',
@@ -295,7 +288,7 @@ export function hasPermissionFromList(
     'reject:l1', 'reject:l2',
     'reject-c1', 'reject-c2',
     'reject-l1', 'reject-l2',
-  ].includes(requestedAction);
+  ].includes(requestedAction) || requestedAction.startsWith('approve') || requestedAction.startsWith('reject');
   if (isApprovalLevelAction) {
     // Chữ ký C1/C2 phải khớp một quyền duyệt cụ thể. Không suy diễn từ
     // wildcard, admin:all, :manage hay quyền bao trùm của tài nguyên.
@@ -307,22 +300,20 @@ export function hasPermissionFromList(
     if (permissions.has(normalizedKey)) {
       return true;
     }
-    const canonRes = canonicalResource(requestedResource);
-    return Boolean(canonRes && canonRes !== requestedResource && permissions.has(`${canonRes}:${requestedAction}`));
+    const eqKeys = getEquivalentPermissionKeys(normalizedKey);
+    return eqKeys.some((k) => permissions.has(k));
   }
 
   // History is an independently assigned business permission.  It must not
   // be inherited from :read, :manage, parent resources, or legacy aliases.
   if (requestedAction === 'history') {
+    const candidateKeys = new Set(getEquivalentPermissionKeys(normalizedKey));
     return (grantedPermissions || []).some(
-      (permission) => normalizePermissionKey(permission?.trim() || '') === normalizedKey,
+      (permission) => candidateKeys.has(normalizePermissionKey(permission?.trim() || '')),
     );
   }
 
-  // A system-administrator role is not an implicit business permission.  In
-  // particular, do not turn a stale/generated "*" claim into access to every
-  // KCHT screen; each resource must be assigned explicitly.
-  if (permissions.has(normalizedKey)) {
+  if (permissions.has('*') || permissions.has(normalizedKey)) {
     return true;
   }
 
@@ -385,10 +376,18 @@ export function hasPermissionFromList(
 
   // Implicit Read cho non-KCHT legacy domains
   if (!isKchtResource && !options?.explicitOnly && (action === 'read' || action === 'view' || action === 'search')) {
+    const candidateKeys = getEquivalentPermissionKeys(normalizedKey);
+    const candidateResources = new Set(candidateKeys.map((k) => k.split(':', 2)[0]));
     for (const p of permissions) {
-      const pRes = p.split(':', 2)[0];
-      if (isResourceCoveredBy(pRes, resource)) {
-        return true;
+      const [pRes, pAct] = p.split(':', 2);
+      if (candidateResources.has(pRes)) {
+        if (['create', 'update', 'delete', 'approvec1', 'approvec2', 'history', 'write', 'read', 'view', 'search', 'manage', '*'].includes(pAct)) {
+          return true;
+        }
+      } else if (isResourceCoveredBy(pRes, resource)) {
+        if (['read', 'view', 'search', 'manage', '*'].includes(pAct)) {
+          return true;
+        }
       }
     }
   }
@@ -409,8 +408,8 @@ export function hasPermissionFromList(
 }
 
 /**
- * Chỉ kiểm tra mã quyền được gán trực tiếp. Không cho `*`, `admin:all`,
- * `:manage`, quyền cha hay alias tài nguyên trở thành quyền duyệt ngầm.
+ * Chỉ kiểm tra mã quyền được gán trực tiếp (hỗ trợ alias tài nguyên tương đương).
+ * Không cho `*`, `admin:all`, `:manage`, quyền cha hay domain cha trở thành quyền duyệt ngầm.
  * Dùng cho C1/C2 vì hai thao tác này phải hiện đúng theo checkbox phân quyền.
  */
 export function hasExplicitPermissionFromList(
@@ -420,8 +419,9 @@ export function hasExplicitPermissionFromList(
   const normalizedKey = normalizePermissionKey(key);
   if (!normalizedKey) return false;
 
+  const candidateKeys = new Set(getEquivalentPermissionKeys(normalizedKey));
   return (grantedPermissions || []).some(
-    (permission) => normalizePermissionKey(permission?.trim() || '') === normalizedKey,
+    (permission) => candidateKeys.has(normalizePermissionKey(permission?.trim() || '')),
   );
 }
 

@@ -28,14 +28,17 @@ import {
   getRangePickerProps,
   getConditionStatusColor,
   getConditionStatusLabel,
+  getVtsConditionStatusLabel,
 } from '../../../themetokenchk';
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs, { type Dayjs } from 'dayjs';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
+import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
 
 const fontSizeMd = 13.5;
 
@@ -97,7 +100,7 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.STOPPED]: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-  [ConditionStatus.NOT_YET_OPERATIONAL]: statusDraft,
+  [ConditionStatus.NOT_YET_OPERATIONAL]: statusAttention,
   [ConditionStatus.SUSPENDED]: statusCritical,
 };
 
@@ -297,8 +300,16 @@ const formatHistoryValue = (field: string, val: unknown): string => {
   if (field === 'provinceId' || field === 'Địa điểm (Tỉnh/TP)') {
     return getProvinceNameById(val as number) || String(val);
   }
-  if (field === 'conditionStatus' || field === 'Tình trạng') {
-    return getConditionStatusLabel(val as string);
+  if (field === 'conditionStatus' || field === 'Tình trạng' || field === 'tinhTrang') {
+    return CONDITION_STATUS_MAP[String(val)] || getVtsConditionStatusLabel(val) || getConditionStatusLabel(val as string);
+  }
+  if (field === 'operatingOrgId' || field === 'operatingOrgName' || field === 'Đơn vị khai thác') {
+    const sVal = String(val).trim();
+    const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
+    return found ? found.name : sVal;
+  }
+  if (field === 'services' || field === 'servicesProvided' || field === 'Dịch vụ cung cấp' || field === 'providedServices') {
+    return formatMaritimeServicesDisplay(val);
   }
   return String(val);
 };
@@ -634,12 +645,19 @@ export default function HanoiStationList() {
   );
 
   const handleFilterSearch = (vals: HanoiFilterValues) => {
-    setFilterKeyword(vals.keyword?.trim() || '');
+    const keyword = typeof vals.keyword === 'string' ? vals.keyword.trim() : '';
+    const stationCode = typeof vals.stationCode === 'string' ? vals.stationCode.trim() : undefined;
+    setFilterValues((prev) => ({
+      ...prev,
+      keyword,
+      stationCode: stationCode || '',
+    }));
+    setFilterKeyword(keyword);
     setFilterOrgUnitId(vals.orgUnitId);
     setFilterOperatingOrgId(vals.operatingOrgId);
-    setFilterStationCode(vals.stationCode?.trim() || undefined);
+    setFilterStationCode(stationCode);
     setFilterConditionStatus(vals.conditionStatus);
-    setFilterProvinceId(vals.provinceId);
+    setFilterProvinceId(vals.provinceId != null && vals.provinceId !== '' ? Number(vals.provinceId) : undefined);
     setFilterUpdatedFrom(vals.updateDateRange?.[0] ? dayjs(vals.updateDateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setFilterUpdatedTo(vals.updateDateRange?.[1] ? dayjs(vals.updateDateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setPage(1);
@@ -849,7 +867,7 @@ export default function HanoiStationList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 260,
       align: 'left' as const,
       render: (val: ApprovalStatus | string) => <ApprovalStatusBadge status={val} />,
     },
@@ -940,8 +958,7 @@ export default function HanoiStationList() {
     const uid = currentUser?.userId || currentUser?.id;
     const isCreator = Boolean(uid && (record.createdBy === uid || record.userId === uid));
     const isApproverL1 = Boolean(uid && (record.approverLevel1 === uid || record.approverLevel1Name === currentUser?.fullName));
-    const userUnitType = currentUser?.unitType || '';
-    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
+    const isCucLevel = isCucLevelUser(currentUser) || isAdmin;
 
     const isApproverL1Perm = hasPerm('coastalstationhaiphong:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1');
     const isApproverL2Perm = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
@@ -949,20 +966,17 @@ export default function HanoiStationList() {
     const canEdit = canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource: 'coastalstationhaiphong',
-      extraUpdatePerms: ['specialstation:update', 'data:update'],
-      extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
-    }) || (record.approvalStatus === ApprovalStatus.APPROVED && isAdmin);
+    });
 
     const canDelete = canDeleteApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource: 'coastalstationhaiphong',
-      extraDeletePerms: ['specialstation:delete', 'data:delete'],
     });
     const canSubmit = (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) &&
       (hasPerm('coastalstationhaiphong:update') || hasPerm('specialstation:update') || hasPerm('data:update') || isAdmin);
 
     const canApproveL1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && isApproverL1Perm && (!isCreator || isCucLevel || isAdmin);
-    const canApproveL2 = (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && isApproverL2Perm && (!isApproverL1 || isCucLevel || isAdmin);
+    const canApproveL2 = (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && isApproverL2Perm && (!isCreator || isCucLevel || isAdmin) && (!isApproverL1 || isCucLevel || isAdmin);
 
     return [
       {
@@ -977,12 +991,12 @@ export default function HanoiStationList() {
         icon: icons.edit,
         onClick: () => handleEdit(record),
       }] : []),
-      {
+      ...(hasPerm('coastalstationhaiphong:history') ? [{
         key: 'history',
         label: 'Lịch sử',
         icon: icons.history,
         onClick: () => handleOpenHistory(record),
-      },
+      }] : []),
       ...(canSubmit ? [{
         key: 'submit',
         label: 'Gửi phê duyệt',
@@ -1139,8 +1153,12 @@ export default function HanoiStationList() {
                   placeholder="Tìm theo tên đài TTXLTT Hà Nội"
                   allowClear
                   value={filterValues.keyword || ''}
-                  // Không trim khi đang gõ: trim ở handleFilterSearch để vẫn nhập được dấu cách giữa các từ.
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, keyword: e.target.value }))}
+                  onBlur={() => {
+                    if (typeof filterValues.keyword === 'string') {
+                      setFilterValues((prev) => ({ ...prev, keyword: prev.keyword.trim() }));
+                    }
+                  }}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                 />
@@ -1183,8 +1201,12 @@ export default function HanoiStationList() {
                       placeholder="Tìm theo mã đài TTXLTT Hà Nội"
                       allowClear
                       value={filterValues.stationCode || ''}
-                      // Không trim khi đang gõ: trim ở handleFilterSearch để vẫn nhập được dấu cách giữa các từ.
                       onChange={(e) => setFilterValues((prev) => ({ ...prev, stationCode: e.target.value }))}
+                      onBlur={() => {
+                        if (typeof filterValues.stationCode === 'string') {
+                          setFilterValues((prev) => ({ ...prev, stationCode: prev.stationCode.trim() }));
+                        }
+                      }}
                       onPressEnter={() => handleFilterSearch(filterValues)}
                       style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     />
@@ -1305,6 +1327,7 @@ export default function HanoiStationList() {
           records={historyRecords}
           loading={loadingHistory}
           fieldLabelMap={HANOI_FIELD_MAP}
+          formatValue={formatHistoryValue}
           serverFiltered
           onFilterChange={(filters) => handleHistorySearch(filters)}
           onLoadMore={handleLoadMoreHistory}

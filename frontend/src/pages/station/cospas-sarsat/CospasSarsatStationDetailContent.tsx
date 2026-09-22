@@ -366,11 +366,12 @@ export const renderServicesBadges = (services?: string[] | string) => {
               alignItems: 'center',
               padding: '2px 10px',
               borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
+              fontSize: '12px',
+              fontWeight: 500,
               background: '#eef3fb',
               border: '1px solid #c6d9f5',
               color: colors.sidebarBg,
+              whiteSpace: 'nowrap',
             }}
           >
             {label}
@@ -676,7 +677,7 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
 
             <div className="chk-detail-row chk-detail-row--full">
               <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-              <span className="chk-detail-value">{data.level1ApprovalContent || (data as any).approvalContentLevel1 || ''}</span>
+              <span className="chk-detail-value">{data.level1ApprovalContent || (data as any).approvalContentLevel1 || '—'}</span>
             </div>
 
             <div className="chk-detail-row">
@@ -686,7 +687,7 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
                   const name = formatUserDisplayName(data.approverLevel2, data.approverLevel2Name, undefined);
                   if (name) return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                   if (data.approverLevel2Name && !isUuidString(data.approverLevel2Name)) return <span style={{ fontWeight: fontWeightBold }}>{data.approverLevel2Name}</span>;
-                  return '';
+                  return '—';
                 })()}
               </span>
             </div>
@@ -697,7 +698,7 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
 
             <div className="chk-detail-row chk-detail-row--full">
               <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
-              <span className="chk-detail-value">{data.level2ApprovalContent || (data as any).approvalContentLevel2 || ''}</span>
+              <span className="chk-detail-value">{data.level2ApprovalContent || (data as any).approvalContentLevel2 || '—'}</span>
             </div>
 
             {data.rejectionReason && (

@@ -15,6 +15,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.port.dto.buoyberth.AttachmentDto;
+import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.CreateBuoyBerthRequest;
 import com.hanghai.kchtg.port.dto.buoyberth.UpdateBuoyBerthRequest;
@@ -171,55 +172,32 @@ public class BuoyBerthService {
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
         }
-        if (request.getWaterwayId() != null)
-            entity.setWaterwayId(request.getWaterwayId());
-        if (request.getClassification() != null)
-            entity.setClassification(request.getClassification());
-        if (request.getProvinceId() != null)
-            entity.setProvinceId(request.getProvinceId());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
+        entity.setWaterwayId(request.getWaterwayId());
+        entity.setClassification(request.getClassification());
+        entity.setProvinceId(request.getProvinceId());
+        entity.setDetailedLocation(request.getDetailedLocation());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getOperatingOrgId() != null)
-            entity.setOperatingOrgId(request.getOperatingOrgId());
-        if (request.getCurrentWaterDepth() != null)
-            entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
-        if (request.getBottomElevationDesign() != null)
-            entity.setBottomElevationDesign(request.getBottomElevationDesign());
-        if (request.getMaxVesselDWT() != null)
-            entity.setMaxVesselDWT(request.getMaxVesselDWT());
-        if (request.getPlannedVesselDWT() != null)
-            entity.setPlannedVesselDWT(request.getPlannedVesselDWT());
-        if (request.getLastInspectionDate() != null)
-            entity.setLastInspectionDate(request.getLastInspectionDate());
-        if (request.getNextInspectionDate() != null)
-            entity.setNextInspectionDate(request.getNextInspectionDate());
-        if (request.getOperationExpiryDate() != null)
-            entity.setOperationExpiryDate(request.getOperationExpiryDate());
-        if (request.getDesignCapacity() != null)
-            entity.setDesignCapacity(request.getDesignCapacity());
-        if (request.getActiveBuoyBerthCount() != null)
-            entity.setActiveBuoyBerthCount(request.getActiveBuoyBerthCount());
-        if (request.getPublishedBuoyBerthCount() != null)
-            entity.setPublishedBuoyBerthCount(request.getPublishedBuoyBerthCount());
-        if (request.getUnderInvestmentBuoyBerthCount() != null)
-            entity.setUnderInvestmentBuoyBerthCount(request.getUnderInvestmentBuoyBerthCount());
-        if (request.getCargoThroughput() != null)
-            entity.setCargoThroughput(request.getCargoThroughput());
-        if (request.getOpeningAnnouncementDate() != null)
-            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
-        if (request.getPublicDecision() != null)
-            entity.setPublicDecision(request.getPublicDecision());
-        if (request.getInvestmentAgreement() != null)
-            entity.setInvestmentAgreement(request.getInvestmentAgreement());
-        if (request.getMooringWaterAreaScope() != null)
-            entity.setMooringWaterAreaScope(request.getMooringWaterAreaScope());
+        entity.setOperatingOrgId(request.getOperatingOrgId());
+        entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
+        entity.setBottomElevationDesign(request.getBottomElevationDesign());
+        entity.setMaxVesselDWT(request.getMaxVesselDWT());
+        entity.setPlannedVesselDWT(request.getPlannedVesselDWT());
+        entity.setLastInspectionDate(request.getLastInspectionDate());
+        entity.setNextInspectionDate(request.getNextInspectionDate());
+        entity.setOperationExpiryDate(request.getOperationExpiryDate());
+        entity.setDesignCapacity(request.getDesignCapacity());
+        entity.setActiveBuoyBerthCount(request.getActiveBuoyBerthCount());
+        entity.setPublishedBuoyBerthCount(request.getPublishedBuoyBerthCount());
+        entity.setUnderInvestmentBuoyBerthCount(request.getUnderInvestmentBuoyBerthCount());
+        entity.setCargoThroughput(request.getCargoThroughput());
+        entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
+        entity.setPublicDecision(request.getPublicDecision());
+        entity.setInvestmentAgreement(request.getInvestmentAgreement());
+        entity.setMooringWaterAreaScope(request.getMooringWaterAreaScope());
         entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
 
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
@@ -849,5 +827,10 @@ public class BuoyBerthService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<BuoyBerthOptionResponse> getOptions() {
+        return buoyBerthRepository.findActiveOptions();
     }
 }

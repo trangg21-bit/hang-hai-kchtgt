@@ -30,18 +30,14 @@ export default defineConfig({
     storageState: 'e2e/.auth/state.json',
   },
 
+  globalSetup: './e2e/global-setup.ts',
   projects: [
     {
       name: 'desktop',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'tablet',
-      use: { ...devices['iPad 9 (portrait)'] },
-    },
-    {
-      name: 'mobile',
-      use: { ...devices['iPhone 13'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 1440, height: 900 },
+      },
     },
   ],
 

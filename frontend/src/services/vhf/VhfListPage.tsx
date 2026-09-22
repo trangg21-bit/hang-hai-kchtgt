@@ -91,6 +91,7 @@ import toast from "../../components/ToastNotification";
 import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
@@ -253,10 +254,10 @@ export function isVhfDeleted(record?: any): boolean {
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
   DELETED: 'Đã xóa',
   ARCHIVED: 'Đã xóa',
 };
@@ -412,10 +413,10 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
       const m: Record<string, string> = {
         DRAFT: 'Lưu tạm',
         PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-        APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+        APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
         APPROVED: 'Đã phê duyệt',
         REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-        REJECTED_LEVEL2: 'Từ chối cấp cục',
+        REJECTED_LEVEL2: 'Từ chối cấp Cục',
       };
       const canonical = ALIAS[val] || val;
       return m[canonical] || val;
@@ -705,9 +706,10 @@ const VhfListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
   const canSaveAndApprove = useMemo(() => {
-    return Boolean(hasPerm?.('vhf:approvec2'));
-  }, [hasPerm]);
+    return checkCanSaveAndApprove('vhf', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  }, [hasPerm, currentUser, isAdmin]);
 
   const [selectedRecord, setSelectedRecord] = useState<VhfResponse | null>(null);
   const vhfFormRef = useRef<VhfFormRef>(null);
@@ -2495,7 +2497,7 @@ const validHistoryGroups = useMemo(() => {
             },
             {
               key: "APPROVED_LEVEL1",
-              label: "Chờ phê duyệt cấp cục",
+              label: "Chờ phê duyệt cấp Cục",
               count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
               color: statusInfo,
               active: filterValues.approvalStatus === "APPROVED_LEVEL1",
@@ -2516,7 +2518,7 @@ const validHistoryGroups = useMemo(() => {
             },
             {
               key: "REJECTED_LEVEL2",
-              label: "Từ chối cấp cục",
+              label: "Từ chối cấp Cục",
               count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
                 ? total
                 : (tabCounts["REJECTED_LEVEL2"] ?? 0),
@@ -2633,7 +2635,7 @@ const validHistoryGroups = useMemo(() => {
             },
             body: { padding: '0 24px 12px 24px' },
           }}
-          destroyOnClose
+          destroyOnHidden
         >
           <style>{requiredMarkStyle}</style>
           {createModalOpen && (
@@ -2730,7 +2732,7 @@ const validHistoryGroups = useMemo(() => {
             },
             body: { padding: '0 24px 12px 24px' },
           }}
-          destroyOnClose
+          destroyOnHidden
         >
           {updateTarget?.id && (
             <>
@@ -2757,7 +2759,7 @@ const validHistoryGroups = useMemo(() => {
         <Drawer
           {...drawerProps}
           size={undefined}
-          width={DRAWER_WIDTH}
+          size={DRAWER_WIDTH}
           rootClassName={THEME_SCOPE_CLASS}
           className="vhf-drawer-scope"
           title={

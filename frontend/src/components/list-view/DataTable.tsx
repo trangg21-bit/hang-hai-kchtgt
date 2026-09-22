@@ -99,18 +99,15 @@ const actionColumnCellStyle: React.CSSProperties = {
   textAlign: 'center',
   verticalAlign: 'middle',
   background: '#ffffff',
-  zIndex: 10,
+  zIndex: 15,
 };
 
 // Header cột action phải có cùng nền với header cột dữ liệu (t.tableHeaderBg).
 const actionColumnHeaderCellStyleFor = (t: ThemeToken): React.CSSProperties => ({
   ...actionColumnCellStyle,
   background: t.tableHeaderBg,
-  zIndex: 10,
+  zIndex: 15,
 });
-
-
-
 
 export interface DataTableColumn {
   key?: string;
@@ -188,7 +185,7 @@ const RowActionDropdown: React.FC<{ items: MenuProps['items'] }> = ({ items }) =
   );
 };
 
-const DataTable: React.FC<DataTableProps> = ({
+export const DataTable: React.FC<DataTableProps> = ({
   columns: rawColumns, dataSource = [], rowKey = 'id', loading, emptyState, fill = true, dense, onSort, rowActions, children, scroll, resetScrollKey, ...rest
 }) => {
   void fill;
@@ -202,6 +199,7 @@ const DataTable: React.FC<DataTableProps> = ({
   const actionColumnHeaderCellStyle = actionColumnHeaderCellStyleFor(t);
 
   const tableShellRef = useRef<HTMLDivElement>(null);
+  const isSortingRef = useRef(false);
   // AntD does not reliably emit `null` as the third value when supplied in
   // sortDirections. Keep the last server-side state so the three-click cycle
   // remains deterministic even when its internal sorter loops back to ascend.
@@ -223,10 +221,13 @@ const DataTable: React.FC<DataTableProps> = ({
   };
 
   useEffect(() => {
-    // Horizontal position belongs to the user's current table context.  A
+    // Horizontal position belongs to the user's current table context. A
     // server-side sort also toggles `loading`; resetting on that transition
     // made a click on a right-hand header jump visually back to Name/Code.
-    // Only an explicit filter/reset context change may request this reset.
+    if (isSortingRef.current) {
+      isSortingRef.current = false;
+      return;
+    }
     if (resetScrollKey !== undefined) {
       resetHorizontalScroll();
       const frameId = window.requestAnimationFrame(resetHorizontalScroll);
@@ -245,7 +246,7 @@ const DataTable: React.FC<DataTableProps> = ({
     const measureWidth = () => {
       const nextWidth = shell.clientWidth;
       if (nextWidth > 0) {
-        setMeasuredTableWidth((currentWidth) => currentWidth === nextWidth ? currentWidth : nextWidth);
+        setMeasuredTableWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
       }
     };
 
@@ -442,7 +443,7 @@ const DataTable: React.FC<DataTableProps> = ({
           zIndex: col.fixed ? 10 : undefined,
           background: col.fixed ? (tableHeaderBg || '#f8fafc') : undefined,
           textAlign: col.align || 'left',
-          userSelect: 'none',
+userSelect: 'none',
         },
         // Own the server-side cycle instead of deriving it from AntD's
         // two-state event. Capture runs before AntD's header click handler,
@@ -462,6 +463,7 @@ const DataTable: React.FC<DataTableProps> = ({
             field,
             order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null,
           };
+          isSortingRef.current = true;
           onSort(field, nextOrder);
         } : undefined,
       }),
@@ -503,14 +505,12 @@ const DataTable: React.FC<DataTableProps> = ({
       },
     };
 
-    if (isSortable) {
-      if (col.sortOrder !== undefined) {
-        colObj.sortOrder = col.sortOrder;
-      } else if (onSort) {
-        colObj.sortOrder = null;
-      } else {
-        colObj.sortOrder = localSort.field === dataKey ? localSort.order ?? null : null;
-      }
+if (col.sortOrder !== undefined) {
+      colObj.sortOrder = col.sortOrder;
+    } else if (onSort && isSortable) {
+      colObj.sortOrder = null;
+    } else if (isSortable) {
+      colObj.sortOrder = localSort.field === dataKey ? localSort.order ?? null : null;
     }
 
     return colObj;
@@ -531,7 +531,15 @@ const DataTable: React.FC<DataTableProps> = ({
       onHeaderCell: () => ({ style: actionColumnHeaderCellStyle }),
       onCell: () => ({ style: actionColumnCellStyle }),
       render: (_: unknown, record: any) => {
-        const items = rowActions(record).map((a) => ({
+        const rawActions = rowActions(record);
+        if (!rawActions || rawActions.length === 0) {
+          return (
+            <span style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'center', color: textTertiary }}>
+              —
+            </span>
+          );
+        }
+        const items = rawActions.map((a) => ({
           key: a.key, icon: a.icon, label: a.label, danger: a.danger, disabled: a.disabled,
           onClick: a.onClick,
         }));
@@ -572,6 +580,7 @@ const DataTable: React.FC<DataTableProps> = ({
         const nextOrder = getNextSortOrder(currentOrder);
         lastServerSortRef.current = { field, order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null };
         if (onSort) {
+          isSortingRef.current = true;
           onSort(field, nextOrder);
         } else {
           setLocalSort({

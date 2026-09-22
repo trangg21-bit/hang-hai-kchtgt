@@ -404,7 +404,9 @@ public class VtsAssistService {
 
     Map<String, String> previousValues = new LinkedHashMap<>();
 
-    applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName() != null ? request.getDeviceName().trim() : null, entity::setDeviceName, previousValues);
+    if (request.getDeviceName() != null && !request.getDeviceName().trim().isEmpty()) {
+      applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName().trim(), entity::setDeviceName, previousValues);
+    }
     applyIfChanged("detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation(), entity::setDetailedLocation, previousValues);
     applyIfChanged("manufacturer", entity.getManufacturer(), request.getManufacturer(), entity::setManufacturer, previousValues);
     applyIfChanged("model", entity.getModel(), request.getModel(), entity::setModel, previousValues);
@@ -544,7 +546,6 @@ public class VtsAssistService {
   }
 
   private <T> void applyIfChanged(String fieldName, T currentVal, T newVal, java.util.function.Consumer<T> setter, Map<String, String> previousValues) {
-    if (newVal == null) return;
     if (EntityUpdateUtils.areEqual(currentVal, newVal)) return;
     previousValues.put(fieldName, currentVal != null ? String.valueOf(currentVal) : "Chưa có");
     setter.accept(newVal);

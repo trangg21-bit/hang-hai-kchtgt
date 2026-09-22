@@ -270,7 +270,7 @@ const Pagination: React.FC<PaginationProps> = ({
         {showSizeChanger && (
           <Select
             className="page-size-select"
-            popupClassName="page-size-select-popup"
+            classNames={{ popup: { root: 'page-size-select-popup' } }}
             value={pageSize}
             onChange={(val) => onChange(1, val)}
             options={pageSizeOptions.map((n) => ({ value: n, label: `${n} / trang` }))}

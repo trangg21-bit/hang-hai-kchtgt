@@ -39,16 +39,16 @@ import {
   fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
   borderDefault,
   statusCritical, statusOperational, actionPrimary,
-  readonlyInputStyle, inputStyle, selectStyle, spaceSm, spaceXs, textTertiary,
-  textAreaStyle,
+  readonlyInputStyle, inputStyle, selectStyle, textAreaStyle, spaceSm, spaceXs, textTertiary,
 } from '../../../themetokenchk';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { FormOrgUnitTreeSelect, normalizeSearchText } from '../../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -161,15 +161,11 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
-  const canApproveL2 = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationlrit', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const canCreate = hasPerm('coastalstationlrit:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationlrit',
-    extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const isDetailMode = mode === 'detail';
@@ -224,47 +220,55 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
 
   const operatingUnitOptions = useMemo(() => {
     const list: { value: string; label: string }[] = [];
-    const seen = new Set<string>();
+    const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
+    const seenCodes = new Set<string>();
+
+    const addOption = (id?: string | null, name?: string | null, code?: string | null) => {
+      if (!id || !name) return;
+      const strId = String(id).trim();
+      const normName = name.trim().toLowerCase();
+      const normCode = code ? code.trim().toLowerCase() : '';
+
+      if (seenIds.has(strId)) return;
+      if (normCode && seenCodes.has(normCode)) return;
+      if (seenNames.has(normName)) return;
+
+      seenIds.add(strId);
+      if (normCode) seenCodes.add(normCode);
+      seenNames.add(normName);
+
+      list.push({
+        value: strId,
+        label: code ? `${code} - ${name}` : name,
+      });
+    };
 
     if (Array.isArray(effectiveOrgUnits)) {
       effectiveOrgUnits.forEach((o: any) => {
-        if (o.id && !seen.has(String(o.id))) {
-          seen.add(String(o.id));
-          list.push({
-            value: String(o.id),
-            label: o.code ? `${o.code} - ${o.name || o.unitName}` : (o.name || o.unitName),
-          });
-        }
+        addOption(o.id, o.name || o.unitName, o.code);
       });
     }
 
     if (Array.isArray(DEFAULT_OPERATING_ORGANIZATIONS)) {
       DEFAULT_OPERATING_ORGANIZATIONS.forEach((o) => {
-        if (o.id && !seen.has(String(o.id))) {
-          seen.add(String(o.id));
-          list.push({
-            value: String(o.id),
-            label: o.code ? `${o.code} - ${o.name}` : o.name,
-          });
-        }
+        addOption(o.id, o.name, o.code);
       });
     }
 
     const curOpId = record?.operatingOrgId || (initialData as any)?.operatingOrgId;
     const curOpName = (record as any)?.operatingOrgName || (initialData as any)?.operatingOrgName;
-    if (curOpId && !seen.has(String(curOpId))) {
-      seen.add(String(curOpId));
+    if (curOpId) {
       let resolvedLabel = (curOpName && !/^[0-9a-fA-F-]{36}$/.test(curOpName)) ? curOpName : undefined;
+      let resolvedCode: string | undefined = undefined;
       if (!resolvedLabel && Array.isArray(effectiveOrgUnits)) {
         const found = effectiveOrgUnits.find((o: any) => String(o.id) === String(curOpId));
         if (found) {
-          resolvedLabel = found.code ? `${found.code} - ${found.name || found.unitName}` : (found.name || found.unitName);
+          resolvedLabel = found.name || found.unitName;
+          resolvedCode = found.code;
         }
       }
-      list.push({
-        value: String(curOpId),
-        label: resolvedLabel || 'Đơn vị khai thác',
-      });
+      addOption(String(curOpId), resolvedLabel || 'Đơn vị khai thác', resolvedCode);
     }
 
     return list;
@@ -350,8 +354,9 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         displayRule: undefined,
       });
 
-      if ((currentUser as any)?.orgUnitId) {
-        form.setFieldValue('orgUnitId', String((currentUser as any).orgUnitId));
+      const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
+      if (defOrgId) {
+        form.setFieldValue('orgUnitId', defOrgId);
       }
 
       lritStationService.generateCode().then((res) => {
@@ -380,7 +385,19 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         setLoading(false);
       });
     }
-  }, [open, editId, initialData, mode, isCreateMode]);
+  }, [open, editId, initialData, mode, isCreateMode, currentUser, effectiveOrgUnits]);
+
+  useEffect(() => {
+    if (isCreateMode && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('orgUnitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('orgUnitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreateMode, open, effectiveOrgUnits, currentUser, form]);
 
   const populateForm = (data: LritStationItem) => {
     setRecord(data);
@@ -689,7 +706,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
       else if (action === 'approve') actionParam = 'APPROVE';
 
       const payload = {
-        code: values.code,
+        code: values.code?.trim(),
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId ?? null,
         operatingOrgId: values.operatingOrgId ?? null,
@@ -958,6 +975,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             <Form.Item
                               name="provinceId"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm (Tỉnh/TP)</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn địa điểm (Tỉnh/TP)' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
@@ -987,11 +1005,14 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               name="locationAddress"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
-                              rules={[{ max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' }]}
+                              rules={[
+                                { required: true, whitespace: true, message: 'Vui lòng nhập địa điểm chi tiết' },
+                                { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
+                              ]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input
@@ -1003,7 +1024,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               name="services"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}
@@ -1032,13 +1053,13 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
                             <Form.Item
                               name="coverageArea"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Vùng phủ sóng</span>}
-                              rules={[{ max: 4000, message: 'Vùng phủ sóng tối đa 4000 ký tự' }]}
+                              rules={[{ max: 2000, message: 'Vùng phủ sóng tối đa 2000 ký tự' }]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input.TextArea
                                 placeholder="Nhập vùng phủ sóng"
                                 rows={3}
-                                maxLength={4000}
+                                maxLength={2000}
                                 showCount
                                 style={textAreaStyle}
                               />
@@ -1351,7 +1372,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

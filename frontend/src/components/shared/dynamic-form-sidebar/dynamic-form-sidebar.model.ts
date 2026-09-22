@@ -217,6 +217,8 @@ export interface DynamicFormSidebarProps<T extends Record<string, unknown> = Rec
   onValuesChange?: (changedValues: Partial<T>, allValues: T) => void;
   /** Hủy component con khi ẩn drawer */
   destroyOnClose?: boolean;
+  /** Hủy component con khi ẩn drawer */
+  destroyOnHidden?: boolean;
   /** Class CSS root của drawer */
   rootClassName?: string;
   /** Class CSS của drawer */

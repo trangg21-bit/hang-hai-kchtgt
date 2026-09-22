@@ -198,9 +198,7 @@ public class SeaportThroughputService {
         if (newReportMonth != null) {
             entity.setReportMonth(newReportMonth);
         }
-        if (req.getNote() != null) {
-            entity.setNote(trimToNull(req.getNote()));
-        }
+        entity.setNote(trimToNull(req.getNote()));
         applyIfPresent(req.getDomesticContainerTon(), entity::setDomesticContainerTon);
         applyIfPresent(req.getDomesticContainerTonKm(), entity::setDomesticContainerTonKm);
         applyIfPresent(req.getDomesticDryTon(), entity::setDomesticDryTon);

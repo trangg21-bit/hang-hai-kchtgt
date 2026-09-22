@@ -4,7 +4,9 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.service.CommonOptionsService;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse;
 import com.hanghai.kchtg.port.dto.port.PortOptionResponse;
 import com.hanghai.kchtg.radarstation.dto.RadarStationOptionResponse;
 import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse;
@@ -74,5 +76,17 @@ public class CommonOptionsController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<VtsOperationCenterOptionResponse>>> getVtsOperationCenterOptions() {
         return ResponseEntity.ok(ApiResponse.success("Danh sách trung tâm điều hành VTS", service.getVtsOperationCenterOptions()));
+    }
+
+    @GetMapping("/navigation-channels")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<NavigationChannelOptionResponse>>> getNavigationChannelOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách luồng hàng hải", service.getNavigationChannelOptions()));
+    }
+
+    @GetMapping("/buoy-berths")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<BuoyBerthOptionResponse>>> getBuoyBerthOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Danh sách bến phao", service.getBuoyBerthOptions()));
     }
 }

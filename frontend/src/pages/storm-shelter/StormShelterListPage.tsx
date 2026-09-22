@@ -68,6 +68,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { StormShelterArea } from '../../types/port';
 import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterDetailContent from './StormShelterDetailContent';
@@ -101,10 +102,10 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -357,6 +358,8 @@ export default function StormShelterListPage() {
 
   const authUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('stormshelter', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
@@ -426,17 +429,63 @@ export default function StormShelterListPage() {
     });
     return map;
   }, [rawUsers, orgMap]);
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
-  const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
-  const [buoyStationMap, setBuoyStationMap] = useState<Map<string, string>>(new Map());
-  const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
-  const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
-
+  const [allPorts, setAllPorts] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const portMap = useMemo(() => {
     const m = new Map<string, string>();
-    portOptions.forEach((o) => m.set(o.value, o.label));
+    allPorts.forEach((o) => m.set(o.id, o.portName || o.portCode || ''));
     return m;
-  }, [portOptions]);
+  }, [allPorts]);
+  const portOptions = useMemo(() => {
+    const filtered = (!orgUnit || orgUnit === '__all__')
+      ? allPorts
+      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
+    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || '' }));
+  }, [allPorts, orgUnit]);
+
+  const [allBuoyBerths, setAllBuoyBerths] = useState<Array<{ id: string; buoyBerthName?: string; buoyBerthCode?: string; orgUnitId?: string; portId?: string }>>([]);
+  const buoyStationMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allBuoyBerths.forEach((b) => {
+      m.set(b.id, b.buoyBerthName || b.buoyBerthCode || '');
+    });
+    return m;
+  }, [allBuoyBerths]);
+  const buoyStationOptions = useMemo(() => {
+    let filtered = allBuoyBerths;
+    if (orgUnit && orgUnit !== '__all__') {
+      filtered = filtered.filter((b) => !b.orgUnitId || b.orgUnitId === orgUnit);
+    }
+    if (filterPortId) {
+      filtered = filtered.filter((b) => !b.portId || b.portId === filterPortId);
+    }
+    return filtered.map((b) => ({
+      value: b.id,
+      label: b.buoyBerthName || b.buoyBerthCode || b.id,
+    }));
+  }, [allBuoyBerths, orgUnit, filterPortId]);
+
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; channelName?: string; channelCode?: string; orgUnitId?: string }>>([]);
+  const waterwayMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allWaterways.forEach((n) => {
+      const code = n.channelCode?.trim();
+      const name = n.channelName?.trim();
+      const label = code && name ? `${code} - ${name}` : (code || name || '');
+      m.set(n.id, label);
+    });
+    return m;
+  }, [allWaterways]);
+  const waterwayOptions = useMemo(() => {
+    const filtered = (!orgUnit || orgUnit === '__all__')
+      ? allWaterways
+      : allWaterways.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnit);
+    return filtered.map((n) => {
+      const code = n.channelCode?.trim();
+      const name = n.channelName?.trim();
+      const label = code && name ? `${code} - ${name}` : (code || name || '');
+      return { value: n.id, label };
+    });
+  }, [allWaterways, orgUnit]);
 
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -518,75 +567,25 @@ export default function StormShelterListPage() {
 
 
 
-  // Luồng hàng hải (bộ lọc: chỉ lấy đã phê duyệt)
+  // Luồng hàng hải options
   useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => {
-        const items = r.items || [];
-        setWaterwayOptions(items.map(n => {
-          const code = n.channelCode?.trim();
-          const name = n.channelName?.trim();
-          const label = code && name ? `${code} - ${name}` : (code || name || '');
-          return { value: n.id, label };
-        }));
-      })
+    navigationChannelCRUD.getOptions()
+      .then((items) => setAllWaterways(items || []))
       .catch(() => {});
   }, []);
 
-  // Luồng hàng hải (map hiển thị tên bảng & lịch sử)
+  // Cảng biển options
   useEffect(() => {
-    navigationChannelCRUD.search({ page: 0, size: 1000 })
-      .then((r) => {
-        const m = new Map<string, string>();
-        (r.items || []).forEach(n => {
-          const code = n.channelCode?.trim();
-          const name = n.channelName?.trim();
-          const label = code && name ? `${code} - ${name}` : (code || name || '');
-          m.set(n.id, label);
-        });
-        setWaterwayMap(m);
-      })
+    portCRUD.getOptions()
+      .then((items) => setAllPorts(items || []))
       .catch(() => {});
   }, []);
 
-  // Cảng biển
+  // Bến phao options
   useEffect(() => {
-    (async () => {
-      try {
-        const p: any = { page: 1, pageSize: 1000 };
-        if (orgUnit && orgUnit !== '__all__') p.orgUnitId = orgUnit;
-        const r = await portCRUD.search(p);
-        setPortOptions((r.data || []).map((x: any) => ({ value: x.id, label: x.portName })));
-      } catch {}
-    })();
-  }, [orgUnit]);
-
-  // Bến phao (bộ lọc: chỉ lấy đã phê duyệt, lọc theo orgUnit và portId)
-  useEffect(() => {
-    (async () => {
-      try {
-        const params: any = { page: 1, pageSize: 1000, approvalStatus: 'APPROVED' };
-        if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit;
-        if (filterPortId) params.portId = filterPortId;
-        const r = await buoyBerthCRUD.search(params);
-        setBuoyStationOptions((r.data || []).map((b: any) => ({
-          value: b.id,
-          label: b.buoyBerthName || b.buoyBerthCode || b.id,
-        })));
-      } catch {}
-    })();
-  }, [orgUnit, filterPortId]);
-
-  // Bến phao (map hiển thị tên bảng & lịch sử)
-  useEffect(() => {
-    (async () => {
-      try {
-        const r = await buoyBerthCRUD.search({ page: 1, pageSize: 1000 });
-        const m = new Map<string, string>();
-        (r.data || []).forEach((b: any) => { m.set(b.id, b.buoyBerthName || b.buoyBerthCode || ''); });
-        setBuoyStationMap(m);
-      } catch {}
-    })();
+    buoyBerthCRUD.getOptions()
+      .then((items) => setAllBuoyBerths(items || []))
+      .catch(() => {});
   }, []);
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
@@ -1457,7 +1456,7 @@ export default function StormShelterListPage() {
           rootClassName="storm-shelter-drawer-scope"
           className="storm-shelter-drawer-scope"
           size={1000}
-          width="min(1000px, 96vw)"
+          size="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editStormShelterId ? 'Chỉnh sửa thông tin Khu tránh, trú bão' : 'Thêm mới Khu tránh, trú bão'}</span>}
           open={createDrawerVisible}
           destroyOnHidden
@@ -1467,11 +1466,11 @@ export default function StormShelterListPage() {
           footer={<div style={drawerFooterStyle}>{(() => {
             const st = !editStormShelterId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
             if (st === 'APPROVED') {
-              return (
+              return canSaveAndApprove ? (
                 <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); stormShelterFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
-              );
+              ) : null;
             }
             if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
               return (
@@ -1488,9 +1487,11 @@ export default function StormShelterListPage() {
                 <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); stormShelterFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
-                <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); stormShelterFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                  Lưu và phê duyệt
-                </Button>
+                {canSaveAndApprove && (
+                  <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); stormShelterFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
+                    Lưu và phê duyệt
+                  </Button>
+                )}
               </>
             );
           })()}</div>}
@@ -1520,10 +1521,10 @@ export default function StormShelterListPage() {
           rootClassName="storm-shelter-drawer-scope"
           className="storm-shelter-drawer-scope"
           size={1000}
-          width="min(1000px, 96vw)"
+          size="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu tránh, trú bão{detailRecord ? ` - ${detailRecord.stormShelterName}` : ''}</span>}
           open={detailDrawerVisible}
-          destroyOnClose
+          destroyOnHidden
           onClose={closeDetailDrawer}
           extra={<Button type="text" onClick={closeDetailDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}

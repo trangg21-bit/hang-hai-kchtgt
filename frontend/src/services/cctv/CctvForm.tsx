@@ -1358,7 +1358,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         }
         open={gisModalOpen}
         onCancel={handleCancelGisMap}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

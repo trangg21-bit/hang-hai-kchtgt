@@ -335,6 +335,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       .finally(() => setLoadingSymbols(false));
   }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
+
   useEffect(() => { api.get('/common/options/operating-units').then(r => { const list = r.data?.data; if (Array.isArray(list) && list.length) setOperatingOrgs(list); }).catch(() => {}); }, []);
 
   const [loadingWaterways, setLoadingWaterways] = useState(false);
@@ -367,8 +368,9 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
     try {
-      const r = await portCRUD.findAll({ orgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 });
-      setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+      const allPorts = await portCRUD.getOptions();
+      const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId);
+      setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
     } catch { setPortOptions([]); }
     finally { setLoadingPorts(false); }
   };

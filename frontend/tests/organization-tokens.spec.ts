@@ -1,7 +1,9 @@
-// Placeholder test for organization token refactoring
+import { test, expect } from '@playwright/test';
 
-describe('Organization pages token usage', () => {
-  it('should use semantic tokens instead of hardcoded values', () => {
+// Placeholder test for organization token refactoring
+test.describe('Organization pages token usage', () => {
+  test('should use semantic tokens instead of hardcoded values', () => {
     expect(true).toBe(true);
   });
 });
+

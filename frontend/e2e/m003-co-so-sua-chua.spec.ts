@@ -28,7 +28,7 @@ test.describe('M-003 Cơ sở Sửa chữa/Đóng tàu', () => {
     await expect(page).not.toHaveURL(/login/);
     await expect(page.getByText(/Placeholder/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Thêm mới' })).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Trạng thái phê duyệt')).toBeVisible();
+    await expect(page.locator('thead').getByText('Trạng thái')).toBeVisible();
   });
 
   test('TC-M003-CSC-02: Trang tạo mới hiển thị form với field thật', async ({ page }) => {
@@ -38,7 +38,7 @@ test.describe('M-003 Cơ sở Sửa chữa/Đóng tàu', () => {
     await expect(page.getByText('Tên cơ sở', { exact: true })).toBeVisible();
   });
 
-  test('TC-M003-CSC-03: Trang chi tiết /co-so-sua-chua/:id reachable', async ({ page }) => {
+  test('TC-M003-CSC-03: Trang chi tiết /ship-repair-facility/:id reachable', async ({ page }) => {
     await page.goto(DETAIL_URL);
     await expect(page).not.toHaveURL(/login/);
     await expect(page.getByText(/Placeholder/i)).toHaveCount(0);

@@ -196,7 +196,7 @@ describe('KchtFormFooter Component Tests', () => {
       expect(html).not.toContain('Lưu và phê duyệt');
     });
 
-    it('renders "Lưu và phê duyệt" for APPROVED record when user has approvec2 permission', () => {
+    it('renders "Lưu và phê duyệt" for APPROVED record when user has update and approvec2 permissions', () => {
       useAuthStore.setState({
         user: {
           id: 'u-cuc',
@@ -204,10 +204,10 @@ describe('KchtFormFooter Component Tests', () => {
           username: 'cuc_approver',
           unitType: 'CUC',
           orgUnitId: 'cuc-root',
-          permissions: ['vts:approvec2'],
+          permissions: ['vts:update', 'vts:approvec2'],
         } as User,
       });
-      usePermissionStore.setState({ permissions: ['vts:approvec2'] });
+      usePermissionStore.setState({ permissions: ['vts:update', 'vts:approvec2'] });
 
       const approvedRecord = { id: 'vts-2', approvalStatus: 'APPROVED' };
       const html = renderToStaticMarkup(

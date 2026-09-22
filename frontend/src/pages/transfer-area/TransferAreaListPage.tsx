@@ -35,6 +35,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -108,10 +109,10 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -365,12 +366,13 @@ export default function TransferAreaListPage() {
 
   const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('transferarea', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);
   const [nameInput, setNameInput] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [filterPortId, setFilterPortId] = useState<string | undefined>();
-  const [portOptions, setPortOptions] = useState<{ value: string; label: string }[]>([]);
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterOperationalFunctions, setFilterOperationalFunctions] = useState<string | undefined>();
@@ -436,11 +438,21 @@ export default function TransferAreaListPage() {
     return map;
   }, [rawUsers, orgMap]);
 
+  const [allPorts, setAllPorts] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
   const portMap = useMemo(() => {
     const m = new Map<string, string>();
-    portOptions.forEach((o) => m.set(o.value, o.label));
+    allPorts.forEach((o) => m.set(o.id, o.portName || o.portCode || o.id));
     return m;
-  }, [portOptions]);
+  }, [allPorts]);
+  const allPortOptions = useMemo(() => {
+    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts]);
+  const portOptions = useMemo(() => {
+    const filtered = (!orgUnit || orgUnit === '__all__')
+      ? allPorts
+      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
+    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+  }, [allPorts, orgUnit]);
 
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -688,17 +700,19 @@ export default function TransferAreaListPage() {
 
 
   useEffect(() => {
-    (async () => {
-      try {
-        const p: any = { page: 1, pageSize: 1000 };
-        if (orgUnit && orgUnit !== '__all__') p.orgUnitId = orgUnit;
-        const r = await portCRUD.search(p);
-        setPortOptions((r.data || []).map((x: any) => ({ value: x.id, label: x.portName })));
-      } catch {
-        /* ignore */
+    portCRUD.getOptions()
+      .then((items) => setAllPorts(items || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (filterPortId && orgUnit && orgUnit !== '__all__') {
+      const match = allPorts.find((p) => p.id === filterPortId);
+      if (match && match.orgUnitId && match.orgUnitId !== orgUnit) {
+        setFilterPortId(undefined);
       }
-    })();
-  }, [orgUnit]);
+    }
+  }, [orgUnit, filterPortId, allPorts]);
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
@@ -1658,10 +1672,10 @@ export default function TransferAreaListPage() {
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
           size={1000}
-          width="min(1000px, 96vw)"
+          size="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editTransferAreaId ? 'Chỉnh sửa thông tin Khu chuyển tải' : 'Thêm mới Khu chuyển tải'}</span>}
           open={createDrawerVisible}
-          destroyOnClose
+          destroyOnHidden
           onClose={closeFormDrawer}
           afterOpenChange={(open) => {
             if (!open) {
@@ -1675,7 +1689,7 @@ export default function TransferAreaListPage() {
               {(() => {
                 const st = !editTransferAreaId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
                 if (st === 'APPROVED') {
-                  return (
+                  return canSaveAndApprove ? (
                     <Button
                       htmlType="button"
                       type="primary"
@@ -1685,7 +1699,7 @@ export default function TransferAreaListPage() {
                     >
                       Lưu và phê duyệt
                     </Button>
-                  );
+                  ) : null;
                 }
                 if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
                   return (
@@ -1719,15 +1733,17 @@ export default function TransferAreaListPage() {
                     >
                       Lưu và gửi phê duyệt
                     </Button>
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        htmlType="button"
+                        type="primary"
+                        onClick={() => { setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }}
+                        loading={submitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
                   </>
                 );
               })()}
@@ -1762,7 +1778,7 @@ export default function TransferAreaListPage() {
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
           size={1000}
-          width="min(1000px, 96vw)"
+          size="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu chuyển tải{detailRecord ? ` - ${detailRecord.transferAreaName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}
@@ -1780,7 +1796,7 @@ export default function TransferAreaListPage() {
               organizations={organizations}
               symbolMap={symbolMap}
               symbolImageMap={symbolImageMap}
-              portOptions={portOptions}
+              portOptions={allPortOptions}
               portMap={portMap}
               userMap={userMap}
               detailFiles={detailFiles}

@@ -377,57 +377,33 @@ public class BerthService {
                 });
             });
         }
-        if (request.getWaterway() != null)
-            entity.setWaterway(request.getWaterway());
-        if (request.getWaterwayId() != null)
-            entity.setWaterwayId(request.getWaterwayId());
-        if (request.getLength() != null)
-            entity.setLength(request.getLength());
-        if (request.getWidth() != null)
-            entity.setWidth(request.getWidth());
-        if (request.getBerthType() != null)
-            entity.setBerthType(request.getBerthType());
-        if (request.getChannelDepth() != null)
-            entity.setChannelDepth(request.getChannelDepth());
-        if (request.getOperationalFunction() != null)
-            entity.setOperationalFunction(request.getOperationalFunction());
+        entity.setWaterway(request.getWaterway());
+        entity.setWaterwayId(request.getWaterwayId());
+        entity.setLength(request.getLength());
+        entity.setWidth(request.getWidth());
+        entity.setBerthType(request.getBerthType());
+        entity.setChannelDepth(request.getChannelDepth());
+        entity.setOperationalFunction(request.getOperationalFunction());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getMapSymbolId() != null)
-            entity.setMapSymbolId(request.getMapSymbolId());
+        entity.setMapSymbolId(request.getMapSymbolId());
         // Extended fields
-        if (request.getProvinceId() != null)
-            entity.setProvinceId(request.getProvinceId());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
-        if (request.getOperator() != null)
-            entity.setOperator(request.getOperator());
-        if (request.getOperatingOrgId() != null)
-            entity.setOperatingOrgId(request.getOperatingOrgId());
-        if (request.getTotalArea() != null)
-            entity.setTotalArea(request.getTotalArea());
-        if (request.getDesignThroughput() != null)
-            entity.setDesignThroughput(request.getDesignThroughput());
-        if (request.getCurrentThroughput() != null)
-            entity.setCurrentThroughput(request.getCurrentThroughput());
-        if (request.getMaxVesselSize() != null)
-            entity.setMaxVesselSize(request.getMaxVesselSize());
-        if (request.getPlannedThroughput() != null)
-            entity.setPlannedThroughput(request.getPlannedThroughput());
-        if (request.getLatestCargoVolume() != null)
-            entity.setLatestCargoVolume(request.getLatestCargoVolume());
-        if (request.getOpeningAnnouncementDate() != null)
-            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
-        if (request.getOpeningDecision() != null)
-            entity.setOpeningDecision(request.getOpeningDecision());
-        if (request.getInvestmentAgreement() != null)
-            entity.setInvestmentAgreement(request.getInvestmentAgreement());
-        if (request.getStructureType() != null)
-            entity.setStructureType(request.getStructureType());
+        entity.setProvinceId(request.getProvinceId());
+        entity.setDetailedLocation(request.getDetailedLocation());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
+        entity.setOperator(request.getOperator());
+        entity.setOperatingOrgId(request.getOperatingOrgId());
+        entity.setTotalArea(request.getTotalArea());
+        entity.setDesignThroughput(request.getDesignThroughput());
+        entity.setCurrentThroughput(request.getCurrentThroughput());
+        entity.setMaxVesselSize(request.getMaxVesselSize());
+        entity.setPlannedThroughput(request.getPlannedThroughput());
+        entity.setLatestCargoVolume(request.getLatestCargoVolume());
+        entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
+        entity.setOpeningDecision(request.getOpeningDecision());
+        entity.setInvestmentAgreement(request.getInvestmentAgreement());
+        entity.setStructureType(request.getStructureType());
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;

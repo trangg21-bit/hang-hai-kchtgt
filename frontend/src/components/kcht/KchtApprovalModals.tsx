@@ -88,7 +88,7 @@ export const KchtRejectModal: React.FC<KchtRejectModalProps> = ({
       }}
       width={520}
       style={{ top: 120 }}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ marginTop: 12 }}>
         <p style={{ marginBottom: spaceFormField, fontSize: fontSizeMd, color: '#475569' }}>

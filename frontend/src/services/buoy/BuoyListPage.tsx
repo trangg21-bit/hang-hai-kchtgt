@@ -1605,7 +1605,7 @@ export default function BuoyListPage() {
     });
 
     // Quy tắc 12 (approval-2-level-spec.md mục 3.9)
-    if (canEditApprovalRecord(record.status, { hasPerm, resource: 'buoy', extraUpdatePerms: ['buoy:manage', 'data:update'], extraApprovePerms: ['buoy:manage'] })) {
+    if (canEditApprovalRecord(record.status, { hasPerm, resource: 'buoy' })) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -1625,13 +1625,15 @@ export default function BuoyListPage() {
       });
     }
 
-    // Lịch sử — luôn hiển thị khi có quyền
-    actions.push({
-      key: 'history',
-      label: 'Lịch sử',
-      icon: icons.history,
-      onClick: () => openHistoryDrawer(record),
-    });
+    // Lịch sử — hiển thị khi có quyền
+    if (hasPerm('buoy:history')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => openHistoryDrawer(record),
+      });
+    }
 
     // Phê duyệt / Từ chối — theo trạng thái
     if (hasPerm('buoy:update') && (record.status === 'DRAFT' || record.status === 'NHAP')) {
@@ -1878,7 +1880,7 @@ export default function BuoyListPage() {
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
-              <DatePicker.RangePicker className="range-single-panel" popupClassName="range-single-panel" format="DD/MM/YYYY"
+              <DatePicker.RangePicker className="range-single-panel" classNames={{ popup: { root: 'range-single-panel' } }} format="DD/MM/YYYY"
                 placeholder={['Từ ngày', 'Đến ngày']} allowClear
                 value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
                 onChange={(dates) => { setFilterUpdatedFrom(dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined); setFilterUpdatedTo(dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined); setPage(1); }}

@@ -293,11 +293,12 @@ export const renderServicesBadges = (services?: string[] | string) => {
               alignItems: 'center',
               padding: '2px 10px',
               borderRadius: radiusPill,
-              fontSize: fontSizeMd,
-              fontWeight: fontWeightMedium,
+              fontSize: '12px',
+              fontWeight: 500,
               background: '#eef3fb',
               border: '1px solid #c6d9f5',
               color: colors.sidebarBg,
+              whiteSpace: 'nowrap',
             }}
           >
             {label}
@@ -564,6 +565,13 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                         </span>
                       </div>
 
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
+                        <span className="chk-detail-value">
+                          {record.approvalContentLevel1 || (record as any).level1ApprovalContent || '—'}
+                        </span>
+                      </div>
+
                       <div className="chk-detail-row">
                         <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
@@ -574,6 +582,13 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                         <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
                         <span className="chk-detail-value">
                           {record.approvedDateLevel2 ? dayjs(record.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '—'}
+                        </span>
+                      </div>
+
+                      <div className="chk-detail-row chk-detail-row--full">
+                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
+                        <span className="chk-detail-value">
+                          {record.approvalContentLevel2 || (record as any).level2ApprovalContent || '—'}
                         </span>
                       </div>
 
@@ -610,18 +625,21 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                       {
                         label: 'Loại đối tượng',
                         value:
-                          ({
-                            POINT: 'Đối tượng điểm',
-                            LINE: 'Đối tượng đường',
-                            POLYGON: 'Đối tượng vùng',
-                          } as Record<string, string>)[(record as any).geometryType || ''] ||
-                          (record as any).geometryType ||
-                          'Đối tượng điểm',
+                          points.length === 0
+                            ? '—'
+                            : (({
+                                POINT: 'Đối tượng điểm',
+                                LINE: 'Đối tượng đường',
+                                POLYGON: 'Đối tượng vùng',
+                              } as Record<string, string>)[(record as any).geometryType || ''] ||
+                              (record as any).geometryType ||
+                              'Đối tượng điểm'),
                       },
                       {
                         label: 'Biểu tượng',
                         value: (() => {
                           const sym = symbolItem;
+                          if (!record.symbolId && !sym && points.length === 0) return '—';
                           const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : 'Đài LRIT');
                           const symImg = sym?.iconUrl || sym?.image;
                           return (
@@ -634,11 +652,14 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                       },
                       {
                         label: 'Hệ quy chiếu',
-                        value: (record as any).coordinateSystem === 2 ? 'VN-2000' : 'WGS-84',
+                        value:
+                          points.length === 0
+                            ? '—'
+                            : ((record as any).coordinateSystem === 2 ? 'VN-2000' : 'WGS-84'),
                       },
                       {
                         label: 'Quy tắc hiển thị',
-                        value: 'Độ, phút, giây (DMS)',
+                        value: points.length === 0 ? '—' : 'Độ, phút, giây (DMS)',
                       },
                     ].map((row, i) => (
                       <div key={i} className="chk-detail-row">
@@ -655,9 +676,20 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                     Tọa độ GPS ({points.length})
                   </span>
                   <Button
-                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    icon={<EnvironmentOutlined style={{ color: points.length === 0 ? textTertiary : actionPrimary }} />}
                     onClick={() => setMapModalOpen(true)}
-                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    disabled={points.length === 0}
+                    style={{
+                      ...outlineButtonStyle,
+                      height: 32,
+                      fontSize: fontSizeSm,
+                      padding: '0 14px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      opacity: points.length === 0 ? 0.6 : 1,
+                      cursor: points.length === 0 ? 'not-allowed' : 'pointer',
+                    }}
                   >
                     Xem vị trí trên bản đồ
                   </Button>
@@ -988,7 +1020,7 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

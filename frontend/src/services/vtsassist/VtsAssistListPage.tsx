@@ -110,6 +110,7 @@ import {
 } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import {
     ddToDms,
     dmsToDd,
@@ -220,11 +221,11 @@ import dayjs from "dayjs";
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp cục',
-  REJECTED: 'Từ chối cấp cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
+  REJECTED: 'Từ chối cấp Cục',
   DELETED: 'Đã xóa',
   ARCHIVED: 'Đã xóa',
 };
@@ -1216,7 +1217,8 @@ const VtsAssistListPage = () => {
   const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("vtsassist:approvec2");
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('vtsassist', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
@@ -2592,9 +2594,10 @@ const VtsAssistListPage = () => {
       }
 
       // PENDING_APPROVAL + vtsassist:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
+      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
       if (hasPerm?.("vtsassist:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC1",
           label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
@@ -2622,9 +2625,10 @@ const VtsAssistListPage = () => {
       }
 
       // APPROVED_LEVEL1 + vtsassist:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
-      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
+      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2 (trừ tài khoản cấp Cục).
       if (hasPerm?.("vtsassist:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
-        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC2",
           label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
@@ -3494,7 +3498,7 @@ const VtsAssistListPage = () => {
                     format="DD/MM/YYYY"
                     placeholder={["Từ ngày", "Đến ngày"]}
                     allowClear
-                    popupClassName="chk-range-datepicker-popup"
+                    classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
                     value={
                       filterValues.updatedFrom && filterValues.updatedTo
                         ? [
@@ -3558,7 +3562,7 @@ const VtsAssistListPage = () => {
           },
           {
             key: "APPROVED_LEVEL1",
-            label: "Chờ phê duyệt cấp cục",
+            label: "Chờ phê duyệt cấp Cục",
             count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
@@ -3579,7 +3583,7 @@ const VtsAssistListPage = () => {
           },
           {
             key: "REJECTED_LEVEL2",
-            label: "Từ chối cấp cục",
+            label: "Từ chối cấp Cục",
             count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
               ? total
               : (tabCounts["REJECTED_LEVEL2"] ?? 0),
@@ -3641,7 +3645,7 @@ const VtsAssistListPage = () => {
       <Drawer
         {...drawerProps}
         size={undefined}
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        size={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
         style={{ maxWidth: '96vw' }}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"
@@ -3678,11 +3682,12 @@ const VtsAssistListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
-                            { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
+                            { label: 'Thuộc loại hạ tầng', value: selectedRecord.attachedInfrastructureType === 1 ? 'TTDH VTS' : selectedRecord.attachedInfrastructureType === 2 ? 'Trạm radar' : null },
+                            { label: 'Thuộc hạ tầng', value: selectedRecord.attachedInfrastructureName || null },
+                            { label: 'Địa điểm (Tỉnh/TP)', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderVtsAssistStatusBadge(st) : null; })() },
-                            { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null },
+                            { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null, fullWidth: true },
                           ] as Array<{ label: string; value: React.ReactNode; badge?: boolean; bold?: boolean; fullWidth?: boolean }>).map((row) => {
                             let labelCls = 'sec-col1-label';
                             if (row.fullWidth) {
@@ -4469,6 +4474,26 @@ const VtsAssistListPage = () => {
                       <Row gutter={[24, 0]}>
                         <Col xs={24} sm={12}>
                           <Form.Item
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              style={{ width: "100%", ...pillStyle }}
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                createForm.setFieldValue("attachedInfrastructureType", val);
+                                createForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
                             name="attachedInfrastructureId"
                             {...labelProps('Thuộc hạ tầng')}
                             rules={[
@@ -4491,26 +4516,6 @@ const VtsAssistListPage = () => {
                               loading={createAttachedType === 1 ? loadingVtsCenters : createAttachedType === 2 ? loadingRadars : false}
                               disabled={!selectedCreateOrgUnitId || (createAttachedType !== 1 && createAttachedType !== 2)}
                               allowClear
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                createForm.setFieldValue("attachedInfrastructureType", val);
-                                createForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
                             />
                           </Form.Item>
                         </Col>
@@ -4980,6 +4985,26 @@ const VtsAssistListPage = () => {
                       <Row gutter={[24, 0]}>
                         <Col xs={24} sm={12}>
                           <Form.Item
+                            name="attachedInfrastructureType"
+                            {...labelProps('Thuộc loại hạ tầng')}
+                            rules={[
+                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
+                            ]}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Select
+                              style={{ width: "100%", ...pillStyle }}
+                              placeholder="Chọn loại hạ tầng"
+                              options={attachedInfraTypeOptions}
+                              onChange={(val) => {
+                                updateForm.setFieldValue("attachedInfrastructureType", val);
+                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
+                              }}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
                             name="attachedInfrastructureId"
                             {...labelProps('Thuộc hạ tầng')}
                             rules={[
@@ -5002,26 +5027,6 @@ const VtsAssistListPage = () => {
                               loading={updateAttachedType === 1 ? loadingVtsCenters : updateAttachedType === 2 ? loadingRadars : false}
                               disabled={!selectedUpdateOrgUnitId || (updateAttachedType !== 1 && updateAttachedType !== 2)}
                               allowClear
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col xs={24} sm={12}>
-                          <Form.Item
-                            name="attachedInfrastructureType"
-                            {...labelProps('Thuộc loại hạ tầng')}
-                            rules={[
-                              { required: true, message: "Vui lòng chọn loại hạ tầng" },
-                            ]}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              style={{ width: "100%", ...pillStyle }}
-                              placeholder="Chọn loại hạ tầng"
-                              options={attachedInfraTypeOptions}
-                              onChange={(val) => {
-                                updateForm.setFieldValue("attachedInfrastructureType", val);
-                                updateForm.setFieldValue("attachedInfrastructureId", undefined);
-                              }}
                             />
                           </Form.Item>
                         </Col>

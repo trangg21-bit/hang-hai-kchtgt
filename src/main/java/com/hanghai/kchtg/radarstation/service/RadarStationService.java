@@ -368,7 +368,6 @@ public class RadarStationService {
 
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
             Map<String, String> previousValues) {
-        if (newVal == null) return;
         if (EntityUpdateUtils.areEqual(oldVal, newVal)) return;
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);

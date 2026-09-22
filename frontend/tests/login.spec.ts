@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Login Page', () => {
   test('should display login card', async ({ page }) => {
     await page.goto('/login');
-    const card = page.locator('.card');
+    const card = page.locator('.chk-login-card, .card');
     await expect(card).toBeVisible();
   });
   test('should have form inputs', async ({ page }) => {

@@ -27,6 +27,7 @@ import {
   getRangePickerProps,
   getConditionStatusColor,
   getConditionStatusLabel,
+  getVtsConditionStatusLabel,
 } from '../../../themetokenchk';
 import * as themeTokenChk from '../../../themetokenchk';
 import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
@@ -35,6 +36,8 @@ import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, 
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
 
 const fontSizeMd = 13.5;
 
@@ -53,7 +56,7 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.STOPPED]: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
-  [ConditionStatus.NOT_YET_OPERATIONAL]: statusDraft,
+  [ConditionStatus.NOT_YET_OPERATIONAL]: statusAttention,
   [ConditionStatus.SUSPENDED]: statusCritical,
 };
 
@@ -219,8 +222,16 @@ const formatHistoryValue = (field: string, val: unknown): string => {
   if (field === 'provinceId' || field === 'Địa điểm (Tỉnh/TP)') {
     return getProvinceNameById(val as number) || String(val);
   }
-  if (field === 'conditionStatus' || field === 'Tình trạng') {
-    return getConditionStatusLabel(val as string);
+  if (field === 'conditionStatus' || field === 'Tình trạng' || field === 'tinhTrang') {
+    return getVtsConditionStatusLabel(val) || getConditionStatusLabel(val as string);
+  }
+  if (field === 'operatingOrgId' || field === 'operatingOrgName' || field === 'Đơn vị khai thác') {
+    const sVal = String(val).trim();
+    const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
+    return found ? found.name : sVal;
+  }
+  if (field === 'services' || field === 'servicesProvided' || field === 'Dịch vụ cung cấp' || field === 'providedServices') {
+    return formatMaritimeServicesDisplay(val);
   }
   return String(val);
 };
@@ -296,9 +307,10 @@ export default function InmarsatStationList() {
 
   // User levels
   const userUnitType = currentUser?.unitType || '';
-  const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType));
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all') || currentUser?.role === 'ADMIN' || currentUser?.roleName === 'ADMIN';
+  const isCucLevel = isCucLevelUser(currentUser) || isAdmin;
   const isCangVuLevel = userUnitType === 'CVHH' || userUnitType === 'CANG_VU';
-  const canApproveL1 = hasPerm('coastalstationinmarsat:approvec1') && (isCangVuLevel || !isCucLevel);
+  const canApproveL1 = hasPerm('coastalstationinmarsat:approvec1');
   const canApproveL2 = hasPerm('coastalstationinmarsat:approvec2');
 
   useEffect(() => {
@@ -592,12 +604,19 @@ export default function InmarsatStationList() {
   );
 
   const handleFilterSearch = (vals: Record<string, unknown>) => {
-    setFilterName(typeof vals.name === 'string' ? vals.name.trim() : '');
-    setFilterCode(typeof vals.code === 'string' ? vals.code.trim() : '');
+    const name = typeof vals.name === 'string' ? vals.name.trim() : '';
+    const code = typeof vals.code === 'string' ? vals.code.trim() : '';
+    setFilterValues((prev) => ({
+      ...prev,
+      name,
+      code,
+    }));
+    setFilterName(name);
+    setFilterCode(code);
     setFilterConditionStatus(vals.conditionStatus as ConditionStatus | undefined);
     setFilterOrgUnitId(vals.orgUnitId as string | undefined);
     setFilterOperatingOrgId(vals.operatingOrgId as string | undefined);
-    setFilterProvinceId(typeof vals.provinceId === 'number' ? vals.provinceId : undefined);
+    setFilterProvinceId(vals.provinceId != null && vals.provinceId !== '' ? Number(vals.provinceId) : undefined);
     const dateRange = vals.updateDateRange as [dayjs.Dayjs | null, dayjs.Dayjs | null] | undefined;
     setFilterUpdatedFrom(dateRange?.[0] ? dayjs(dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setFilterUpdatedTo(dateRange?.[1] ? dayjs(dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
@@ -716,7 +735,7 @@ export default function InmarsatStationList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 260,
       ellipsis: false,
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
@@ -850,7 +869,7 @@ export default function InmarsatStationList() {
       );
     }
 
-    if (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && canApproveL2 && (!isApproverL1 || isCucLevel)) {
+    if (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 && canApproveL2 && (!isApproverL1 || isCucLevel) && (!isCreator || isCucLevel)) {
       actions.push(
         {
           key: 'approve_l2',
@@ -949,6 +968,11 @@ export default function InmarsatStationList() {
                   allowClear
                   value={(filterValues.name as string) || ''}
                   onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
+                  onBlur={() => {
+                    if (typeof filterValues.name === 'string') {
+                      setFilterValues((prev) => ({ ...prev, name: prev.name.trim() }));
+                    }
+                  }}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={{ borderRadius: radiusPill, height: 40 }}
                 />
@@ -995,6 +1019,11 @@ export default function InmarsatStationList() {
                       allowClear
                       value={(filterValues.code as string) || ''}
                       onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                      onBlur={() => {
+                        if (typeof filterValues.code === 'string') {
+                          setFilterValues((prev) => ({ ...prev, code: prev.code.trim() }));
+                        }
+                      }}
                       onPressEnter={() => handleFilterSearch(filterValues)}
                       style={{ borderRadius: radiusPill, height: 40 }}
                     />

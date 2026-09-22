@@ -49,6 +49,12 @@ public class NavigationChannelController {
                 service.createAndApprove(req, userId)));
     }
 
+    @GetMapping("/options")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<NavigationChannelOptionResponse>>> getOptions() {
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh mục luồng hàng hải thành công", service.getOptions()));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> getById(@PathVariable(name = "id") UUID id) {

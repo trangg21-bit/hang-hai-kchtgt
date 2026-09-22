@@ -47,6 +47,7 @@ import * as themeTokenChk from "../../themetokenchk";
 import { cellSubtitleStyle, cellTitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
+import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
@@ -181,11 +182,11 @@ export function isTransmissionDeleted(record?: Partial<TransmissionResponse> | n
 const APPROVAL_STATUS_MAP: Record<string, string> = {
   DRAFT: 'Lưu tạm',
   PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
-  APPROVED_LEVEL1: 'Chờ phê duyệt cấp cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
   APPROVED: 'Đã phê duyệt',
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
-  REJECTED_LEVEL2: 'Từ chối cấp cục',
-  REJECTED: 'Từ chối cấp cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
+  REJECTED: 'Từ chối cấp Cục',
   DELETED: 'Đã xóa',
   ARCHIVED: 'Đã xóa',
 };
@@ -605,7 +606,8 @@ const TransmissionListPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const canSaveAndApprove = !!hasPerm?.("transmission:approvec2");
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('transmission', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // Modal bản đồ GIS xem chi tiết
   const [mapScope, setMapScope] = useState<'detail' | null>(null);
@@ -1791,9 +1793,10 @@ const TransmissionListPage = () => {
       }
 
       // PENDING_APPROVAL + transmission:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (back-end chặn, FE disable).
+      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
       if (hasPerm?.("transmission:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC1",
           label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
@@ -1821,9 +1824,10 @@ const TransmissionListPage = () => {
       }
 
       // APPROVED_LEVEL1 + transmission:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
-      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2.
+      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2 (trừ tài khoản cấp Cục).
       if (hasPerm?.("transmission:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
-        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId);
+        const isCuc = isCucLevelUser(currentUser);
+        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC2",
           label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
@@ -2517,7 +2521,7 @@ const TransmissionListPage = () => {
                     format="DD/MM/YYYY"
                     placeholder={["Từ ngày", "Đến ngày"]}
                     allowClear
-                    popupClassName="chk-range-datepicker-popup"
+                    classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
                     value={
                       filterValues.updatedFrom && filterValues.updatedTo
                         ? [
@@ -2581,7 +2585,7 @@ const TransmissionListPage = () => {
           },
           {
             key: "APPROVED_LEVEL1",
-            label: "Chờ phê duyệt cấp cục",
+            label: "Chờ phê duyệt cấp Cục",
             count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
             color: statusInfo,
             active: filterValues.approvalStatus === "APPROVED_LEVEL1",
@@ -2602,7 +2606,7 @@ const TransmissionListPage = () => {
           },
           {
             key: "REJECTED_LEVEL2",
-            label: "Từ chối cấp cục",
+            label: "Từ chối cấp Cục",
             count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
               ? total
               : (tabCounts["REJECTED_LEVEL2"] ?? 0),
@@ -3499,7 +3503,7 @@ const TransmissionListPage = () => {
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
         }}
-        destroyOnClose
+        destroyOnHidden
       >
         <style>{requiredMarkStyle}</style>
         {createModalOpen && (

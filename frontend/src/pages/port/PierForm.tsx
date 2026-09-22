@@ -335,13 +335,9 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     }
     setLoadingWaterways(true);
     try {
-      const r = await navigationChannelCRUD.search({
-        orgUnitId,
-        approvalStatus: 'APPROVED',
-        page: 0,
-        size: 1000,
-      });
-      const options = (r.items || []).map((n) => {
+      const items = await navigationChannelCRUD.getOptions();
+      const filtered = items.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnitId);
+      const options = filtered.map((n) => {
         const code = n.channelCode?.trim();
         const name = n.channelName?.trim();
         const label = code && name ? `${code} - ${name}` : (code || name || '');
@@ -370,8 +366,9 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     (async () => {
       setLoadingPorts(true);
       try {
-        const r = await portCRUD.findAll({ orgUnitId: watchedOrgUnitId, approvalStatus: 'APPROVED', page: 1, size: 1000 });
-        setPortOptions((r.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+        const allPorts = await portCRUD.getOptions();
+        const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === watchedOrgUnitId);
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
       } catch {}
       finally { setLoadingPorts(false); }
     })();
@@ -951,7 +948,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

@@ -511,7 +511,7 @@ function OperationList() {
       <Drawer
         open={drawerMode === 'create' || drawerMode === 'edit'}
         onClose={closeDrawer}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         title={drawerMode === 'create' ? 'Thêm mới kế hoạch vận hành' : 'Chỉnh sửa kế hoạch vận hành'}
         footer={[
           <Button key="cancel" style={{ ...primaryButtonStyle, background: t.borderDefault, borderColor: t.borderDefault, color: t.textSecondary, marginRight: spaceSm }} onClick={closeDrawer}>
@@ -618,7 +618,7 @@ function OperationList() {
       <Drawer
         open={drawerMode === 'view'}
         onClose={closeDrawer}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         title="Chi tiết kế hoạch vận hành"
       >
         {viewRecord && (

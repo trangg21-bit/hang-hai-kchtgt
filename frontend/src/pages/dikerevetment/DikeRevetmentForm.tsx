@@ -654,7 +654,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
           onCancel={handleCloseModal}
           footer={null}
           width={900}
-          destroyOnClose
+          destroyOnHidden
           mask={{ closable: false }}
         >
           <Spin spinning={isLoading}>

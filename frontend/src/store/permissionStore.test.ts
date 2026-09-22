@@ -172,10 +172,19 @@ describe('permissionStore Unit Tests', () => {
 
   it('does not allow an Inmarsat asset permission to open the station screen', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'inmarsat-reader', permissions: ['inmarsat:read'] } as User,
+      user: { id: '1', username: 'inmarsat-asset-user', permissions: ['inmarsatasset:read'] } as User,
     });
 
     expect(usePermissionStore.getState().hasPermission('coastalstationinmarsat:read')).toBe(false);
+  });
+
+  it('allows inmarsat:read and coastalstationinmarsat:read symmetrically as station permissions', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'inmarsat-station-user', permissions: ['inmarsat:read'] } as User,
+    });
+
+    expect(usePermissionStore.getState().hasPermission('coastalstationinmarsat:read')).toBe(true);
+    expect(usePermissionStore.getState().hasPermission('inmarsat:read')).toBe(true);
   });
 
   it('should evaluate hasAllPermissions correctly', () => {
@@ -197,55 +206,108 @@ describe('permissionStore Unit Tests', () => {
     expect(usePermissionStore.getState().hasPermission('vts:approvec1')).toBe(true);
   });
 
-  it('should require an explicit read permission for KCHT resources', () => {
-    // User only has approvec1 for VTS, no explicit read
+  it('should support implicit read for KCHT resources when user has action permissions', () => {
+    // User only has approvec1 for VTS, implicit read allows menu/page view
     useAuthStore.setState({
-    user: { id: '1', username: 'evaluator', permissions: ['vts:approvec1'] } as User,
+      user: { id: '1', username: 'evaluator', permissions: ['vts:approvec1'] } as User,
     });
 
     const store = usePermissionStore.getState();
-    expect(store.hasPermission('vts:read')).toBe(false);
-    expect(store.hasPermission('vts:view')).toBe(false);
-    expect(store.hasPermission('vts:search')).toBe(false);
+    expect(store.hasPermission('vts:read')).toBe(true);
+    expect(store.hasExplicitPermission('vts:read')).toBe(false);
+    expect(store.hasPermission('vts:view')).toBe(true);
+    expect(store.hasPermission('vts:search')).toBe(true);
     expect(store.hasPermission('vts:delete')).toBe(false);
 
     // User only has create for LRIT station
     useAuthStore.setState({
-    user: { id: '2', username: 'creator', permissions: ['coastalstationlrit:create'] } as User,
+      user: { id: '2', username: 'creator', permissions: ['coastalstationlrit:create'] } as User,
     });
 
-    expect(store.hasPermission('coastalstationlrit:read')).toBe(false);
+    expect(store.hasPermission('coastalstationlrit:read')).toBe(true);
+    expect(store.hasExplicitPermission('coastalstationlrit:read')).toBe(false);
     expect(store.hasPermission('coastalstationlrit:delete')).toBe(false);
   });
 
   it('should not cover child stations from a parent station permission', () => {
     useAuthStore.setState({
-    user: { id: '3', username: 'specialAdmin', permissions: ['specialstation:read'] } as User,
+      user: { id: '3', username: 'specialAdmin', permissions: ['specialstation:read'] } as User,
     });
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('coastalstationlrit:read')).toBe(false);
-    // `inmarsat` is the legacy asset resource; the dedicated coastal-station
-    // resources above must remain isolated from the parent permission.
-    expect(store.hasPermission('inmarsat:read')).toBe(true);
+    expect(store.hasPermission('inmarsat:read')).toBe(false);
+    expect(store.hasPermission('coastalstationinmarsat:read')).toBe(false);
     expect(store.hasPermission('coastalstationhaiphong:read')).toBe(false);
     expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(false);
   });
 
-  it('should not leak vts permissions to vtsoperationcenter or vhf', () => {
+  it('should not leak vts permissions to vtsoperationcenter, vhf, cctv, scada, transmission, or vtsassist', () => {
     useAuthStore.setState({
-    user: { id: '4', username: 'vtsCreator', permissions: ['vts:create'] } as User,
+      user: { id: '4', username: 'vtsCreator', permissions: ['vts:create'] } as User,
     });
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('vts:create')).toBe(true);
-    expect(store.hasPermission('vts:read')).toBe(false);
+    expect(store.hasPermission('vts:read')).toBe(true);
     expect(store.hasExplicitPermission('vts:read')).toBe(false);
     expect(store.hasExplicitPermission('vts:create')).toBe(true);
     expect(store.hasPermission('vtsoperationcenter:read')).toBe(false);
     expect(store.hasPermission('vtsoperationcenter:create')).toBe(false);
     expect(store.hasPermission('vhf:read')).toBe(false);
     expect(store.hasPermission('vhf:create')).toBe(false);
+    expect(store.hasPermission('cctv:read')).toBe(false);
+    expect(store.hasPermission('scada:read')).toBe(false);
+    expect(store.hasPermission('transmission:read')).toBe(false);
+    expect(store.hasPermission('vtsassist:read')).toBe(false);
+  });
+
+  it('should grant access to /vts-system route when user has only vts:approvec2 without leaking other menus', () => {
+    useAuthStore.setState({
+      user: { id: 'user-c2', username: 'son9xhn@gmail.com', permissions: ['vts:approvec2'] } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    // 1. Can access VTS route and menu
+    expect(store.hasPermission('vts:approvec2')).toBe(true);
+    expect(store.hasPermission('vts:read')).toBe(true);
+    expect(store.hasAnyPermission(['vts:read', 'vtssystem:read'])).toBe(true);
+    expect(store.hasAnyPermission(['vts:read', 'vtssystem:read', 'vtsasset:read', 'infraasset:read', 'data:read'])).toBe(true);
+
+    // 2. Cannot access unrelated sibling menus
+    expect(store.hasPermission('cctv:read')).toBe(false);
+    expect(store.hasPermission('scada:read')).toBe(false);
+    expect(store.hasPermission('transmission:read')).toBe(false);
+    expect(store.hasPermission('vtsassist:read')).toBe(false);
+    expect(store.hasPermission('vtsoperationcenter:read')).toBe(false);
+    expect(store.hasPermission('radarstation:read')).toBe(false);
+    expect(store.hasPermission('aissystem:read')).toBe(false);
+  });
+
+  it('should NOT grant vts:read when user only has aissystem:read and routes correctly to /ais-system', async () => {
+    const { canAccessMenu } = await import('../components/appLayoutMenu');
+    const { NAV_GROUPS, firstAccessibleRoute } = await import('../config/navigation');
+
+    useAuthStore.setState({
+      user: { id: 'user-ais', username: 'ais_operator', permissions: ['aissystem:read'] } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    // 1. User có quyền AIS
+    expect(store.hasPermission('aissystem:read')).toBe(true);
+
+    // 2. Tuyệt đối KHÔNG suy diễn ra vts:read hay vtssystem:read
+    expect(store.hasPermission('vts:read')).toBe(false);
+    expect(store.hasPermission('vtssystem:read')).toBe(false);
+    expect(store.hasPermission('vtsasset:read')).toBe(false);
+
+    // 3. canAccessMenu trả về false cho /vts-system nhưng true cho /ais-system
+    expect(canAccessMenu('/ais-system')).toBe(true);
+    expect(canAccessMenu('/vts-system')).toBe(false);
+
+    // 4. firstAccessibleRoute của khối KCHT phải dẫn vào /ais-system, TUYỆT ĐỐI KHÔNG vào /vts-system
+    const kchtGroup = NAV_GROUPS.find((g) => g.id === 'kcht')!;
+    expect(firstAccessibleRoute(kchtGroup, canAccessMenu)).toBe('/ais-system');
   });
 
   it('should symmetrically resolve valid technical resource aliases (navigationchannel <-> channel, vts <-> vtssystem)', () => {
@@ -285,5 +347,39 @@ describe('permissionStore Unit Tests', () => {
     // dryportasset:read does NOT grant dryport:read
     expect(store.hasPermission('dryportasset:read')).toBe(true);
     expect(store.hasPermission('dryport:read')).toBe(false);
+  });
+
+  it('should isolate port from other modules and allow single permission access to other KCHT screens', () => {
+    // 1. User only has port:approvec2
+    useAuthStore.setState({
+      user: { id: '6', username: 'portApprover', permissions: ['port:approvec2'] } as User,
+    });
+    const store = usePermissionStore.getState();
+    expect(store.hasPermission('port:read')).toBe(true);
+    expect(store.hasAnyPermission(['port:read', 'seaport:read'])).toBe(true);
+
+    // Ensure port:approvec2 does NOT leak to other screens
+    expect(store.hasPermission('transferarea:read')).toBe(false);
+    expect(store.hasPermission('anchorage:read')).toBe(false);
+    expect(store.hasPermission('dryport:read')).toBe(false);
+    expect(store.hasPermission('shiprepairfacility:read')).toBe(false);
+
+    // 2. User only has anchorage:create
+    useAuthStore.setState({
+      user: { id: '7', username: 'anchorageCreator', permissions: ['anchorage:create'] } as User,
+    });
+    expect(store.hasPermission('anchorage:read')).toBe(true);
+    expect(store.hasAnyPermission(['anchorage:read', 'anchorageasset:read'])).toBe(true);
+    expect(store.hasPermission('port:read')).toBe(false);
+    expect(store.hasPermission('transferarea:read')).toBe(false);
+
+    // 3. User only has dryport:approvec1
+    useAuthStore.setState({
+      user: { id: '8', username: 'dryportApprover', permissions: ['dryport:approvec1'] } as User,
+    });
+    expect(store.hasPermission('dryport:read')).toBe(true);
+    expect(store.hasAnyPermission(['dryport:read', 'dryportasset:read'])).toBe(true);
+    expect(store.hasPermission('port:read')).toBe(false);
+    expect(store.hasPermission('anchorage:read')).toBe(false);
   });
 });

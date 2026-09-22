@@ -47,6 +47,7 @@ public class KchtgApplication {
                     "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'flyway_schema_history')"
                 );
                 if (rs.next() && rs.getBoolean(1)) {
+                    stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version = '20260918180000' AND success = false");
                     // 1. Purge legacy deleted version 20260922100000 if present
                     stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version = '20260922100000'");
 

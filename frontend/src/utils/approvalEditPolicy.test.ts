@@ -44,12 +44,12 @@ describe('approvalEditPolicy', () => {
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm, resource: 'vts' })).toBe(true);
     });
 
-    it('returns true for DRAFT when user has resource:manage', () => {
-      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'vts:manage', resource: 'vts' })).toBe(true);
+    it('requires the exact delete permission and rejects legacy fallbacks', () => {
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'vts:manage', resource: 'vts' })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'data' })).toBe(true);
-      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:manage', resource: 'vts' })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:manage', resource: 'vts' })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts' })).toBe(false);
-      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts', extraDeletePerms: ['data:delete'] })).toBe(true);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts', extraDeletePerms: ['data:delete'] })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'infraasset:manage', resource: 'vts' })).toBe(false);
     });
   });
@@ -75,13 +75,19 @@ describe('approvalEditPolicy', () => {
       expect(canEditApprovalRecord('REJECTED_LEVEL2', { hasPerm: updatePerm, resource: 'vts' })).toBe(true);
     });
 
-    it('for APPROVED records: requires approvec2 permission', () => {
+    it('for APPROVED records: requires update permission', () => {
       const updateOnly = (p: string) => p === 'vts:update';
       const approveC2 = (p: string) => p === 'vts:approvec2';
+      const updateAndApproveC2 = (p: string) => p === 'vts:update' || p === 'vts:approvec2';
+      const none = () => false;
 
+      // Sửa hồ sơ APPROVED: bắt buộc phải có cả update VÀ approvec2 (quy tắc 12/T12)
       expect(canEditApprovalRecord('APPROVED', { hasPerm: updateOnly, resource: 'vts' })).toBe(false);
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: updateAndApproveC2, resource: 'vts' })).toBe(true);
+      // Khi người quản trị bỏ tích quyền update: nút Chỉnh sửa phải ẩn (false) kể cả khi còn approvec2
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: approveC2, resource: 'vts' })).toBe(false);
       expect(canEditApprovalRecord('APPROVED', { hasPerm: (p) => p === 'vts:approve', resource: 'vts' })).toBe(false);
-      expect(canEditApprovalRecord('APPROVED', { hasPerm: approveC2, resource: 'vts' })).toBe(true);
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: none, resource: 'vts' })).toBe(false);
     });
   });
 
@@ -172,4 +178,3 @@ describe('approvalEditPolicy', () => {
     });
   });
 });
-

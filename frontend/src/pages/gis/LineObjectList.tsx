@@ -478,7 +478,7 @@ export default function LineObjectList() {
         onClick: () => openEditDrawer(record),
       });
     }
-    if (hasPerm('history:read') || hasPerm('history:view')) {
+    if (hasPerm('lineobject:history') || hasPerm('gisline:history') || hasPerm('data:history')) {
       actions.push({
         key: 'history',
         label: 'Lịch sử',

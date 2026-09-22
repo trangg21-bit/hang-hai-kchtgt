@@ -153,7 +153,6 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(merged).toContain('vts:read');
       expect(merged).not.toContain('vtssystem:read');
     });
-
     it('should cleanly uncheck a leaf node and its equivalents using handleTreeCheck', () => {
       const currentKeys = ['vts:read', 'vtssystem:read', 'user:read'];
       const nextChecked = ['user:read'];
@@ -421,7 +420,7 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       expect(childKeys).not.toContain('transferarea:approve');
     });
 
-    it('should properly organize beaconstation permissions into group_lighthouse and exclude deprecated approve permissions', async () => {
+    it('should properly organize beaconstation permissions into group_beaconstation and exclude deprecated approve permissions', async () => {
       const mockPerms = [
         { id: '1', key: 'beaconstation:manage', name: 'Quản lý Đèn biển và nhà trạm', resource: 'beaconstation', action: 'manage' },
         { id: '2', key: 'beaconstation:read', name: 'Xem Đèn biển và nhà trạm', resource: 'beaconstation', action: 'read' },
@@ -452,21 +451,21 @@ describe('usePermissions Hook & Utilities (Phương án 1 - Gộp chuẩn hóa c
       const tree = hookResult!.tree;
 
       const groupKeys = getAllModuleKeys(tree);
-      expect(groupKeys).toContain('group_lighthouse');
+      expect(groupKeys).toContain('group_beaconstation');
 
-      const beaconGroup = findModule(tree, 'group_lighthouse');
+      const beaconGroup = findModule(tree, 'group_beaconstation');
       expect(beaconGroup).toBeDefined();
       expect(beaconGroup?.title).toBe('Quản lý Đèn biển và nhà trạm gắn liền đèn biển');
 
       const childKeys = (beaconGroup?.children || []).map((c) => c.key);
       expect(childKeys).toEqual([
-        'lighthouse:read',
-        'lighthouse:create',
-        'lighthouse:update',
-        'lighthouse:delete',
-        'lighthouse:approvec1',
-        'lighthouse:approvec2',
-        'lighthouse:history',
+        'beaconstation:read',
+        'beaconstation:create',
+        'beaconstation:update',
+        'beaconstation:delete',
+        'beaconstation:approvec1',
+        'beaconstation:approvec2',
+        'beaconstation:history',
       ]);
 
       expect(childKeys).not.toContain('beaconstation:approve');

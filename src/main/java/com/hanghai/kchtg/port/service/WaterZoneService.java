@@ -215,14 +215,10 @@ public class WaterZoneService {
                 entity.setOrgUnitId(p.getOrgUnitId());
             });
         }
-        if (request.getArea() != null)
-            entity.setArea(request.getArea());
-        if (request.getMaxDepth() != null)
-            entity.setMaxDepth(request.getMaxDepth());
-        if (request.getAvgDepth() != null)
-            entity.setAvgDepth(request.getAvgDepth());
-        if (request.getWaterZoneType() != null)
-            entity.setWaterZoneType(request.getWaterZoneType());
+        entity.setArea(request.getArea());
+        entity.setMaxDepth(request.getMaxDepth());
+        entity.setAvgDepth(request.getAvgDepth());
+        entity.setWaterZoneType(request.getWaterZoneType());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         entity.setMapSymbolId(request.getMapSymbolId());

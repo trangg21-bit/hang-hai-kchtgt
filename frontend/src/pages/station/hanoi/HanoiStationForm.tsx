@@ -42,6 +42,7 @@ import {
   spaceXs,
   textAreaStyle,
 } from '../../../themetokenchk';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
@@ -159,13 +160,11 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = hasPerm('coastalstationhaiphong:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationhaiphong', hasPerm, currentUser) || checkCanSaveAndApprove('ttxltt', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const canCreate = hasPerm('coastalstationhaiphong:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
     resource: 'coastalstationhaiphong',
-    extraUpdatePerms: ['specialstation:update', 'data:update'],
-    extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'],
   });
 
   const isDetailMode = mode === 'detail';
@@ -293,8 +292,6 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       if (defOrgId) {
         form.setFieldValue('orgUnitId', defOrgId);
-      } else if ((currentUser as any)?.orgUnitId) {
-        form.setFieldValue('orgUnitId', String((currentUser as any).orgUnitId));
       }
 
       // Generate code
@@ -324,7 +321,19 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         setLoading(false);
       });
     }
-  }, [open, editId, initialData, mode, isCreateMode]);
+  }, [open, editId, initialData, mode, isCreateMode, currentUser, effectiveOrgUnits]);
+
+  useEffect(() => {
+    if (isCreateMode && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('orgUnitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('orgUnitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreateMode, open, effectiveOrgUnits, currentUser, form]);
 
   const populateForm = (data: HanoiStationItem) => {
     setRecord(data);
@@ -634,7 +643,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       else if (action === 'approve') actionParam = 'APPROVE';
 
       const payload: CreateHanoiStationRequest = {
-        code: values.code,
+        code: values.code?.trim(),
         name: values.name?.trim(),
         orgUnitId: values.orgUnitId,
         operatingOrgId: values.operatingOrgId,
@@ -949,7 +958,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               name="locationAddress"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
@@ -968,7 +977,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                             </Form.Item>
                           </Col>
 
-                          <Col span={24}>
+                          <Col span={12}>
                             <Form.Item
                               name="services"
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}
@@ -1286,7 +1295,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

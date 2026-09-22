@@ -76,25 +76,25 @@ public class CoastalStationVTSService {
 
         java.util.Map<String, String> oldValues = new java.util.LinkedHashMap<>();
         if (wasApproved) {
-            if (request.getStationName() != null && !java.util.Objects.equals(request.getStationName(), entity.getName())) {
+            if (request.getStationName() != null && !request.getStationName().isBlank() && !java.util.Objects.equals(request.getStationName().trim(), entity.getName())) {
                 oldValues.put("name", entity.getName() != null ? entity.getName() : null);
             }
-            if (request.getFrequencyBand() != null && !java.util.Objects.equals(request.getFrequencyBand(), entity.getFrequencyBand())) {
+            if (!java.util.Objects.equals(request.getFrequencyBand(), entity.getFrequencyBand())) {
                 oldValues.put("frequencyBand", entity.getFrequencyBand() != null ? entity.getFrequencyBand() : null);
             }
-            if (request.getTransmitPower() != null && !java.util.Objects.equals(request.getTransmitPower(), entity.getTransmitPower())) {
+            if (!java.util.Objects.equals(request.getTransmitPower(), entity.getTransmitPower())) {
                 oldValues.put("transmitPower", entity.getTransmitPower() != null ? String.valueOf(entity.getTransmitPower()) : null);
             }
-            if (request.getEquipmentType() != null && !java.util.Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
+            if (!java.util.Objects.equals(request.getEquipmentType(), entity.getEquipmentType())) {
                 oldValues.put("equipmentType", entity.getEquipmentType() != null ? entity.getEquipmentType() : null);
             }
-            if (request.getLocationAddress() != null && !java.util.Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+            if (!java.util.Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
                 oldValues.put("locationAddress", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
             }
-            if (request.getContactPerson() != null && !java.util.Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
+            if (!java.util.Objects.equals(request.getContactPerson(), entity.getContactPerson())) {
                 oldValues.put("contactPerson", entity.getContactPerson() != null ? entity.getContactPerson() : null);
             }
-            if (request.getContactPhone() != null && !java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
+            if (!java.util.Objects.equals(request.getContactPhone(), entity.getContactPhone())) {
                 oldValues.put("contactPhone", entity.getContactPhone() != null ? entity.getContactPhone() : null);
             }
 
@@ -110,20 +110,14 @@ public class CoastalStationVTSService {
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
-        if (request.getStationName() != null)
-            entity.setName(request.getStationName());
-        if (request.getFrequencyBand() != null)
-            entity.setFrequencyBand(request.getFrequencyBand());
-        if (request.getTransmitPower() != null)
-            entity.setTransmitPower(request.getTransmitPower());
-        if (request.getEquipmentType() != null)
-            entity.setEquipmentType(request.getEquipmentType());
-        if (request.getLocationAddress() != null)
-            entity.setLocationAddress(request.getLocationAddress());
-        if (request.getContactPerson() != null)
-            entity.setContactPerson(request.getContactPerson());
-        if (request.getContactPhone() != null)
-            entity.setContactPhone(request.getContactPhone());
+        if (request.getStationName() != null && !request.getStationName().isBlank())
+            entity.setName(request.getStationName().trim());
+        entity.setFrequencyBand(request.getFrequencyBand());
+        entity.setTransmitPower(request.getTransmitPower());
+        entity.setEquipmentType(request.getEquipmentType());
+        entity.setLocationAddress(request.getLocationAddress());
+        entity.setContactPerson(request.getContactPerson());
+        entity.setContactPhone(request.getContactPhone());
         if (request.getLatitude() != null)
             entity.setLatitude(request.getLatitude());
         if (request.getLongitude() != null)

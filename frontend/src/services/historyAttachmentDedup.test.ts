@@ -11,46 +11,84 @@ import {
   mergeChangesByField,
 } from '../components/shared/CommonHistoryDrawer';
 import { getServicesProvidedHistoryDelta } from '../utils/serviceHistoryDelta';
+import { formatMaritimeServicesDisplay } from '../constants/maritimeServices';
 
 describe('historyAttachmentDedup helpers', () => {
-  it('shows only the added service instead of both unchanged services', () => {
-    expect(getServicesProvidedHistoryDelta(
+  it('shows full list before and after when a service is added, with full Vietnamese labels', () => {
+    const res = getServicesProvidedHistoryDelta(
       'servicesProvided',
       'LRIT, COSPAS-SARSAT',
       'LRIT, COSPAS-SARSAT, DSC',
-    )).toEqual([
-      { field: 'Dịch vụ cung cấp', oldValue: '', newValue: 'DSC' },
-    ]);
+    );
+    expect(res).toHaveLength(1);
+    expect(res[0].field).toBe('Dịch vụ cung cấp');
+    expect(res[0].oldValue).toContain('LRIT');
+    expect(res[0].oldValue).toContain('COSPAS-SARSAT');
+    expect(res[0].oldValue.split('\n')).toHaveLength(2);
+    expect(res[0].newValue).toContain('LRIT');
+    expect(res[0].newValue).toContain('COSPAS-SARSAT');
+    expect(res[0].newValue).toContain('DSC');
+    expect(res[0].newValue.split('\n')).toHaveLength(3);
   });
 
-  it('shows only removed and added services when the service set is replaced', () => {
-    expect(getServicesProvidedHistoryDelta(
+  it('shows full list before and after when service set is replaced', () => {
+    const res = getServicesProvidedHistoryDelta(
       'Dịch vụ cung cấp',
       'LRIT, COSPAS-SARSAT',
       'LRIT, DSC',
-    )).toEqual([
-      { field: 'Dịch vụ cung cấp', oldValue: 'COSPAS-SARSAT', newValue: 'DSC' },
-    ]);
+    );
+    expect(res).toHaveLength(1);
+    expect(res[0].field).toBe('Dịch vụ cung cấp');
+    expect(res[0].oldValue.split('\n')).toHaveLength(2);
+    expect(res[0].newValue.split('\n')).toHaveLength(2);
   });
 
   it('keeps each service on its own display line', () => {
-    expect(getServicesProvidedHistoryDelta(
+    const res = getServicesProvidedHistoryDelta(
       'servicesProvided',
       'LRIT, COSPAS-SARSAT, DSC',
       '',
-    )).toEqual([
-      { field: 'Dịch vụ cung cấp', oldValue: 'LRIT\nCOSPAS-SARSAT\nDSC', newValue: '' },
-    ]);
+    );
+    expect(res).toHaveLength(1);
+    expect(res[0].oldValue.split('\n')).toHaveLength(3);
+    expect(res[0].newValue).toBe('');
   });
 
-  it('applies the service delta when CommonHistoryDrawer receives legacy JSON snapshots', () => {
-    expect(parseHistoryEntryChanges({
+  it('applies the service resolution when CommonHistoryDrawer receives legacy JSON snapshots', () => {
+    const res = parseHistoryEntryChanges({
       changedField: 'services',
       previousValue: '["INMARSAT_DISTRESS","COSPAS_SARSAT_DISTRESS","DSC_DISTRESS"]',
       newValue: '["INMARSAT_DISTRESS","COSPAS_SARSAT_DISTRESS","DSC_DISTRESS","MSI_NAVTEX","LRIT"]',
-    })).toEqual([
-      { field: 'Dịch vụ cung cấp', oldValue: '', newValue: 'MSI_NAVTEX\nLRIT' },
-    ]);
+    });
+    expect(res).toHaveLength(1);
+    expect(res[0].field).toBe('Dịch vụ cung cấp');
+    expect(res[0].oldValue.split('\n')).toHaveLength(3);
+    expect(res[0].newValue.split('\n')).toHaveLength(5);
+  });
+
+  it('correctly handles space-delimited service codes and formats them to full Vietnamese labels', () => {
+    const res = getServicesProvidedHistoryDelta(
+      'services',
+      '—',
+      'INMARSAT_DISTRESS COSPAS_SARSAT_DISTRESS DSC_DISTRESS'
+    );
+    expect(res).toHaveLength(1);
+    expect(res[0].field).toBe('Dịch vụ cung cấp');
+    expect(res[0].oldValue).toBe('');
+    const newLines = res[0].newValue.split('\n');
+    expect(newLines).toHaveLength(3);
+    expect(newLines[0]).toBe('Dịch vụ trực canh cấp cứu INMARSAT (INMARSAT CospasSarsat Distress Watch-keeping Service)');
+    expect(newLines[1]).toBe('Dịch vụ trực canh cấp cứu COSPAS-SARSAT (COSPASSARSAT Distress Watch-keeping Service)');
+    expect(newLines[2]).toBe('Dịch vụ trực canh cấp cứu DSC (DSC Distress Watch-keeping Service)');
+  });
+
+  it('formats raw string or space-delimited codes into Vietnamese labels via formatMaritimeServicesDisplay', () => {
+    const out = formatMaritimeServicesDisplay('INMARSAT_DISTRESS COSPAS_SARSAT_DISTRESS DSC_DISTRESS');
+    const lines = out.split('\n');
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain('INMARSAT');
+    expect(lines[1]).toContain('COSPAS-SARSAT');
+    expect(lines[2]).toContain('DSC');
   });
 
   it('correctly identifies attachment fields', () => {

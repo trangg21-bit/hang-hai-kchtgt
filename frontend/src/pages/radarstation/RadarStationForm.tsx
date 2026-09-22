@@ -39,6 +39,7 @@ import {
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
@@ -135,6 +136,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -329,14 +332,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
 
   // Tự sinh mã trạm radar khi người dùng chọn Thuộc cảng biển (chuẩn /berth)
   useEffect(() => {
-    if (isEdit && editSeaportIdRef.current === watchedSeaportId) return;
+    if (isEditMode && editSeaportIdRef.current === watchedSeaportId) return;
     if (!watchedSeaportId) {
-      if (!isEdit) {
+      if (!isEditMode) {
         form.setFieldValue('code', undefined);
       }
       return;
     }
-    if (isEdit) return;
+    if (isEditMode) return;
     setCodeLoading(true);
     radarStationCRUD.generateCode()
       .then((r) => {
@@ -344,7 +347,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       })
       .catch(() => {})
       .finally(() => setCodeLoading(false));
-  }, [watchedSeaportId, isEdit, form]);
+  }, [watchedSeaportId, isEditMode, form]);
 
   const handleSubmit = useCallback(async (submitMode: 'save' | 'submit' | 'approve' = 'save') => {
     try {
@@ -620,6 +623,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   // Trạng thái hiện tại của bản ghi (khớp RadarStationList: status || approvalStatus)
   const st = record?.status || record?.approvalStatus || '';
   const currentUserId = useAuthStore.getState().user?.userId;
+  const isCuc = isCucLevelUser(useAuthStore.getState().user);
   // Chỉ những trạng thái chưa duyệt xong mới được gửi duyệt (lại) từ màn Cập nhật
   const canResubmit = isEditMode && ['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st);
 
@@ -700,22 +704,22 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 </Button>
               </Popconfirm>
             )}
-            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && currentUserId !== record.createdBy && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (currentUserId !== record.createdBy || isCuc) && (
               <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c1')}>
                 Phê duyệt cấp Cảng vụ/Chi cục
               </Button>
             )}
-            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && currentUserId !== record.createdBy && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (currentUserId !== record.createdBy || isCuc) && (
               <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c1')}>
                 Từ chối cấp Cảng vụ/Chi cục
               </Button>
             )}
-            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && currentUserId !== record.approverLevel1 && (
+            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && (currentUserId !== record.approverLevel1 || isCuc) && (
               <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c2')}>
                 Phê duyệt cấp Cục
               </Button>
             )}
-            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && currentUserId !== record.approverLevel1 && (
+            {st === 'APPROVED_LEVEL1' && hasPerm('radarstation:approvec2') && (currentUserId !== record.approverLevel1 || isCuc) && (
               <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c2')}>
                 Từ chối cấp Cục
               </Button>
@@ -796,7 +800,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <FormOrgUnitTreeSelect
               organizations={orgOptions}
               placeholder="Chọn đơn vị quản lý..."
-              disabled={isEdit}
+              disabled={isEditMode}
               allowClear
               showSearch
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
@@ -805,7 +809,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 form.setFieldValue('seaportId', undefined);
                 form.setFieldValue('vtsSystemId', undefined);
                 form.setFieldValue('vtsOperationCenterId', undefined);
-                if (!isEdit) {
+                if (!isEditMode) {
                   form.setFieldValue('code', undefined);
                 }
               }}
@@ -1108,7 +1112,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{title}</span>}
           open={open}
           onCancel={onCancel}
-          destroyOnClose
+          destroyOnHidden
           width={isDetailMode ? 900 : 760}
           maskClosable={false}
           footer={
@@ -1122,7 +1126,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                     <Button onClick={() => handleSubmit('submit')} loading={isSubmitting} style={outlineButtonStyle}>
                       Lưu và gửi phê duyệt
                     </Button>
-                    {hasPerm('radarstation:approvec2') && (
+                    {canSaveAndApprove && (
                       <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
                         Lưu và phê duyệt
                       </Button>
@@ -1138,7 +1142,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 <Button type="primary" onClick={() => handleSubmit('submit')} loading={isSubmitting} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
-                {hasPerm('radarstation:approvec2') && (
+                {canSaveAndApprove && (
                   <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
                     Lưu và phê duyệt
                   </Button>
@@ -1203,7 +1207,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                     <Button style={outlineButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
                       Lưu và gửi phê duyệt
                     </Button>
-                    {hasPerm('radarstation:approvec2') && (
+                    {canSaveAndApprove && (
                       <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
                         Lưu và phê duyệt
                       </Button>
@@ -1219,7 +1223,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
                   Lưu và gửi phê duyệt
                 </Button>
-                {hasPerm('radarstation:approvec2') && (
+                {canSaveAndApprove && (
                   <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
                     Lưu và phê duyệt
                   </Button>

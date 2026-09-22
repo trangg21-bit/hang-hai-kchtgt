@@ -3,6 +3,7 @@ package com.hanghai.kchtg.port.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.ApproveRequest;
 import com.hanghai.kchtg.port.dto.buoyberth.AttachmentDto;
+import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthOptionResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.BuoyBerthResponse;
 import com.hanghai.kchtg.port.dto.buoyberth.CreateBuoyBerthRequest;
 import com.hanghai.kchtg.port.dto.buoyberth.HistoryEntry;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -55,6 +57,14 @@ public class BuoyBerthController {
         log.info("Generating buoy berth code for portId={}", portId);
         String code = buoyBerthService.generateBuoyBerthCode(portId);
         return ResponseEntity.ok(ApiResponse.success("Sinh mã bến phao thành công", java.util.Map.of("buoyBerthCode", code)));
+    }
+
+    @GetMapping("/options")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<List<BuoyBerthOptionResponse>>> getOptions() {
+        log.info("Getting BuoyBerth options list");
+        List<BuoyBerthOptionResponse> options = buoyBerthService.getOptions();
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh mục bến phao thành công", options));
     }
 
     @GetMapping("/{id}")

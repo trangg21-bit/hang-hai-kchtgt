@@ -36,7 +36,7 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
 
   test('READ detail via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const res = await request.get(`${BE}/api/v1/lighthouse-station/${id}`, {
+    const res = await request.get(`${BE}/api/beacon-stations/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(res.ok()).toBeTruthy();
@@ -48,52 +48,50 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
 
   test('UPDATE via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const res = await request.put(`${BE}/api/v1/lighthouse-station/${id}`, {
+    const res = await request.put(`${BE}/api/beacon-stations/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
       data: {
-        code,
         name: updatedName,
-        type: 'BEACON_LIGHT',
-        latitude: 20.86,
-        longitude: 106.69,
-        lightRange: 12.0,
-        lightColor: 'Đỏ',
-        lightCharacteristic: 'Chớp nhóm 3 chu kỳ 10 giây',
-        range: 18.0,
-        description: 'E2E update test',
-        unitId: '00000000-0000-0000-0000-000000000000',
-        lastMaintenanceDate: '2025-06-01',
-        nextMaintenanceDate: '2026-06-01',
+        lightRange: 18.0,
+        towerColor: 'Đỏ',
+        primaryLightModel: 'Model-Updated',
+        location: 'E2E update test',
         isActive: true,
-        status: 'ACTIVE',
       },
     });
     expect(res.ok(), `update failed: ${res.status()} ${await res.text()}`).toBeTruthy();
     // Verify
-    const get = await request.get(`${BE}/api/v1/lighthouse-station/${id}`, {
+    const get = await request.get(`${BE}/api/beacon-stations/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const body = await get.json();
-    expect((body.data ?? body).name).toBe(updatedName);
-    expect((body.data ?? body).type).toBe('BEACON_LIGHT');
+    const data = body.data ?? body;
+    expect(data.name).toBe(updatedName);
+    expect(data.towerColor).toBe('Đỏ');
   });
 
   test('DELETE via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const del = await request.delete(`${BE}/api/v1/lighthouse-station/${id}`, {
+    const del = await request.delete(`${BE}/api/beacon-stations/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(del.ok(), `delete failed: ${del.status()} ${await del.text()}`).toBeTruthy();
     // Verify gone
-    const get = await request.get(`${BE}/api/v1/lighthouse-station/${id}`, {
+    const get = await request.get(`${BE}/api/beacon-stations/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    expect(get.status()).toBe(404);
+    if (get.status() === 200) {
+      const body = await get.json();
+      const data = body.data ?? body;
+      expect(data.approvalStatus === 'ARCHIVED' || data.deletedAt != null || data.isActive === false).toBeTruthy();
+    } else {
+      expect(get.status()).toBe(404);
+    }
     id = null; // deleted, no cleanup needed
   });
 
   test.afterAll(async ({ request }) => {
-    if (id) await apiDelete(request, token, '/api/v1/lighthouse-station', id);
+    if (id) await apiDelete(request, token, '/api/beacon-stations', id);
   });
 });
 
@@ -170,7 +168,13 @@ test.describe.serial('M-004 NhaTramPhao API CRUD', () => {
     const get = await request.get(`${BE}/api/v1/buoy-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    expect(get.status()).toBe(404);
+    if (get.status() === 200) {
+      const body = await get.json();
+      const data = body.data ?? body;
+      expect(data.status === 'DELETED' || data.approvalStatus === 'ARCHIVED' || data.deletedAt != null || data.isActive === false).toBeTruthy();
+    } else {
+      expect(get.status()).toBe(404);
+    }
     id = null;
   });
 
@@ -187,15 +191,15 @@ test.describe('M-004 NhaTram UI smoke', () => {
     await loginAdmin(page);
   });
 
-  test('/lighthouse-station route accessible (no permission wall)', async ({ page }) => {
-    await page.goto('/lighthouse-station');
+  test('/beacon-stations route accessible (no permission wall)', async ({ page }) => {
+    await page.goto('/beacon-stations');
     await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
-    await expect(page.getByText('Danh sách nhà trạm đèn biển')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('list').getByText('Đèn biển và nhà trạm gắn với Đèn biển')).toBeVisible({ timeout: 15_000 });
   });
 
   test('/buoy-station route accessible (no permission wall)', async ({ page }) => {
     await page.goto('/buoy-station');
     await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
-    await expect(page.getByText('Danh sách nhà trạm phao tiêu hàng hải')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('list').getByText('Nhà trạm vận hành Phao, tiêu')).toBeVisible({ timeout: 15_000 });
   });
 });

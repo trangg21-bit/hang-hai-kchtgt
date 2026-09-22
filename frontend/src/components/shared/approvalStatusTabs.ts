@@ -45,10 +45,10 @@ export const STANDARD_APPROVAL_STATUS_CONFIG = [
   { key: 'ALL', label: 'Tất cả', color: actionPrimary },
   { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', color: statusDraft },
   { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', color: statusOperational },
   { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp cục', color: statusCritical },
+  { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', color: statusCritical },
   { key: ApprovalStatus.ARCHIVED, label: 'Đã xóa', color: statusCritical },
 ] as const;
 
@@ -74,10 +74,10 @@ export function buildStandardApprovalTabs(
     { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !currentStatus || currentStatus === 'ALL' || currentStatus === 'all' },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: d, color: statusDraft, active: currentStatus === ApprovalStatus.DRAFT },
     { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: p, color: actionPrimary, active: currentStatus === ApprovalStatus.PENDING_APPROVAL || currentStatus === 'PENDING_APPROVAL' },
-    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp cục', count: a1, color: statusAttention, active: currentStatus === ApprovalStatus.APPROVED_LEVEL1 || currentStatus === 'APPROVED_LEVEL1' },
+    { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: a1, color: statusAttention, active: currentStatus === ApprovalStatus.APPROVED_LEVEL1 || currentStatus === 'APPROVED_LEVEL1' },
     { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: a, color: statusOperational, active: currentStatus === ApprovalStatus.APPROVED || currentStatus === 'APPROVED' },
     { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: r1, color: statusCritical, active: currentStatus === ApprovalStatus.REJECTED_LEVEL1 || currentStatus === 'REJECTED_LEVEL1' },
-    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp cục', count: r2, color: statusCritical, active: currentStatus === ApprovalStatus.REJECTED_LEVEL2 || currentStatus === 'REJECTED_LEVEL2' },
+    { key: ApprovalStatus.REJECTED_LEVEL2, label: 'Từ chối cấp Cục', count: r2, color: statusCritical, active: currentStatus === ApprovalStatus.REJECTED_LEVEL2 || currentStatus === 'REJECTED_LEVEL2' },
     { key: ApprovalStatus.ARCHIVED, label: 'Đã xóa', count: arc, color: statusCritical, active: currentStatus === ApprovalStatus.ARCHIVED || currentStatus === 'ARCHIVED' },
   ];
 }

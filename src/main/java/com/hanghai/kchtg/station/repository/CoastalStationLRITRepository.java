@@ -48,7 +48,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
      * operating_organization, thiếu thì lùi về org_units — nên join cả cặp và sắp
      * bằng COALESCE cho khớp chữ trên bảng. Bốn bảng User phục vụ 4 cột cán bộ.
      */
-    @Query("""
+    @Query(value = """
         SELECT t FROM CoastalStationLRIT t
         LEFT JOIN OrgUnit o ON o.id = t.orgUnitId
         LEFT JOIN OperatingOrganization oo ON oo.id = t.operatingOrgId
@@ -70,7 +70,10 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
           AND (:approvalStatus IS NULL
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
                OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
@@ -81,8 +84,38 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
                     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)
                )))
           AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
-          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
-          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
+          AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR t.updatedAt <= :updatedTo)
+    """, countQuery = """
+        SELECT COUNT(t) FROM CoastalStationLRIT t
+        WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
+          AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:operatingOrgId IS NULL OR t.operatingOrgId = :operatingOrgId)
+          AND (:provinceId IS NULL OR t.provinceId = :provinceId)
+          AND (CAST(:keyword AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:keyword AS string) OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.locationAddress, ''))) AS string) LIKE CAST(:keyword AS string))
+          AND (CAST(:name AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
+          AND (CAST(:code AS string) IS NULL OR
+            CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
+          AND (:approvalStatus IS NULL
+               OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
+               OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
+                    t.approvalStatus = :approvalStatus
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2))
+                    OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)
+               )))
+          AND (:updatedBy IS NULL OR t.updatedBy = :updatedBy)
+          AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR t.updatedAt <= :updatedTo)
     """)
     Page<CoastalStationLRIT> searchPaged(
         @Param("scopeEnabled") boolean scopeEnabled,
@@ -114,10 +147,13 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.name, ''))) AS string) LIKE CAST(:name AS string))
           AND (CAST(:code AS string) IS NULL OR
             CAST(function('immutable_unaccent', LOWER(COALESCE(t.code, ''))) AS string) LIKE CAST(:code AS string))
-          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
+          AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED)
+               OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
           AND (:provinceId IS NULL OR t.provinceId = :provinceId)
-          AND (CAST(:updatedFrom AS timestamp) IS NULL OR t.updatedAt >= :updatedFrom)
-          AND (CAST(:updatedTo AS timestamp) IS NULL OR t.updatedAt <= :updatedTo)
+          AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR t.updatedAt >= :updatedFrom)
+          AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR t.updatedAt <= :updatedTo)
         GROUP BY CASE WHEN (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE t.approvalStatus END
     """)
     /**

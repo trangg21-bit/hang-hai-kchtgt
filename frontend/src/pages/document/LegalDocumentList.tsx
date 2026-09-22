@@ -423,8 +423,10 @@ export default function LegalDocumentList() {
     if (hasPerm('document:update') && record.validityStatus !== 'EXPIRED') {
       actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: <EditOutlined />, onClick: () => handleEdit(record) });
     }
-    if (hasPerm('document:read')) {
+    if (hasPerm('document:history')) {
       actions.push({ key: 'history', label: 'Lịch sử', icon: <HistoryOutlined />, onClick: () => handleHistory(record) });
+    }
+    if (hasPerm('document:read')) {
       actions.push({ key: 'export-pdf', label: 'Xuất PDF', icon: <DownloadOutlined />, onClick: () => handleExportPdf(record.id) });
     }
     if (hasPerm('document:delete')) {
@@ -569,7 +571,7 @@ export default function LegalDocumentList() {
       <Drawer
         {...drawerProps}
         size={undefined}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         title={
           <span style={drawerTitleStyle}>
             {isViewing

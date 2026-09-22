@@ -17,7 +17,7 @@ import {
   radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, borderDefault,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
   primaryButtonStyle, outlineButtonStyle,
-  DRAWER_TABLE_SCROLL_Y,
+  DRAWER_TABLE_SCROLL_Y, textAreaStyle,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -564,7 +564,7 @@ export default function BuoyFormContent({
             <Row gutter={[24, 0]}>
               <Col span={24}>
                 <Form.Item name="structure" {...labelProps('Kết cấu')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập Kết cấu" maxLength={2000} showCount style={inputStyle} />
+                  <Input.TextArea rows={3} placeholder="Nhập Kết cấu" maxLength={2000} showCount style={textAreaStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -598,7 +598,7 @@ export default function BuoyFormContent({
               </Col>
               <Col span={12}>
                 <Form.Item name="commissionedDate" {...labelProps('Thời điểm đưa vào sử dụng')} style={{ marginBottom: spaceFormField }}>
-                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" popupClassName="buoy-date-picker" style={datePickerStyle} />
+                  <DatePicker placeholder="Chọn Thời điểm đưa vào sử dụng" format="DD/MM/YYYY" classNames={{ popup: { root: 'buoy-date-picker' } }} style={datePickerStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -857,7 +857,7 @@ export default function BuoyFormContent({
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

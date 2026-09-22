@@ -37,6 +37,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -74,7 +75,7 @@ import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } 
 import { formatHistoryNumber } from '../../utils/numFmt';
 import DaiTtdhDetailContent from './DaiTtdhDetailContent';
 import DaiTtdhForm, { DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
-import { resolveMaritimeServiceLabel } from '../../constants/maritimeServices';
+import { resolveMaritimeServiceLabel, formatMaritimeServicesDisplay } from '../../constants/maritimeServices';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ─────
 const fontSizeMd = 13.5;
@@ -284,12 +285,11 @@ function histVal(
   if (
     normKey === 'servicesprovided' ||
     normKey === 'services_provided' ||
+    normKey === 'services' ||
     normKey === 'dichvucungcap' ||
     normKey === 'dich vu cung cap'
   ) {
-    const parts = trimmedVal.split(/[,;]+/).map((s) => s.trim()).filter(Boolean);
-    const mappedParts = parts.map((code) => resolveMaritimeServiceLabel(code));
-    return mappedParts.join(', ');
+    return formatMaritimeServicesDisplay(trimmedVal);
   }
 
   if (
@@ -550,6 +550,10 @@ export default function DaiTtdhListPage() {
 
   // ── Tab counts ──────────────────────────────────────────────────
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+
+  // ── Permission ──────────────────────────────────────────────────
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('daittdh', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
 
   // ── Drawer state: Hợp nhất Create & Edit (Chuẩn PierListPage) ──
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -1609,14 +1613,14 @@ export default function DaiTtdhListPage() {
           {...drawerProps}
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
-          width={DRAWER_WIDTH}
+          size={DRAWER_WIDTH}
           title={
             <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
               {editDaiTtdhId ? 'Chỉnh sửa thông tin Đài TTDH' : 'Thêm mới Đài TTDH'}
             </span>
           }
           open={createDrawerVisible}
-          destroyOnClose
+          destroyOnHidden
           onClose={closeFormDrawer}
           afterOpenChange={(open) => {
             if (!open) {
@@ -1630,7 +1634,7 @@ export default function DaiTtdhListPage() {
               {(() => {
                 const st = !editDaiTtdhId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
                 if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-                  return (
+                  return canSaveAndApprove ? (
                     <Button
                       htmlType="button"
                       type="primary"
@@ -1640,7 +1644,7 @@ export default function DaiTtdhListPage() {
                     >
                       Lưu và phê duyệt
                     </Button>
-                  );
+                  ) : null;
                 }
                 if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
                   return (
@@ -1655,7 +1659,7 @@ export default function DaiTtdhListPage() {
                     </Button>
                   );
                 }
-                // Thêm mới hoặc Lưu tạm (DRAFT): đủ 3 nút chuẩn Bến cảng / Cầu cảng
+                // Thêm mới hoặc Lưu tạm (DRAFT)
                 return (
                   <>
                     <Button
@@ -1675,15 +1679,17 @@ export default function DaiTtdhListPage() {
                     >
                       Lưu và gửi phê duyệt
                     </Button>
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('approve'); daiTtdhFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
+                    {canSaveAndApprove && (
+                      <Button
+                        htmlType="button"
+                        type="primary"
+                        onClick={() => { setActionType('approve'); daiTtdhFormRef.current?.submit('APPROVED'); }}
+                        loading={submitting && actionType === 'approve'}
+                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
+                      >
+                        Lưu và phê duyệt
+                      </Button>
+                    )}
                   </>
                 );
               })()}
@@ -1718,7 +1724,7 @@ export default function DaiTtdhListPage() {
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
           size={undefined}
-          width={DRAWER_WIDTH}
+          size={DRAWER_WIDTH}
           title={<span style={drawerTitleStyle}>Chi tiết đài TTDH{detailRecord ? ` - ${detailRecord.daiTtdhName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}

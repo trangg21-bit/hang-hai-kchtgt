@@ -392,7 +392,7 @@ public class CoastalStationLRITController {
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Get change history for an LRIT station")
-    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:read', 'specialstation:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'coastalstationlrit:history', 'coastalstationlrit:read', 'specialstation:history', 'specialstation:read', 'data:read')")
     public ResponseEntity<List<CoastalStationLRITHistoryResponse>> getHistory(
             @PathVariable UUID id,
             @RequestParam(value = "page", required = false) Integer page,

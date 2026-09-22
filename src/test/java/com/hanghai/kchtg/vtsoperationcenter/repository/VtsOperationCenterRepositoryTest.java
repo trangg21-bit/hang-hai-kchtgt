@@ -102,7 +102,7 @@ class VtsOperationCenterRepositoryTest {
     }
 
     @Test
-    void testFindOptions_IncludesAllConditionStatusesWhenApproved() {
+    void testFindOptions_OnlyIncludesOperationalAndApproved() {
         VtsOperationCenter op1 = createCenter("VTSOC-OP1", "TT Đang vận hành");
         op1.setApprovalStatus(ApprovalStatus.APPROVED);
         op1.setConditionStatus(ConditionStatus.OPERATIONAL);
@@ -134,8 +134,71 @@ class VtsOperationCenterRepositoryTest {
         var options = repository.findOptions(false, List.of(), false, List.of());
         List<String> names = options.stream().map(com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse::getName).toList();
 
-        assertEquals(3, options.size());
-        assertEquals(List.of("TT Bảo trì cấp 2", "TT Dừng vận hành", "TT Đang vận hành"), names);
+        assertEquals(1, options.size());
+        assertEquals(List.of("TT Đang vận hành"), names);
+    }
+
+    @Test
+    void testSearch_ArchivedTab_ReturnsDeletedRecords() {
+        VtsOperationCenter active = createCenter("VTSOC-ACT", "TT Đang hoạt động");
+        active.setApprovalStatus(ApprovalStatus.APPROVED);
+        repository.save(active);
+
+        VtsOperationCenter deleted = createCenter("VTSOC-DEL2", "TT Đã bị xóa");
+        deleted.setApprovalStatus(ApprovalStatus.APPROVED);
+        deleted.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(deleted);
+
+        entityManager.flush();
+
+        var page = repository.search(false, List.of(), null, null, null, null, null,
+                ApprovalStatus.ARCHIVED, null, null, null, PageRequest.of(0, 20));
+
+        assertEquals(1, page.getTotalElements());
+        assertEquals("TT Đã bị xóa", page.getContent().get(0).getName());
+    }
+
+    @Test
+    void testSearch_AllTab_IncludesBothActiveAndDeletedRecords() {
+        VtsOperationCenter active = createCenter("VTSOC-ACT-ALL", "TT Hoạt động Tất cả");
+        active.setApprovalStatus(ApprovalStatus.APPROVED);
+        repository.save(active);
+
+        VtsOperationCenter deleted = createCenter("VTSOC-DEL-ALL", "TT Đã xóa Tất cả");
+        deleted.setApprovalStatus(ApprovalStatus.APPROVED);
+        deleted.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(deleted);
+
+        entityManager.flush();
+
+        var page = repository.search(false, List.of(), null, null, null, null, null,
+                null, null, null, null, PageRequest.of(0, 20));
+
+        // Bao gồm cả bản ghi đang hoạt động và bản ghi đã xóa
+        var names = page.getContent().stream().map(VtsOperationCenter::getName).toList();
+        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Hoạt động Tất cả"));
+        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Đã xóa Tất cả"));
+    }
+
+    @Test
+    void testSearch_SpecificStatus_ExcludesDeletedRecords() {
+        VtsOperationCenter active = createCenter("VTSOC-ACT-APP", "TT Đã duyệt Active");
+        active.setApprovalStatus(ApprovalStatus.APPROVED);
+        repository.save(active);
+
+        VtsOperationCenter deleted = createCenter("VTSOC-DEL-APP", "TT Đã duyệt nhưng đã xóa");
+        deleted.setApprovalStatus(ApprovalStatus.APPROVED);
+        deleted.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(deleted);
+
+        entityManager.flush();
+
+        var page = repository.search(false, List.of(), null, null, null, null, null,
+                ApprovalStatus.APPROVED, null, null, null, PageRequest.of(0, 20));
+
+        var names = page.getContent().stream().map(VtsOperationCenter::getName).toList();
+        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Đã duyệt Active"));
+        org.junit.jupiter.api.Assertions.assertFalse(names.contains("TT Đã duyệt nhưng đã xóa"));
     }
 
     private VtsOperationCenter createCenter(String code, String name) {

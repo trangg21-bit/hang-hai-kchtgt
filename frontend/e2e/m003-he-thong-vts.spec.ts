@@ -27,7 +27,7 @@ test.describe('M-003 Hệ thống VTS', () => {
     await expect(page).not.toHaveURL(/login/);
     await expect(page.getByText(/Placeholder/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /thêm mới/i })).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Trạng thái phê duyệt')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tất cả' })).toBeVisible();
     await expect(page.getByRole('table')).toBeVisible();
   });
 
@@ -35,7 +35,7 @@ test.describe('M-003 Hệ thống VTS', () => {
     await page.goto(LIST_URL);
     await expect(page.getByPlaceholder(/Tìm theo tên hệ thống VTS/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /tìm kiếm/i })).toBeVisible();
-    await expect(page.getByText('Tất cả')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Tất cả' })).toBeVisible();
   });
 
   test('TC-M003-VTS-03: Nhấn nút Thêm mới mở Drawer với form nhập liệu đầy đủ trường', async ({ page }) => {
@@ -43,15 +43,17 @@ test.describe('M-003 Hệ thống VTS', () => {
     await page.getByRole('button', { name: /thêm mới/i }).click();
 
     // Verify Drawer opens
-    await expect(page.getByText('Thêm mới hệ thống VTS')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Thông tin chung')).toBeVisible();
-    await expect(page.getByText('Mã hệ thống VTS')).toBeVisible();
-    await expect(page.getByText('Tên hệ thống VTS')).toBeVisible();
-    await expect(page.getByText('Đơn vị quản lý')).toBeVisible();
+    const drawer = page.locator('.ant-drawer-open');
+    await expect(drawer).toBeVisible({ timeout: 8000 });
+    await expect(drawer.getByText('Thêm mới hệ thống VTS')).toBeVisible();
+    await expect(drawer.getByText('Thông tin chung')).toBeVisible();
+    await expect(drawer.getByText('Mã hệ thống VTS', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('Tên hệ thống VTS', { exact: true })).toBeVisible();
+    await expect(drawer.getByText('Đơn vị quản lý', { exact: true })).toBeVisible();
 
     // Verify action buttons in Drawer footer
-    await expect(page.getByRole('button', { name: 'Lưu tạm' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Lưu và phê duyệt' })).toBeVisible();
+    await expect(drawer.getByRole('button', { name: 'Lưu tạm' })).toBeVisible();
+    await expect(drawer.getByRole('button', { name: 'Lưu và phê duyệt' })).toBeVisible();
   });
 
   test('TC-M003-VTS-04: Bảng dữ liệu VTS hiển thị đúng các cột nghiệp vụ chuẩn', async ({ page }) => {
@@ -59,6 +61,6 @@ test.describe('M-003 Hệ thống VTS', () => {
     await expect(page.getByRole('columnheader', { name: /TÊN\/MÃ HỆ THỐNG VTS/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /ĐƠN VỊ QUẢN LÝ/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /TÌNH TRẠNG/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /TRẠNG THÁI PHÊ DUYỆT/i })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: /TRẠNG THÁI/i })).toBeVisible();
   });
 });

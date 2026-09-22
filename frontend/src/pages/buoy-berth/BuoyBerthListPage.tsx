@@ -113,10 +113,10 @@ const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
   { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp cục', color: statusAttention },
+  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp cục', color: statusCritical },
+  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
@@ -648,8 +648,8 @@ export default function BuoyBerthList() {
       } catch { console.error('Failed to load symbols'); }
     })();
     // ── Thuộc luồng hàng hải (cùng nguồn options như form và Cầu cảng) ──
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
+    navigationChannelCRUD.getOptions()
+      .then(items => setWaterwayOptions(items.map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
       .catch(() => {});
   }, []);
 
@@ -658,10 +658,11 @@ export default function BuoyBerthList() {
     if (!orgUnitReady) return;
     (async () => {
       try {
-        const params: any = { page: 1, pageSize: 1000 };
-        if (managingUnitId && managingUnitId !== '__all__') params.orgUnitId = managingUnitId;
-        const res = await portCRUD.search(params);
-        setPortOptions((res.data || []).map((p: any) => ({ value: p.id, label: p.portName })));
+        const allPorts = await portCRUD.getOptions();
+        const filtered = (!managingUnitId || managingUnitId === '__all__')
+          ? allPorts
+          : allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === managingUnitId);
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
       } catch { /* ignore */ }
     })();
   }, [managingUnitId, orgUnitReady]);
@@ -1559,7 +1560,7 @@ export default function BuoyBerthList() {
         {...drawerProps}
         rootClassName="buoy-berth-drawer-scope"
         className="buoy-berth-drawer-scope"
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editBuoyBerthId ? 'Chỉnh sửa thông tin Bến phao' : 'Thêm mới Bến phao'}</span>}
         open={createDrawerVisible}
         destroyOnHidden

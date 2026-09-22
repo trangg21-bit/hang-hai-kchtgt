@@ -84,6 +84,23 @@ public class PermissionAuthorizationManager {
             return historyPermissions.stream()
                     .anyMatch(permission -> effectivePermissionService.checkPermission(authentication, permission));
         }
+        List<String> updatePermissions = normalized.stream()
+                .filter(permission -> "update".equals(actionOf(permission)))
+                .toList();
+        boolean includesC2Approval = normalized.stream()
+                .anyMatch(permission -> "approvec2".equals(actionOf(permission)));
+        boolean includesCreateOrDelete = normalized.stream()
+                .map(PermissionAuthorizationManager::actionOf)
+                .anyMatch(action -> "create".equals(action) || "delete".equals(action));
+
+        // A C2 approval right is not an update right. Legacy update routes used
+        // `checkAny(update, approvec2)` so an approver could modify data without
+        // the explicit update checkbox. Preserve create/delete attachment routes,
+        // but for a pure update route require its concrete `:update` permission.
+        if (!updatePermissions.isEmpty() && includesC2Approval && !includesCreateOrDelete) {
+            return updatePermissions.stream()
+                    .anyMatch(permission -> effectivePermissionService.checkPermission(authentication, permission));
+        }
         String primaryPermission = normalized.stream()
                 .filter(permission -> !LEGACY_ROUTE_FALLBACK_RESOURCES.contains(resourceOf(permission)))
                 .findFirst()

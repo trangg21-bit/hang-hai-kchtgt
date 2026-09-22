@@ -14,6 +14,7 @@ import {
 } from 'antd';
 import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { useAuthStore } from '../../store/authStore';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -825,8 +826,10 @@ function WaterZoneDetailMini({ record, symbols, files, userMap }: { record: any;
 
 export default function PortListPage() {
   // ── Permission ──────────────────────────────────────────────────
+  const currentUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const canSubmitForApproval = hasPerm?.('port:update');
+  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
+  const canSaveAndApprove = checkCanSaveAndApprove('port', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
 
   // ── State ───────────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
@@ -1575,7 +1578,7 @@ export default function PortListPage() {
       };
       const createdPort = await import('./api').then((m) => m.createCangBien(payload as any));
       const createdPortId = createdPort?.id || (createdPort as any)?.portId;
-      toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : 'Lưu và phê duyệt thành công');
+      toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : currentAction === 'submit' ? 'Lưu và gửi phê duyệt thành công' : 'Lưu và phê duyệt thành công');
       createForm.resetFields();
 
       const pendingFiles = [...uploadFileList];
@@ -2568,7 +2571,8 @@ export default function PortListPage() {
           footer={
             <div style={drawerFooterStyle}>
               <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-              {canSubmitForApproval && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}
+              <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); createForm.submit(); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+              {canSaveAndApprove && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}
             </div>
           }
           styles={{
@@ -2653,9 +2657,14 @@ export default function PortListPage() {
           footer={
             <div style={drawerFooterStyle}>
               {!(selectedRecord?.approvalStatus === 'APPROVED' || selectedRecord?.approvalStatus === 'APPROVED_LEVEL2') && (
-                <Button htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'draft'; updateForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
+                <>
+                  <Button htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'draft'; updateForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
+                  <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+                </>
               )}
-              <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+              {canSaveAndApprove && (
+                <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+              )}
             </div>
           }
           styles={{

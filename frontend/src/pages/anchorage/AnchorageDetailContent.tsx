@@ -88,13 +88,13 @@ export const DEFAULT_APPROVAL_STYLE_MAP: Record<string, { color: string; label: 
   CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
   PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
   DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp cục' },
+  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
 };
 
 export const DEFAULT_OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -847,7 +847,7 @@ export default function AnchorageDetailContent({
                 ]}
                 width="min(800px, 90vw)"
                 centered
-                destroyOnClose
+                destroyOnHidden
               >
                 <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 8 }}>
                   {previewLoading ? (
@@ -945,7 +945,7 @@ export default function AnchorageDetailContent({
       }
       open={gisModalOpen}
       onCancel={() => setGisModalOpen(false)}
-      destroyOnClose
+      destroyOnHidden
       width="94vw"
       style={{ top: 20, maxWidth: '1400px' }}
       footer={[
@@ -991,11 +991,11 @@ export default function AnchorageDetailContent({
       rootClassName="anchorage-drawer-scope"
       className="anchorage-drawer-scope"
       size={1000}
-      width="min(1000px, 96vw)"
+      size="min(1000px, 96vw)"
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
       open={!!viewingWaterArea}
       onClose={() => setViewingWaterArea(null)}
-      destroyOnClose
+      destroyOnHidden
       push={false}
       extra={<Button type="text" onClick={() => setViewingWaterArea(null)} style={drawerCloseBtnStyle}>✕</Button>}
       footer={null}

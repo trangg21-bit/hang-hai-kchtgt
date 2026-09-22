@@ -31,8 +31,11 @@ import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
 import dayjs from 'dayjs';
 import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
-import { canEditApprovalRecord, canDeleteApprovalRecord, normalizeApprovalStatus } from '../../../utils/approvalEditPolicy';
+import { useKchtRowActions } from '../../../hooks/useKchtRowActions';
 import { useSearchParams } from 'react-router-dom';
+import { getVtsConditionStatusLabel, getConditionStatusLabel, getConditionStatusColor } from '../../../themetokenchk';
+import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 
 const fontSizeMd = 13.5;
 
@@ -51,6 +54,8 @@ const CONDITION_COLOR: Record<ConditionStatus, string> = {
   [ConditionStatus.STOPPED]: statusCritical,
   [ConditionStatus.MAINTENANCE]: statusAttention,
   [ConditionStatus.UNDER_CONSTRUCTION]: actionPrimary,
+  [ConditionStatus.NOT_YET_OPERATIONAL]: statusAttention,
+  [ConditionStatus.SUSPENDED]: statusCritical,
 };
 
 const LritStationGlobalStyles = React.memo(() => (
@@ -154,6 +159,69 @@ const LritStationGlobalStyles = React.memo(() => (
     }
   `}</style>
 ));
+
+const LRIT_FIELD_MAP: Record<string, string> = {
+  code: 'Mã đài',
+  stationCode: 'Mã đài',
+  'Mã đài': 'Mã đài',
+  name: 'Tên đài',
+  stationName: 'Tên đài',
+  'Tên đài': 'Tên đài',
+  orgUnitId: 'Đơn vị quản lý',
+  orgUnitName: 'Đơn vị quản lý',
+  'Đơn vị quản lý': 'Đơn vị quản lý',
+  operatingOrgId: 'Đơn vị khai thác',
+  operatingOrgName: 'Đơn vị khai thác',
+  'Đơn vị khai thác': 'Đơn vị khai thác',
+  provinceId: 'Địa điểm (Tỉnh/TP)',
+  'Địa điểm (Tỉnh/TP)': 'Địa điểm (Tỉnh/TP)',
+  locationAddress: 'Địa điểm chi tiết',
+  'Địa điểm chi tiết': 'Địa điểm chi tiết',
+  conditionStatus: 'Tình trạng',
+  'Tình trạng': 'Tình trạng',
+  coverageArea: 'Vùng phủ sóng',
+  'Vùng phủ sóng': 'Vùng phủ sóng',
+  servicesProvided: 'Dịch vụ cung cấp',
+  services: 'Dịch vụ cung cấp',
+  'Dịch vụ cung cấp': 'Dịch vụ cung cấp',
+  description: 'Ghi chú',
+  note: 'Ghi chú',
+  'Ghi chú': 'Ghi chú',
+  geometryType: 'Loại đối tượng',
+  objectType: 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  symbol: 'Biểu tượng',
+  symbolId: 'Biểu tượng',
+  'Biểu tượng': 'Biểu tượng',
+  coordinateSystem: 'Hệ quy chiếu',
+  'Hệ quy chiếu': 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  'Quy tắc hiển thị': 'Quy tắc hiển thị',
+  latitude: 'Vĩ độ',
+  longitude: 'Kinh độ',
+  coordinates: 'Tọa độ GIS',
+  'Tọa độ GIS': 'Tọa độ GIS',
+  approvalStatus: 'Trạng thái phê duyệt',
+};
+
+const formatHistoryValue = (field: string, val: unknown): string => {
+  if (val === null || val === undefined || val === '') return '—';
+  if (field === 'provinceId' || field === 'Địa điểm (Tỉnh/TP)') {
+    return getProvinceNameById(val as number) || String(val);
+  }
+  if (field === 'conditionStatus' || field === 'Tình trạng' || field === 'tinhTrang') {
+    return getVtsConditionStatusLabel(val) || getConditionStatusLabel(val as string);
+  }
+  if (field === 'operatingOrgId' || field === 'operatingOrgName' || field === 'Đơn vị khai thác') {
+    const sVal = String(val).trim();
+    const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === sVal || o.code === sVal);
+    return found ? found.name : sVal;
+  }
+  if (field === 'services' || field === 'servicesProvided' || field === 'Dịch vụ cung cấp' || field === 'providedServices') {
+    return formatMaritimeServicesDisplay(val);
+  }
+  return String(val);
+};
 
 export default function LritStationList() {
   const [searchParams] = useSearchParams();
@@ -518,11 +586,18 @@ export default function LritStationList() {
   );
 
   const handleFilterSearch = (vals: Record<string, unknown>) => {
-    setFilterName(typeof vals.name === 'string' ? vals.name.trim() : '');
-    setFilterCode(typeof vals.code === 'string' ? vals.code.trim() : '');
+    const name = typeof vals.name === 'string' ? vals.name.trim() : '';
+    const code = typeof vals.code === 'string' ? vals.code.trim() : '';
+    setFilterValues((prev) => ({
+      ...prev,
+      name,
+      code,
+    }));
+    setFilterName(name);
+    setFilterCode(code);
     setFilterConditionStatus(vals.conditionStatus as ConditionStatus | undefined);
     setFilterOrgUnitId(vals.orgUnitId as string | undefined);
-    setFilterProvinceId(typeof vals.provinceId === 'number' ? vals.provinceId : undefined);
+    setFilterProvinceId(vals.provinceId != null && vals.provinceId !== '' ? Number(vals.provinceId) : undefined);
     const dateRange = vals.updateDateRange as [dayjs.Dayjs | null, dayjs.Dayjs | null] | undefined;
     setFilterUpdatedFrom(dateRange?.[0] ? dayjs(dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
     setFilterUpdatedTo(dateRange?.[1] ? dayjs(dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss') : undefined);
@@ -653,8 +728,8 @@ export default function LritStationList() {
       width: 220,
       ellipsis: false,
       render: (v: string) => {
-        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || v;
-        const color = CONDITION_COLOR[v as ConditionStatus] || textSecondary;
+        const label = CONDITION_STATUS_MAP[v as ConditionStatus] || getConditionStatusLabel(v) || v;
+        const color = CONDITION_COLOR[v as ConditionStatus] || getConditionStatusColor(v) || textSecondary;
         return (
           <span style={statusBadgeStyle(color)}>
             {label}
@@ -666,7 +741,7 @@ export default function LritStationList() {
       key: 'approvalStatus',
       label: 'Trạng thái',
       dataIndex: 'approvalStatus',
-      width: 180,
+      width: 260,
       ellipsis: false,
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
@@ -720,114 +795,39 @@ export default function LritStationList() {
     },
   ], [page, pageSize, sortOrderFor, isRejectedTab, resolveOrgUnitName, resolveOperatingOrgName]);
 
-  const rowActions = useCallback((record: LritStationItem) => {
-    const uid = currentUser?.userId || currentUser?.id;
-    const isCreator = Boolean(uid && (record.createdBy === uid || record.createdBy === currentUser?.username));
-    const isApproverL1 = Boolean(uid && ((record as any).approverLevel1 === uid || (record as any).approverLevel1 === currentUser?.username));
-    const userUnitType = currentUser?.unitType || '';
-    const isAdmin = hasPerm('*') || hasPerm('admin:all');
-    const isCucLevel = Boolean(userUnitType && ['CHUYEN_VIEN_CUC', 'LANH_DAO_CUC', 'CUC', 'CUC_HANG_HAI'].includes(userUnitType)) || isAdmin;
-    const st = normalizeApprovalStatus(record.approvalStatus);
-
-    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }[] = [
-      {
-        key: 'detail',
-        label: 'Xem chi tiết',
-        icon: icons.view,
-        onClick: () => {
-          setEditingId(record.id);
-          setSelectedRecord(record);
-          setModalMode('detail');
-          setIsModalOpen(true);
-        },
+    const { rowActions } = useKchtRowActions<LritStationItem>({
+    resource: 'coastalstationlrit',
+    approvalLevels: 2,
+    handlers: {
+      onDetail: (record) => {
+        setEditingId(record.id);
+        setSelectedRecord(record);
+        setModalMode('detail');
+        setIsModalOpen(true);
       },
-    ];
-
-    if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraApprovePerms: ['specialstation:approvec2', 'data:approvec2'] })) {
-      actions.push({
-        key: 'edit',
-        label: 'Chỉnh sửa',
-        icon: icons.edit,
-        onClick: () => {
-          setEditingId(record.id);
-          setSelectedRecord(record);
-          setModalMode('edit');
-          setIsModalOpen(true);
-        },
-      });
-    }
-
-    if (hasPerm('coastalstationlrit:history')) {
-      actions.push({
-        key: 'history',
-        label: 'Lịch sử',
-        icon: icons.history,
-        onClick: () => handleViewHistory(record),
-      });
-    }
-
-    if ((hasPerm('coastalstationlrit:update') || hasPerm('specialstation:update') || hasPerm('data:update') || isAdmin) && (st === 'DRAFT' || st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2')) {
-      actions.push({
-        key: 'submit',
-        label: 'Gửi duyệt',
-        icon: icons.submit,
-        onClick: async () => {
-          try {
-            const res: any = await lritStationService.submit(record.id);
-            toast.success(res?.message || 'Gửi phê duyệt thành công');
-            refreshList();
-          } catch (e: unknown) {
-            toast.error(e instanceof Error ? e.message : 'Lỗi gửi duyệt');
-          }
-        },
-      });
-    }
-
-    if ((hasPerm('coastalstationlrit:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1')) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
-      actions.push({
-        key: 'approve_c1',
-        label: 'Phê duyệt cấp Cảng vụ/Chi cục',
-        icon: icons.approve,
-        onClick: () => openApproveModal(record.id, 'c1'),
-      });
-      actions.push({
-        key: 'reject_c1',
-        label: 'Từ chối cấp Cảng vụ/Chi cục',
-        icon: icons.reject,
-        danger: true,
-        onClick: () => openRejectModal(record.id),
-      });
-    }
-
-    const canApproveL2Perm = hasPerm('coastalstationlrit:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
-    if (canApproveL2Perm && (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && (!isApproverL1 || isCucLevel || isAdmin)) {
-      actions.push({
-        key: 'approve_c2',
-        label: 'Phê duyệt cấp Cục',
-        icon: icons.approve,
-        onClick: () => openApproveModal(record.id, 'c2'),
-      });
-      actions.push({
-        key: 'reject_c2',
-        label: 'Từ chối cấp Cục',
-        icon: icons.reject,
-        danger: true,
-        onClick: () => openRejectModal(record.id),
-      });
-    }
-
-    if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'coastalstationlrit', extraDeletePerms: ['specialstation:delete'] })) {
-      actions.push({
-        key: 'delete',
-        label: 'Xóa',
-        icon: icons.delete,
-        danger: true,
-        onClick: () => openDeleteModal(record),
-      });
-    }
-
-    return actions;
-  }, [currentUser?.userId, currentUser?.id, currentUser?.username, hasPerm, refreshList, openDeleteModal]);
+      onEdit: (record) => {
+        setEditingId(record.id);
+        setSelectedRecord(record);
+        setModalMode('edit');
+        setIsModalOpen(true);
+      },
+      onHistory: (record) => handleViewHistory(record),
+      onSubmit: async (record) => {
+        try {
+          const res: any = await lritStationService.submit(record.id);
+          toast.success(res?.message || 'Gửi phê duyệt thành công');
+          refreshList();
+        } catch (e: unknown) {
+          toast.error(e instanceof Error ? e.message : 'Lỗi gửi duyệt');
+        }
+      },
+      onApproveL1: (record) => openApproveModal(record.id, 'c1'),
+      onRejectL1: (record) => openRejectModal(record.id),
+      onApproveL2: (record) => openApproveModal(record.id, 'c2'),
+      onRejectL2: (record) => openRejectModal(record.id),
+      onDelete: (record) => openDeleteModal(record),
+    },
+  });
 
   return (
     <ThemeTokenProvider tokens={customLritTokens}>
@@ -891,6 +891,11 @@ export default function LritStationList() {
                   allowClear
                   value={(filterValues.name as string) || ''}
                   onChange={(event) => setFilterValues((prev) => ({ ...prev, name: event.target.value }))}
+                  onBlur={() => {
+                    if (typeof filterValues.name === 'string') {
+                      setFilterValues((prev) => ({ ...prev, name: prev.name.trim() }));
+                    }
+                  }}
                   onPressEnter={() => handleFilterSearch(filterValues)}
                   style={{ borderRadius: radiusPill, height: 40 }}
                 />
@@ -918,6 +923,11 @@ export default function LritStationList() {
                       allowClear
                       value={(filterValues.code as string) || ''}
                       onChange={(event) => setFilterValues((prev) => ({ ...prev, code: event.target.value }))}
+                      onBlur={() => {
+                        if (typeof filterValues.code === 'string') {
+                          setFilterValues((prev) => ({ ...prev, code: prev.code.trim() }));
+                        }
+                      }}
                       onPressEnter={() => handleFilterSearch(filterValues)}
                       style={{ borderRadius: radiusPill, height: 40 }}
                     />
@@ -993,6 +1003,8 @@ export default function LritStationList() {
           entityName={selectedRecord?.name || (selectedRecord as any)?.code || 'Đài thông tin LRIT'}
           records={historyRecords}
           loading={loadingHistory}
+          fieldLabelMap={LRIT_FIELD_MAP}
+          formatValue={formatHistoryValue}
           serverFiltered
           onFilterChange={handleHistoryFilterChange}
           onLoadMore={loadMoreHistory}

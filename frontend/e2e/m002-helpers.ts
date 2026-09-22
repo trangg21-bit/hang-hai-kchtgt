@@ -4,10 +4,12 @@ export const BE = 'http://localhost:8080';
 
 /** Log in as admin through the UI; resolves once redirected away from /login. */
 export async function loginAdmin(page: Page) {
+  await page.goto('/');
+  if (!page.url().includes('/login')) return;
   await page.goto('/login');
-  await page.getByLabel('Tài khoản').fill('admin');
-  await page.getByLabel('Mật khẩu').fill('Asdqwe@123');
-  await page.getByRole('button', { name: /đăng nhập/i }).click();
+  await page.fill('input[placeholder*="đăng nhập"]', 'admin');
+  await page.fill('input[placeholder*="mật khẩu"]', 'Asdqwe@123');
+  await page.click('button[type="submit"]');
   await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20_000 });
 }
 

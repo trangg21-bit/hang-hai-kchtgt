@@ -923,7 +923,7 @@ export default function PortDetailContent({
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
@@ -994,7 +994,7 @@ export default function PortDetailContent({
         ]}
         width="min(800px, 90vw)"
         centered
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ textAlign: 'center', padding: '16px 0', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 8 }}>
           {previewLoading ? (
@@ -1015,10 +1015,10 @@ export default function PortDetailContent({
       <Drawer
         open={!!viewingWharfArea}
         onClose={() => setViewingWharfArea(null)}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         closable={false}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu bến</span>}

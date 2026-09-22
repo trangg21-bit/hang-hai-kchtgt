@@ -253,14 +253,23 @@ public class NavigationChannelService {
         Map<String, String> previousValues = new LinkedHashMap<>();
         Map<String, String> manualNewValues = new LinkedHashMap<>();
 
-        // F-039 D3: copy field đơn (non-null) qua EntityUpdateUtils — ignore field có xử lý riêng
-        EntityUpdateUtils.copyPropertiesIfPresent(req, nc, previousValues,
+        // F-039 D3: copy field đơn qua EntityUpdateUtils.copyProperties (hỗ trợ lưu null) — ignore field có xử lý riêng
+        EntityUpdateUtils.copyProperties(req, nc, previousValues,
+                NavigationChannelUpdateRequest.Fields.channelName,
                 NavigationChannelUpdateRequest.Fields.orgUnitId,
                 NavigationChannelUpdateRequest.Fields.geometryType,
                 NavigationChannelUpdateRequest.Fields.coordinates,
                 NavigationChannelUpdateRequest.Fields.routeDetails,
                 NavigationChannelUpdateRequest.Fields.coordinateList,
                 NavigationChannelUpdateRequest.Fields.attachments);
+
+        if (req.getChannelName() != null && !req.getChannelName().isBlank()) {
+            if (!Objects.equals(req.getChannelName().trim(), nc.getChannelName())) {
+                previousValues.put(NavigationChannelUpdateRequest.Fields.channelName,
+                        nc.getChannelName() != null ? nc.getChannelName() : "Chưa có");
+                nc.setChannelName(req.getChannelName().trim());
+            }
+        }
 
         if (req.getOrgUnitId() != null) {
             if (!Objects.equals(req.getOrgUnitId(), nc.getOrgUnitId())) {
@@ -271,23 +280,21 @@ public class NavigationChannelService {
         }
 
         // F-039 D3: normalize trim sau reflection copy (BR-039-04)
-        if (req.getChannelName() != null)
-            nc.setChannelName(trimToNull(nc.getChannelName()));
-        if (req.getDetailedLocation() != null)
+        if (nc.getDetailedLocation() != null)
             nc.setDetailedLocation(trimToNull(nc.getDetailedLocation()));
-        if (req.getManagementStation() != null)
+        if (nc.getManagementStation() != null)
             nc.setManagementStation(trimToNull(nc.getManagementStation()));
-        if (req.getNotes() != null)
+        if (nc.getNotes() != null)
             nc.setNotes(trimToNull(nc.getNotes()));
-        if (req.getAnnouncementDecisionNumber() != null)
+        if (nc.getAnnouncementDecisionNumber() != null)
             nc.setAnnouncementDecisionNumber(trimToNull(nc.getAnnouncementDecisionNumber()));
-        if (req.getAnnouncementDecisionIssuer() != null)
+        if (nc.getAnnouncementDecisionIssuer() != null)
             nc.setAnnouncementDecisionIssuer(trimToNull(nc.getAnnouncementDecisionIssuer()));
-        if (req.getProtectionNotes() != null)
+        if (nc.getProtectionNotes() != null)
             nc.setProtectionNotes(trimToNull(nc.getProtectionNotes()));
-        if (req.getCoordinateReferenceSystem() != null)
+        if (nc.getCoordinateReferenceSystem() != null)
             nc.setCoordinateReferenceSystem(trimToNull(nc.getCoordinateReferenceSystem()));
-        if (req.getDisplayRule() != null)
+        if (nc.getDisplayRule() != null)
             nc.setDisplayRule(trimToNull(nc.getDisplayRule()));
 
         // Bảng con #22-#38, #45, #46 — thay thế toàn bộ cùng transaction (BR-038-08), chỉ khi thực sự đổi
@@ -1047,6 +1054,11 @@ public class NavigationChannelService {
 
     private String formatAttachment(String fileName, String filePath) {
         return (fileName == null ? "" : fileName.trim()) + "|" + (filePath == null ? "" : filePath.trim());
+    }
+
+    @Transactional(readOnly = true)
+    public List<NavigationChannelOptionResponse> getOptions() {
+        return repo.findActiveOptions();
     }
 
     private String nullToEmpty(Object value) {

@@ -1453,7 +1453,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
         }
         open={gisModalOpen}
         onCancel={handleCancelGisMap}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[

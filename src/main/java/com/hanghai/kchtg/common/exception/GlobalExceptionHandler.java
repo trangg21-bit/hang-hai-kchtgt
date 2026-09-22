@@ -219,6 +219,13 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error("Dữ liệu văn bản nhập vào vượt quá độ dài tối đa cho phép của hệ thống. Vui lòng kiểm tra lại."));
         }
 
+        if (detail != null && (detail.contains("violates not-null constraint") || detail.contains("null value in column"))) {
+            log.warn("Data integrity violation (null value in not-null column): {}", detail);
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("Vui lòng nhập đầy đủ các trường thông tin bắt buộc."));
+        }
+
         log.warn("Data integrity violation: {}", detail);
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

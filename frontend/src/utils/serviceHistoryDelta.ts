@@ -1,3 +1,8 @@
+import {
+  resolveMaritimeServiceLabel,
+  parseMaritimeServiceTokens,
+} from '../constants/maritimeServices';
+
 export type ServiceHistoryDelta = {
   field: string;
   oldValue: string;
@@ -26,20 +31,9 @@ const toServiceValues = (raw: unknown): string[] => {
   const text = String(raw).trim();
   if (EMPTY_VALUES.has(text.toLowerCase())) return [];
 
-  if (text.startsWith('[') && text.endsWith(']')) {
-    try {
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed)) {
-        return toServiceValues(parsed.join(','));
-      }
-    } catch {
-      // The legacy value is not JSON; process it as a delimited string below.
-    }
-  }
-
+  const tokens = parseMaritimeServiceTokens(raw);
   const seen = new Set<string>();
-  return text
-    .split(/[;,\r\n]+/)
+  return tokens
     .map((item) => item.trim())
     .filter((item) => item && !EMPTY_VALUES.has(item.toLowerCase()))
     .filter((item) => {
@@ -51,8 +45,9 @@ const toServiceValues = (raw: unknown): string[] => {
 };
 
 /**
- * Turns a snapshot list into the user-facing delta. For example, only DSC is
- * shown when `LRIT, COSPAS-SARSAT` becomes `LRIT, COSPAS-SARSAT, DSC`.
+ * Hiển thị đầy đủ danh sách dịch vụ trước và sau khi thay đổi (không chỉ hiển thị phần delta).
+ * Ví dụ: cũ có 2 dịch vụ, thêm 1 dịch vụ -> cũ hiển thị cả 2 dịch vụ, mới hiển thị cả 3 dịch vụ.
+ * Chuyển toàn bộ mã sang tên tiếng Việt đầy đủ và mỗi dịch vụ xuống 1 dòng.
  */
 export const getServicesProvidedHistoryDelta = (
   field: unknown,
@@ -63,15 +58,22 @@ export const getServicesProvidedHistoryDelta = (
 
   const oldServices = toServiceValues(previousValue);
   const newServices = toServiceValues(newValue);
+
+  // So sánh xem 2 tập hợp có giống nhau không
   const oldKeys = new Set(oldServices.map((item) => item.toLocaleLowerCase('vi-VN')));
   const newKeys = new Set(newServices.map((item) => item.toLocaleLowerCase('vi-VN')));
-  const removed = oldServices.filter((item) => !newKeys.has(item.toLocaleLowerCase('vi-VN')));
-  const added = newServices.filter((item) => !oldKeys.has(item.toLocaleLowerCase('vi-VN')));
-  if (removed.length === 0 && added.length === 0) return [];
+  const isSame = oldServices.length === newServices.length &&
+    oldServices.every((item) => newKeys.has(item.toLocaleLowerCase('vi-VN')));
+
+  if (isSame) return [];
+
+  // Dịch toàn bộ mã sang tên tiếng Việt đầy đủ
+  const oldLabels = oldServices.map((item) => resolveMaritimeServiceLabel(item));
+  const newLabels = newServices.map((item) => resolveMaritimeServiceLabel(item));
 
   return [{
     field: 'Dịch vụ cung cấp',
-    oldValue: removed.join('\n'),
-    newValue: added.join('\n'),
+    oldValue: oldLabels.length > 0 ? oldLabels.join('\n') : '',
+    newValue: newLabels.length > 0 ? newLabels.join('\n') : '',
   }];
 };

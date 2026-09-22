@@ -39,6 +39,7 @@ import {
   readonlyInputStyle, inputStyle, selectStyle, spaceSm, spaceXs,
   textAreaStyle,
 } from '../../../themetokenchk';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
@@ -383,12 +384,13 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const isEdit = mode === 'edit';
   const isCreate = mode === 'create';
 
-  const user = useAuthStore((s: AuthState) => s.user);
+  const authStoreUser = useAuthStore((s: AuthState) => s.user);
+  const user = authStoreUser || useAuthStore.getState().user;
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   // User permission level (chuẩn VTS / Inmarsat)
   const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = hasPerm('coastalstationcospassarsat:approvec2') || hasPerm('specialstation:approvec2') || hasPerm('data:approvec2');
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationcospassarsat', hasPerm, user) || (isAdmin && isCucLevelUser(user));
 
   // Attachments state & queues chuẩn VTS
   const initialAttachments = useMemo(() => {
@@ -708,6 +710,18 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       populateFormFromRecord(initialData);
     }
   }, [open, editId, isCreate, initialData]);
+
+  useEffect(() => {
+    if (isCreate && open && effectiveOrgUnits && effectiveOrgUnits.length > 0) {
+      const currentVal = form.getFieldValue('unitId');
+      if (!currentVal || currentVal === '00000000-0000-0000-0000-000000000017' || currentVal === 'G17') {
+        const defOrgId = resolveDefaultFormOrgUnitId(user, effectiveOrgUnits);
+        if (defOrgId) {
+          form.setFieldValue('unitId', defOrgId);
+        }
+      }
+    }
+  }, [isCreate, open, effectiveOrgUnits, user, form]);
 
   const handleClose = () => {
     onCancel?.();
@@ -1112,7 +1126,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                         </Col>
                       </Row>
 
-                      {/* Hàng 4: Địa điểm chi tiết & Tần số */}
+                      {/* Hàng 4: Địa điểm chi tiết & Dịch vụ cung cấp */}
                       <Row gutter={[24, 0]}>
                         <Col span={12}>
                           <Form.Item
@@ -1131,24 +1145,6 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                         </Col>
                         <Col span={12}>
                           <Form.Item
-                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tần số</span>}
-                            name="frequency"
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Input
-                              placeholder="Nhập tần số"
-                              maxLength={255}
-                              showCount
-                              style={inputStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-
-                      {/* Hàng 5: Dịch vụ cung cấp */}
-                      <Row gutter={[24, 0]}>
-                        <Col span={12}>
-                          <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Dịch vụ cung cấp</span>}
                             name="services"
                             style={{ marginBottom: spaceFormField }}
@@ -1162,12 +1158,12 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                       </Row>
                     </div>
 
-                    {/* ── Section 2: Phạm vi phủ sóng & Ghi chú ── */}
+                    {/* ── Section 2: Phạm vi phủ sóng & Thông số kỹ thuật ── */}
                     <div style={sectionBoxStyle}>
                       <div style={sectionHeaderStyle}>
                         <div style={sectionTitleStyle}>
                           <FileTextOutlined style={{ color: actionPrimary }} />
-                          <span>Phạm vi phủ sóng & Ghi chú</span>
+                          <span>Phạm vi phủ sóng & Thông số kỹ thuật</span>
                         </div>
                       </div>
                       <Row gutter={[24, 0]}>
@@ -1184,6 +1180,20 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                               maxLength={2000}
                               showCount
                               style={textAreaStyle}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Tần số</span>}
+                            name="frequency"
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <Input
+                              placeholder="Nhập tần số"
+                              maxLength={255}
+                              showCount
+                              style={inputStyle}
                             />
                           </Form.Item>
                         </Col>

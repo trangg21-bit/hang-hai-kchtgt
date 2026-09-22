@@ -48,6 +48,7 @@ import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -265,7 +266,8 @@ export default function InmarsatStationForm({
     required,
   });
 
-  const canApproveL2 = hasPerm('coastalstationinmarsat:approvec2');
+  const isAdmin = hasPerm('*') || hasPerm('admin:all');
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationinmarsat', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
   const canCreate = hasPerm('coastalstationinmarsat:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
@@ -413,7 +415,7 @@ export default function InmarsatStationForm({
       const defOrgId = resolveDefaultFormOrgUnitId(currentUser, effectiveOrgUnits);
       form.setFieldsValue({
         conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
-        orgUnitId: defOrgId || (currentUser?.orgUnitId ? String(currentUser.orgUnitId) : undefined),
+        orgUnitId: defOrgId,
       });
       inmarsatStationService.generateCode()
         .then((res) => {
@@ -665,17 +667,17 @@ export default function InmarsatStationForm({
     }
 
     const payload = {
-      code: values.code,
-      name: values.name,
+      code: values.code?.trim(),
+      name: values.name?.trim(),
       orgUnitId: values.orgUnitId,
       operatingOrgId: values.operatingOrgId,
       provinceId: values.provinceId != null && values.provinceId !== '' ? Number(values.provinceId) : undefined,
       conditionStatus: values.conditionStatus,
-      locationDetail: values.locationDetail ?? null,
+      locationDetail: values.locationDetail?.trim() ?? null,
       services: typeof values.services === 'string' ? values.services : (values.services?.length ? JSON.stringify(values.services) : null),
-      coverageZone: values.coverageZone ?? null,
-      frequency: values.frequency ?? null,
-      notes: values.notes ?? null,
+      coverageZone: values.coverageZone?.trim() ?? null,
+      frequency: values.frequency?.trim() ?? null,
+      notes: values.notes?.trim() ?? null,
       geometryType: geomType ?? null,
       symbolId: values.symbolId ?? null,
       coordinateSystem: geomType ? (values.coordinateSystem || 'WGS-84') : null,
@@ -1011,6 +1013,10 @@ export default function InmarsatStationForm({
                             <Form.Item
                               label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Địa điểm chi tiết</span>}
                               name="locationDetail"
+                              rules={[
+                                { required: true, whitespace: true, message: 'Vui lòng nhập địa điểm chi tiết' },
+                                { max: 500, message: 'Địa điểm chi tiết tối đa 500 ký tự' },
+                              ]}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
@@ -1350,7 +1356,7 @@ export default function InmarsatStationForm({
         }
         open={mapModalOpen}
         onCancel={() => setMapModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={

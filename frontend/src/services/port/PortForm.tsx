@@ -1359,7 +1359,7 @@ export default function PortForm({
         }
         open={gisModalOpen}
         onCancel={() => setGisModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         width="94vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={[
@@ -1425,10 +1425,10 @@ export default function PortForm({
           setWharfDrawerOpen(false);
           wharfForm.resetFields();
         }}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         closable={false}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         title={
@@ -1548,10 +1548,10 @@ export default function PortForm({
       <Drawer
         open={!!viewingWharfArea}
         onClose={() => setViewingWharfArea(null)}
-        destroyOnClose
+        destroyOnHidden
         push={false}
         closable={false}
-        width={DRAWER_WIDTH}
+        size={DRAWER_WIDTH}
         rootClassName="port-drawer-scope"
         className="port-drawer-scope"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu bến</span>}

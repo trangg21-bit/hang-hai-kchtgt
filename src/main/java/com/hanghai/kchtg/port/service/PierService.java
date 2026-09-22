@@ -414,72 +414,41 @@ public class PierService {
                 entity.setOrgUnitId(p.getOrgUnitId());
             });
         }
-        if (request.getLength() != null)
-            entity.setLength(request.getLength());
-        if (request.getDesignLoad() != null)
-            entity.setDesignLoad(request.getDesignLoad());
-        if (request.getPierType() != null)
-            entity.setPierType(request.getPierType());
-        if (request.getOperationalFunction() != null)
-            entity.setOperationalFunction(request.getOperationalFunction());
+        entity.setLength(request.getLength());
+        entity.setDesignLoad(request.getDesignLoad());
+        entity.setPierType(request.getPierType());
+        entity.setOperationalFunction(request.getOperationalFunction());
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getMapSymbolId() != null)
-            entity.setMapSymbolId(request.getMapSymbolId());
-        if (request.getCoordinateSystem() != null)
-            entity.setCoordinateSystem(request.getCoordinateSystem());
-        if (request.getDisplayRule() != null)
-            entity.setDisplayRule(request.getDisplayRule());
-        if (request.getPortId() != null)
-            entity.setPortId(request.getPortId());
-        if (request.getNavigationChannelId() != null)
-            entity.setNavigationChannelId(request.getNavigationChannelId());
-        if (request.getProvince() != null)
-            entity.setProvince(request.getProvince());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getConstructionGrade() != null)
-            entity.setConstructionGrade(request.getConstructionGrade());
-        if (request.getStructureType() != null)
-            entity.setStructureType(request.getStructureType());
+        entity.setMapSymbolId(request.getMapSymbolId());
+        entity.setCoordinateSystem(request.getCoordinateSystem());
+        entity.setDisplayRule(request.getDisplayRule());
+        entity.setPortId(request.getPortId());
+        entity.setNavigationChannelId(request.getNavigationChannelId());
+        entity.setProvince(request.getProvince());
+        entity.setDetailedLocation(request.getDetailedLocation());
+        entity.setConstructionGrade(request.getConstructionGrade());
+        entity.setStructureType(request.getStructureType());
         if (request.getConditionStatus() != null)
             entity.setConditionStatus(request.getConditionStatus());
-        if (request.getWidth() != null)
-            entity.setWidth(request.getWidth());
-        if (request.getCurrentWaterDepth() != null)
-            entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
-        if (request.getDesignBedElevation() != null)
-            entity.setDesignBedElevation(request.getDesignBedElevation());
-        if (request.getPublishedVesselDWT() != null)
-            entity.setPublishedVesselDWT(request.getPublishedVesselDWT());
-        if (request.getMaintenanceApprovalDate() != null)
-            entity.setMaintenanceApprovalDate(request.getMaintenanceApprovalDate());
-        if (request.getSafetyAssessmentDate() != null)
-            entity.setSafetyAssessmentDate(request.getSafetyAssessmentDate());
-        if (request.getLastInspectionDate() != null)
-            entity.setLastInspectionDate(request.getLastInspectionDate());
-        if (request.getOperatingPierCount() != null)
-            entity.setOperatingPierCount(request.getOperatingPierCount());
-        if (request.getPublishedPierCount() != null)
-            entity.setPublishedPierCount(request.getPublishedPierCount());
-        if (request.getInvestmentAgreementPierCount() != null)
-            entity.setInvestmentAgreementPierCount(request.getInvestmentAgreementPierCount());
-        if (request.getCargoThroughput() != null)
-            entity.setCargoThroughput(request.getCargoThroughput());
-        if (request.getReceivesLargeVessel() != null)
-            entity.setReceivesLargeVessel(request.getReceivesLargeVessel());
-        if (request.getDocumentNumber() != null)
-            entity.setDocumentNumber(request.getDocumentNumber());
-        if (request.getDocumentDate() != null)
-            entity.setDocumentDate(request.getDocumentDate());
-        if (request.getOpeningAnnouncementDate() != null)
-            entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
-        if (request.getOpeningDecision() != null)
-            entity.setOpeningDecision(request.getOpeningDecision());
-        if (request.getInvestmentAgreementDoc() != null)
-            entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
-        if (request.getWaterAreaNeutralScope() != null)
-            entity.setWaterAreaNeutralScope(request.getWaterAreaNeutralScope());
+        entity.setWidth(request.getWidth());
+        entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
+        entity.setDesignBedElevation(request.getDesignBedElevation());
+        entity.setPublishedVesselDWT(request.getPublishedVesselDWT());
+        entity.setMaintenanceApprovalDate(request.getMaintenanceApprovalDate());
+        entity.setSafetyAssessmentDate(request.getSafetyAssessmentDate());
+        entity.setLastInspectionDate(request.getLastInspectionDate());
+        entity.setOperatingPierCount(request.getOperatingPierCount());
+        entity.setPublishedPierCount(request.getPublishedPierCount());
+        entity.setInvestmentAgreementPierCount(request.getInvestmentAgreementPierCount());
+        entity.setCargoThroughput(request.getCargoThroughput());
+        entity.setReceivesLargeVessel(request.getReceivesLargeVessel());
+        entity.setDocumentNumber(request.getDocumentNumber());
+        entity.setDocumentDate(request.getDocumentDate());
+        entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
+        entity.setOpeningDecision(request.getOpeningDecision());
+        entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
+        entity.setWaterAreaNeutralScope(request.getWaterAreaNeutralScope());
 
         // Lấy tọa độ + loại hình GIS cũ (WKT) trước khi createOrUpdate ghi đè spatial object
         // (chuẩn Cảng biển PortService.update — dùng cho lịch sử "Tọa độ GIS" / "Loại đối tượng GIS").

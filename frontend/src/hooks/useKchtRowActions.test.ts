@@ -137,4 +137,57 @@ describe('useKchtRowActions Unit Tests', () => {
     expect(actions.some((a) => a.key === 'custom-export')).toBe(true);
     expect(actions.find((a) => a.key === 'custom-export')?.label).toBe('Xuất file vts-99');
   });
+
+  it('allows officer with only vtssystem:create and vtssystem:update to view and edit APPROVED records', () => {
+    // Exact permissions granted to officer Ngọc Sơn
+    useAuthStore.setState({
+      user: {
+        id: 'user-ngoc-son',
+        userId: 'user-ngoc-son',
+        username: 'ngocson',
+        fullName: 'Nguyễn Ngọc Sơn',
+        unitType: 'CUC',
+        orgUnitCode: 'G17.43',
+        permissions: ['vtssystem:create', 'vtssystem:update'],
+      } as any,
+    });
+    usePermissionStore.setState({ permissions: ['vtssystem:create', 'vtssystem:update'] });
+
+    const handlers = {
+      onDetail: vi.fn(),
+      onEdit: vi.fn(),
+      onDelete: vi.fn(),
+      onSubmit: vi.fn(),
+      onHistory: vi.fn(),
+      onApproveL1: vi.fn(),
+      onApproveL2: vi.fn(),
+    };
+
+    const { rowActions, perms } = renderRowActionsHook({
+      resource: 'vts',
+      approvalLevels: 2,
+      handlers,
+    });
+
+    // 1. Implicit Read allows viewing details
+    expect(perms.canRead).toBe(true);
+    expect(perms.hasUpdatePerm).toBe(true);
+
+    // 2. On APPROVED record (the state of 100% real VTS records in DB):
+    // Both "Xem chi tiết" and "Chỉnh sửa" MUST be present
+    const approvedRec = { id: 'vts-01', approvalStatus: 'APPROVED', systemName: 'Hệ thống VTS Hải Phòng' };
+    const actions = rowActions(approvedRec);
+    const actionKeys = actions.map((a) => a.key);
+
+    expect(actionKeys).toContain('view');
+    expect(actionKeys).toContain('edit');
+    expect(actions.find((a) => a.key === 'view')?.label).toBe('Xem chi tiết');
+    expect(actions.find((a) => a.key === 'edit')?.label).toBe('Chỉnh sửa');
+
+    // Should NOT have delete (Rule 11: delete only on DRAFT)
+    expect(actionKeys).not.toContain('delete');
+    // Should NOT have approve (no approvec1/approvec2)
+    expect(actionKeys).not.toContain('approveC1');
+    expect(actionKeys).not.toContain('approveC2');
+  });
 });

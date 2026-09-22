@@ -55,6 +55,7 @@ public class CoastalStationLRITService {
     private final OrgUnitRepository orgUnitRepository;
     private final OrgUnitCacheService orgUnitCacheService;
     private final OperatingOrganizationRepository operatingOrganizationRepository;
+    private final OperatingOrganizationLookup operatingOrganizationLookup;
     private final UserRepository userRepository;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final MapSymbolRepository mapSymbolRepository;
@@ -278,7 +279,7 @@ public class CoastalStationLRITService {
 
     @Transactional(readOnly = true)
     public CoastalStationLRIT getStationById(UUID id) {
-        CoastalStationLRIT entity = repository.findByIdAndDeletedAtIsNull(id)
+        CoastalStationLRIT entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Đài LRIT với ID: " + id));
         validateAllowedOrgUnit(entity.getOrgUnitId());
         return entity;
@@ -381,26 +382,27 @@ public class CoastalStationLRITService {
                 String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
                 oldValues.put("orgUnitId", oldName != null ? oldName : null);
             }
-            if (request.getOperatingOrgId() != null && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
+            if ((request.isFieldPresent("operatingOrgId") || request.getOperatingOrgId() != null)
+                    && !Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
                 String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
                 oldValues.put("operatingOrgId", oldName != null ? oldName : null);
             }
-            if (request.getProvinceId() != null && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+            if ((request.isFieldPresent("provinceId") || request.getProvinceId() != null) && !Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
                 oldValues.put("provinceId", formatProvinceDisplay(entity.getProvinceId()));
             }
-            if (request.getLocationAddress() != null && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+            if ((request.isFieldPresent("locationAddress") || request.getLocationAddress() != null) && !Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
                 oldValues.put("locationAddress", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
             }
             if (request.getConditionStatus() != null && !Objects.equals(request.getConditionStatus(), entity.getConditionStatus())) {
                 oldValues.put("conditionStatus", formatConditionStatusDisplay(entity.getConditionStatus()));
             }
-            if (request.getCoverageArea() != null && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
+            if ((request.isFieldPresent("coverageArea") || request.getCoverageArea() != null) && !Objects.equals(request.getCoverageArea(), entity.getCoverageArea())) {
                 oldValues.put("coverageArea", entity.getCoverageArea() != null ? entity.getCoverageArea() : null);
             }
-            if (request.getServicesProvided() != null && !Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
+            if ((request.isFieldPresent("servicesProvided") || request.getServicesProvided() != null) && !Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
                 oldValues.put("servicesProvided", entity.getServicesProvided() != null ? entity.getServicesProvided() : null);
             }
-            if (request.getDescription() != null && !Objects.equals(request.getDescription(), entity.getDescription())) {
+            if ((request.isFieldPresent("description") || request.getDescription() != null) && !Objects.equals(request.getDescription(), entity.getDescription())) {
                 oldValues.put("description", entity.getDescription() != null ? entity.getDescription() : null);
             }
 
@@ -410,16 +412,16 @@ public class CoastalStationLRITService {
                 oldValues.put("geometryType", formatObjectTypeDisplay(currentGeomType));
             }
             UUID targetSymbolId = resolveSymbolId(request.getSymbolId(), request.getSymbol());
-            if ((request.getSymbolId() != null || request.getSymbol() != null) && !Objects.equals(targetSymbolId, entity.getSymbolId())) {
+            if ((request.isFieldPresent("symbolId") || request.isFieldPresent("symbol") || request.getSymbolId() != null || request.getSymbol() != null) && !Objects.equals(targetSymbolId, entity.getSymbolId())) {
                 String oldSymDisplay = entity.getSymbolId() != null
                         ? (gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString()) : entity.getSymbolId().toString())
                         : "—";
                 oldValues.put("symbolId", oldSymDisplay);
             }
-            if (request.getCoordinateSystem() != null && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
+            if ((request.isFieldPresent("coordinateSystem") || request.getCoordinateSystem() != null) && !Objects.equals(request.getCoordinateSystem(), entity.getCoordinateSystem())) {
                 oldValues.put("coordinateSystem", entity.getCoordinateSystem() != null ? entity.getCoordinateSystem() : null);
             }
-            if (request.getDisplayRule() != null && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
+            if ((request.isFieldPresent("displayRule") || request.getDisplayRule() != null) && !Objects.equals(request.getDisplayRule(), entity.getDisplayRule())) {
                 oldValues.put("displayRule", entity.getDisplayRule() != null ? entity.getDisplayRule() : null);
             }
 
@@ -542,9 +544,15 @@ public class CoastalStationLRITService {
 
     private String resolveOperatingOrgName(UUID operatingOrgId) {
         if (operatingOrgId == null) return null;
+        if (operatingOrganizationLookup != null) {
+            return operatingOrganizationLookup.resolveName(operatingOrgId);
+        }
         return operatingOrganizationRepository.findById(operatingOrgId)
                 .map(OperatingOrganization::getName)
-                .orElseGet(() -> orgUnitCacheService.getName(operatingOrgId));
+                .orElseGet(() -> {
+                    String name = orgUnitCacheService.getName(operatingOrgId);
+                    return name != null ? name : operatingOrgId.toString();
+                });
     }
 
     private String getNewValueDisplay(String fieldName, CoastalStationLRIT entity) {
@@ -584,11 +592,12 @@ public class CoastalStationLRITService {
     private String formatConditionStatusDisplay(ConditionStatus conditionStatus) {
         if (conditionStatus == null) return "—";
         return switch (conditionStatus) {
-            case OPERATIONAL -> "Đang hoạt động";
-            case STOPPED, SUSPENDED -> "Dừng hoạt động";
+            case OPERATIONAL -> "Đang khai thác/vận hành";
+            case STOPPED, SUSPENDED -> "Dừng khai thác/vận hành";
+            case NOT_YET_OPERATIONAL -> "Chưa khai thác/vận hành";
             case MAINTENANCE -> "Đang bảo trì";
-            case UNDER_CONSTRUCTION, NOT_YET_OPERATIONAL -> "Đang xây dựng";
-            default -> "Đang hoạt động";
+            case UNDER_CONSTRUCTION -> "Đang xây dựng";
+            default -> "Đang khai thác/vận hành";
         };
     }
 
@@ -624,7 +633,8 @@ public class CoastalStationLRITService {
 
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         approvalService.deleteDraft(entity, InfrastructureType.LRIT_STATION, currentUserId);
-        repository.delete(entity);
+        entity.softDelete(currentUserId);
+        repository.save(entity);
 
         historyService.recordHistory(
                 InfrastructureType.LRIT_STATION,
@@ -638,6 +648,9 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT submit(UUID id) {
         CoastalStationLRIT entity = getStationById(id);
+        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể thao tác phê duyệt trên hồ sơ đã xóa");
+        }
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (currentUserId == null) {
             currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy() : entity.getCreatedBy();
@@ -660,6 +673,9 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT approveLevel1(UUID id, String content) {
         CoastalStationLRIT entity = getStationById(id);
+        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể thao tác phê duyệt trên hồ sơ đã xóa");
+        }
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (currentUserId == null) {
             currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy() : entity.getCreatedBy();
@@ -679,6 +695,9 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT approveLevel2(UUID id, String content) {
         CoastalStationLRIT entity = getStationById(id);
+        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể thao tác phê duyệt trên hồ sơ đã xóa");
+        }
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (currentUserId == null) {
             currentUserId = entity.getUpdatedBy() != null ? entity.getUpdatedBy() : entity.getCreatedBy();
@@ -709,6 +728,9 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT reject(UUID id, String reason) {
         CoastalStationLRIT entity = getStationById(id);
+        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể thao tác phê duyệt trên hồ sơ đã xóa");
+        }
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         if (entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL1) {
             approvalService.approveC2(entity, InfrastructureType.LRIT_STATION, ApprovalStatus.REJECTED_LEVEL2.name(), reason, currentUserId);
@@ -776,6 +798,10 @@ public class CoastalStationLRITService {
                         ? org.springframework.data.domain.PageRequest.of(page, pageSize)
                         : org.springframework.data.domain.Pageable.unpaged();
 
+        String managementOrgUnitName = entity.getOrgUnitId() != null
+                ? orgUnitCacheService.getName(entity.getOrgUnitId())
+                : null;
+
         return historyService.getHistory(
                         InfrastructureType.LRIT_STATION, entity.getId(), code,
                         List.of(com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.CREATED,
@@ -794,7 +820,9 @@ public class CoastalStationLRITService {
                     r.setPreviousValue(h.getPreviousValue());
                     r.setNewValue(h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
-                    r.setOrgUnitName(h.getOrgUnitName());
+                    r.setOrgUnitName(h.getOrgUnitName() != null && !h.getOrgUnitName().isBlank()
+                            ? h.getOrgUnitName()
+                            : managementOrgUnitName);
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })
@@ -818,15 +846,23 @@ public class CoastalStationLRITService {
             if (entity.getApproverLevel1() != null) userIds.add(entity.getApproverLevel1());
         }
 
-        Map<UUID, String> orgUnitNames = orgUnitIds.isEmpty() ? Map.of()
-                : orgUnitRepository.findAllById(orgUnitIds).stream()
-                        .collect(Collectors.toMap(OrgUnit::getId, OrgUnit::getName, (first, second) -> first));
-        Map<UUID, String> userNames = userIds.isEmpty() ? Map.of()
-                : userRepository.findAllById(userIds).stream()
-                        .collect(Collectors.toMap(User::getId, user -> {
-                            String fullName = user.getFullName();
-                            return fullName != null && !fullName.isBlank() ? fullName : user.getUsername();
-                        }, (first, second) -> first));
+        Map<UUID, String> orgUnitNames = new HashMap<>();
+        if (!orgUnitIds.isEmpty()) {
+            for (OrgUnit ou : orgUnitRepository.findAllById(orgUnitIds)) {
+                if (ou != null && ou.getId() != null) {
+                    orgUnitNames.put(ou.getId(), ou.getName() != null ? ou.getName() : "");
+                }
+            }
+        }
+        Map<UUID, String> userNames = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (User u : userRepository.findAllById(userIds)) {
+                if (u != null && u.getId() != null) {
+                    String fullName = u.getFullName();
+                    userNames.put(u.getId(), fullName != null && !fullName.isBlank() ? fullName : (u.getUsername() != null ? u.getUsername() : ""));
+                }
+            }
+        }
 
         return entities.stream()
                 .map(entity -> {
@@ -837,7 +873,7 @@ public class CoastalStationLRITService {
                             .orgUnitId(entity.getOrgUnitId())
                             .orgUnitName(orgUnitNames.get(entity.getOrgUnitId()))
                             .operatingOrgId(entity.getOperatingOrgId())
-                            .operatingOrgName(orgUnitNames.get(entity.getOperatingOrgId()))
+                            .operatingOrgName(resolveOperatingOrgName(entity.getOperatingOrgId()))
                             .provinceId(entity.getProvinceId())
                             .provinceName(formatProvinceDisplay(entity.getProvinceId()))
                             .conditionStatus(entity.getConditionStatus())
@@ -847,8 +883,8 @@ public class CoastalStationLRITService {
                             .createdBy(entity.getCreatedBy())
                             .createdByName(userNames.get(entity.getCreatedBy()))
                             .createdAt(entity.getCreatedAt())
-                            .updatedByName(userNames.get(entity.getUpdatedBy()))
-                            .updatedAt(entity.getUpdatedAt())
+                            .updatedByName(entity.getUpdatedBy() != null ? userNames.get(entity.getUpdatedBy()) : userNames.get(entity.getCreatedBy()))
+                            .updatedAt(entity.getUpdatedAt() != null ? entity.getUpdatedAt() : entity.getCreatedAt())
                             .build();
                 })
                 .toList();
@@ -876,15 +912,23 @@ public class CoastalStationLRITService {
             if (entity.getSymbolId() != null) symbolIds.add(entity.getSymbolId());
         }
 
-        Map<UUID, String> orgUnitNames = orgUnitIds.isEmpty() ? Map.of()
-                : orgUnitRepository.findAllById(orgUnitIds).stream()
-                .collect(Collectors.toMap(OrgUnit::getId, OrgUnit::getName, (first, second) -> first));
-        Map<UUID, String> userNames = userIds.isEmpty() ? Map.of()
-                : userRepository.findAllById(userIds).stream()
-                .collect(Collectors.toMap(User::getId, user -> {
-                    String fullName = user.getFullName();
-                    return fullName != null && !fullName.isBlank() ? fullName : user.getUsername();
-                }, (first, second) -> first));
+        Map<UUID, String> orgUnitNames = new HashMap<>();
+        if (!orgUnitIds.isEmpty()) {
+            for (OrgUnit ou : orgUnitRepository.findAllById(orgUnitIds)) {
+                if (ou != null && ou.getId() != null) {
+                    orgUnitNames.put(ou.getId(), ou.getName() != null ? ou.getName() : "");
+                }
+            }
+        }
+        Map<UUID, String> userNames = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            for (User u : userRepository.findAllById(userIds)) {
+                if (u != null && u.getId() != null) {
+                    String fullName = u.getFullName();
+                    userNames.put(u.getId(), fullName != null && !fullName.isBlank() ? fullName : (u.getUsername() != null ? u.getUsername() : ""));
+                }
+            }
+        }
         Map<UUID, GisSpatialObject> spatialObjects = gisSpatialObjectService == null
                 ? Map.of() : gisSpatialObjectService.findAllByIdMap(spatialIds);
         Map<UUID, String> symbolNames = symbolIds.isEmpty() ? Map.of()
@@ -917,8 +961,7 @@ public class CoastalStationLRITService {
 
         String opOrgName = null;
         if (entity.getOperatingOrgId() != null) {
-            opOrgName = orgUnitNames != null ? orgUnitNames.get(entity.getOperatingOrgId())
-                    : orgUnitRepository.findById(entity.getOperatingOrgId()).map(OrgUnit::getName).orElse(null);
+            opOrgName = resolveOperatingOrgName(entity.getOperatingOrgId());
         }
 
         String createdByName = userNames != null ? userNames.get(entity.getCreatedBy()) : resolveUserName(entity.getCreatedBy());
@@ -1013,7 +1056,7 @@ public class CoastalStationLRITService {
                 .latitude(lat)
                 .longitude(lng)
                 .coordinates(coords)
-                .approvalStatus(entity.getApprovalStatus())
+                .approvalStatus(entity.getDeletedAt() != null ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus())
                 .submittedAt(entity.getSubmittedAt() != null ? entity.getSubmittedAt() : entity.getCreatedAt())
                 .submittedBy(effectiveSubmittedBy)
                 .submittedByName(submittedByName)
@@ -1052,6 +1095,9 @@ public class CoastalStationLRITService {
             List<org.springframework.web.multipart.MultipartFile> files,
             UUID userId) {
         CoastalStationLRIT entity = getStationById(id);
+        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể thao tác trên tài liệu của hồ sơ đã xóa");
+        }
         validateAllowedOrgUnit(entity.getOrgUnitId());
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
@@ -1140,6 +1186,9 @@ public class CoastalStationLRITService {
 
     public void deleteAttachment(UUID id, UUID attachmentId, UUID userId) {
         CoastalStationLRIT entity = getStationById(id);
+        if (entity.getDeletedAt() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED) {
+            throw new IllegalStateException("Không thể thao tác trên tài liệu của hồ sơ đã xóa");
+        }
         validateAllowedOrgUnit(entity.getOrgUnitId());
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;

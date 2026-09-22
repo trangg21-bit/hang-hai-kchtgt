@@ -53,6 +53,12 @@ public class PermissionController {
             "approve:action"
     );
 
+    private static final Set<String> DEPRECATED_RESOURCES = Set.of(
+            "anchoragearea", "lrit", "cospassarsat", "ttxltt",
+            "shiprepair", "shiprepairyard", "waterarea", "buoystation",
+            "beaconlight", "lighthousestation", "interconnect"
+    );
+
     /**
      * GET /api/permissions — trả về toàn bộ danh sách permission.
      */
@@ -64,9 +70,20 @@ public class PermissionController {
             + "@auth.check(authentication, 'group:permission')")
     public ResponseEntity<ApiResponse<List<Permission>>> list() {
         List<Permission> permissions = permissionRepository.findAll().stream()
-                .filter(p -> !"anchoragearea".equalsIgnoreCase(p.getResource())
-                        && (p.getCode() == null || !p.getCode().toLowerCase().startsWith("anchoragearea:")))
-                .filter(p -> p.getCode() == null || !DEPRECATED_PERMISSIONS.contains(p.getCode().toLowerCase()))
+                .filter(p -> {
+                    String res = p.getResource() != null ? p.getResource().toLowerCase() : "";
+                    String code = p.getCode() != null ? p.getCode().toLowerCase() : "";
+                    if (DEPRECATED_RESOURCES.contains(res)) {
+                        return false;
+                    }
+                    if (DEPRECATED_RESOURCES.stream().anyMatch(dr -> code.startsWith(dr + ":"))) {
+                        return false;
+                    }
+                    if (code.endsWith(":read:restricted") || code.endsWith(":read:confidential")) {
+                        return false;
+                    }
+                    return !DEPRECATED_PERMISSIONS.contains(code);
+                })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ApiResponse.success(permissions));
     }

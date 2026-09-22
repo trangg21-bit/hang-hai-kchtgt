@@ -1095,7 +1095,7 @@ export default function CctvSystemAssetList() {
         icon: <EyeOutlined />,
         onClick: () => void openDetail(record),
       },
-      ...(isAssetRecordEditable(record.approvalStatus)
+      ...(perms.canUpdate && isAssetRecordEditable(record.approvalStatus)
         ? [
             {
               key: 'edit',

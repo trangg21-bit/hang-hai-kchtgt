@@ -294,7 +294,7 @@ export function CommonAssetOperationForm({
       onClose={onClose}
       rootClassName={drawerClassName}
       className={drawerClassName}
-      destroyOnClose
+      destroyOnHidden
     />
   );
 }

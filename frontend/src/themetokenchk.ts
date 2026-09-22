@@ -8,7 +8,7 @@ import {
     SearchOutlined,
     SendOutlined,
 } from '@ant-design/icons';
-import viVN from 'antd/locale/vi_VN';
+import viVN from 'antd/locale/vi_VN.js';
 import React from 'react';
 import { colors as baseColors, layout as baseLayout } from './theme';
 
@@ -537,18 +537,18 @@ export const getConditionStatusLabel = (status?: unknown): string => {
   if (norm.includes('dang khai thac') || norm === 'dang_khai_thac') {
     return 'Đang khai thác/vận hành';
   }
-  if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
-    || norm.includes('tam dung') || norm.includes('khong hoat dong')
-    || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
-    || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
-    return 'Dừng hoạt động';
+  if (norm.includes('xay dung') || norm.includes('construction') || norm === 'under_construction' || norm === '3') {
+    return 'Đang xây dựng';
   }
   if (norm.includes('bao tri') || norm.includes('bao duong') || norm.includes('sua chua')
     || norm.includes('maintenance') || norm.includes('warning') || norm === '2') {
     return 'Đang bảo trì';
   }
-  if (norm.includes('xay dung') || norm.includes('construction') || norm === 'under_construction' || norm === '3') {
-    return 'Đang xây dựng';
+  if (norm.includes('dung hoat dong') || norm.includes('ngung hoat dong')
+    || norm.includes('tam dung') || norm.includes('khong hoat dong')
+    || norm.includes('dung') || norm.includes('ngung') || norm.includes('hong')
+    || norm === 'stopped' || norm === 'not_operational' || norm === '0') {
+    return 'Dừng hoạt động';
   }
   if (norm.includes('hoat dong') || norm === 'operational' || norm === 'active' || norm === 'good' || norm === '1') {
     return 'Đang hoạt động';
