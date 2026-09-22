@@ -348,7 +348,7 @@ export default function BuoyDetailContent({
                   ['Diện tích m²', r.area != null ? fmtNum(r.area) : ''],
                   ['Chiều cao thân phao m', r.bodyHeight != null ? fmtNum(r.bodyHeight) : ''],
                   ['Đường kính phao m', r.diameter != null ? fmtNum(r.diameter) : ''],
-                  ['Đèn hiệu', r.beaconLight || ''],
+                  ['Đèn biển', r.beaconLight || ''],
                   ['Chiều cao tháp đèn', r.towerHeight != null ? fmtNum(r.towerHeight) : ''],
                   ['Chiều cao tâm sáng', r.lightHeight != null ? fmtNum(r.lightHeight) : ''],
                   ['Chủng loại đèn', r.lightModel || ''],

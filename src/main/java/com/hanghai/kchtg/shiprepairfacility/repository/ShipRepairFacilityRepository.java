@@ -16,7 +16,7 @@ public interface ShipRepairFacilityRepository extends JpaRepository<ShipRepairFa
     List<ShipRepairFacility> findByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT c FROM ShipRepairFacility c WHERE " +
-            "((:approvalStatus IS NULL AND c.deletedAt IS NULL AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (c.deletedAt IS NOT NULL OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "  OR (c.deletedAt IS NULL AND c.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
             "      c.approvalStatus = :approvalStatus " +

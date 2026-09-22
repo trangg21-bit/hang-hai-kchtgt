@@ -27,7 +27,7 @@ public interface DaiTtdhRepository extends JpaRepository<DaiTtdh, UUID> {
     Integer findMaxDaiTtdhSeq();
 
     @Query("SELECT d FROM DaiTtdh d WHERE " +
-            "((:approvalStatus IS NULL AND d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (d.deletedAt IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             " OR (d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
             "     d.approvalStatus = :approvalStatus " +

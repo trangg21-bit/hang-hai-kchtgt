@@ -23,7 +23,7 @@ import {
   textTertiary,
 } from '../../themetokenchk';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
-import { formatHistoryNumber } from '../../utils/numFmt';
+import { formatHistoryNumber, isYearField, formatYearValue } from '../../utils/numFmt';
 import {
   EXCLUDED_CHANGE_FIELDS,
   NUMERIC_HISTORY_FIELDS,
@@ -144,6 +144,9 @@ export default function VtsAssistAssetHistory({
       fieldLabels: VTS_ASSIST_ASSET_FIELD_LABELS,
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
+        if (isYearField(fn)) {
+          return formatYearValue(raw);
+        }
         const resolved = histVal(fn, raw, orgName, transmissionMap);
         if (NUMERIC_HISTORY_FIELDS.has(fn) && raw) {
           const t = String(raw).trim();

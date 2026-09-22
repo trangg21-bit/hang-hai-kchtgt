@@ -42,7 +42,7 @@ public interface WaterZoneRepository extends JpaRepository<WaterZone, UUID> {
     long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT w FROM WaterZone w WHERE " +
-            "((:approvalStatus IS NULL AND w.deletedAt IS NULL AND w.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (w.deletedAt IS NOT NULL OR w.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             " OR (w.deletedAt IS NULL AND w.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
             "     w.approvalStatus = :approvalStatus " +

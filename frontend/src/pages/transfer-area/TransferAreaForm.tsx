@@ -40,8 +40,9 @@ import {
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import { buildTransferAreaGisFormPatch } from './transferAreaFormUtils';
 import {
-  textSecondary, textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
@@ -55,6 +56,14 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 const labelProps = (text: string) => ({
   label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
+});
+
+const alignedGridLabelProps = (text: string) => ({
+  label: (
+    <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, minHeight: 40, display: 'flex', alignItems: 'flex-end' }}>
+      {text}
+    </span>
+  ),
 });
 
 const portFormFontSizeMd = 13.5;
@@ -1334,7 +1343,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                   <Col span={12}>
                     <Form.Item
                       name="operationalFunctions"
-                      {...labelProps('Công năng khai thác')}
+                      {...alignedGridLabelProps('Công năng khai thác')}
                       required
                       style={{ marginBottom: spaceFormField }}
                       rules={[{ required: true, message: 'Công năng khai thác không được để trống' }]}
@@ -1349,7 +1358,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="underInvestmentTransferCount" {...labelProps('Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} getValueFromEvent={getValueFromEvent5}>
+                    <Form.Item name="underInvestmentTransferCount" {...alignedGridLabelProps('Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} getValueFromEvent={getValueFromEvent5}>
                       <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} parser={parseNumber5} />
                     </Form.Item>
                   </Col>
@@ -2384,9 +2393,13 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(watchedGeometryType as 'POINT' | 'LINE' | 'POLYGON' | undefined) || 'POINT'}
             height={520}
             onChange={(val) => {
+              form.setFieldsValue(buildTransferAreaGisFormPatch(
+                val,
+                form.getFieldValue('coordinateSystem'),
+              ));
               if (val?.coordinates) {
                 const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
                 if (points.length > 0) {
@@ -2456,7 +2469,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(waterAreaGeometryType as any) || 'POINT'}
+            defaultGeometryType={(waterAreaGeometryType as 'POINT' | 'LINE' | 'POLYGON' | undefined) || 'POINT'}
             height={520}
             onChange={(val) => {
               if (val?.coordinates) {

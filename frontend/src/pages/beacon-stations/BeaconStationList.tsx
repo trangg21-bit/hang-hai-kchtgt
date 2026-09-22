@@ -588,20 +588,7 @@ export default function BeaconStationList() {
         sortBy: sortField,
         sortDir: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : undefined,
       });
-      let data = res.data;
-      if (activeTab === '') {
-        data = data.filter((item) => {
-          const isDel = Boolean(
-            item.deletedAt ||
-            item.deletedBy ||
-            item.status === 'ARCHIVED' ||
-            item.status === 'DELETED' ||
-            item.approvalStatus === 'ARCHIVED'
-          );
-          return !isDel;
-        });
-      }
-      setDataSource(data);
+      setDataSource(res.data);
       setTotal(res.total);
     } catch {
       setIsError(true);

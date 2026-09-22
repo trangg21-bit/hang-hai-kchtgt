@@ -150,7 +150,7 @@ const EXTRA_HISTORY_FIELD_LABELS: Record<string, string> = {
   'Đơn vị quản lý': 'Đơn vị quản lý',
   locationDetail: 'Địa điểm chi tiết',
   condition: 'Tình trạng', structure: 'Kết cấu', area: 'Diện tích',
-  bodyHeight: 'Chiều cao thân', diameter: 'Đường kính', beaconLight: 'Đèn hiệu',
+  bodyHeight: 'Chiều cao thân', diameter: 'Đường kính', beaconLight: 'Đèn biển',
   towerHeight: 'Chiều cao tháp', lightHeight: 'Chiều cao đèn', lightModel: 'Mẫu đèn',
   towerColor: 'Màu tháp', powerSupply: 'Nguồn cấp', range: 'Phạm vi(Hải lý)', commissionedDate: 'Ngày đưa vào khai thác',
   lastRepairDate: 'Ngày sửa chữa gần nhất', lightColor: 'Màu đèn', flashType: 'Kiểu chớp',
@@ -829,8 +829,8 @@ export default function BuoyListPage() {
 
     if (!code) { toast.error('Mã phao tiêu là bắt buộc'); return; }
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
-    if (values.range == null || Number(values.range) <= 0) {
-      toast.error('Phạm vi chiếu sáng phải lớn hơn 0 hải lý'); return;
+    if (values.range != null && values.range !== '' && Number(values.range) < 0) {
+      toast.error('Phạm vi chiếu sáng không được âm'); return;
     }
 
     const manualCoords = createCoords
@@ -969,8 +969,8 @@ export default function BuoyListPage() {
     const name = String(values.name ?? '').trim();
 
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
-    if (values.range == null || Number(values.range) <= 0) {
-      toast.error('Phạm vi chiếu sáng phải lớn hơn 0 hải lý'); return;
+    if (values.range != null && values.range !== '' && Number(values.range) < 0) {
+      toast.error('Phạm vi chiếu sáng không được âm'); return;
     }
 
     const manualCoords = createCoords

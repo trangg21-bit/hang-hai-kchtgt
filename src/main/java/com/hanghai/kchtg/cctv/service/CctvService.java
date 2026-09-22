@@ -615,7 +615,7 @@ public class CctvService {
       .createdBy(entity.getCreatedBy())
       .updatedBy(entity.getUpdatedBy())
       .createdByName(userResolverService.resolveName(entity.getCreatedBy()))
-      .updatedByName(userResolverService.resolveName(entity.getUpdatedBy()))
+      .updatedByName(userResolverService.resolveName(resolveLastActorId(entity)))
       .createdAt(entity.getCreatedAt())
       .updatedAt(entity.getUpdatedAt())
       .deletedBy(entity.getDeletedBy())
@@ -847,6 +847,14 @@ public class CctvService {
   private String resolveUserName(UUID userId) {
     if (userId == null) return null;
     return userRepository.findById(userId).map(this::formatUserIdentity).orElse(null);
+  }
+
+  private UUID resolveLastActorId(Cctv entity) {
+    if (entity.getUpdatedBy() != null) return entity.getUpdatedBy();
+    if (entity.getCreatedBy() != null) return entity.getCreatedBy();
+    if (entity.getApproverLevel2() != null) return entity.getApproverLevel2();
+    if (entity.getApproverLevel1() != null) return entity.getApproverLevel1();
+    return entity.getSubmittedBy();
   }
 
   private String formatUserIdentity(User user) {

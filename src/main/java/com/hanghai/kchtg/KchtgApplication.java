@@ -27,11 +27,31 @@ public class KchtgApplication {
     public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy(
             javax.sql.DataSource dataSource) {
         return flyway -> {
-            try (java.sql.Connection conn = dataSource.getConnection()) {
-                conn.setAutoCommit(false);
-                try (java.sql.Statement stmt = conn.createStatement()) {
+            cleanFlywaySchemaHistory(dataSource);
+            try {
+                flyway.repair();
+            } catch (Exception e) {
+                log.warn("Flyway repair failed (continuing): {}", e.getMessage());
+            }
+            cleanFlywaySchemaHistory(dataSource);
+            flyway.migrate();
+        };
+    }
+
+    private void cleanFlywaySchemaHistory(javax.sql.DataSource dataSource) {
+        try (java.sql.Connection conn = dataSource.getConnection()) {
+            conn.setAutoCommit(false);
+            try (java.sql.Statement stmt = conn.createStatement()) {
+                // Check if flyway_schema_history table exists
+                java.sql.ResultSet rs = stmt.executeQuery(
+                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'flyway_schema_history')"
+                );
+                if (rs.next() && rs.getBoolean(1)) {
                     stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version = '20260918180000' AND success = false");
-                    stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version IS NOT NULL AND ctid NOT IN (SELECT max(ctid) FROM flyway_schema_history WHERE version IS NOT NULL GROUP BY version)");
+                    // 1. Purge legacy deleted version 20260922100000 if present
+                    stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version = '20260922100000'");
+
+                    // 2. Remove duplicate DELETE-type entries keeping only the first one per version
                     stmt.executeUpdate(
                         "DELETE FROM flyway_schema_history " +
                         "WHERE installed_rank IN (" +
@@ -42,21 +62,27 @@ public class KchtgApplication {
                         "  ) t WHERE rn > 1" +
                         ")"
                     );
-                    conn.commit();
-                } catch (Exception ex) {
-                    conn.rollback();
-                    System.err.println("[WARN] Flyway history cleanup failed (non-fatal): " + ex.getMessage());
+
+                    // 3. Remove duplicate SQL-type entries keeping only the first one per version
+                    stmt.executeUpdate(
+                        "DELETE FROM flyway_schema_history " +
+                        "WHERE installed_rank IN (" +
+                        "  SELECT installed_rank FROM (" +
+                        "    SELECT installed_rank, version, type," +
+                        "           ROW_NUMBER() OVER (PARTITION BY version, type ORDER BY installed_rank) AS rn" +
+                        "    FROM flyway_schema_history WHERE version IS NOT NULL AND type = 'SQL'" +
+                        "  ) t WHERE rn > 1" +
+                        ")"
+                    );
                 }
-            } catch (Exception e) {
-                System.err.println("[WARN] Could not connect to clean Flyway history: " + e.getMessage());
+                conn.commit();
+            } catch (Exception ex) {
+                conn.rollback();
+                log.warn("Flyway history cleanup failed (non-fatal): {}", ex.getMessage());
             }
-            try {
-                flyway.repair();
-            } catch (Exception e) {
-                System.err.println("[WARN] Flyway repair failed (continuing): " + e.getMessage());
-            }
-            flyway.migrate();
-        };
+        } catch (Exception e) {
+            log.warn("Could not connect to clean Flyway history: {}", e.getMessage());
+        }
     }
 
     @Bean

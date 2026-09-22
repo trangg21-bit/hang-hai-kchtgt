@@ -93,6 +93,15 @@ Cụ thể bố cục 2 cột bất biến:
 - **Nguyên nhân**: Truyền `<ThemeTokenProvider value={themeTokenChk}>` thay vì `tokens={themeTokenChk}`. Do đó context nhận `undefined` và fallback về bộ token mặc định (xanh sáng thay vì xanh navy thương hiệu CHK).
 - **Quy tắc bắt buộc**: Luôn bọc ngoài cùng bằng `<ThemeTokenProvider tokens={themeTokenChk}>`.
 
+### ❌ Lỗi 10: Tab "Tất cả" không hiển thị bản ghi đã xóa
+- **Nguyên nhân**:
+  1. Backend JPQL query trong repository nối thêm `AND x.deletedAt IS NULL AND x.approvalStatus != ARCHIVED` vào nhánh `(:approvalStatus IS NULL)`.
+  2. Frontend truyền `isDeleted: false` hoặc dùng `data.filter(!isDel)` ở client-side khi `activeTab === 'all'`.
+  Hệ quả: Badge tab "Tất cả" đếm tổng có số lượng (ví dụ = 1), nhưng bảng danh sách lại rỗng ("Không có kết quả tìm kiếm").
+- **Quy tắc bắt buộc**:
+  - Nhánh `:approvalStatus IS NULL` ở backend JPQL bắt buộc là `(:approvalStatus IS NULL)` trần, không nối thêm điều kiện loại trừ deletedAt/ARCHIVED (chuẩn `BerthRepository`).
+  - Frontend khi `activeTab === 'all'` truyền `approvalStatus: undefined`, `isDeleted: undefined` và KHÔNG lọc bỏ bản ghi đã xóa ở client.
+
 ---
 
 ## 3. Khung mã chuẩn (Golden Pattern Template)

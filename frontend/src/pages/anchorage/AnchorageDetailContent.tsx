@@ -34,7 +34,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
   actionPrimary, textTertiary, textPrimary, surfaceCard, borderDefault,
   statusOperational, statusAttention, statusCritical, statusDraft,
-  fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
+  fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   formatUserDisplayName,
@@ -649,7 +649,7 @@ export default function AnchorageDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                       <span className="chk-detail-value">
-                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.updatedBy, (r as any).updatedByName, userMap, r.createdBy, (r as any).createdByName)}</span>
+                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.updatedBy, r.updatedByName, userMap, r.createdBy, r.createdByName)}</span>
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -660,7 +660,7 @@ export default function AnchorageDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
                       <span className="chk-detail-value">
-                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.submittedForApprovalBy, (r as any).submittedForApprovalByName, userMap)}</span>
+                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.submittedForApprovalBy, r.submittedForApprovalByName, userMap)}</span>
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -670,7 +670,7 @@ export default function AnchorageDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
                       <span className="chk-detail-value">
-                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.portAuthorityApprovedBy, (r as any).portAuthorityApprovedByName, userMap)}</span>
+                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.portAuthorityApprovedBy, r.portAuthorityApprovedByName, userMap)}</span>
                       </span>
                     </div>
                     <div className="chk-detail-row">
@@ -684,7 +684,7 @@ export default function AnchorageDetailContent({
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
                       <span className="chk-detail-value">
-                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.departmentApprovedBy, (r as any).departmentApprovedByName, userMap)}</span>
+                        <span style={{ fontWeight: fontWeightBold }}>{formatUserDisplayName(r.departmentApprovedBy, r.departmentApprovedByName, userMap)}</span>
                       </span>
                     </div>
                     <div className="chk-detail-row">

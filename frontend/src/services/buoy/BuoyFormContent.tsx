@@ -509,8 +509,8 @@ export default function BuoyFormContent({
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="beaconLight" {...labelProps('Đèn hiệu')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn Đèn hiệu" options={BUOY_LIGHT_OPTIONS} allowClear style={selectStyle} />
+                <Form.Item name="beaconLight" {...labelProps('Đèn biển')} style={{ marginBottom: spaceFormField }}>
+                  <Select placeholder="Chọn Đèn biển" options={BUOY_LIGHT_OPTIONS} allowClear style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -554,9 +554,7 @@ export default function BuoyFormContent({
                 <Form.Item
                   name="range"
                   {...labelProps('Phạm vi chiếu sáng')}
-                  required
                   style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Phạm vi chiếu sáng là bắt buộc' }]}
                   tooltip="Phạm vi chiếu sáng (hải lý)"
                 >
                   <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />

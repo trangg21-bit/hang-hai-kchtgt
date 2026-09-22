@@ -247,11 +247,8 @@ export const CONDITION_OPTIONS = [
 ];
 
 export const BUOY_LIGHT_OPTIONS = [
-  { value: 'Đèn LED', label: 'Đèn LED' },
-  { value: 'Đèn sợi đốt', label: 'Đèn sợi đốt' },
-  { value: 'Đèn chớp', label: 'Đèn chớp' },
-  { value: 'Đèn phản quang', label: 'Đèn phản quang' },
   { value: 'Không có đèn', label: 'Không có đèn' },
+  { value: 'Có đèn', label: 'Có đèn' },
 ];
 
 /** Alias for backward compatibility */
@@ -273,7 +270,9 @@ export const createSchema = z.object({
   lightCharacteristic: z.string().optional().or(z.literal('')),
   range: z.coerce
     .number()
-    .min(0.01, 'Phạm vi chiếu sáng phải lớn hơn 0 hải lý'),
+    .min(0, 'Phạm vi chiếu sáng không được âm')
+    .optional()
+    .nullable(),
   unitId: z.string().optional().or(z.literal('')),
   latitude: z.coerce
     .number()
@@ -323,7 +322,9 @@ export const updateSchema = z.object({
   lightCharacteristic: z.string().optional().or(z.literal('')),
   range: z.coerce
     .number()
-    .min(0.01, 'Phạm vi chiếu sáng phải lớn hơn 0 hải lý'),
+    .min(0, 'Phạm vi chiếu sáng không được âm')
+    .optional()
+    .nullable(),
   unitId: z.string().optional().nullable().or(z.literal('')),
   latitude: z.coerce
     .number()

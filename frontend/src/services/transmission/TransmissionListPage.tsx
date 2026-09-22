@@ -50,7 +50,7 @@ import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/appr
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
-import { fmtNum } from "../../utils/numFmt";
+import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import api from "../api";
 import { organizationService } from "../organizationService";
 import type { Symbol as MapSymbolType } from "../symbolService";
@@ -1133,6 +1133,9 @@ const TransmissionListPage = () => {
       };
       return m[val] || val;
     }
+    if (isYearField(fn)) {
+      return formatYearValue(val);
+    }
     if (fn === 'unitOfMeasure' || fn === 'Đơn vị tính') {
       return formatUnitOfMeasure(Number(val));
     }
@@ -1317,8 +1320,9 @@ const TransmissionListPage = () => {
       return false;
     }
     // Bỏ qua nếu sau khi format hiển thị giống nhau
-    const ovFmt = !isNaN(Number(ov)) ? fmtNum(ov) : ov;
-    const nvFmt = !isNaN(Number(nv)) ? fmtNum(nv) : nv;
+    const isYear = isYearField(field);
+    const ovFmt = !isNaN(Number(ov)) ? (isYear ? formatYearValue(ov) : fmtNum(ov)) : ov;
+    const nvFmt = !isNaN(Number(nv)) ? (isYear ? formatYearValue(nv) : fmtNum(nv)) : nv;
     if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
       return false;
     }
@@ -1544,6 +1548,9 @@ const TransmissionListPage = () => {
               if (t === '[]') return 'Không có';
               const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
               return `${parts.length} công trình hạ tầng`;
+            }
+            if (isYearField(fn)) {
+              return formatYearValue(t);
             }
             if (/^-?\d+(\.\d+)?$/.test(t)) {
               return fmtNum(t);

@@ -48,7 +48,7 @@ public interface TransferAreaRepository extends JpaRepository<TransferArea, UUID
      * Search transfer areas with unaccent support on code and name.
      */
     @Query("SELECT a FROM TransferArea a WHERE " +
-            "((:approvalStatus IS NULL AND a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+            "((:approvalStatus IS NULL) " +
             " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (a.deletedAt IS NOT NULL OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             " OR (a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
             "     a.approvalStatus = :approvalStatus " +

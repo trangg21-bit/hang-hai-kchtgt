@@ -6,7 +6,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fmtNum } from '../../utils/numFmt';
+import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
 import {
   CommonTable,
   TableColumnType,
@@ -21,14 +21,14 @@ import {
 import InfrastructureAttachmentTab, {
   type InfrastructureAttachmentItem,
 } from '../../components/shared/InfrastructureAttachmentTab';
-import AssetAdjustmentHistoryTab from '../../components/shared/AssetAdjustmentHistoryTab';
+import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import type {
   AssetDecreaseResponse,
   AssetExploitationResponse,
   AssetIncreaseResponse,
 } from '../../services/assetmovement/types';
 import type { VtsSystemAsset } from '../../services/vtsasset/types';
-import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
+
 import {
   colors,
   fontWeightBold,
@@ -41,6 +41,7 @@ import {
   getAttachmentPreviewUrl,
   getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
+import { fmtNum } from '../../utils/numFmt';
 
 export { renderApprovalStatusBadge };
 

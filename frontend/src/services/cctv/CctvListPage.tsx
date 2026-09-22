@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { fmtNum } from "../../utils/numFmt";
+import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import {
   parseWktToCoordinates,
   ddToDms,
@@ -867,8 +867,11 @@ const CctvListPage = () => {
         dataIndex: "updatedByName",
         width: 200,
         sortOrder: sortOrderFor("updatedByName"),
-        cellTitle: (record: CctvResponse) => record.updatedByName || '',
-        render: (_: unknown, record: CctvResponse) => renderInfoStack(record.updatedByName, record.updatedAt),
+        cellTitle: (record: CctvResponse) => record.updatedByName || record.createdByName || '',
+        render: (_: unknown, record: CctvResponse) => renderInfoStack(
+          record.updatedByName || record.createdByName,
+          record.updatedAt || record.createdAt,
+        ),
       },
       {
         key: "submittedByName",
@@ -1001,6 +1004,9 @@ const CctvListPage = () => {
     if (fieldKey === 'unitOfMeasure' || fieldKey === 'Đơn vị tính') {
       const formatted = formatUnitOfMeasure(val);
       return formatted || 'Chưa có';
+    }
+    if (isYearField(fieldKey)) {
+      return formatYearValue(val);
     }
     if (fieldKey === 'coordinateSystem' || fieldKey === 'Hệ quy chiếu' || fieldKey === 'Hệ tọa độ') {
       const m: Record<string, string> = { '1': 'WGS 84', '4326': 'WGS 84', '2': 'VN-2000' };
@@ -1375,6 +1381,9 @@ const CctvListPage = () => {
               if (t === '[]') return 'Không có';
               const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
               return `${parts.length} công trình hạ tầng`;
+            }
+            if (isYearField(fn)) {
+              return formatYearValue(t);
             }
             if (/^-?\d+(\.\d+)?$/.test(t)) {
               const n = Number(t);
@@ -2716,8 +2725,8 @@ const CctvListPage = () => {
                           <div className="chk-detail-row">
                             <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
                             <span className="chk-detail-value">
-                              {selectedRecord.updatedByName ? (
-                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName}</span>
+                              {selectedRecord.updatedByName || selectedRecord.createdByName ? (
+                                <span style={{ fontWeight: fontWeightBold }}>{selectedRecord.updatedByName || selectedRecord.createdByName}</span>
                               ) : ''}
                             </span>
                           </div>

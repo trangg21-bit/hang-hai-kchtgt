@@ -82,7 +82,7 @@ import {
   saveAttachmentFile,
 } from '../../utils/attachmentStorage';
 import { isBlankOrDash, renderStandardHistoryCards, type RawHistoryRecord } from '../../utils/changeHistoryRenderer';
-import { fmtInputNumber } from '../../utils/numFmt';
+import { fmtInputNumber, isYearField, formatYearValue } from '../../utils/numFmt';
 import VtsSystemAssetDetailContent from './VtsSystemAssetDetailContent';
 import VtsSystemAssetForm, { type FormValues } from './VtsSystemAssetForm';
 import VtsSystemAssetOperationForm, {
@@ -261,10 +261,8 @@ export default function VtsSystemAssetList() {
         const vts = vtsSystemMap.get(String(val));
         return vts ? (vts.code ? `${vts.code} - ${vts.name}` : vts.name) : String(val);
       }
-      if (field === 'constructionYear') {
-        const str = String(val).trim();
-        const match = str.match(/\b(19\d{2}|20\d{2})\b/);
-        return match ? match[0] : str;
+      if (isYearField(field)) {
+        return formatYearValue(val);
       }
       if (
         field === 'useDate' ||

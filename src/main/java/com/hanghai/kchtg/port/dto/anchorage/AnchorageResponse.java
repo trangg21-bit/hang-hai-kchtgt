@@ -61,10 +61,13 @@ public class AnchorageResponse {
     private String activityStatus;
     private LocalDateTime submittedForApprovalAt;
     private String submittedForApprovalBy;
+    private String submittedForApprovalByName;
     private LocalDateTime portAuthorityApprovedAt;
     private String portAuthorityApprovedBy;
+    private String portAuthorityApprovedByName;
     private LocalDateTime departmentApprovedAt;
     private String departmentApprovedBy;
+    private String departmentApprovedByName;
     private String portAuthorityApprovalContent;
     private String departmentApprovalContent;
     private String rejectionReason;
@@ -72,6 +75,8 @@ public class AnchorageResponse {
     // ── Audit fields ───────────────────────────────────────────────────
     private UUID createdBy;
     private UUID updatedBy;
+    private String createdByName;
+    private String updatedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime deletedAt;

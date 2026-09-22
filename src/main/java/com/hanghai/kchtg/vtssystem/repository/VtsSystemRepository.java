@@ -174,9 +174,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         LEFT JOIN User u ON u.id = t.updatedBy
         LEFT JOIN User uCreate ON uCreate.id = t.createdBy
         WHERE (
-            (:approvalStatus IS NULL
-                AND t.deletedAt IS NULL
-                AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
+            (:approvalStatus IS NULL)
             OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
             OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
                 t.approvalStatus = :approvalStatus
@@ -207,9 +205,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         SELECT COUNT(t)
         FROM VtsSystem t
         WHERE (
-            (:approvalStatus IS NULL
-                AND t.deletedAt IS NULL
-                AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)
+            (:approvalStatus IS NULL)
             OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
             OR (t.deletedAt IS NULL AND t.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (
                 t.approvalStatus = :approvalStatus

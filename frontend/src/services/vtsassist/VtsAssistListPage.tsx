@@ -122,7 +122,7 @@ import {
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
-import { fmtInputNumber, fmtNum } from "../../utils/numFmt";
+import { fmtInputNumber, fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import { getValueFromEvent5, integer5Rule, parseNumber5 } from "../../utils/numberRuleHelper";
 import api from "../api";
 import { DEFAULT_OPERATING_ORGANIZATIONS } from "../operatingOrganizationsData";
@@ -763,8 +763,9 @@ export function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boo
     return false;
   }
   // Bỏ qua nếu sau khi format hiển thị giống nhau
-  const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
-  const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+  const isYear = isYearField(field);
+  const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? (isYear ? formatYearValue(cleanOv) : fmtNum(cleanOv)) : ov;
+  const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? (isYear ? formatYearValue(cleanNv) : fmtNum(cleanNv)) : nv;
   if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
     return false;
   }
@@ -859,6 +860,9 @@ export function historyFieldValue(
   if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
     const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
     return m[String(val)] || val;
+  }
+  if (isYearField(fn)) {
+    return formatYearValue(val);
   }
   if (fn === 'changedAt' || fn === 'createdAt') {
     try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
@@ -2156,6 +2160,9 @@ const VtsAssistListPage = () => {
         if (t === '[]') return 'Không có';
         const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
         return `${parts.length} công trình hạ tầng`;
+      }
+      if (isYearField(fn)) {
+        return formatYearValue(t);
       }
       if (/^-?\d+(\.\d+)?$/.test(t)) {
         return fmtNum(t);

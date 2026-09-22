@@ -45,7 +45,7 @@ import {
     parseWktToCoordinates,
     serializeCoordinatesToWkt,
 } from "../../utils/gisGeometry";
-import { fmtNum } from "../../utils/numFmt";
+import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import api from "../api";
 import { organizationService } from "../organizationService";
 import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
@@ -994,6 +994,9 @@ const ScadaListPage = () => {
       };
       return m[val] || val;
     }
+    if (isYearField(fieldKey)) {
+      return formatYearValue(val);
+    }
     if (fieldKey === 'unitOfMeasure' || fieldKey === 'Đơn vị tính') {
       const uomNum = Number(val);
       return (!isNaN(uomNum) && formatUnitOfMeasure(uomNum)) ? formatUnitOfMeasure(uomNum) : val;
@@ -1208,8 +1211,9 @@ const ScadaListPage = () => {
     }
 
     // Bỏ qua nếu sau khi định dạng số hiển thị cả 2 bằng nhau
-    const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? fmtNum(cleanOv) : ov;
-    const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? fmtNum(cleanNv) : nv;
+    const isYear = isYearField(field);
+    const ovFmt = cleanOv !== '' && !isNaN(Number(cleanOv)) ? (isYear ? formatYearValue(cleanOv) : fmtNum(cleanOv)) : ov;
+    const nvFmt = cleanNv !== '' && !isNaN(Number(cleanNv)) ? (isYear ? formatYearValue(cleanNv) : fmtNum(cleanNv)) : nv;
     if (ovFmt.trim() !== '' && ovFmt.trim() === nvFmt.trim()) {
       return true;
     }
@@ -1430,6 +1434,9 @@ const ScadaListPage = () => {
               if (t === '[]') return 'Không có';
               const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
               return `${parts.length} công trình hạ tầng`;
+            }
+            if (isYearField(fn)) {
+              return formatYearValue(t);
             }
             if (/^-?\d+(\.\d+)?$/.test(t)) {
               return fmtNum(t);

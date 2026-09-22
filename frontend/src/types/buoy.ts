@@ -83,7 +83,7 @@ export interface Buoy {
   area?: number;
   bodyHeight?: number;
   diameter?: number;
-  beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn hiệu'
+  beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn biển'
   towerHeight?: number;
   lightHeight?: number;
   lightModel?: string;
@@ -111,7 +111,7 @@ export interface Buoy {
   color?: string;
   shape?: string;
   lightCharacteristic?: string;
-  range: number;
+  range?: number;
   description?: string;
   unitId?: string;
   unitName?: string;
@@ -168,7 +168,7 @@ export interface CreateBuoyRequest {
   area?: number;
   bodyHeight?: number;
   diameter?: number;
-  beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn hiệu'
+  beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn biển'
   towerHeight?: number;
   lightHeight?: number;
   lightModel?: string;
@@ -213,7 +213,7 @@ export interface UpdateBuoyRequest {
   area?: number;
   bodyHeight?: number;
   diameter?: number;
-  beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn hiệu'
+  beaconLight?: string; // Tên trường DB giữ nguyên là beacon_light, ngữ nghĩa UI: 'Đèn biển'
   towerHeight?: number;
   lightHeight?: number;
   lightModel?: string;

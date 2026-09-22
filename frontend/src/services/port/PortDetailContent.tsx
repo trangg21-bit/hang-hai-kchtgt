@@ -9,13 +9,13 @@ import {
 import dayjs from 'dayjs';
 import toast from '../../components/ToastNotification';
 import {
-  colors, actionPrimary, textTertiary, textSecondary, textPrimary, borderDefault,
+  colors, actionPrimary, textTertiary, borderDefault,
   surfaceCard, spaceSm, spaceMd, spaceFormField,
   fontSizeSm, fontSizeLg, fontWeightMedium, fontWeightBold,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   statusOperational, statusAttention, statusCritical,
   DRAWER_TABLE_SCROLL_Y, drawerTitleStyle, drawerCloseBtnStyle, cellTitleStyle, cellSubtitleStyle,
-  DRAWER_WIDTH,
+  DRAWER_WIDTH, formatUserDisplayName,
 } from '../../themetokenchk';
 import type { CangBienResponse, PortWharfAreaItem } from './types';
 import { trangThaiPheDuyetBadge } from './schema';
@@ -428,14 +428,63 @@ export default function PortDetailContent({
                     },
                     {
                       label: 'Cán bộ cập nhật',
-                      value: selectedRecord.updatedByName || (selectedRecord.updatedBy ? (userMap.get(selectedRecord.updatedBy) || selectedRecord.updatedBy) : '') || '',
+                      value: formatUserDisplayName(
+                        selectedRecord.updatedBy,
+                        selectedRecord.updatedByName,
+                        userMap,
+                        selectedRecord.createdBy,
+                        selectedRecord.createdByName,
+                      ),
                       isCol1: true,
                       bold: true,
                     },
                     {
                       label: 'Ngày cập nhật',
-                      value: selectedRecord.updatedAt ? dayjs(selectedRecord.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '',
+                      value: selectedRecord.updatedAt || selectedRecord.createdAt ? dayjs(selectedRecord.updatedAt || selectedRecord.createdAt).format('DD/MM/YYYY HH:mm:ss') : '',
                       isCol1: false,
+                    },
+                    {
+                      label: 'Cán bộ gửi phê duyệt',
+                      value: formatUserDisplayName(selectedRecord.submittedBy, selectedRecord.submittedByName, userMap),
+                      isCol1: true,
+                      bold: true,
+                    },
+                    {
+                      label: 'Ngày gửi phê duyệt',
+                      value: selectedRecord.submittedAt ? dayjs(selectedRecord.submittedAt).format('DD/MM/YYYY HH:mm:ss') : '',
+                      isCol1: false,
+                    },
+                    {
+                      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+                      value: formatUserDisplayName(selectedRecord.approverLevel1, selectedRecord.approverLevel1Name, userMap),
+                      isCol1: true,
+                      bold: true,
+                    },
+                    {
+                      label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+                      value: selectedRecord.approvedDateLevel1 ? dayjs(selectedRecord.approvedDateLevel1).format('DD/MM/YYYY HH:mm:ss') : '',
+                      isCol1: false,
+                    },
+                    {
+                      label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+                      value: selectedRecord.approvalContentLevel1 || '',
+                      fullWidth: true,
+                    },
+                    {
+                      label: 'Cán bộ phê duyệt cấp Cục',
+                      value: formatUserDisplayName(selectedRecord.approverLevel2, selectedRecord.approverLevel2Name, userMap),
+                      isCol1: true,
+                      bold: true,
+                    },
+                    {
+                      label: 'Ngày phê duyệt cấp Cục',
+                      value: selectedRecord.approvedDateLevel2 ? dayjs(selectedRecord.approvedDateLevel2).format('DD/MM/YYYY HH:mm:ss') : '',
+                      isCol1: false,
+                    },
+                    {
+                      label: 'Nội dung phê duyệt cấp Cục',
+                      value: selectedRecord.approvalContentLevel2 || selectedRecord.rejectionReason || '',
+                      fullWidth: true,
                     },
                   ].map((row, i) => (
                     <div
