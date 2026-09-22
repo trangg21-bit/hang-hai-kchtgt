@@ -377,8 +377,10 @@ export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => b
     if (selfOk) {
       out.push({ ...n, children });
     } else if (children && children.length > 0) {
-      // Khi con/cháu có quyền truy cập, giữ nguyên route của cha/ông để user click vào xem danh sách không bị chặn quyền
-      out.push({ ...n, route: n.route, children });
+      // Khi con/cháu có quyền truy cập nhưng cha không có quyền:
+      // Giữ lại node cha như 1 nhóm (group folder) nhưng XÓA route để không thể điều hướng vào màn cha bị cấm
+      const { route: _r, ...folderNode } = n;
+      out.push({ ...folderNode, children });
     }
   }
   return out;

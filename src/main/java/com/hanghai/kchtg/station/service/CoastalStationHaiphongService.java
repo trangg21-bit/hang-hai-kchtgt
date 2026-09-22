@@ -335,44 +335,42 @@ public class CoastalStationHaiphongService {
         if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
             oldValues.put("name", entity.getName() != null ? entity.getName() : null);
         }
-            if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
-                String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
-                oldValues.put("orgUnitId", oldName != null ? oldName : null);
-            }
-            if (!Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
-                String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
-                oldValues.put("operatingOrgId", oldName != null ? oldName : "—");
-            }
-            if (!Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
-                oldValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
-            }
-            if (!Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
-                oldValues.put("locationAddress", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
-            }
-            if (request.getConditionStatus() != null && !Objects.equals(parseConditionStatus(request.getConditionStatus()), entity.getConditionStatus())) {
-                oldValues.put("conditionStatus", entity.getConditionStatus() != null ? formatConditionStatusDisplay(entity.getConditionStatus()) : null);
-            }
-            if (!Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
-                oldValues.put("servicesProvided", entity.getServicesProvided() != null ? entity.getServicesProvided() : null);
-            }
-            if (!Objects.equals(request.getDescription(), entity.getDescription())) {
-                oldValues.put("description", entity.getDescription() != null ? entity.getDescription() : null);
-            }
-            }
+        if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
+            String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
+            oldValues.put("orgUnitId", oldName != null ? oldName : null);
+        }
+        if (!Objects.equals(request.getOperatingOrgId(), entity.getOperatingOrgId())) {
+            String oldName = entity.getOperatingOrgId() != null ? resolveOperatingOrgName(entity.getOperatingOrgId()) : "—";
+            oldValues.put("operatingOrgId", oldName != null ? oldName : "—");
+        }
+        if (!Objects.equals(request.getProvinceId(), entity.getProvinceId())) {
+            oldValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
+        }
+        if (!Objects.equals(request.getLocationAddress(), entity.getLocationAddress())) {
+            oldValues.put("locationAddress", entity.getLocationAddress() != null ? entity.getLocationAddress() : null);
+        }
+        if (request.getConditionStatus() != null && !Objects.equals(parseConditionStatus(request.getConditionStatus()), entity.getConditionStatus())) {
+            oldValues.put("conditionStatus", entity.getConditionStatus() != null ? formatConditionStatusDisplay(entity.getConditionStatus()) : null);
+        }
+        if (!Objects.equals(request.getServicesProvided(), entity.getServicesProvided())) {
+            oldValues.put("servicesProvided", entity.getServicesProvided() != null ? entity.getServicesProvided() : null);
+        }
+        if (!Objects.equals(request.getDescription(), entity.getDescription())) {
+            oldValues.put("description", entity.getDescription() != null ? entity.getDescription() : null);
+        }
 
-            // GIS tracking
-            UUID targetSymbolId = resolveSymbolId(request.getSymbolId(), request.getSymbol());
-            if (!Objects.equals(targetSymbolId, entity.getSymbolId())) {
-                String oldSymDisplay = entity.getSymbolId() != null
-                        ? (gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString()) : entity.getSymbolId().toString())
-                        : "—";
-                oldValues.put("symbolId", oldSymDisplay);
-            }
-            String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
-            String newCoord = request.getCoordinates();
-            if (newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
-                oldValues.put("coordinates", oldCoord != null ? oldCoord : null);
-            }
+        // GIS tracking
+        UUID targetSymbolId = resolveSymbolId(request.getSymbolId(), request.getSymbol());
+        if (!Objects.equals(targetSymbolId, entity.getSymbolId())) {
+            String oldSymDisplay = entity.getSymbolId() != null
+                    ? (gisSpatialObjectService != null ? gisSpatialObjectService.getSymbolDisplayName(entity.getSymbolId().toString()) : entity.getSymbolId().toString())
+                    : "—";
+            oldValues.put("symbolId", oldSymDisplay);
+        }
+        String oldCoord = gisSpatialObjectService != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
+        String newCoord = request.getCoordinates();
+        if (newCoord != null && !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
+            oldValues.put("coordinates", oldCoord != null ? oldCoord : null);
         }
 
         if (request.getOrgUnitId() != null) {

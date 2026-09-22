@@ -228,15 +228,9 @@ public class EffectivePermissionService {
                     "buoyberthasset", "buoyasset", "lighthouseasset", "dikerevetmentasset", "vhfasset")),
             Map.entry("buoystation", Set.of("buoy", "buoyasset")),
 
-            Map.entry("vts", Set.of(
-                    "vtsoperationcenter", "radarstation", "tramradar", "aissystem", "cctv", "scada", "transmission", "vtsassist",
-                    "vtsasset", "radarasset", "aisasset", "cctvasset", "scadaasset", "transmissionasset", "vtsassistasset")),
-            Map.entry("vtssystem", Set.of(
-                    "vtsoperationcenter", "radarstation", "tramradar", "aissystem", "cctv", "scada", "transmission", "vtsassist",
-                    "vtsasset", "radarasset", "aisasset", "cctvasset", "scadaasset", "transmissionasset", "vtsassistasset")),
-            Map.entry("vtsasset", Set.of(
-                    "vtsoperationcenter", "radarstation", "tramradar", "aissystem", "cctv", "scada", "transmission", "vtsassist",
-                    "radarasset", "aisasset", "cctvasset", "scadaasset", "transmissionasset", "vtsassistasset")),
+            Map.entry("vts", Collections.emptySet()),
+            Map.entry("vtssystem", Collections.emptySet()),
+            Map.entry("vtsasset", Collections.emptySet()),
 
             Map.entry("coastalstation", Set.of(
                     "daittdh", "inmarsat", "cospassarsat", "lrit", "ttxltt",

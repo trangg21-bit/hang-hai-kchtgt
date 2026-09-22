@@ -172,10 +172,19 @@ describe('permissionStore Unit Tests', () => {
 
   it('does not allow an Inmarsat asset permission to open the station screen', () => {
     useAuthStore.setState({
-      user: { id: '1', username: 'inmarsat-reader', permissions: ['inmarsat:read'] } as User,
+      user: { id: '1', username: 'inmarsat-asset-user', permissions: ['inmarsatasset:read'] } as User,
     });
 
     expect(usePermissionStore.getState().hasPermission('coastalstationinmarsat:read')).toBe(false);
+  });
+
+  it('allows inmarsat:read and coastalstationinmarsat:read symmetrically as station permissions', () => {
+    useAuthStore.setState({
+      user: { id: '1', username: 'inmarsat-station-user', permissions: ['inmarsat:read'] } as User,
+    });
+
+    expect(usePermissionStore.getState().hasPermission('coastalstationinmarsat:read')).toBe(true);
+    expect(usePermissionStore.getState().hasPermission('inmarsat:read')).toBe(true);
   });
 
   it('should evaluate hasAllPermissions correctly', () => {
@@ -227,9 +236,8 @@ describe('permissionStore Unit Tests', () => {
 
     const store = usePermissionStore.getState();
     expect(store.hasPermission('coastalstationlrit:read')).toBe(false);
-    // `inmarsat` is the legacy asset resource; the dedicated coastal-station
-    // resources above must remain isolated from the parent permission.
-    expect(store.hasPermission('inmarsat:read')).toBe(true);
+    expect(store.hasPermission('inmarsat:read')).toBe(false);
+    expect(store.hasPermission('coastalstationinmarsat:read')).toBe(false);
     expect(store.hasPermission('coastalstationhaiphong:read')).toBe(false);
     expect(store.hasPermission('coastalstationcospassarsat:read')).toBe(false);
   });
@@ -274,6 +282,32 @@ describe('permissionStore Unit Tests', () => {
     expect(store.hasPermission('vtsoperationcenter:read')).toBe(false);
     expect(store.hasPermission('radarstation:read')).toBe(false);
     expect(store.hasPermission('aissystem:read')).toBe(false);
+  });
+
+  it('should NOT grant vts:read when user only has aissystem:read and routes correctly to /ais-system', async () => {
+    const { canAccessMenu } = await import('../components/appLayoutMenu');
+    const { NAV_GROUPS, firstAccessibleRoute } = await import('../config/navigation');
+
+    useAuthStore.setState({
+      user: { id: 'user-ais', username: 'ais_operator', permissions: ['aissystem:read'] } as User,
+    });
+
+    const store = usePermissionStore.getState();
+    // 1. User có quyền AIS
+    expect(store.hasPermission('aissystem:read')).toBe(true);
+
+    // 2. Tuyệt đối KHÔNG suy diễn ra vts:read hay vtssystem:read
+    expect(store.hasPermission('vts:read')).toBe(false);
+    expect(store.hasPermission('vtssystem:read')).toBe(false);
+    expect(store.hasPermission('vtsasset:read')).toBe(false);
+
+    // 3. canAccessMenu trả về false cho /vts-system nhưng true cho /ais-system
+    expect(canAccessMenu('/ais-system')).toBe(true);
+    expect(canAccessMenu('/vts-system')).toBe(false);
+
+    // 4. firstAccessibleRoute của khối KCHT phải dẫn vào /ais-system, TUYỆT ĐỐI KHÔNG vào /vts-system
+    const kchtGroup = NAV_GROUPS.find((g) => g.id === 'kcht')!;
+    expect(firstAccessibleRoute(kchtGroup, canAccessMenu)).toBe('/ais-system');
   });
 
   it('should symmetrically resolve valid technical resource aliases (navigationchannel <-> channel, vts <-> vtssystem)', () => {

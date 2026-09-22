@@ -371,6 +371,7 @@ const TREE_RESOURCE_CANONICAL_MAP: Record<string, string> = {
   coastalstationlrit: 'lrit',
   coastalstationcospassarsat: 'cospassarsat',
   coastalstationhaiphong: 'ttxltt',
+  coastalstationinmarsat: 'inmarsat',
   waterarea: 'waterzone',
 };
 

@@ -350,7 +350,7 @@ export default function App() {
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission={['coastalstation:read', 'specialstation:read', 'station:read', 'data:read']}><CoastalStationList /></PermissionGuard>} />
-                <Route path="/station/inmarsat" element={<PermissionGuard permission="coastalstationinmarsat:read"><InmarsatStationList /></PermissionGuard>} />
+                <Route path="/station/inmarsat" element={<PermissionGuard permission={['coastalstationinmarsat:read', 'inmarsat:read']}><InmarsatStationList /></PermissionGuard>} />
                 <Route path="/station/cospas-sarsat" element={<PermissionGuard permission={['specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read', 'data:read']}><CospasSarsatStationList /></PermissionGuard>} />
                 <Route path="/station/lrit" element={<PermissionGuard permission={['specialstation:read', 'coastalstationlrit:read', 'coastalstation:read', 'data:read']}><LritStationList /></PermissionGuard>} />
                 <Route path="/station/hanoi" element={<PermissionGuard permission={['specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read', 'data:read']}><HanoiStationList /></PermissionGuard>} />

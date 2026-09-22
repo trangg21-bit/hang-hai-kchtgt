@@ -17,7 +17,7 @@ const KCHT_RESOURCE_CANONICALS = new Set([
   'port', 'berth', 'pier', 'buoyberth', 'anchorage', 'transferarea', 'stormshelter', 'dryport',
   'waterzone', 'waterarea', 'navigationchannel', 'dikerevetment', 'shiprepairfacility', 'radarstation',
   'beaconstation', 'lighthouse', 'buoy', 'vts', 'vtsoperationcenter', 'vtsassist', 'aissystem', 'cctv', 'scada',
-  'transmission', 'vhf', 'daittdh', 'cospassarsat', 'lrit', 'ttxltt', 'coastalstation',
+  'transmission', 'vhf', 'daittdh', 'inmarsat', 'cospassarsat', 'lrit', 'ttxltt', 'coastalstation',
   'specialstation', 'station', 'coastalstationinmarsat', 'coastalstationcospassarsat', 'coastalstationhaiphong',
   'coastalstationlrit',
 
@@ -58,6 +58,7 @@ export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
   coastalstationlrit: 'lrit',
   coastalstationcospassarsat: 'cospassarsat',
   coastalstationhaiphong: 'ttxltt',
+  coastalstationinmarsat: 'inmarsat',
 
   // System & shared resources
   interconnect: 'connection',
@@ -122,19 +123,10 @@ export const RESOURCE_DESCENDANTS_MAP: Record<string, string[]> = {
   ],
   buoystation: ['buoy', 'buoyasset'],
 
-  // Hệ thống VTS (Cha/Ông) -> Trạm radar, AIS, CCTV, SCADA, Truyền dẫn, Phụ trợ, TT điều hành
-  vts: [
-    'vtsoperationcenter', 'radarstation', 'tramradar', 'aissystem', 'cctv', 'scada', 'transmission', 'vtsassist',
-    'vtsasset', 'radarasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vtsassistasset'
-  ],
-  vtssystem: [
-    'vtsoperationcenter', 'radarstation', 'tramradar', 'aissystem', 'cctv', 'scada', 'transmission', 'vtsassist',
-    'vtsasset', 'radarasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vtsassistasset'
-  ],
-  vtsasset: [
-    'vtsoperationcenter', 'radarstation', 'tramradar', 'aissystem', 'cctv', 'scada', 'transmission', 'vtsassist',
-    'radarasset', 'aisasset', 'cctvasset', 'scadaasset', 'transmissionasset', 'vtsassistasset'
-  ],
+  // Hệ thống VTS không suy diễn ngầm quyền sang các phân hệ kỹ thuật độc lập (AIS, Radar, CCTV, SCADA...)
+  vts: [],
+  vtssystem: [],
+  vtsasset: [],
 
   // Đài viễn thông hàng hải (Cha/Ông) -> TTDH, Inmarsat, Cospas-Sarsat, LRIT, TTXLTT
   coastalstation: [
