@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service xử lý nghiệp vụ cho Đài thông tin vệ tinh Inmarsat (M-004:
@@ -1073,10 +1074,20 @@ public class CoastalStationInmarsatService {
             throw new IllegalArgumentException("Tối đa 10 file đính kèm theo quy định");
         }
 
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         java.nio.file.Path basePath = java.nio.file.Paths
                 .get(attachmentPath != null ? attachmentPath : "uploads/inmarsat-attachments").toAbsolutePath()
                 .normalize();
         List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
         LocalDateTime batchNow = LocalDateTime.now();
         for (org.springframework.web.multipart.MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
@@ -1105,21 +1116,36 @@ public class CoastalStationInmarsatService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+            if (originalFilename != null && !originalFilename.isBlank()) {
+                uploadedFileNames.add(originalFilename.trim());
+            }
+        }
 
-            boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                    || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-            if (historyService != null && wasApproved) {
-                boolean isNewlyCreated = entity.getCreatedAt() != null
-                        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
-                if (!isNewlyCreated) {
-                    historyService.recordHistory(
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (!fileListAfter.contains(fn)) {
+                fileListAfter.add(fn);
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (historyService != null && wasApproved && !uploadedFileNames.isEmpty()) {
+            boolean isNewlyCreated = entity.getCreatedAt() != null
+                    && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
+            if (!isNewlyCreated) {
+                String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+                String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+                if (!Objects.equals(oldVal, newVal)) {
+                    historyService.recordAttachmentHistory(
                             InfrastructureType.INMARSAT_STATION,
                             id,
-                            com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                            InfrastructureHistoryStatus.ATTACHMENT_UPLOADED,
                             "Tài liệu đính kèm",
-                            "—",
-                            originalFilename,
-                            "Tải lên tài liệu đính kèm: " + originalFilename,
+                            oldVal != null ? oldVal : "—",
+                            newVal != null ? newVal : "—",
+                            "Tải lên tệp: " + String.join(", ", uploadedFileNames),
                             userId,
                             batchNow);
                 }
@@ -1146,6 +1172,21 @@ public class CoastalStationInmarsatService {
                 .findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.INMARSAT_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
         String fileName = attachment.getFileName();
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.INMARSAT_STATION);
+        String oldFilesSummary = existingAtts.stream()
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attachmentId))
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -1156,15 +1197,18 @@ public class CoastalStationInmarsatService {
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
         if (historyService != null && wasApproved) {
-            historyService.recordHistory(
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            historyService.recordAttachmentHistory(
                     InfrastructureType.INMARSAT_STATION,
                     id,
-                    com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED,
                     "Tài liệu đính kèm",
-                    fileName,
-                    "—",
-                    "Xóa tài liệu đính kèm: " + fileName,
-                    userId);
+                    oldVal != null ? oldVal : "—",
+                    newVal != null ? newVal : "—",
+                    "Xóa tệp: " + fileName,
+                    userId,
+                    LocalDateTime.now());
         }
     }
 

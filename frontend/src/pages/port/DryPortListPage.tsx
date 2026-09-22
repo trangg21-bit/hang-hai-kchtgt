@@ -80,6 +80,7 @@ import {
     fetchDryPortById,
     fetchDryPortHistory,
     fetchDryPortList,
+    normalizeDryPortIdentityFilters,
     PORT_STATUS_OPTIONS,
     REGION_OPTIONS,
     rejectDryPort,
@@ -364,8 +365,19 @@ export default function DryPortListPage() {
   const [filterUpdatedTo, setFilterUpdatedTo] = useState<string | undefined>();
   const [filterCode, setFilterCode] = useState<string | undefined>();
   const [filterTransportCorridor, setFilterTransportCorridor] = useState<string | undefined>();
-  const [sortField, setSortField] = useState<string | undefined>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | undefined>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
 
   const [dataSource, setDataSource] = useState<DryPort[]>([]);
   const [total, setTotal] = useState(0);
@@ -657,8 +669,7 @@ export default function DryPortListPage() {
       const orgParam = targetOrg && targetOrg !== '__all__' ? targetOrg : undefined;
       const baseFilterParams = {
         orgUnitId: orgParam,
-        search: search.trim() || undefined,
-        code: (filterCode || '').trim() || undefined,
+        ...normalizeDryPortIdentityFilters(search, filterCode),
         provinceId: filterProvince,
         region: filterRegion,
         portStatus: filterStatus,
@@ -682,7 +693,7 @@ export default function DryPortListPage() {
         c[k] = r.status === 'fulfilled' ? r.value.total : 0;
       });
       const allChildSum = TAB_STATUS_LIST
-        .filter((t) => t.key !== 'all' && t.key !== 'ARCHIVED')
+        .filter((t) => t.key !== 'all')
         .reduce((acc, t) => acc + (c[t.key] ?? 0), 0);
       c['all'] = allChildSum;
       setTabCounts(c);
@@ -696,8 +707,7 @@ export default function DryPortListPage() {
       const res = await fetchDryPortList({
         page,
         size: pageSize,
-        search: search.trim() || undefined,
-        code: (filterCode || '').trim() || undefined,
+        ...normalizeDryPortIdentityFilters(search, filterCode),
         orgUnitId: filterOrgUnitId === '__all__' ? undefined : filterOrgUnitId,
         provinceId: filterProvince,
         region: filterRegion,
@@ -706,8 +716,8 @@ export default function DryPortListPage() {
         updatedTo: filterUpdatedTo,
         transportCorridor: filterTransportCorridor ? filterTransportCorridor.trim() : undefined,
         approvalStatus: TAB_QUERY_MAP[activeTab],
-        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
-        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
+        sortBy: (sortBy && sortBy !== 'stt' && sortBy !== 'sequenceNo') ? sortBy : 'updatedAt',
+        sortDir: sortDir === 'asc' ? 'ASC' : (sortDir === 'desc' ? 'DESC' : undefined),
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -716,7 +726,7 @@ export default function DryPortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab, sortField, sortOrder]);
+  }, [page, pageSize, search, filterCode, filterOrgUnitId, filterProvince, filterRegion, filterStatus, filterUpdatedFrom, filterUpdatedTo, filterTransportCorridor, activeTab, sortBy, sortDir]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
@@ -817,8 +827,7 @@ export default function DryPortListPage() {
       toast.success('Đã xóa cảng cạn');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(filterOrgUnitId);
@@ -839,8 +848,7 @@ export default function DryPortListPage() {
     try {
       await approveDryPort(approvingRecord.id);
       toast.success('Đã phê duyệt');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(filterOrgUnitId);
@@ -877,8 +885,7 @@ export default function DryPortListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(filterOrgUnitId);
@@ -1049,7 +1056,6 @@ export default function DryPortListPage() {
         dataIndex: 'portStatus',
         width: 240,
         ellipsis: false,
-        sortable: true,
         cellTitle: (record: DryPort) => {
           const badge = trangThaiHoatDongBadge(record.portStatus, (record as any).operationalStatus);
           return badge.label;
@@ -1065,7 +1071,6 @@ export default function DryPortListPage() {
         dataIndex: 'approvalStatus',
         width: 260,
         ellipsis: false,
-        sortable: true,
         cellTitle: (record: DryPort) => {
           const isArchived = isDryPortDeleted(record);
           const badge = trangThaiPheDuyetBadge(isArchived ? 'ARCHIVED' : record.approvalStatus);
@@ -1111,9 +1116,9 @@ export default function DryPortListPage() {
     ];
     return base.map((col) => ({
       ...col,
-      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined,
     }));
-  }, [page, pageSize, userMap, openDetailModal, activeTab, sortField, sortOrder]);
+  }, [page, pageSize, userMap, openDetailModal, activeTab, sortOrderFor]);
 
   const rowActions = useCallback((record: DryPort) => {
     const isArchived = isDryPortDeleted(record);
@@ -1180,8 +1185,7 @@ export default function DryPortListPage() {
   const handleCreateSuccess = useCallback(() => {
     setCreateDrawerOpen(false);
     createForm.resetFields();
-    setSortField('updatedAt');
-    setSortOrder('descend');
+    setSortBy(undefined); setSortDir(undefined);
     setPage(1);
     void fetchData();
     void fetchCounts(filterOrgUnitId);
@@ -1194,8 +1198,7 @@ export default function DryPortListPage() {
 
   const handleUpdateSuccess = useCallback(() => {
     setUpdateDrawerOpen(false);
-    setSortField('updatedAt');
-    setSortOrder('descend');
+    setSortBy(undefined); setSortDir(undefined);
     setPage(1);
     void fetchData();
     void fetchCounts(filterOrgUnitId);
@@ -1204,13 +1207,13 @@ export default function DryPortListPage() {
 
   const statusTabs = useMemo(() => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'ARCHIVED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
       let count = tabCounts[tab.key] ?? 0;
       if (tab.key === 'all') {
-        count = activeTab === 'all' ? total : allChildSum;
+        count = allChildSum;
       } else if (tab.key === activeTab) {
         count = total;
       }
@@ -1246,7 +1249,7 @@ export default function DryPortListPage() {
           Tên cảng cạn
         </div>
         <Input
-          placeholder="Tìm theo mã, tên, địa chỉ..."
+          placeholder="Tìm theo tên cảng cạn"
           allowClear
           prefix={<SearchOutlined style={{ color: textTertiary }} />}
           value={search}
@@ -1451,16 +1454,7 @@ export default function DryPortListPage() {
             loading={isLoading}
             rowKey="id"
             rowActions={rowActions}
-            onSort={(k: string, o: 'asc' | 'desc' | null) => {
-              setPage(1);
-              if (!o) {
-                setSortField('updatedAt');
-                setSortOrder('descend');
-              } else {
-                setSortField(k);
-                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
-              }
-            }}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination

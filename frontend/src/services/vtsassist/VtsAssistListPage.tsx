@@ -120,7 +120,7 @@ import {
     validateDmsCoordinates,
 } from "../../utils/gisGeometry";
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
+import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtInputNumber, fmtNum } from "../../utils/numFmt";
 import { getValueFromEvent5, integer5Rule, parseNumber5 } from "../../utils/numberRuleHelper";
@@ -419,7 +419,6 @@ function VtsAssistGisTab({
   onAddRow,
   onUpdatePoint,
   onDeleteRow,
-  minPoints: _minPoints,
   onOpenMap,
   gpsError,
   onGeometryTypeChange,
@@ -976,14 +975,15 @@ const VtsAssistListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0)
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -1758,9 +1758,9 @@ const VtsAssistListPage = () => {
       },
       {
         key: "provinceName",
-        label: "Địa điểm\n(Tỉnh/Thành phố)",
+        label: "Địa điểm (Tỉnh/Thành phố)",
         dataIndex: "provinceName",
-        width: 220,
+        width: 250,
         ellipsis: false,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: VtsAssistResponse) => record.provinceName || '',
@@ -1809,8 +1809,7 @@ const VtsAssistListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
-        sortOrder: sortOrderFor("operationalStatus"),
-        render: (val: number | string) => {
+                render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
             "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
@@ -1833,8 +1832,7 @@ const VtsAssistListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
-        sortOrder: sortOrderFor("approvalStatus"),
-        render: (val: string, record: VtsAssistResponse) => {
+                render: (val: string, record: VtsAssistResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy || val === "DELETED" || val === "ARCHIVED");
           return renderApprovalBadge(isDeleted ? "DELETED" : val);
         },
@@ -2321,6 +2319,24 @@ const VtsAssistListPage = () => {
                       const gisCellStyle = isGisHistoryField(fn)
                         ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 }
                         : {};
+                      const renderValueContent = (rawVal: string | null, textVal: string | null) => {
+                        const custom = renderCell(rawVal);
+                        if (custom) return custom;
+                        const val = textVal ?? '—';
+                        if (isAttachmentField(fn) && typeof val === 'string' && val.includes(',')) {
+                          const files = val.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
+                          if (files.length > 1) {
+                            return (
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                                {files.map((file, idx) => (
+                                  <span key={idx} style={{ wordBreak: 'break-all' }}>{file}</span>
+                                ))}
+                              </span>
+                            );
+                          }
+                        }
+                        return val;
+                      };
                       if (isCreate) {
                         return (
                           <div
@@ -2331,7 +2347,7 @@ const VtsAssistListPage = () => {
                               {fn ? `${historyFieldName(fn)}:` : '—'}
                             </div>
                             <span title={typeof nv === 'string' ? nv : undefined} style={{ ...historyNewValueStyle, ...gisCellStyle }}>
-                              {renderCell(change.newValue) ?? (nv ?? '—')}
+                              {renderValueContent(change.newValue, nv)}
                             </span>
                           </div>
                         );
@@ -2353,11 +2369,11 @@ const VtsAssistListPage = () => {
                             {fn ? `${historyFieldName(fn)}:` : '—'}
                           </div>
                           <span title={typeof ov === 'string' ? ov : undefined} style={{ ...historyOldValueStyle, ...gisCellStyle }}>
-                            {renderCell(change.oldValue) ?? (ov ?? '—')}
+                            {renderValueContent(change.oldValue, ov)}
                           </span>
                           <span style={historyArrowStyle}>→</span>
                           <span title={typeof nv === 'string' ? nv : undefined} style={{ ...historyNewValueStyle, ...gisCellStyle }}>
-                            {renderCell(change.newValue) ?? (nv ?? '—')}
+                            {renderValueContent(change.newValue, nv)}
                           </span>
                         </div>
                       );
@@ -3519,7 +3535,7 @@ const VtsAssistListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
+            count: totalAll || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },

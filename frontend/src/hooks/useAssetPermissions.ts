@@ -12,6 +12,8 @@ export interface AssetPermissions {
   canDecrease: boolean;
   canApproveC1: boolean;
   canApproveC2: boolean;
+  canRejectC1: boolean;
+  canRejectC2: boolean;
   canReject: boolean;
   userPermissions: string[];
 }
@@ -120,34 +122,64 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
       )
     );
 
-    const canApproveC1 = checkAny((res) =>
-      Boolean(
+    const canApproveC1 = checkAny((res) => {
+      const baseRes = res.replace(/asset$/, '');
+      return Boolean(
         canManage ||
         hasExplicitPerm?.(`${res}:approvec1`) ||
+        hasExplicitPerm?.(`${baseRes}:approvec1`) ||
+        hasExplicitPerm?.(`${baseRes}asset:approvec1`) ||
         hasExplicitPerm?.(`${res}:approve:c1`) ||
         hasExplicitPerm?.('infraasset:approve')
-      )
-    );
+      );
+    });
 
-    const canApproveC2 = checkAny((res) =>
-      Boolean(
+    const canApproveC2 = checkAny((res) => {
+      const baseRes = res.replace(/asset$/, '');
+      return Boolean(
         canManage ||
         hasExplicitPerm?.(`${res}:approvec2`) ||
+        hasExplicitPerm?.(`${baseRes}:approvec2`) ||
+        hasExplicitPerm?.(`${baseRes}asset:approvec2`) ||
         hasExplicitPerm?.(`${res}:approve:c2`) ||
         hasExplicitPerm?.('infraasset:approve')
-      )
-    );
+      );
+    });
+
+    const canRejectC1 = checkAny((res) => {
+      const baseRes = res.replace(/asset$/, '');
+      return Boolean(
+        canManage ||
+        hasExplicitPerm?.(`${res}:rejectc1`) ||
+        hasExplicitPerm?.(`${baseRes}:rejectc1`) ||
+        hasExplicitPerm?.(`${baseRes}asset:rejectc1`) ||
+        hasExplicitPerm?.(`${res}:reject:c1`) ||
+        hasExplicitPerm?.(`${baseRes}:reject:c1`) ||
+        hasExplicitPerm?.(`${res}:reject`) ||
+        hasExplicitPerm?.(`${baseRes}:reject`) ||
+        hasExplicitPerm?.('infraasset:reject')
+      );
+    });
+
+    const canRejectC2 = checkAny((res) => {
+      const baseRes = res.replace(/asset$/, '');
+      return Boolean(
+        canManage ||
+        hasExplicitPerm?.(`${res}:rejectc2`) ||
+        hasExplicitPerm?.(`${baseRes}:rejectc2`) ||
+        hasExplicitPerm?.(`${baseRes}asset:rejectc2`) ||
+        hasExplicitPerm?.(`${res}:reject:c2`) ||
+        hasExplicitPerm?.(`${baseRes}:reject:c2`) ||
+        hasExplicitPerm?.(`${res}:reject`) ||
+        hasExplicitPerm?.(`${baseRes}:reject`) ||
+        hasExplicitPerm?.('infraasset:reject')
+      );
+    });
 
     const canReject = Boolean(
       canManage ||
-      canApproveC1 ||
-      canApproveC2 ||
-      checkAny((res) =>
-        Boolean(
-          hasExplicitPerm?.(`${res}:reject`) ||
-          hasExplicitPerm?.(`${res}asset:reject`)
-        )
-      )
+      canRejectC1 ||
+      canRejectC2
     );
 
     return {
@@ -161,6 +193,8 @@ export function useAssetPermissions(resource: string | string[]): AssetPermissio
       canDecrease,
       canApproveC1,
       canApproveC2,
+      canRejectC1,
+      canRejectC2,
       canReject,
       userPermissions: userPermissions || [],
     };

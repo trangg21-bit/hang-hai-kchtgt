@@ -727,9 +727,6 @@ export default function LritStationList() {
       dataIndex: 'conditionStatus',
       width: 220,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
       render: (v: string) => {
         const label = CONDITION_STATUS_MAP[v as ConditionStatus] || getConditionStatusLabel(v) || v;
         const color = CONDITION_COLOR[v as ConditionStatus] || getConditionStatusColor(v) || textSecondary;
@@ -746,9 +743,6 @@ export default function LritStationList() {
       dataIndex: 'approvalStatus',
       width: 260,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus) => <ApprovalStatusBadge status={status} />,
     },
     {

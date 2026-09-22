@@ -103,6 +103,13 @@ const columns = [
 - Cột `approvalStatus` (`Trạng thái`) phải có `width >= 200px` và `ellipsis: false`.
 - Khử chuỗi UUID trần: Nếu trường người dùng trả về UUID (`/^[0-9a-fA-F]{8}-/`), helper hiển thị phải fallback sang `—` hoặc tên người tạo, không hiển thị chuỗi mã hash khó hiểu cho người dùng.
 
+### Quy chuẩn Tiêu đề cột KHÔNG ĐƯỢC XUỐNG DÒNG (Anti-Header-Wrapping Standard)
+- **Tuyệt đối cấm chèn `\n` vào nhãn cột (`label`)**:
+  - ❌ **CẤM**: `label: "Địa điểm\n(Tỉnh/Thành phố)"`
+  - ✅ **ĐÚNG**: `label: "Địa điểm (Tỉnh/Thành phố)"`
+- **Tiêu đề cột phải luôn hiển thị trên 1 dòng duy nhất**: Toàn bộ tiêu đề cột trong bảng danh sách phải giữ thẳng hàng trên 1 dòng ngang (`whiteSpace: 'nowrap'`), không được ngắt dòng hoặc xuống dòng làm lệch layout giữa các phân hệ.
+- **Cấp bề rộng cột an toàn**: Cột có tiêu đề dài kèm biểu tượng sắp xếp (như `Địa điểm (Tỉnh/Thành phố)`) **BẮT BUỘC** có độ rộng tối thiểu `width: 250` (hoặc tối thiểu `240px`), kết hợp cơ chế `headerMinWidth` tự động tính toán để không bao giờ bị ép hẹp.
+
 ---
 
 ## 4. Quy chuẩn 3: Xử lý Tìm kiếm, Lọc, Auto-Trim trên UI & Sắp Xếp Dữ Liệu (Server-Side Sorting)
@@ -147,19 +154,62 @@ const columns = [
    };
    ```
 
-### Quy Chuẩn Sắp Xếp Dữ Liệu Phân Trang (Server-Side Sorting Standard)
-Khi triển khai tính năng sắp xếp dữ liệu cho bảng danh sách:
+### Quy Chuẩn Sắp Xếp Dữ Liệu Phân Trang (Issue #163 - Server-Side Sorting Standard)
+Khi triển khai tính năng sắp xếp dữ liệu cho bảng danh sách phân trang:
 1. **Frontend (`DataTable`)**:
+   - **TUYỆT ĐỐI CẤM** dùng `dataSource={[...dataSource].sort(...)}` hoặc `sortedData = useMemo(() => [...dataSource].sort(...))` trên dữ liệu bảng danh sách phân trang! Vì khi phân trang (ví dụ trang 1 có 20 bản ghi, trang 2 có 20 bản ghi), việc sort trên mảng `dataSource` client chỉ đảo thứ tự 20 bản ghi của trang hiện tại, KHÔNG sắp xếp toàn bộ tập dữ liệu từ CSDL, dẫn đến sai lệch kết quả phân trang nghiêm trọng. Dữ liệu trả về từ server phải được đưa thẳng vào `dataSource={dataSource}`.
    - **TUYỆT ĐỐI CẤM** truyền hàm comparator giả `sorter: () => 0` vào column! Khi truyền function, Ant Design Table sẽ hiểu là client-side sorting và tự động reorder `dataSource` trên client gây sai lệch thứ tự trả về từ server.
-   - Chỉ cần khai báo `sortable: true` và `sortOrder: sortOrderFor(columnKey)`. Component `DataTable` dùng chung sẽ tự động gán `sorter: true` cho Ant Design Table để kích hoạt server-side sorting.
-   - Bảng truyền `onSort={handleSort}` để kích hoạt gọi lại API với `sortBy` và `sortDir`.
-2. **Backend Controller (`resolveListSort`)**:
-   - **Thứ tự mặc định (`defaultSort`)**: Luôn ưu tiên bản ghi mới cập nhật lên đầu: `JpaSort.unsafe(Sort.Direction.DESC, "COALESCE(t.updatedAt, t.createdAt)")`.
-   - **Sắp xếp theo Tỉnh/TP (`provinceId`)**: Tỉnh/TP trong CSDL lưu dạng số nguyên (`Integer`), nếu `ORDER BY t.provinceId` sẽ sắp theo mã số (1, 2, 4... 89) làm sai lệch thứ tự bảng chữ cái tiếng Việt người dùng nhìn thấy trên màn hình. **BẮT BUỘC** dùng biểu thức `PROVINCE_ORDER_EXPR` (CASE WHEN 63 tỉnh theo đúng thứ tự A-Z).
+   - **Khai báo Column chuẩn**: Chỉ cần khai báo `sortable: true` và `sortOrder: sortOrderFor(columnKey)`. Component `DataTable` dùng chung sẽ tự động gán `sorter: true` cho Ant Design Table để kích hoạt server-side sorting affordance.
+   - **Bộ State & Handler chuẩn trong Component danh sách**:
+     ```ts
+     const [sortField, setSortField] = useState<string | null>(null);
+     const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+     const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+       setSortField(order ? field : null);
+       setSortOrder(order);
+       setPage(1);
+     }, []);
+
+     const sortOrderFor = useCallback(
+       (key: string): 'ascend' | 'descend' | null =>
+         sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+       [sortField, sortOrder]
+     );
+     ```
+   - **Khai báo cột trong `columns`**:
+     ```ts
+     {
+       key: 'pierName',
+       label: 'Tên cầu cảng',
+       dataIndex: 'pierName',
+       sortable: true,
+       sortOrder: sortOrderFor('pierName'),
+       // ...
+     }
+     ```
+   - Bảng truyền `onSort={handleSort}` vào `<DataTable />`.
+   - Trong `fetchData`, truyền `sortBy: sortField || undefined` và `sortDir: sortOrder === 'asc' ? 'ASC' : (sortOrder === 'desc' ? 'DESC' : undefined)` vào hàm API `search`.
+
+2. **Backend Controller & Service Layer**:
+   - **Controller Endpoint**: `@GetMapping` search / list nhận `@RequestParam(required = false) String sortBy` và `@RequestParam(required = false) String sortDir` (hoặc `sortField`, `sortOrder`).
+   - **Service `mapSortProperty`**: Ánh xạ tên trường từ frontend sang entity property name (ví dụ `stt` -> bỏ qua, `code`/`pierCode` -> `pierCode`, `name`/`pierName` -> `pierName`, `status` -> `operationalStatus`, `updatedByName`/`updatedAt` -> `updatedAt`, `createdAt` -> `createdAt`).
+   - **Thứ tự mặc định (`defaultSort`)**: Khi không có `sortBy`/`sortDir`, luôn ưu tiên bản ghi mới cập nhật lên đầu:
+     `Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID));`
+   - **Áp dụng Sort động**:
+     ```java
+     if (sortBy != null && !sortBy.isBlank()) {
+         String property = mapSortProperty(sortBy);
+         if (property != null) {
+             Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+             sort = Sort.by(direction, property).and(sort);
+         }
+     }
+     Pageable pageable = PageRequest.of(page, pageSize, sort);
+     ```
+   - **Sắp xếp theo Tỉnh/TP (`provinceId`)**: Tỉnh/TP trong CSDL lưu dạng số nguyên (`Integer`), nếu `ORDER BY t.provinceId` sẽ sắp theo mã số (1, 2, 4... 89) làm sai lệch thứ tự bảng chữ cái tiếng Việt người dùng nhìn thấy trên màn hình. Khi cần sắp xếp nâng cao theo chữ cái Tỉnh/TP, dùng biểu thức `PROVINCE_ORDER_EXPR` (CASE WHEN 63 tỉnh theo đúng thứ tự A-Z).
    - **Sắp xếp không phân biệt hoa thường & Chuẩn hóa chữ cái tiếng Việt (`Đ`/`đ`)**:
-     - Trong bảng chữ cái tiếng Việt, chữ `Đ` nằm giữa `D` và `E` (trước `N`, `S`, `T`). Tuy nhiên trong bảng mã ASCII/Unicode mặc định của CSDL (PostgreSQL), ký tự `Đ` (U+0110) và `đ` (U+0111) có mã 272/273, lớn hơn chữ `z` (122), khiến các tên bắt đầu bằng `Đài...` bị đẩy xuống tận cùng sau cả `Z` và `Test` khi sắp xếp tăng dần (`ASC`), hoặc nhảy lên đầu khi giảm dần (`DESC`).
-     - **Giải pháp Backend SQL**: Bọc `REPLACE(REPLACE(LOWER(COALESCE(t.name, '')), 'đ', 'dzz'), 'Đ', 'dzz')` để chữ `Đ`/`đ` được xếp đúng vị trí giữa `D` và `E` (`d` < `dzz` < `e`), đảm bảo `Đài...` luôn đứng trước `N` (Nguyễn Văn Anh), `S`, `T` (Test 012).
-     - **Giải pháp Frontend**: Kết hợp `sortedData = useMemo(...)` trên `dataSource` với `String(av).localeCompare(String(bv), 'vi', { sensitivity: 'base', numeric: true })` để bảng hiển thị đúng chuẩn thứ tự từ điển tiếng Việt 100%.
+     - Bọc `REPLACE(REPLACE(LOWER(COALESCE(t.name, '')), 'đ', 'dzz'), 'Đ', 'dzz')` trong query native/custom khi cần chữ `Đ`/`đ` được xếp đúng vị trí giữa `D` và `E` (`d` < `dzz` < `e`).
    - **Sắp xếp cột Cán bộ cập nhật (`updatedByName`)**: Phải fallback sang tên người tạo `COALESCE(uu.fullName, uc.fullName, '')` phòng trường hợp bản ghi mới tạo chưa từng cập nhật (`updatedBy` là null). Đồng thời query JPQL cần có `LEFT JOIN User uc ON uc.id = t.createdBy`.
    - **Kiểm tra độ ưu tiên tham số**: Kiểm tra `sort` -> `sortBy` & `sortDir` trước khi fallback sang `@PageableDefault` `requested.isSorted()`.
 
@@ -379,4 +429,4 @@ Khi map dữ liệu từ API vào `CommonHistoryEntry[]`, **BẮT BUỘC** tuân
 8. [ ] Form tạo mới có `conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL` và trường `provinceId` có `required: true`.
 9. [ ] Drawer xem chi tiết hiển thị đúng nhãn "Đang khai thác/vận hành" và có đủ cán bộ, ngày cập nhật trong Thông tin phê duyệt.
 10. [ ] Drawer lịch sử thay đổi hiển thị đầy đủ Người cập nhật, Đơn vị, danh sách chi tiết thay đổi (không bị trống hoặc báo "Không có thông tin chi tiết thay đổi").
-
+11. [ ] Tiêu đề cột trên bảng danh sách không chứa ký tự ngắt dòng \n và hiển thị trên 1 dòng duy nhất (whiteSpace: 'nowrap').

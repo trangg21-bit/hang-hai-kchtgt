@@ -335,8 +335,19 @@ export default function BuoyBerthList() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -703,6 +714,8 @@ export default function BuoyBerthList() {
       const res = await buoyBerthCRUD.search({
         ...getBaseSearchParams(),
         approvalStatus: TAB_QUERY_MAP[activeTab],
+        sortBy,
+        sortDir,
         page,
         pageSize,
       });
@@ -710,7 +723,7 @@ export default function BuoyBerthList() {
     } catch {
       setIsError(true);
     } finally { setIsLoading(false); }
-  }, [getBaseSearchParams, activeTab, page, pageSize]);
+  }, [getBaseSearchParams, activeTab, page, pageSize, sortBy, sortDir]);
 
   useEffect(() => {
     if (orgUnitReady && !isEmbeddedAction) void fetchData();
@@ -845,8 +858,7 @@ export default function BuoyBerthList() {
       toast.success('Đã xóa bến phao');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
@@ -870,8 +882,7 @@ export default function BuoyBerthList() {
       setApproveModalOpen(false);
       setApprovingRecord(null);
       setApprovalContent('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
@@ -885,8 +896,7 @@ export default function BuoyBerthList() {
       toast.success('Đã gửi phê duyệt bến phao');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
@@ -910,8 +920,7 @@ export default function BuoyBerthList() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
@@ -1160,31 +1169,6 @@ export default function BuoyBerthList() {
   );
 
   // ── Table columns (đối chiếu đúng cột CSV) ─────────────────────
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return orgMap.get(r.orgUnitId || '') || r.orgUnitName || '';
-    if (field === 'portId') return r.portName || portMap.get(r.portId) || portOptions.find(o => o.value === r.portId)?.label || r.portId || '';
-    if (field === 'waterwayId') return waterwayMap.get(r.waterwayId) ?? r.waterwayId ?? '';
-    if (field === 'provinceId') return r.provinceId ? VIETNAM_PROVINCES[r.provinceId - 1] ?? '' : '';
-    if (field === 'classification') return BUOY_BERTH_CLASSIFICATION_OPTIONS.find(o => o.value === r.classification)?.label ?? r.classification ?? '';
-    if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus] || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') return APPROVAL_STYLE_MAP[r.approvalStatus]?.label || r.approvalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [orgMap, portOptions, portMap, waterwayMap]);
-
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       {
@@ -1268,7 +1252,6 @@ export default function BuoyBerthList() {
         label: 'Phân cấp công trình',
         dataIndex: 'classification',
         width: 220,
-        sortable: true,
         render: (v: string | null) => <span style={{ fontSize: fontSizeMd }}>{v ? (BUOY_BERTH_CLASSIFICATION_OPTIONS.find(o => o.value === v)?.label || v) : ''}</span>,
       },
       {
@@ -1276,7 +1259,6 @@ export default function BuoyBerthList() {
         label: 'Tình trạng',
         dataIndex: 'operationalStatus',
         width: 190,
-        sortable: true,
         render: (v: string | null) => {
           if (!v) return '';
           const s = OPERATIONAL_STYLE_MAP[v] || { color: textTertiary, label: v };
@@ -1288,7 +1270,6 @@ export default function BuoyBerthList() {
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 260,
-        sortable: true,
         render: (v: string | null, record: BuoyBerth) => {
           const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
           const eff = isArchived ? 'ARCHIVED' : (v || '');
@@ -1366,7 +1347,7 @@ export default function BuoyBerthList() {
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map(col => ({
       ...col,
-      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined,
     }));
   }, [
     openDetailDrawer,
@@ -1377,8 +1358,7 @@ export default function BuoyBerthList() {
     portOptions,
     portMap,
     waterwayMap,
-    sortField,
-    sortOrder,
+    sortOrderFor,
   ]);
 
   // ── Detail drawer content ────────────────────────────────────────
@@ -1563,28 +1543,11 @@ export default function BuoyBerthList() {
         onRetry={() => void fetchData()}
       >
         <DataTable columns={columns}
-          dataSource={[...dataSource].sort((a: any, b: any) => {
-            if (!sortField || !sortOrder) return 0;
-            if (sortField === 'stt' || sortField === 'sequenceNo') {
-              const arr = [...dataSource];
-              return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
-            }
-            const aVal = getSortValue(a, sortField);
-            const bVal = getSortValue(b, sortField);
-            const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
-            return sortOrder === 'ascend' ? cmp : -cmp;
-          })}
-          rowKey="id" rowActions={rowActions} loading={false}
-          onSort={(key: string, order: 'asc' | 'desc' | null) => {
-            if (!order) {
-              setSortField(null);
-              setSortOrder(null);
-            } else {
-              setSortField(key);
-              setSortOrder(order === 'asc' ? 'ascend' : 'descend');
-            }
-            setPage(1);
-          }}
+          dataSource={dataSource}
+          rowKey="id"
+          rowActions={rowActions}
+          loading={false}
+          onSort={handleSort}
           scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}
@@ -1601,7 +1564,7 @@ export default function BuoyBerthList() {
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editBuoyBerthId ? 'Chỉnh sửa thông tin Bến phao' : 'Thêm mới Bến phao'}</span>}
         open={createDrawerVisible}
         destroyOnHidden
-        onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+        onClose={closeFormDrawer}
         afterOpenChange={(open) => { if (!open) { setEditBuoyBerthId(undefined); setEditBaseStatus(undefined); } }}
         extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
         footer={<div style={drawerFooterStyle}>{(() => {
@@ -1677,8 +1640,7 @@ export default function BuoyBerthList() {
             id={editBuoyBerthId}
             onFinish={() => {
               closeFormDrawer();
-              setSortField('updatedAt');
-              setSortOrder('descend');
+              setSortBy(undefined); setSortDir(undefined);
               setPage(1);
               void fetchData();
               void fetchCounts(managingUnitId);

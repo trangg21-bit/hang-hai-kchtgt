@@ -68,7 +68,7 @@ public class TransmissionAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:read', 'transmission:history', 'transmission:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transmissionasset:manage', 'transmissionasset:history', 'transmission:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản HT truyền dẫn thành công", service.getHistory(id)));
     }

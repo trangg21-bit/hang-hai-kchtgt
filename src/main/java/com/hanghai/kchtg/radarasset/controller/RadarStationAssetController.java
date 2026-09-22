@@ -109,7 +109,7 @@ public class RadarStationAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'radarstation:read', 'tramradar:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'radarasset:history', 'radarstation:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

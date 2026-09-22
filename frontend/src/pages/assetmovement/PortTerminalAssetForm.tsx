@@ -478,18 +478,26 @@ export default function PortTerminalAssetForm({
 
   const footerActions = useMemo<FormSidebarAction[]>(() => {
     if (effectiveDrawerMode === "edit") {
-      const isDraft =
-        !effectiveSelected?.approvalStatus ||
-        ["DRAFT", "NHAP"].includes(effectiveSelected.approvalStatus.toUpperCase());
+      const statusUpper = (effectiveSelected?.approvalStatus || "").toUpperCase();
+      const isDraft = !statusUpper || ["DRAFT", "NHAP"].includes(statusUpper);
+      const isRejected = ["REJECTED_LEVEL1", "REJECTED_LEVEL2", "REJECTED", "TU_CHOI"].some((s) => statusUpper.includes(s));
       const actions: FormSidebarAction[] = [];
 
-      if (isDraft) {
+      if (isDraft || isRejected) {
         actions.push({
           key: "draft",
           label: "Lưu tạm",
           variant: "outline",
           loading: saving && saveAction === "DRAFT",
           onClick: () => void onSave("DRAFT"),
+        });
+
+        actions.push({
+          key: "submit",
+          label: "Lưu và gửi phê duyệt",
+          variant: "primary",
+          loading: saving && saveAction === "PENDING_APPROVAL",
+          onClick: () => void onSave("PENDING_APPROVAL"),
         });
       }
 

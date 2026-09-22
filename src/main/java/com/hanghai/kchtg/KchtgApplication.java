@@ -21,19 +21,40 @@ public class KchtgApplication {
         SpringApplication.run(KchtgApplication.class, args);
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KchtgApplication.class);
+
     @Bean
-    public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy() {
+    public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy(
+            javax.sql.DataSource dataSource) {
         return flyway -> {
-            try (java.sql.Connection conn = flyway.getConfiguration().getDataSource().getConnection();
-                 java.sql.Statement stmt = conn.createStatement()) {
-                stmt.execute("DELETE FROM flyway_schema_history WHERE version = '20260918180000' AND success = false");
-                stmt.execute("DELETE FROM flyway_schema_history WHERE version IS NOT NULL AND ctid NOT IN (SELECT max(ctid) FROM flyway_schema_history WHERE version IS NOT NULL GROUP BY version)");
+            try (java.sql.Connection conn = dataSource.getConnection()) {
+                conn.setAutoCommit(false);
+                try (java.sql.Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version = '20260918180000' AND success = false");
+                    stmt.executeUpdate("DELETE FROM flyway_schema_history WHERE version IS NOT NULL AND ctid NOT IN (SELECT max(ctid) FROM flyway_schema_history WHERE version IS NOT NULL GROUP BY version)");
+                    stmt.executeUpdate(
+                        "DELETE FROM flyway_schema_history " +
+                        "WHERE installed_rank IN (" +
+                        "  SELECT installed_rank FROM (" +
+                        "    SELECT installed_rank, version, type," +
+                        "           ROW_NUMBER() OVER (PARTITION BY version, type ORDER BY installed_rank) AS rn" +
+                        "    FROM flyway_schema_history WHERE type = 'DELETE'" +
+                        "  ) t WHERE rn > 1" +
+                        ")"
+                    );
+                    conn.commit();
+                } catch (Exception ex) {
+                    conn.rollback();
+                    System.err.println("[WARN] Flyway history cleanup failed (non-fatal): " + ex.getMessage());
+                }
             } catch (Exception e) {
-                // Ignore if table does not exist yet or connection error
+                System.err.println("[WARN] Could not connect to clean Flyway history: " + e.getMessage());
             }
             try {
                 flyway.repair();
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                System.err.println("[WARN] Flyway repair failed (continuing): " + e.getMessage());
+            }
             flyway.migrate();
         };
     }

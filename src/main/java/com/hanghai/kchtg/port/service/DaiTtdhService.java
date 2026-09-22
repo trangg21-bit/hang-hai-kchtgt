@@ -259,17 +259,47 @@ public class DaiTtdhService {
         return toResponse(entity);
     }
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null) {
+            return EntityFields.UPDATED_AT;
+        }
+        return switch (sortBy) {
+            case "daiTtdhCode", "code" -> DaiTtdh.Fields.daiTtdhCode;
+            case "daiTtdhName", "name" -> DaiTtdh.Fields.daiTtdhName;
+            case "stationLevel" -> DaiTtdh.Fields.stationLevel;
+            case "provinceId" -> DaiTtdh.Fields.provinceId;
+            case "operationalStatus", "conditionStatus", "status" -> DaiTtdh.Fields.operationalStatus;
+            case "approvalStatus" -> DaiTtdh.Fields.approvalStatus;
+            case "createdAt" -> EntityFields.CREATED_AT;
+            case "updatedAt" -> EntityFields.UPDATED_AT;
+            default -> EntityFields.UPDATED_AT;
+        };
+    }
+
     @Transactional(readOnly = true)
     public Page<DaiTtdhResponse> findAll(int page, int size, UUID orgUnitId,
                                          String search, String daiTtdhCode, String daiTtdhName,
                                          Integer stationLevel, Integer provinceId,
                                          String operationalStatus, String approvalStatus,
                                          String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, search, daiTtdhCode, daiTtdhName,
+                stationLevel, provinceId, operationalStatus, approvalStatus, updatedFrom, updatedTo, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DaiTtdhResponse> findAll(int page, int size, UUID orgUnitId,
+                                         String search, String daiTtdhCode, String daiTtdhName,
+                                         Integer stationLevel, Integer provinceId,
+                                         String operationalStatus, String approvalStatus,
+                                         String updatedFrom, String updatedTo,
+                                         String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize,
-                Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                        Sort.Order.desc(EntityFields.CREATED_AT),
-                        Sort.Order.asc(EntityFields.ID)));
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortProperty = mapSortProperty(sortBy);
+        Sort sort = Sort.by(new Sort.Order(direction, sortProperty),
+                Sort.Order.desc(EntityFields.CREATED_AT),
+                Sort.Order.asc(EntityFields.ID));
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);

@@ -405,15 +405,15 @@ const CctvListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
-    // (Bản ghi "Đã xóa" không tính vào tab Tất cả theo quy chuẩn AGENTS.md)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0)
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -781,9 +781,9 @@ const CctvListPage = () => {
       },
       {
         key: "provinceName",
-        label: "Địa điểm\n(Tỉnh/Thành phố)",
+        label: "Địa điểm (Tỉnh/Thành phố)",
         dataIndex: "provinceName",
-        width: 220,
+        width: 250,
         ellipsis: false,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: CctvResponse) => record.provinceName || '',
@@ -832,8 +832,7 @@ const CctvListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
-        sortOrder: sortOrderFor("operationalStatus"),
-        render: (val: number | string) => {
+                render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
             "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
@@ -857,8 +856,7 @@ const CctvListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
-        sortOrder: sortOrderFor("approvalStatus"),
-        render: (val: string, record: CctvResponse) => {
+                render: (val: string, record: CctvResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy);
           return renderApprovalBadge(val, isDeleted);
         },
@@ -1451,12 +1449,25 @@ const CctvListPage = () => {
                         return null;
                       };
                       const renderValueNode = (rawVal: string | null, val: string | null) => {
-                        const node = renderCell(rawVal) ?? val ?? '';
-                        return isGisHistoryField(fn) ? (
-                          <span style={{ whiteSpace: 'pre-line' as const, lineHeight: 1.5 }}>{node}</span>
-                        ) : (
-                          node
-                        );
+                        const custom = renderCell(rawVal);
+                        if (custom) return custom;
+                        const textVal = val ?? '';
+                        if (isGisHistoryField(fn)) {
+                          return <span style={{ whiteSpace: 'pre-line' as const, lineHeight: 1.5 }}>{textVal}</span>;
+                        }
+                        if (isAttachmentField(fn) && typeof textVal === 'string' && textVal.includes(',')) {
+                          const files = textVal.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
+                          if (files.length > 1) {
+                            return (
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                                {files.map((file, idx) => (
+                                  <span key={idx} style={{ wordBreak: 'break-all' }}>{file}</span>
+                                ))}
+                              </span>
+                            );
+                          }
+                        }
+                        return textVal;
                       };
                       return isCreate ? (
                         <div
@@ -2421,7 +2432,7 @@ const CctvListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
+            count: totalAll || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },

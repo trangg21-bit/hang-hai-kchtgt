@@ -76,13 +76,16 @@ public class DaiTtdhController {
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
-        log.info("Listing DaiTtdh: page={}, size={}, orgUnitId={}, search={}, code={}, name={}, stationLevel={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, daiTtdhCode, daiTtdhName, stationLevel, operationalStatus, approvalStatus);
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
+        log.info("Listing DaiTtdh: page={}, size={}, orgUnitId={}, search={}, code={}, name={}, stationLevel={}, status={}, approvalStatus={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, daiTtdhCode, daiTtdhName, stationLevel, operationalStatus, approvalStatus, sortBy, sortDir);
         Page<DaiTtdhResponse> result = daiTtdhService.findAll(
                 page, size, orgUnitId,
                 search, daiTtdhCode, daiTtdhName, stationLevel, provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo,
+                sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đài TTDH thành công", result));
     }
 

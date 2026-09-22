@@ -111,7 +111,7 @@ public class PierAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'pierasset:manage', 'pierasset:read', 'pier:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'pierasset:manage', 'pierasset:history', 'pier:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

@@ -977,13 +977,22 @@ public class AisSystemService {
             throw new RuntimeException("Không thể tạo thư mục lưu trữ file", e);
         }
 
-        long existing = attachmentRepository
-                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.AIS_SYSTEM).size();
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.AIS_SYSTEM);
+        long existing = existingAtts.size();
+        List<String> fileListBefore = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         String uploaderName = userId == null ? null : userRepository.findById(userId)
                 .map(u -> u.getFullName() != null && !u.getFullName().isBlank() ? u.getFullName().trim() : u.getUsername())
                 .orElse(null);
 
         List<VtsSystemAttachmentResponse> uploaded = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
         LocalDateTime batchNow = LocalDateTime.now();
         for (MultipartFile f : files) {
             if (f.isEmpty()) continue;
@@ -1019,23 +1028,34 @@ public class AisSystemService {
 
             InfrastructureAttachment saved = attachmentRepository.save(attachment);
             uploaded.add(toAttachmentResponse(saved, uploaderName));
+            uploadedFileNames.add(originalFilename);
+        }
 
-            boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                    || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-            if (wasApproved) {
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (wasApproved && !uploadedFileNames.isEmpty()) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal)) {
                 historyRepository.save(InfrastructureHistory.builder()
                         .refId(id)
                         .refType(InfrastructureType.AIS_SYSTEM)
-                        .approvalLevel(ApprovalLevel.LEVEL_2)
-                        // Ghi đúng loại thao tác thay vì UPDATED chung chung: giao diện
-                        // lấy nhãn + màu của dòng nhật ký từ trạng thái này, ghi UPDATED
-                        // thì thao tác tệp cũng hiện là "Cập nhật" màu xanh.
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
                         .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
                         .approvedBy(userId)
                         .approvedDate(batchNow)
-                        .changedField("attachments")
-                        .previousValue(null)
-                        .newValue(originalFilename)
+                        .changedField("Tài liệu đính kèm")
+                        .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
                         .build());
             }
         }
@@ -1117,6 +1137,21 @@ public class AisSystemService {
             throw new IllegalArgumentException("File đính kèm không thuộc hệ thống AIS này");
         }
 
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.AIS_SYSTEM);
+        String oldFilesSummary = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attId))
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             Files.deleteIfExists(Paths.get(att.getFilePath()));
         } catch (IOException ignored) {}
@@ -1125,16 +1160,19 @@ public class AisSystemService {
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
         if (wasApproved) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
             historyRepository.save(InfrastructureHistory.builder()
                     .refId(id)
                     .refType(InfrastructureType.AIS_SYSTEM)
-                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
                     .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
                     .approvedBy(userId)
                     .approvedDate(LocalDateTime.now())
-                    .changedField("attachments")
-                    .previousValue(att.getFileName())
-                    .newValue(null)
+                    .changedField("Tài liệu đính kèm")
+                    .approvalContent("Xóa tệp: " + att.getFileName())
+                    .previousValue(oldVal != null ? oldVal : "—")
+                    .newValue(newVal != null ? newVal : "—")
                     .build());
         }
     }

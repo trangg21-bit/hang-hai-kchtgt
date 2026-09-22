@@ -60,8 +60,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service for VTS Assist CRUD operations.
@@ -1087,9 +1089,22 @@ public class VtsAssistService {
     }
     List<Attachment> saved = new ArrayList<>();
     java.nio.file.Path basePath = java.nio.file.Paths.get(uploadPath).toAbsolutePath().normalize();
+
+    // 1. Snapshot danh sách file trước khi upload
+    List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+    List<String> fileListBefore = existingAtts.stream()
+            .map(Attachment::getFileName)
+            .filter(fn -> fn != null && !fn.isBlank())
+            .map(String::trim)
+            .collect(Collectors.toList());
+    String oldFilesSummary = String.join(", ", fileListBefore);
+    List<String> uploadedFileNames = new ArrayList<>();
+
     // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_UPLOADED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
     VtsAssist entity = vtsAssistRepository.findById(entityId).orElse(null);
-    boolean wasApproved = entity != null
+    boolean isNewlyCreated = entity != null && entity.getCreatedAt() != null
+        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
+    boolean wasApproved = !isNewlyCreated && entity != null
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     for (MultipartFile file : files) {
@@ -1112,7 +1127,22 @@ public class VtsAssistService {
       attachment.setContentType(file.getContentType());
       attachment.setUploadedBy(userId);
       saved.add(attachmentRepository.save(attachment));
-      if (wasApproved) {
+      uploadedFileNames.add(originalFilename);
+    }
+
+    // 2. Snapshot danh sách file sau khi upload
+    List<String> fileListAfter = new ArrayList<>(fileListBefore);
+    for (String fn : uploadedFileNames) {
+      if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+        fileListAfter.add(fn.trim());
+      }
+    }
+    String newFilesSummary = String.join(", ", fileListAfter);
+
+    if (wasApproved && !uploadedFileNames.isEmpty()) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+      if (!Objects.equals(oldVal, newVal)) {
         historyRepository.save(InfrastructureHistory.builder()
             .refId(entityId)
             .refType(InfrastructureType.VTS_ASSIST)
@@ -1121,8 +1151,9 @@ public class VtsAssistService {
             .approvedBy(userId)
             .approvedDate(LocalDateTime.now())
             .changedField("Tài liệu đính kèm")
-            .previousValue("—")
-            .newValue(originalFilename)
+            .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+            .previousValue(oldVal != null ? oldVal : "—")
+            .newValue(newVal != null ? newVal : "—")
             .build());
       }
     }
@@ -1157,6 +1188,22 @@ public class VtsAssistService {
     if (!attachment.getEntityId().equals(entityId)) {
       throw new IllegalArgumentException("File không thuộc hệ thống phụ trợ VTS này");
     }
+    String fileName = attachment.getFileName();
+    final String entityType = "VTS_ASSIST";
+    List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+    String oldFilesSummary = existingAtts.stream()
+        .map(Attachment::getFileName)
+        .filter(fn -> fn != null && !fn.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(", "));
+
+    String newFilesSummary = existingAtts.stream()
+        .filter(att -> !att.getId().equals(attachmentId))
+        .map(Attachment::getFileName)
+        .filter(fn -> fn != null && !fn.isBlank())
+        .map(String::trim)
+        .collect(Collectors.joining(", "));
+
     try {
       java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
     } catch (Exception e) {
@@ -1169,6 +1216,8 @@ public class VtsAssistService {
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     if (wasApproved) {
+      String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+      String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
       historyRepository.save(InfrastructureHistory.builder()
           .refId(entityId)
           .refType(InfrastructureType.VTS_ASSIST)
@@ -1177,8 +1226,9 @@ public class VtsAssistService {
           .approvedBy(userId)
           .approvedDate(LocalDateTime.now())
           .changedField("Tài liệu đính kèm")
-          .previousValue(attachment.getFileName())
-          .newValue("—")
+          .approvalContent("Xóa tệp: " + fileName)
+          .previousValue(oldVal != null ? oldVal : "—")
+          .newValue(newVal != null ? newVal : "—")
           .build());
     }
   }

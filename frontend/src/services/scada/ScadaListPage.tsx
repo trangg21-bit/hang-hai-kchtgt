@@ -387,14 +387,15 @@ const ScadaListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0)
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -782,9 +783,9 @@ const ScadaListPage = () => {
       },
       {
         key: "provinceName",
-        label: "Địa điểm\n(Tỉnh/Thành phố)",
+        label: "Địa điểm (Tỉnh/Thành phố)",
         dataIndex: "provinceName",
-        width: 220,
+        width: 250,
         ellipsis: false,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: ScadaResponse) => record.provinceName || '',
@@ -833,8 +834,7 @@ const ScadaListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
-        sortOrder: sortOrderFor("operationalStatus"),
-        render: (val: number | string) => {
+                render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
             "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
@@ -858,8 +858,7 @@ const ScadaListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
-        sortOrder: sortOrderFor("approvalStatus"),
-        render: (val: string, record: ScadaResponse) => {
+                render: (val: string, record: ScadaResponse) => {
           const isDeleted = Boolean(record.deletedAt || record.deletedBy);
           return renderApprovalBadge(val, isDeleted);
         },
@@ -1240,8 +1239,6 @@ const ScadaListPage = () => {
     });
   }, [historyRecords, historySearch, historyFrom, historyTo, orgMap, symbolMap, isIgnoredHistoryItem]);
 
-  const historyFieldCount = filteredHistoryRecords.length;
-
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'Đơn vị quản lý',
     'deviceCode', 'Mã thiết bị',
@@ -1497,6 +1494,20 @@ const ScadaListPage = () => {
                               {name}
                             </span>
                           );
+                        }
+                        if (isAttachmentField(fn) && rawVal && rawVal !== 'Chưa có' && rawVal !== '(trống)' && rawVal !== '—') {
+                          const files = rawVal.split(',').map((s) => s.trim()).filter(Boolean);
+                          if (files.length > 1) {
+                            return (
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                                {files.map((file, idx) => (
+                                  <span key={idx} style={{ wordBreak: 'break-all' }}>
+                                    {file}
+                                  </span>
+                                ))}
+                              </span>
+                            );
+                          }
                         }
                         return null;
                       };
@@ -2421,7 +2432,7 @@ const ScadaListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
+            count: totalAll || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },

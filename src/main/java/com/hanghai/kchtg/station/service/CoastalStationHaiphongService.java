@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -29,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
@@ -330,12 +332,9 @@ public class CoastalStationHaiphongService {
         }
 
         Map<String, String> oldValues = new LinkedHashMap<>();
-        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-        if (wasApproved) {
-            if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
-                oldValues.put("name", entity.getName() != null ? entity.getName() : null);
-            }
+        if (request.getName() != null && !Objects.equals(request.getName(), entity.getName())) {
+            oldValues.put("name", entity.getName() != null ? entity.getName() : null);
+        }
             if (request.getOrgUnitId() != null && !Objects.equals(request.getOrgUnitId(), entity.getOrgUnitId())) {
                 String oldName = entity.getOrgUnitId() != null ? orgUnitCacheService.getName(entity.getOrgUnitId()) : "—";
                 oldValues.put("orgUnitId", oldName != null ? oldName : null);
@@ -358,6 +357,7 @@ public class CoastalStationHaiphongService {
             }
             if (!Objects.equals(request.getDescription(), entity.getDescription())) {
                 oldValues.put("description", entity.getDescription() != null ? entity.getDescription() : null);
+            }
             }
 
             // GIS tracking
@@ -394,7 +394,9 @@ public class CoastalStationHaiphongService {
 
         entity.setServicesProvided(request.getServicesProvided());
         entity.setDescription(request.getDescription());
-        entity.setSymbolId(resolveSymbolId(request.getSymbolId(), request.getSymbol()));
+        if (request.getSymbolId() != null || request.getSymbol() != null) {
+            entity.setSymbolId(resolveSymbolId(request.getSymbolId(), request.getSymbol()));
+        }
 
         if (request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
@@ -674,10 +676,8 @@ public class CoastalStationHaiphongService {
                     r.setPreviousValue(h.getPreviousValue());
                     r.setNewValue(h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
-                    // Đơn vị của người thực hiện chỉnh sửa, fallback về đơn vị quản lý hồ sơ
-                    r.setOrgUnitName(h.getOrgUnitName() != null && !h.getOrgUnitName().isBlank()
-                            ? h.getOrgUnitName()
-                            : managementOrgUnitName);
+                    // Header lịch sử luôn là đơn vị quản lý của hồ sơ, không phải đơn vị hiện tại của tài khoản sửa.
+                    r.setOrgUnitName(managementOrgUnitName);
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })
@@ -800,7 +800,17 @@ public class CoastalStationHaiphongService {
         validateAllowedOrgUnit(entity.getOrgUnitId());
 
         java.nio.file.Path basePath = java.nio.file.Paths.get("uploads", "haiphong-attachments");
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.HANOI_STATION);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
         LocalDateTime batchNow = LocalDateTime.now();
 
         for (org.springframework.web.multipart.MultipartFile file : files) {
@@ -828,21 +838,36 @@ public class CoastalStationHaiphongService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+            if (originalFilename != null && !originalFilename.isBlank()) {
+                uploadedFileNames.add(originalFilename.trim());
+            }
+        }
 
-            boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
-                    || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
-            if (historyService != null && wasApproved) {
-                boolean isNewlyCreated = entity.getCreatedAt() != null
-                        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
-                if (!isNewlyCreated) {
-                    historyService.recordHistory(
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (!fileListAfter.contains(fn)) {
+                fileListAfter.add(fn);
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (historyService != null && wasApproved && !uploadedFileNames.isEmpty()) {
+            boolean isNewlyCreated = entity.getCreatedAt() != null
+                    && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
+            if (!isNewlyCreated) {
+                String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+                String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+                if (!Objects.equals(oldVal, newVal)) {
+                    historyService.recordAttachmentHistory(
                             InfrastructureType.HANOI_STATION,
                             id,
-                            com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                            InfrastructureHistoryStatus.ATTACHMENT_UPLOADED,
                             "Tài liệu đính kèm",
-                            "—",
-                            originalFilename,
-                            "Tải lên tài liệu đính kèm: " + originalFilename,
+                            oldVal != null ? oldVal : "—",
+                            newVal != null ? newVal : "—",
+                            "Tải lên tệp: " + String.join(", ", uploadedFileNames),
                             userId,
                             batchNow
                     );
@@ -868,6 +893,21 @@ public class CoastalStationHaiphongService {
         com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.HANOI_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
         String fileName = attachment.getFileName();
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.HANOI_STATION);
+        String oldFilesSummary = existingAtts.stream()
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attachmentId))
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -875,16 +915,21 @@ public class CoastalStationHaiphongService {
         }
         attachmentRepository.delete(attachment);
 
-        if (historyService != null) {
-            historyService.recordHistory(
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
+                || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
+        if (historyService != null && wasApproved) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            historyService.recordAttachmentHistory(
                     InfrastructureType.HANOI_STATION,
                     id,
-                    com.hanghai.kchtg.station.entity.StationHistoryActionType.UPDATE,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED,
                     "Tài liệu đính kèm",
-                    fileName,
-                    "—",
-                    "Xóa tài liệu đính kèm: " + fileName,
-                    userId
+                    oldVal != null ? oldVal : "—",
+                    newVal != null ? newVal : "—",
+                    "Xóa tệp: " + fileName,
+                    userId,
+                    LocalDateTime.now()
             );
         }
     }

@@ -29,14 +29,25 @@ const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  APPROVED_L2: { color: statusAttention, label: 'Đã phê duyệt' },
-  DELETED: { color: textTertiary, label: 'Đã xóa' },
+  APPROVED_L2: { color: statusOperational, label: 'Đã phê duyệt' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
+
+/** Chuẩn hóa trạng thái legacy về 7 trạng thái chuẩn (chuẩn AGENTS.md). */
+export function normalizeBuoyStatus(status: string | null | undefined): string {
+  if (!status) return 'DRAFT';
+  const s = String(status).trim().toUpperCase();
+  if (s === 'APPROVED_L2' || s === 'APPROVED_LEVEL2' || s === 'APPROVED') return 'PUBLISHED';
+  if (s === 'REJECTED') return 'REJECTED_L1';
+  if (s === 'PROPOSED') return 'PENDING_APPROVAL';
+  return s;
+}
 
 /** Trả về { color (semantic token), label (Tiếng Việt) } cho trạng thái duyệt phao tiêu. */
 export function buoyStatusBadge(status: string | null | undefined): { color: string; label: string } {
   if (!status) return { color: textTertiary, label: '' };
-  return APPROVAL_STYLE_MAP[status] || {
+  const normalized = normalizeBuoyStatus(status);
+  return APPROVAL_STYLE_MAP[normalized] || APPROVAL_STYLE_MAP[status] || {
     color: textTertiary,
     label: BUOY_STATUS_MAP[status as BuoyStatus]?.label || status,
   };
@@ -52,6 +63,7 @@ export const TAB_STATUS_LIST = [
   { key: 'PUBLISHED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_L1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_L2', label: 'Từ chối cấp Cục', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 /** Status filter options (from BUOY_STATUS_MAP, §2.2). */
@@ -142,6 +154,17 @@ export const CLASSIFICATION_OPTIONS = [
   { value: 'Đèn kè', label: 'Đèn kè' },
 ];
 
+export const CLASSIFICATION_LABEL_MAP: Record<string, string> = {
+  '1': 'Phao',
+  '2': 'Tiêu',
+  '3': 'Chập Tiêu',
+  '4': 'Đèn kè',
+  Phao: 'Phao',
+  'Tiêu': 'Tiêu',
+  'Chập Tiêu': 'Chập Tiêu',
+  'Đèn kè': 'Đèn kè',
+};
+
 export const CLASSIFICATION_BUOY_OPTIONS = [
   { value: 'Báo hiệu hàng hải', label: 'Báo hiệu hàng hải' },
   { value: 'Tàu đèn', label: 'Tàu đèn' },
@@ -149,6 +172,19 @@ export const CLASSIFICATION_BUOY_OPTIONS = [
   { value: 'Phao thép', label: 'Phao thép' },
   { value: 'Phao nhựa', label: 'Phao nhựa' },
 ];
+
+export const CLASSIFICATION_BUOY_LABEL_MAP: Record<string, string> = {
+  '1': 'Báo hiệu hàng hải',
+  '2': 'Tàu đèn',
+  '3': 'Thiết bị khác',
+  '4': 'Phao thép',
+  '5': 'Phao nhựa',
+  'Báo hiệu hàng hải': 'Báo hiệu hàng hải',
+  'Tàu đèn': 'Tàu đèn',
+  'Thiết bị khác': 'Thiết bị khác',
+  'Phao thép': 'Phao thép',
+  'Phao nhựa': 'Phao nhựa',
+};
 
 export const CLASSIFICATION_MARK_OPTIONS = [
   { value: 'Báo hiệu thị giác', label: 'Báo hiệu thị giác' },
@@ -158,6 +194,51 @@ export const CLASSIFICATION_MARK_OPTIONS = [
   { value: 'Tiêu thép', label: 'Tiêu thép' },
   { value: 'Tiêu composite', label: 'Tiêu composite' },
 ];
+
+export const CLASSIFICATION_MARK_LABEL_MAP: Record<string, string> = {
+  '1': 'Báo hiệu thị giác',
+  '2': 'Báo hiệu vô tuyến',
+  '3': 'Báo hiệu âm thanh',
+  '4': 'Tiêu BTCT',
+  '5': 'Tiêu thép',
+  '6': 'Tiêu composite',
+  'Báo hiệu thị giác': 'Báo hiệu thị giác',
+  'Báo hiệu vô tuyến': 'Báo hiệu vô tuyến',
+  'Báo hiệu âm thanh': 'Báo hiệu âm thanh',
+  'Tiêu BTCT': 'Tiêu BTCT',
+  'Tiêu thép': 'Tiêu thép',
+  'Tiêu composite': 'Tiêu composite',
+};
+
+export function formatClassification(val: unknown): string {
+  if (val === null || val === undefined || val === '') return '';
+  if (Array.isArray(val)) {
+    return val.map((v) => CLASSIFICATION_LABEL_MAP[String(v).trim()] || String(v).trim()).filter(Boolean).join(', ');
+  }
+  const str = String(val).trim();
+  if (!str) return '';
+  return str.split(',').map((v) => CLASSIFICATION_LABEL_MAP[v.trim()] || v.trim()).filter(Boolean).join(', ');
+}
+
+export function formatClassificationBuoy(val: unknown): string {
+  if (val === null || val === undefined || val === '') return '';
+  if (Array.isArray(val)) {
+    return val.map((v) => CLASSIFICATION_BUOY_LABEL_MAP[String(v).trim()] || String(v).trim()).filter(Boolean).join(', ');
+  }
+  const str = String(val).trim();
+  if (!str) return '';
+  return str.split(',').map((v) => CLASSIFICATION_BUOY_LABEL_MAP[v.trim()] || v.trim()).filter(Boolean).join(', ');
+}
+
+export function formatClassificationMark(val: unknown): string {
+  if (val === null || val === undefined || val === '') return '';
+  if (Array.isArray(val)) {
+    return val.map((v) => CLASSIFICATION_MARK_LABEL_MAP[String(v).trim()] || String(v).trim()).filter(Boolean).join(', ');
+  }
+  const str = String(val).trim();
+  if (!str) return '';
+  return str.split(',').map((v) => CLASSIFICATION_MARK_LABEL_MAP[v.trim()] || v.trim()).filter(Boolean).join(', ');
+}
 
 export const CONDITION_OPTIONS = [
   { value: 'Chưa khai thác/vận hành', label: 'Chưa khai thác/vận hành' },

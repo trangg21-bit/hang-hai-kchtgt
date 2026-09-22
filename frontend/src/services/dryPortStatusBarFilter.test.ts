@@ -14,30 +14,19 @@ describe('DryPort Status Bar Filter and Count Logic (/dry-port)', () => {
     { key: 'ARCHIVED', label: 'Đã xóa', color: '#E34948' },
   ];
 
-  const TAB_QUERY_MAP: Record<string, string | undefined> = {
-    all: undefined,
-    DRAFT: 'DRAFT',
-    PENDING_APPROVAL: 'PENDING_APPROVAL',
-    APPROVED_LEVEL1: 'APPROVED_LEVEL1',
-    APPROVED: 'APPROVED',
-    REJECTED_LEVEL1: 'REJECTED_LEVEL1',
-    REJECTED_LEVEL2: 'REJECTED_LEVEL2',
-    ARCHIVED: 'ARCHIVED',
-  };
-
   const computeStatusTabs = (
     tabCounts: Record<string, number>,
     activeTab: string,
     total: number,
   ) => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'ARCHIVED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
       let count = tabCounts[tab.key] ?? 0;
       if (tab.key === 'all') {
-        count = activeTab === 'all' ? total : allChildSum;
+        count = allChildSum;
       } else if (tab.key === activeTab) {
         count = total;
       }
@@ -61,7 +50,7 @@ describe('DryPort Status Bar Filter and Count Logic (/dry-port)', () => {
     expect(isDryPortDeleted({ id: '5', approvalStatus: 'ARCHIVED' } as any)).toBe(true);
   });
 
-  it('tab Tất cả tính bằng tổng các tab con đang hoạt động (không cộng tab Đã xóa ARCHIVED)', () => {
+  it('tab Tất cả tính bằng tổng tất cả các tab con (bao gồm cả tab Đã xóa ARCHIVED)', () => {
     const counts: Record<string, number> = {
       DRAFT: 4,
       PENDING_APPROVAL: 2,
@@ -73,8 +62,8 @@ describe('DryPort Status Bar Filter and Count Logic (/dry-port)', () => {
     };
     const tabs = computeStatusTabs(counts, 'all', 26);
     const allTab = tabs.find((t) => t.key === 'all');
-    // 4 + 2 + 3 + 15 + 1 + 1 = 26 (ARCHIVED = 6 is excluded)
-    expect(allTab?.count).toBe(26);
+    // 4 + 2 + 3 + 15 + 1 + 1 + 6 = 32 (ARCHIVED = 6 is included)
+    expect(allTab?.count).toBe(32);
     expect(allTab?.active).toBe(true);
 
     const deletedTab = tabs.find((t) => t.key === 'ARCHIVED');

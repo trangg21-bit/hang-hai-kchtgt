@@ -64,7 +64,10 @@ export interface BuoyStationResponse {
   range?: number;
   description?: string;
   unitId?: string;
+  unitName?: string;
+  orgUnitName?: string;
   operatingOrgId?: string;
+  operatingOrgName?: string;
   portId?: string;
   waterwayId?: string;
   waterwayRouteId?: string;

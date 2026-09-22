@@ -52,28 +52,29 @@ function buildSearchParams(params: Record<string, string | number | undefined>) 
   return sp;
 }
 
-let inFlightPortPromise: Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> | null = null;
+const inFlightPortPromises = new Map<string, Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>>();
 
 const clearPortOptionsCache = () => {
   const getWin = () => (window.top || window) as any;
   getWin().__portOptionsCache = null;
-  inFlightPortPromise = null;
+  inFlightPortPromises.clear();
 };
 
 // ── Port CRUD ───────────────────────────────────────────────────
 
 export const portCRUD = {
-  async getOptions(params?: { approvalStatus?: string }): Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> {
+  async getOptions(params?: { approvalStatus?: string; orgUnitId?: string }): Promise<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]> {
     const getWin = () => (window.top || window) as any;
-    const cacheKey = params?.approvalStatus || '__all__';
+    const cacheKey = `${params?.approvalStatus || '__all__'}:${params?.orgUnitId || '__all__'}`;
     const cache = getWin().__portOptionsCache as Record<string, unknown> | null;
     if (cache?.[cacheKey]) {
       return cache[cacheKey] as { id: string; portCode?: string; portName?: string; orgUnitId?: string }[];
     }
-    if (inFlightPortPromise) {
-      return inFlightPortPromise;
+    const inFlight = inFlightPortPromises.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
     }
-    inFlightPortPromise = (async () => {
+    const request = (async () => {
       try {
         const res = await api.get('/common/options/ports', { params });
         const list = res.data?.data || [];
@@ -95,10 +96,11 @@ export const portCRUD = {
           return [];
         }
       } finally {
-        inFlightPortPromise = null;
+        inFlightPortPromises.delete(cacheKey);
       }
     })();
-    return inFlightPortPromise;
+    inFlightPortPromises.set(cacheKey, request);
+    return request;
   },
 
   async findAll(params?: {
@@ -139,6 +141,8 @@ export const portCRUD = {
     operationalStatus?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Port>> {
@@ -153,6 +157,8 @@ export const portCRUD = {
       operationalStatus: params?.operationalStatus,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -228,6 +234,8 @@ export const berthCRUD = {
     provinceId?: number | string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Berth>> {
@@ -247,6 +255,8 @@ export const berthCRUD = {
       provinceId: params?.provinceId,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -343,6 +353,8 @@ export const pierCRUD = {
     operationalFunction?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Pier>> {
@@ -363,6 +375,8 @@ export const pierCRUD = {
       operationalFunction: params?.operationalFunction,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -1223,6 +1237,8 @@ export const stormShelterCRUD = {
     approvalStatus?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<StormShelterArea>> {
@@ -1239,6 +1255,8 @@ export const stormShelterCRUD = {
       approvalStatus: params?.approvalStatus,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -1390,6 +1408,8 @@ export const buoyBerthCRUD = {
     approvalStatus?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<BuoyBerth>> {
@@ -1405,6 +1425,8 @@ export const buoyBerthCRUD = {
       approvalStatus: params?.approvalStatus,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -1567,6 +1589,8 @@ export const daiTtdhCRUD = {
     approvalStatus?: string;
     updatedFrom?: string;
     updatedTo?: string;
+    sortBy?: string;
+    sortDir?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<DaiTtdh>> {
@@ -1580,6 +1604,8 @@ export const daiTtdhCRUD = {
       approvalStatus: params?.approvalStatus,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
+      sortBy: params?.sortBy,
+      sortDir: params?.sortDir,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });

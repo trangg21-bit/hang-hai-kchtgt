@@ -461,7 +461,7 @@ public class BuoyService {
             entity.setLevel2ApprovedBy(uid);
             entity.setLevel2ApprovedDate(LocalDateTime.now());
         } else if (wasApproved) {
-            entity.setStatus("APPROVED_L2");
+            entity.setStatus("PUBLISHED");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 
@@ -735,8 +735,9 @@ public class BuoyService {
 
     private BuoyResponse toResponse(Buoy entity) {
         String unitName = null;
-        if (entity.getUnitId() != null) {
-            unitName = orgUnitRepo.findById(entity.getUnitId())
+        UUID effectiveUnitId = entity.getUnitId() != null ? entity.getUnitId() : entity.getOrgUnitId();
+        if (effectiveUnitId != null) {
+            unitName = orgUnitRepo.findById(effectiveUnitId)
                     .map(unit -> unit.getName())
                     .orElse(null);
         }
@@ -776,6 +777,7 @@ public class BuoyService {
                 .orgUnitId(entity.getOrgUnitId() != null ? entity.getOrgUnitId() : entity.getUnitId())
                 .navigationChannelId(entity.getNavigationChannelId())
                 .unitName(unitName)
+                .orgUnitName(unitName)
                 .latitude(latitude)
                 .longitude(longitude)
                 .coordinates(coordinates)

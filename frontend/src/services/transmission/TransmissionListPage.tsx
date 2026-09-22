@@ -49,7 +49,6 @@ import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
-import { deduplicateAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtNum } from "../../utils/numFmt";
 import api from "../api";
@@ -393,14 +392,15 @@ const TransmissionListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục) (không bao gồm Đã xóa)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
         (counts.APPROVED_LEVEL1 || 0) +
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0)
+        (counts.REJECTED_LEVEL2 || 0) +
+        (counts.ARCHIVED || counts.DELETED || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -916,9 +916,9 @@ const TransmissionListPage = () => {
       },
       {
         key: "provinceName",
-        label: "Địa điểm\n(Tỉnh/Thành phố)",
+        label: "Địa điểm (Tỉnh/Thành phố)",
         dataIndex: "provinceName",
-        width: 220,
+        width: 250,
         ellipsis: false,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: TransmissionResponse) => record.provinceName || '',
@@ -967,8 +967,7 @@ const TransmissionListPage = () => {
         dataIndex: "operationalStatus",
         width: 270,
         type: "status" as const,
-        sortOrder: sortOrderFor("operationalStatus"),
-        render: (val: number | string) => {
+                render: (val: number | string) => {
           const map: Record<string, { color: string; label: string }> = {
             "NOT_YET_OPERATIONAL": { color: statusAttention, label: "Chưa khai thác/vận hành" },
             "OPERATIONAL": { color: statusOperational, label: "Đang khai thác/vận hành" },
@@ -987,8 +986,7 @@ const TransmissionListPage = () => {
         dataIndex: "approvalStatus",
         width: 300,
         type: "status" as const,
-        sortOrder: sortOrderFor("approvalStatus"),
-        render: (val: string, record: TransmissionResponse) => {
+                render: (val: string, record: TransmissionResponse) => {
           return renderApprovalBadge(val, record);
         },
       },
@@ -2560,7 +2558,7 @@ const TransmissionListPage = () => {
           {
             key: "all",
             label: "Tất cả",
-            count: (!filterValues.approvalStatus ? total : totalAll) || 0,
+            count: totalAll || 0,
             color: actionPrimary,
             active: !filterValues.approvalStatus,
           },

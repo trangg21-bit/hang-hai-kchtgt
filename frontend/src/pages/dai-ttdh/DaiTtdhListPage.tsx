@@ -460,8 +460,19 @@ export default function DaiTtdhListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -710,6 +721,8 @@ export default function DaiTtdhListPage() {
         approvalStatus: TAB_QUERY_MAP[activeTab],
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
+        sortBy,
+        sortDir,
         page: pageToFetch,
         pageSize,
       });
@@ -721,7 +734,7 @@ export default function DaiTtdhListPage() {
       setIsLoading(false);
     }
   }, [orgUnit, filterName, filterCode, filterStationLevel, filterProvince,
-    filterOperationalStatus, activeTab, filterUpdatedFrom, filterUpdatedTo, page, pageSize]);
+    filterOperationalStatus, activeTab, filterUpdatedFrom, filterUpdatedTo, page, pageSize, sortBy, sortDir]);
 
   useEffect(() => {
     if (initialLoadDone) void fetchData();
@@ -826,8 +839,7 @@ export default function DaiTtdhListPage() {
       toast.success('Đã xóa đài TTDH');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -850,8 +862,7 @@ export default function DaiTtdhListPage() {
       toast.success(isC1 ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
       setApproveModalOpen(false);
       setApprovingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -872,8 +883,7 @@ export default function DaiTtdhListPage() {
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -903,8 +913,7 @@ export default function DaiTtdhListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1303,25 +1312,6 @@ export default function DaiTtdhListPage() {
     ];
   }, [userMap]);
 
-  // ── Sorting helper ──────────────────────────────────────────────
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'operatingUnitId') return resolveOrgLevel2Name(organizations, r.operatingUnitId) || orgMap.get(r.operatingUnitId || '') || r.operatingUnitName || r.operatingUnitId || '';
-    if (field === 'daiTtdhName') return r.daiTtdhName ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[r.provinceId - 1] ?? '') : '';
-    if (field === 'stationLevel') return DAI_TTDH_STATION_LEVEL_OPTIONS.find((o) => o.value === r.stationLevel)?.label ?? r.stationLevel ?? '';
-    if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap]);
-
-  // ── Columns ─────────────────────────────────────────────────────
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       {
@@ -1395,7 +1385,6 @@ export default function DaiTtdhListPage() {
         dataIndex: 'provinceId',
         key: 'provinceId',
         width: 250,
-        sortable: true,
         render: (v?: number) => (
           <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
             {v ? VIETNAM_PROVINCES[v - 1] || v.toString() : ''}
@@ -1408,7 +1397,6 @@ export default function DaiTtdhListPage() {
         key: 'operationalStatus',
         width: 210,
         ellipsis: false,
-        sortable: true,
         render: (v: string) => {
           const b = v && OPERATIONAL_STYLE_MAP[v];
           return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null;
@@ -1420,7 +1408,6 @@ export default function DaiTtdhListPage() {
         key: 'approvalStatus',
         width: 280,
         ellipsis: false,
-        sortable: true,
         render: (v: string, record: any) => {
           const isArchived = activeTab === 'ARCHIVED' || Boolean(record?.deletedAt) || v === 'ARCHIVED' || v === 'DELETED';
           const eff = isArchived ? 'ARCHIVED' : v;
@@ -1446,9 +1433,9 @@ export default function DaiTtdhListPage() {
     const allColumns = [...baseColumns, ...auditColumns];
     return allColumns.map((col) => ({
       ...col,
-      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined,
     }));
-  }, [page, pageSize, organizations, orgMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
+  }, [page, pageSize, organizations, orgMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: ScreenHeaderAction[] = [];
@@ -1606,30 +1593,11 @@ export default function DaiTtdhListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={[...dataSource].sort((a: any, b: any) => {
-              if (!sortField || !sortOrder) return 0;
-              if (sortField === 'stt') {
-                const arr = [...dataSource];
-                return sortOrder === 'descend' ? (arr.reverse(), 0) : 0;
-              }
-              const av = getSortValue(a, sortField);
-              const bv = getSortValue(b, sortField);
-              const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi');
-              return sortOrder === 'ascend' ? c : -c;
-            })}
+            dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
             loading={false}
-            onSort={(k: string, o: 'asc' | 'desc' | null) => {
-              if (!o) {
-                setSortField(null);
-                setSortOrder(null);
-              } else {
-                setSortField(k);
-                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
-              }
-              setPage(1);
-            }}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination
@@ -1739,10 +1707,8 @@ export default function DaiTtdhListPage() {
               form={createForm}
               id={editDaiTtdhId}
               onFinish={() => {
-                setCreateDrawerVisible(false);
-                createForm.resetFields();
-                setSortField('updatedAt');
-                setSortOrder('descend');
+                closeFormDrawer();
+                setSortBy(undefined); setSortDir(undefined);
                 setPage(1);
                 void fetchData(1);
                 void fetchCounts(orgUnit);

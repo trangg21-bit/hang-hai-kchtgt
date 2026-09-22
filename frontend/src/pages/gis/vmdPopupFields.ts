@@ -414,3 +414,654 @@ export const getVmdPopupFields = (infrastructureType: string): VmdPopupField[] =
   if (!legacyTypeId) return [];
   return VMD_POPUP_ROWS.filter((row) => row.kcht.split(',').map((item) => item.trim()).includes(legacyTypeId));
 };
+
+export const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[] => {
+  const normType = type.trim();
+
+  if (normType === 'Cảng biển') {
+    return [
+      { key: 'portCode', label: 'Mã cảng biển' },
+      { key: 'portName', label: 'Tên cảng biển' },
+      { key: 'portGroup', label: 'Nhóm cảng biển' },
+      { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'area', label: 'Diện tích (ha)' },
+      { key: 'maxVesselCapacity', label: 'Khả năng tiếp nhận tàu lớn nhất' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' },
+      { key: 'waterAreaScope', label: 'Phạm vi vùng nước' },
+      { key: 'totalBerths', label: 'Tổng số bến cảng' },
+      { key: 'totalAnchoragesTransshipment', label: 'Tổng số khu neo đậu, chuyển tải' },
+      { key: 'totalPublicChannels', label: 'Tổng số tuyến luồng hàng hải công cộng' },
+      { key: 'totalDedicatedChannels', label: 'Tổng số tuyến luồng hàng hải chuyên dùng' },
+      { key: 'totalPublicChannelLength', label: 'Tổng chiều dài tuyến luồng hàng hải công cộng (km)' },
+      { key: 'totalDedicatedChannelLength', label: 'Tổng số chiều dài tuyến luồng hàng hải chuyên dùng (km)' },
+      { key: 'totalBuoysBeacons', label: 'Tổng số phao tiêu, báo hiệu hàng hải trên luồng' },
+      { key: 'totalDikes', label: 'Tổng số đê, kè' },
+      { key: 'totalDikeLength', label: 'Tổng chiều dài hệ thống đê, kè (km)' },
+      { key: 'totalLighthouses', label: 'Tổng số đèn biển, đăng tiêu độc lập' },
+      { key: 'buoyBerthCount', label: 'Số lượng bến phao' },
+      { key: 'anchorageCount', label: 'Số lượng khu neo đậu' },
+      { key: 'transshipmentCount', label: 'Số lượng khu chuyển tải' },
+      { key: 'otherWaterAreas', label: 'Các khu nước vùng nước khác' },
+      { key: 'remarks', label: 'Ghi chú' }
+    ];
+  }
+
+  if (normType === 'Bến cảng') {
+    return [
+      { key: 'berthCode', label: 'Mã bến cảng' },
+      { key: 'berthName', label: 'Tên bến cảng' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)' },
+      { key: 'detailedLocation', label: 'Địa điểm chi tiết' },
+      { key: 'updatedAt', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'waterway', label: 'Thuộc luồng hàng hải' },
+      { key: 'structureType', label: 'Loại kết cấu cầu cảng' },
+      { key: 'operationalFunction', label: 'Công năng khai thác' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'operator', label: 'Đơn vị khai thác' },
+      { key: 'totalArea', label: 'Tổng diện tích (ha)' },
+      { key: 'designThroughput', label: 'Năng lực thông qua thiết kế' },
+      { key: 'currentThroughput', label: 'Năng lực thông qua hiện trạng (tấn/năm)' },
+      { key: 'maxVesselSize', label: 'Cỡ tàu tiếp nhận lớn nhất theo quy hoạch (DWT)' },
+      { key: 'plannedThroughput', label: 'Quy hoạch năng lực thông qua (tấn/năm)' },
+      { key: 'latestCargoVolume', label: 'Sản lượng hàng hóa thực tế thông qua trong năm gần nhất' },
+      { key: 'openingAnnouncementDate', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'openingDecision', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'investmentAgreement', label: 'Văn bản thỏa thuận đầu tư xây dựng' }
+    ];
+  }
+
+  if (normType === 'Cầu cảng') {
+    return [
+      { key: 'pierCode', label: 'Mã cầu cảng' },
+      { key: 'pierName', label: 'Tên cầu cảng' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'location', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
+      { key: 'ngayCapNhat', label: 'Ngày cập nhật' },
+      { key: 'canBoCapNhat', label: 'Cán bộ cập nhật' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
+      { key: 'structureType', label: 'Loại kết cấu cầu cảng' },
+      { key: 'operationalCapacity', label: 'Công năng khai thác' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'thoiDiemCongBoMo', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'quyetDinhCongBo', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'vanBanThoaThuanDauTu', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'berthId', label: 'Thuộc bến cảng' },
+      { key: 'phanCap', label: 'Phân cấp công trình' },
+      { key: 'length', label: 'Chiều dài (m)' },
+      { key: 'width', label: 'Chiều rộng (m)' },
+      { key: 'thoiDiemPheDuyetQuyTrinhBaoTriCongTrinh', label: 'Thời điểm phê duyệt quy trình bảo trì công trình' },
+      { key: 'thoiDiemDuocChapThuanHoSoBaoCaoDanhGiaAnToanCongTrinh', label: 'Thời điểm được chấp thuận hồ sơ báo cáo đánh giá an toàn công trình (gần nhất)' },
+      { key: 'thoiDiemKiemDinhGanNhat', label: 'Thời điểm kiểm định gần nhất' },
+      { key: 'quantityCauCangDangKhaiThac', label: 'Số lượng cầu cảng đang khai thác' },
+      { key: 'quantityCauCangDaCongBo', label: 'Số lượng cầu cảng đã công bố' },
+      { key: 'quantityCauCangDangDuocThoaThuanDauTuXayDung', label: 'Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng' },
+      { key: 'sanLuongHangThongQua', label: 'Sản lượng hàng thông qua' },
+      { key: 'tiepNhanTauCoTrongTaiLonHonThongSoTaiQuyetDinhCongBo', label: 'Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố' },
+      { key: 'soVanBan', label: 'Số văn bản' },
+      { key: 'ngayVanBan', label: 'Ngày văn bản' },
+      { key: 'phamViKhuNuocNeoBuocTau', label: 'Phạm vi khu nước neo buộc tàu' }
+    ];
+  }
+
+  if (normType === 'Cảng cạn') {
+    return [
+      { key: 'dryPortCode', label: 'Mã cảng cạn' },
+      { key: 'dryPortName', label: 'Tên cảng cạn' },
+      { key: 'viTri', label: 'Vị trí' },
+      { key: 'dienTichDat', label: 'Diện tích đất (ha)' },
+      { key: 'dienTichNuoc', label: 'Diện tích nước (ha)' },
+      { key: 'nangLucThongQua', label: 'Năng lực thông qua' },
+      { key: 'congSuatTEU', label: 'Công suất (TEU)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Khu neo đậu') {
+    return [
+      { key: 'anchorageCode', label: 'Mã khu neo đậu' },
+      { key: 'anchorageName', label: 'Tên khu neo đậu' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'detailedLocation', label: 'Địa điểm chi tiết' },
+      { key: 'updatedAt', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'remarks', label: 'Ghi chú' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'waterway', label: 'Thuộc luồng hàng hải' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'openingAnnouncementDate', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'publicDecision', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'investmentAgreement', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'currentWaterDepth', label: 'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)' },
+      { key: 'bottomElevationDesign', label: 'Cao độ đáy bến thiết kế' },
+      { key: 'maxVesselDWT', label: 'Cỡ tàu khai thác theo công bố (DWT)' },
+      { key: 'buoyStationId', label: 'Thuộc bến phao' },
+      { key: 'shapeDescription', label: 'Hình dạng' },
+      { key: 'area', label: 'Diện tích (ha)' },
+      { key: 'designWaterDepth', label: 'Độ sâu khu nước theo thiết kế (m)' },
+      { key: 'activeAnchorageCount', label: 'Số lượng khu neo đậu đang khai thác' },
+      { key: 'publishedAnchorageCount', label: 'Số lượng khu neo đậu đã công bố' },
+      { key: 'underInvestmentAnchorageCount', label: 'Số lượng khu neo đậu đang được thỏa thuận đầu tư xây dựng' },
+    ];
+  }
+
+  if (normType === 'Khu chuyển tải') {
+    return [
+      { key: 'transferAreaCode', label: 'Mã khu chuyển tải' },
+      { key: 'transferAreaName', label: 'Tên khu chuyển tải' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'detailedLocation', label: 'Địa điểm chi tiết' },
+      { key: 'updatedAt', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'remarks', label: 'Ghi chú' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'operationalFunction', label: 'Công năng khai thác' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'openingAnnouncementDate', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'publicDecision', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'investmentAgreement', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'currentWaterDepth', label: 'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)' },
+      { key: 'bottomElevationDesign', label: 'Cao độ đáy bến thiết kế' },
+      { key: 'shapeDescription', label: 'Hình dạng' },
+      { key: 'area', label: 'Diện tích (ha)' },
+      { key: 'designWaterDepth', label: 'Độ sâu khu nước theo thiết kế (m)' },
+      { key: 'activeTransferAreaCount', label: 'Số lượng khu chuyển tải đang khai thác' },
+      { key: 'publishedTransferAreaCount', label: 'Số lượng khu chuyển tải đã công bố' },
+      { key: 'underInvestmentTransferAreaCount', label: 'Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng' },
+    ];
+  }
+
+  if (normType === 'Khu tránh trú bão' || normType === 'Khu tránh, trú bão') {
+    return [
+      { key: 'stormShelterCode', label: 'Mã khu tránh, trú bão' },
+      { key: 'stormShelterName', label: 'Tên khu tránh, trú bão' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'detailedLocation', label: 'Địa điểm chi tiết' },
+      { key: 'updatedAt', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'remarks', label: 'Ghi chú' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'waterway', label: 'Thuộc luồng hàng hải' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'openingAnnouncementDate', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'publicDecision', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'investmentAgreement', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'currentWaterDepth', label: 'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)' },
+      { key: 'bottomElevationDesign', label: 'Cao độ đáy bến thiết kế' },
+      { key: 'buoyStationId', label: 'Thuộc bến phao' },
+      { key: 'shapeDescription', label: 'Hình dạng' },
+      { key: 'area', label: 'Diện tích (ha)' },
+      { key: 'activeStormShelterCount', label: 'Số lượng khu tránh trú bão đang khai thác' },
+      { key: 'publishedStormShelterCount', label: 'Số lượng khu tránh trú bão đã công bố' },
+      { key: 'underInvestmentStormShelterCount', label: 'Số lượng khu tránh trú bão đang được thỏa thuận đầu tư xây dựng' },
+    ];
+  }
+
+  if (normType === 'Bến phao') {
+    return [
+      { key: 'buoyBerthCode', label: 'Mã bến phao' },
+      { key: 'buoyBerthName', label: 'Tên bến phao' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'detailedLocation', label: 'Địa điểm chi tiết' },
+      { key: 'updatedAt', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'remarks', label: 'Ghi chú' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'waterway', label: 'Thuộc luồng hàng hải' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'openingAnnouncementDate', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'publicDecision', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'investmentAgreement', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'constructionGrade', label: 'Phân cấp công trình' },
+      { key: 'designThroughput', label: 'Năng lực thông qua thiết kế' },
+      { key: 'maxVesselCapacity', label: 'Cỡ tàu lớn nhất' },
+      { key: 'bottomElevationDesign', label: 'Cao độ đáy bến thiết kế' },
+      { key: 'currentWaterDepth', label: 'Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)' },
+      { key: 'activeBuoyBerthCount', label: 'Số lượng bến phao đang khai thác' },
+      { key: 'publishedBuoyBerthCount', label: 'Số lượng bến phao đã công bố' },
+      { key: 'underInvestmentBuoyBerthCount', label: 'Số lượng bến phao đang được thỏa thuận đầu tư xây dựng' },
+    ];
+  }
+
+  if (normType === 'Vùng nước') {
+    return [
+      { key: 'waterZoneCode', label: 'Mã vùng nước' },
+      { key: 'waterZoneName', label: 'Tên vùng nước' },
+      { key: 'loaiVungNuoc', label: 'Loại vùng nước' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'chieuDaiVungNuoc', label: 'Chiều dài vùng nước (m)' },
+      { key: 'chieuRongVungNuoc', label: 'Chiều rộng vùng nước (m)' },
+      { key: 'doSauVungNuoc', label: 'Độ sâu vùng nước (m)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Đèn biển') {
+    return [
+      { key: 'code', label: 'Mã đèn biển' },
+      { key: 'name', label: 'Tên đèn biển' },
+      { key: 'type', label: 'Loại đèn biển' },
+      { key: 'lightRange', label: 'Tầm hiệu lực (hải lý)' },
+      { key: 'lightColor', label: 'Màu sắc ánh sáng' },
+      { key: 'lightCharacteristic', label: 'Đặc tính ánh sáng' },
+      { key: 'description', label: 'Mô tả vị trí' },
+      { key: 'unitId', label: 'Đơn vị quản lý' },
+      { key: 'isActive', label: 'Trạng thái hoạt động' },
+      { key: 'status', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Phao tiêu') {
+    return [
+      { key: 'code', label: 'Mã phao, tiêu' },
+      { key: 'name', label: 'Tên phao, tiêu' },
+      { key: 'unitId', label: 'Đơn vị quản lý' },
+      { key: 'updatedAt', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'condition', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'classification', label: 'Phân loại' },
+      { key: 'commissionedDate', label: 'Thời điểm đưa vào sử dụng' },
+      { key: 'lastRepairDate', label: 'Thời điểm sửa chữa gần nhất' },
+      { key: 'structure', label: 'Kết cấu' },
+      { key: 'area', label: 'Diện tích (m2)' },
+      { key: 'lightHeight', label: 'Chiều cao tâm sáng (hải đồ)' },
+      { key: 'towerColor', label: 'Màu sắc bên ngoài của tháp đèn' },
+      { key: 'powerSupply', label: 'Nguồn cung cấp năng lượng cho đèn' },
+      { key: 'buoyStationId', label: 'Thuộc nhà trạm quản lý vận hành phao, tiêu' },
+      { key: 'classificationBuoy', label: 'Phân loại phao' },
+      { key: 'classificationMark', label: 'Phân loại tiêu' },
+      { key: 'shape', label: 'Hình dáng' },
+      { key: 'bodyHeight', label: 'Chiều cao thân phao (m)' },
+      { key: 'beaconLight', label: 'Đèn biển' },
+      { key: 'towerHeight', label: 'Chiều cao tháp đèn' },
+      { key: 'range', label: 'Phạm vi chiếu sáng' },
+      { key: 'lightColor', label: 'Màu sắc' },
+      { key: 'flashType', label: 'Kiểu chớp' },
+      { key: 'diameter', label: 'Đường kính phao (m)' },
+      { key: 'lightModel', label: 'Chủng loại đèn (Thiết bị báo hiệu)' },
+      { key: 'period', label: 'Chu kỳ' }
+    ];
+  }
+
+  if (normType === 'Đê kè') {
+    return [
+      { key: 'maDeKe', label: 'Mã đê kè' },
+      { key: 'tenDeKe', label: 'Tên đê kè' },
+      { key: 'loaiDe', label: 'Loại đê/kè' },
+      { key: 'ketCau', label: 'Kết cấu đê/kè' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Luồng hàng hải') {
+    return [
+      { key: 'maLuong', label: 'Mã luồng hàng hải' },
+      { key: 'tenLuong', label: 'Tên luồng hàng hải' },
+      { key: 'chieuDaiLuong', label: 'Chiều dài luồng (km)' },
+      { key: 'doSauThietKe', label: 'Độ sâu thiết kế (m)' },
+      { key: 'chieuRongThietKe', label: 'Chiều rộng thiết kế (m)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Trạm radar') {
+    return [
+      { key: 'maTram', label: 'Mã trạm' },
+      { key: 'tenTram', label: 'Tên trạm radar' },
+      { key: 'radarModel', label: 'Model radar' },
+      { key: 'frequencyBand', label: 'Băng tần' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Hệ thống VTS') {
+    return [
+      { key: 'code', label: 'Mã hệ thống' },
+      { key: 'systemName', label: 'Tên hệ thống VTS' },
+      { key: 'scope', label: 'Phạm vi hoạt động' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'conditionStatus', label: 'Trạng thái hoạt động' },
+      { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
+      { key: 'geometryType', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Cơ sở sửa chữa' || normType === 'Cơ sở sửa chữa/đóng tàu') {
+    return [
+      { key: 'maCoSo', label: 'Mã cơ sở sửa chữa, đóng tàu' },
+      { key: 'facilityName', label: 'Tên cơ sở sửa chữa, đóng tàu' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'address', label: 'Địa điểm chi tiết' },
+      { key: 'updatedDate', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
+      { key: 'remarks', label: 'Ghi chú' },
+      { key: 'portId', label: 'Thuộc cảng biển' },
+      { key: 'operationalStatus', label: 'Tình trạng' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
+      { key: 'cauCangId', label: 'Thuộc cầu cảng' },
+      { key: 'congNangSuDung', label: 'Công năng sử dụng' },
+      { key: 'dienTichNhaXuongKhoBai', label: 'Diện tích nhà xưởng, kho bãi' },
+      { key: 'loaiTauDongMoiSuaChua', label: 'Loại tàu đóng mới, sửa chữa' },
+      { key: 'coTau', label: 'Cỡ tàu' },
+      { key: 'loaiHinhDoanhNghiep', label: 'Loại hình doanh nghiệp' },
+      { key: 'hoatDong', label: 'Hoạt động' },
+      { key: 'quantityTrienDa', label: 'Số lượng triền đà' }
+    ];
+  }
+
+  return [];
+};
+
+export const normalizePopupLabel = (label: string) => label
+  .toLocaleLowerCase('vi')
+  .replace(/\s*\/\s*/g, '/')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export const getPopupValueByPath = (data: Record<string, unknown>, path: string): unknown => {
+  const directValue = path.split('.').reduce<unknown>((value, key) => {
+    if (!value || typeof value !== 'object') return undefined;
+    return (value as Record<string, unknown>)[key];
+  }, data);
+  if (directValue !== undefined && directValue !== null) return directValue;
+  if (!path.includes('.')) {
+    const legacyDetails = data.zobjDataSub;
+    if (legacyDetails && typeof legacyDetails === 'object') {
+      return (legacyDetails as Record<string, unknown>)[path];
+    }
+  }
+  return undefined;
+};
+
+const SPECIFIC_LABEL_KEYS: Record<string, string[]> = {
+  'ma khu neo dau': ['anchorageCode', 'code'],
+  'ten khu neo dau': ['anchorageName', 'name'],
+  'ma khu chuyen tai': ['transferAreaCode', 'code'],
+  'ten khu chuyen tai': ['transferAreaName', 'name'],
+  'ma khu tranh, tru bao': ['stormShelterCode', 'code'],
+  'ma khu tranh tru bao': ['stormShelterCode', 'code'],
+  'ten khu tranh, tru bao': ['stormShelterName', 'name'],
+  'ten khu tranh tru bao': ['stormShelterName', 'name'],
+  'ma ben phao': ['buoyBerthCode', 'code'],
+  'ten ben phao': ['buoyBerthName', 'name'],
+  'ma cau cang': ['pierCode', 'code'],
+  'ten cau cang': ['pierName', 'name'],
+  'ma ben cang': ['berthCode', 'code'],
+  'ten ben cang': ['berthName', 'name'],
+  'ma cang bien': ['portCode', 'code'],
+  'ten cang bien': ['portName', 'name'],
+  'ma cang can': ['dryPortCode', 'code'],
+  'ten cang can': ['dryPortName', 'name'],
+  'ma vung nuoc': ['waterZoneCode', 'code'],
+  'ten vung nuoc': ['waterZoneName', 'name'],
+  'ma den bien': ['beaconCode', 'code'],
+  'ten den bien': ['beaconName', 'name'],
+  'ma phao, tieu': ['buoyCode', 'code'],
+  'ma phao tieu': ['buoyCode', 'code'],
+  'ten phao, tieu': ['buoyName', 'name'],
+  'ten phao tieu': ['buoyName', 'name'],
+  'ma he thong vts': ['systemCode', 'code'],
+  'ten he thong vts': ['systemName', 'name'],
+  'ma co so sua chua, dong tau': ['facilityCode', 'code'],
+  'ma co so sua chua dong tau': ['facilityCode', 'code'],
+  'ten co so sua chua, dong tau': ['shipRepairYardName', 'facilityName', 'name'],
+  'ten co so sua chua dong tau': ['shipRepairYardName', 'facilityName', 'name'],
+  'thuoc cang bien': ['portName', 'tenCangBien', 'portId'],
+  'thuoc ben cang': ['berthName', 'tenBenCang', 'berthId'],
+  'thuoc luong hang hai': ['waterway', 'waterwayName', 'navigationChannelName', 'channelName', 'navigationChannelId', 'waterwayId'],
+  'thuoc ben phao': ['buoyStationName', 'buoyBerthName', 'buoyStationId', 'buoyBerthId'],
+  'thuoc nha tram': ['buoyStationName', 'buoyStationId'],
+  'thuoc trung tam dieu hanh vts': ['vtsCenterName', 'vtsOperationCenterName', 'name'],
+  'dia diem (tinh/ thanh pho)': ['provinceId', 'province', 'location', 'tinhThanh'],
+  'dia diem (tinh/thanh pho)': ['provinceId', 'province', 'location', 'tinhThanh'],
+  'tinh trang': ['operationalStatus', 'conditionStatus', 'condition', 'tinhTrang', 'isActive'],
+  'trang thai': ['approvalStatus', 'trangThai', 'status'],
+  'thoi diem cong bo mo, dua vao su dung': ['openingAnnouncementDate', 'thoiDiemCongBoMo', 'thoiDiemCongBo'],
+  'quyet dinh cong bo/ van ban cho phep khai thac': ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+  'van ban thoa thuan dau tu xay dung': ['investmentAgreement', 'vanBanThoaThuanDauTu', 'vanBanThoaThuan'],
+  'do sau khu nuoc hien tai (theo tbhh gan nhat) (m)': ['currentWaterDepth', 'doSauKhuNuocHienTai'],
+  'cao do day ben thiet ke': ['bottomElevationDesign', 'caoDoDayBenThietKe'],
+  'co tau khai thac theo cong bo (dwt)': ['maxVesselDWT', 'maxVesselSize', 'maxTonnage', 'coTauKhaiThacTheoCongBoDwt', 'coTauKhaiThacTheoCongBo'],
+  'hinh dang': ['shapeDescription', 'hinhDang'],
+  'dien tich (ha)': ['area', 'dienTich', 'totalArea'],
+  'do sau khu nuoc theo thiet ke (m)': ['designWaterDepth', 'doSauKhuNuocTheoThietKe'],
+  'so luong khu neo dau dang khai thac': ['activeAnchorageCount', 'soLuongKhuNeoDauDangKhaiThac'],
+  'so luong khu neo dau da cong bo': ['publishedAnchorageCount', 'soLuongKhuNeoDauDaCongBo'],
+  'so luong khu neo dau dang duoc thoa thuan dau tu xay dung': ['underInvestmentAnchorageCount', 'soLuongKhuNeoDauDangThoaThuan'],
+  'ghi chu': ['remarks', 'note', 'ghiChu'],
+};
+
+const PRIMARY_CODE_NAME_KEYS_BY_TYPE: Record<string, { codeKeys: string[]; nameKeys: string[] }> = {
+  ANCHORAGE_AREA: {
+    codeKeys: ['anchorageCode', 'code'],
+    nameKeys: ['anchorageName', 'name'],
+  },
+  TRANSSHIPMENT_AREA: {
+    codeKeys: ['transferAreaCode', 'code'],
+    nameKeys: ['transferAreaName', 'name'],
+  },
+  STORM_SHELTER_AREA: {
+    codeKeys: ['stormShelterCode', 'code'],
+    nameKeys: ['stormShelterName', 'name'],
+  },
+  BUOY_BERTH: {
+    codeKeys: ['buoyBerthCode', 'code'],
+    nameKeys: ['buoyBerthName', 'name'],
+  },
+  PIER: {
+    codeKeys: ['pierCode', 'code'],
+    nameKeys: ['pierName', 'name'],
+  },
+  PORT_TERMINAL: {
+    codeKeys: ['berthCode', 'code'],
+    nameKeys: ['berthName', 'name'],
+  },
+  SEAPORT: {
+    codeKeys: ['portCode', 'code'],
+    nameKeys: ['portName', 'name'],
+  },
+  DRY_PORT: {
+    codeKeys: ['dryPortCode', 'code'],
+    nameKeys: ['dryPortName', 'name'],
+  },
+  WATER_AREA: {
+    codeKeys: ['waterZoneCode', 'code'],
+    nameKeys: ['waterZoneName', 'name'],
+  },
+  SHIP_REPAIR_FACILITY: {
+    codeKeys: ['facilityCode', 'code'],
+    nameKeys: ['shipRepairYardName', 'facilityName', 'name'],
+  },
+  SHIP_REPAIR_YARD: {
+    codeKeys: ['facilityCode', 'code'],
+    nameKeys: ['shipRepairYardName', 'facilityName', 'name'],
+  },
+  LIGHTHOUSE: {
+    codeKeys: ['beaconCode', 'code'],
+    nameKeys: ['beaconName', 'name'],
+  },
+  BUOY: {
+    codeKeys: ['buoyCode', 'code'],
+    nameKeys: ['buoyName', 'name'],
+  },
+  BUOY_STATION: {
+    codeKeys: ['buoyStationCode', 'stationCode', 'code'],
+    nameKeys: ['buoyStationName', 'stationName', 'name'],
+  },
+  VTS_SYSTEM: {
+    codeKeys: ['systemCode', 'code'],
+    nameKeys: ['systemName', 'name'],
+  },
+  RADAR_STATION: {
+    codeKeys: ['stationCode', 'radarCode', 'code'],
+    nameKeys: ['stationName', 'radarName', 'name'],
+  },
+  RADAR_STATION_LEGACY: {
+    codeKeys: ['stationCode', 'radarCode', 'code'],
+    nameKeys: ['stationName', 'radarName', 'name'],
+  },
+  DIKE_REVETMENT: {
+    codeKeys: ['dikeCode', 'code'],
+    nameKeys: ['dikeName', 'name'],
+  },
+  NAVIGATION_CHANNEL: {
+    codeKeys: ['channelCode', 'waterwayCode', 'code'],
+    nameKeys: ['channelName', 'waterwayName', 'name'],
+  },
+};
+
+export const resolveVmdPopupFields = (
+  infrastructureType: string,
+  displayType: string,
+  data: Record<string, unknown>,
+): VmdPopupField[] => {
+  const vmdFields = getVmdPopupFields(infrastructureType);
+  if (vmdFields.length === 0) return getOrderedKeysAndLabels(displayType);
+
+  const currentFieldsByLabel = new Map(
+    getOrderedKeysAndLabels(displayType).map((field) => [normalizePopupLabel(field.label), field.key]),
+  );
+  const primaryKeys = PRIMARY_CODE_NAME_KEYS_BY_TYPE[infrastructureType];
+  const specificCodeKeys = primaryKeys?.codeKeys || [];
+  const specificNameKeys = primaryKeys?.nameKeys || [];
+  const genericCodeKeys = ['code', 'portCode', 'berthCode', 'pierCode', 'dryPortCode', 'waterZoneCode', 'buoyBerthCode', 'anchorageCode', 'transferAreaCode', 'stormShelterCode', 'facilityCode', 'beaconCode', 'systemCode'];
+  const genericNameKeys = ['name', 'anchorageName', 'transferAreaName', 'stormShelterName', 'buoyBerthName', 'pierName', 'berthName', 'dryPortName', 'portName', 'waterZoneName', 'facilityName', 'beaconName', 'systemName'];
+  const commonAliases: Record<string, string[]> = {
+    // Basic / Org / User
+    fkDonViQl: ['orgUnitId', 'unitId', 'donViQuanLy', 'orgUnitName', 'unitName', 'orgName'],
+    updatedDate: ['updatedAt', 'updatedDate'],
+    updatedUser: ['updatedByName', 'updatedBy', 'updatedUser'],
+    diaDiemChiTiet: ['detailedLocation', 'locationDetail', 'diaChiChiTiet', 'diaDiemChiTiet', 'address'],
+    // Parents
+    fkCangBien: ['portName', 'tenCangBien', 'portId'],
+    fkLuongHh: ['waterway', 'waterwayName', 'navigationChannelName', 'channelName', 'navigationChannelId', 'waterwayId'],
+    fkBenPhao: ['buoyStationName', 'buoyBerthName', 'buoyStationId', 'buoyBerthId'],
+    fkNhaTram: ['buoyStationName', 'buoyStationId'],
+    fkCauCang: ['pierName', 'pierId', 'cauCangId'],
+    fkBenCang: ['berthName', 'tenBenCang', 'berthId'],
+    fkDonViKt: ['operator', 'operatingOrgName', 'operatingOrgId', 'operatorId'],
+    fkDonViVh: ['operator', 'operatingOrgName', 'operatingOrgId', 'operatorId'],
+    // Location / Province
+    'zobjDataSub.diaDiemText': ['provinceId', 'province', 'location', 'tinhThanh'],
+    diaDiemText: ['provinceId', 'province', 'location', 'tinhThanh'],
+    // Status
+    'zobjDataSub.tinhTrangText': ['operationalStatus', 'conditionStatus', 'condition', 'tinhTrang', 'isActive'],
+    tinhTrangText: ['operationalStatus', 'conditionStatus', 'condition', 'tinhTrang', 'isActive'],
+    'zobjDataSub.statusText': ['approvalStatus', 'trangThai', 'status'],
+    statusText: ['approvalStatus', 'trangThai', 'status'],
+    // Publication & Agreement
+    'zobjDataSub.thoiDiemCongBo': ['openingAnnouncementDate', 'thoiDiemCongBoMo', 'thoiDiemCongBo'],
+    thoiDiemCongBo: ['openingAnnouncementDate', 'thoiDiemCongBoMo', 'thoiDiemCongBo'],
+    'zobjDataSub.thoiDiemCongBoMoDuaVaoSuDung': ['openingAnnouncementDate', 'thoiDiemCongBoMo', 'thoiDiemCongBo'],
+    thoiDiemCongBoMoDuaVaoSuDung: ['openingAnnouncementDate', 'thoiDiemCongBoMo', 'thoiDiemCongBo'],
+    'zobjDataSub.quyetDinhVanBanChoPhepKhaiThac': ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+    quyetDinhVanBanChoPhepKhaiThac: ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+    'zobjDataSub.quyetDinhCongBoVanBanChoPhepKhaiThac': ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+    quyetDinhCongBoVanBanChoPhepKhaiThac: ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+    'zobjDataSub.quyetDinhCongBo': ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+    quyetDinhCongBo: ['publicDecision', 'openingDecision', 'quyetDinhCongBo'],
+    'zobjDataSub.vanBanThoaThuan': ['investmentAgreement', 'vanBanThoaThuanDauTu', 'vanBanThoaThuan'],
+    vanBanThoaThuan: ['investmentAgreement', 'vanBanThoaThuanDauTu', 'vanBanThoaThuan'],
+    'zobjDataSub.vanBanThoaThuanDauTuXayDung': ['investmentAgreement', 'vanBanThoaThuanDauTu', 'vanBanThoaThuan'],
+    vanBanThoaThuanDauTuXayDung: ['investmentAgreement', 'vanBanThoaThuanDauTu', 'vanBanThoaThuan'],
+    // Technical parameters
+    'zobjDataSub.doSauKhuNuocHienTai': ['currentWaterDepth', 'doSauKhuNuocHienTai'],
+    doSauKhuNuocHienTai: ['currentWaterDepth', 'doSauKhuNuocHienTai'],
+    'zobjDataSub.caoDoDayBenThietKe': ['bottomElevationDesign', 'caoDoDayBenThietKe'],
+    caoDoDayBenThietKe: ['bottomElevationDesign', 'caoDoDayBenThietKe'],
+    'zobjDataSub.coTauKhaiThacTheoCongBoDwt': ['maxVesselDWT', 'maxVesselSize', 'maxTonnage', 'coTauKhaiThacTheoCongBoDwt'],
+    coTauKhaiThacTheoCongBoDwt: ['maxVesselDWT', 'maxVesselSize', 'maxTonnage', 'coTauKhaiThacTheoCongBoDwt'],
+    'zobjDataSub.coTauKhaiThacTheoCongBo': ['maxVesselDWT', 'maxVesselSize', 'maxTonnage', 'coTauKhaiThacTheoCongBo'],
+    coTauKhaiThacTheoCongBo: ['maxVesselDWT', 'maxVesselSize', 'maxTonnage', 'coTauKhaiThacTheoCongBo'],
+    'zobjDataSub.hinhDang': ['shapeDescription', 'hinhDang'],
+    hinhDang: ['shapeDescription', 'hinhDang'],
+    'zobjDataSub.dienTich': ['area', 'dienTich', 'totalArea'],
+    dienTich: ['area', 'dienTich', 'totalArea'],
+    'zobjDataSub.doSauKhuNuocTheoThietKe': ['designWaterDepth', 'doSauKhuNuocTheoThietKe'],
+    doSauKhuNuocTheoThietKe: ['designWaterDepth', 'doSauKhuNuocTheoThietKe'],
+    // Counts
+    'zobjDataSub.soLuongKhuNeoDauDangKhaiThac': ['activeAnchorageCount', 'soLuongKhuNeoDauDangKhaiThac'],
+    soLuongKhuNeoDauDangKhaiThac: ['activeAnchorageCount', 'soLuongKhuNeoDauDangKhaiThac'],
+    'zobjDataSub.soLuongKhuNeoDauDaCongBo': ['publishedAnchorageCount', 'soLuongKhuNeoDauDaCongBo'],
+    soLuongKhuNeoDauDaCongBo: ['publishedAnchorageCount', 'soLuongKhuNeoDauDaCongBo'],
+    'zobjDataSub.soLuongKhuNeoDauDangThoaThuan': ['underInvestmentAnchorageCount', 'soLuongKhuNeoDauDangThoaThuan', 'underInvestmentCount'],
+    soLuongKhuNeoDauDangThoaThuan: ['underInvestmentAnchorageCount', 'soLuongKhuNeoDauDangThoaThuan', 'underInvestmentCount'],
+    'zobjDataSub.soLuongKhuChuyenTaiDangKhaiThac': ['activeTransferAreaCount', 'soLuongKhuChuyenTaiDangKhaiThac'],
+    soLuongKhuChuyenTaiDangKhaiThac: ['activeTransferAreaCount', 'soLuongKhuChuyenTaiDangKhaiThac'],
+    'zobjDataSub.soLuongKhuChuyenTaiDaCongBo': ['publishedTransferAreaCount', 'soLuongKhuChuyenTaiDaCongBo'],
+    soLuongKhuChuyenTaiDaCongBo: ['publishedTransferAreaCount', 'soLuongKhuChuyenTaiDaCongBo'],
+    'zobjDataSub.soLuongKhuChuyenTaiDangThoaThuan': ['underInvestmentTransferAreaCount', 'soLuongKhuChuyenTaiDangThoaThuan'],
+    soLuongKhuChuyenTaiDangThoaThuan: ['underInvestmentTransferAreaCount', 'soLuongKhuChuyenTaiDangThoaThuan'],
+    'zobjDataSub.soLuongKhuTranhTruBaoDangKhaiThac': ['activeStormShelterCount', 'soLuongKhuTranhTruBaoDangKhaiThac'],
+    soLuongKhuTranhTruBaoDangKhaiThac: ['activeStormShelterCount', 'soLuongKhuTranhTruBaoDangKhaiThac'],
+    'zobjDataSub.soLuongKhuTranhTruBaoDaCongBo': ['publishedStormShelterCount', 'soLuongKhuTranhTruBaoDaCongBo'],
+    soLuongKhuTranhTruBaoDaCongBo: ['publishedStormShelterCount', 'soLuongKhuTranhTruBaoDaCongBo'],
+    'zobjDataSub.soLuongKhuTranhTruBaoDangThoaThuan': ['underInvestmentStormShelterCount', 'soLuongKhuTranhTruBaoDangThoaThuan'],
+    soLuongKhuTranhTruBaoDangThoaThuan: ['underInvestmentStormShelterCount', 'soLuongKhuTranhTruBaoDangThoaThuan'],
+    'zobjDataSub.soLuongBenPhaoDangKhaiThac': ['activeBuoyBerthCount', 'soLuongBenPhaoDangKhaiThac'],
+    soLuongBenPhaoDangKhaiThac: ['activeBuoyBerthCount', 'soLuongBenPhaoDangKhaiThac'],
+    'zobjDataSub.soLuongBenPhaoDaCongBo': ['publishedBuoyBerthCount', 'soLuongBenPhaoDaCongBo'],
+    soLuongBenPhaoDaCongBo: ['publishedBuoyBerthCount', 'soLuongBenPhaoDaCongBo'],
+    'zobjDataSub.soLuongBenPhaoDangThoaThuan': ['underInvestmentBuoyBerthCount', 'soLuongBenPhaoDangThoaThuan'],
+    soLuongBenPhaoDangThoaThuan: ['underInvestmentBuoyBerthCount', 'soLuongBenPhaoDangThoaThuan'],
+    // Notes & Remarks
+    'zobjDataSub.ghiChu': ['remarks', 'note', 'ghiChu'],
+    ghiChu: ['remarks', 'note', 'ghiChu'],
+  };
+
+  return vmdFields.map((field) => {
+    const legacyLeafKey = field.key.split('.').pop() || field.key;
+    const normalizedLabel = normalizePopupLabel(field.label);
+    const candidates = [
+      ...(SPECIFIC_LABEL_KEYS[normalizedLabel] || []),
+      currentFieldsByLabel.get(normalizedLabel),
+      ...(normalizedLabel.startsWith('mã ') ? specificCodeKeys : []),
+      ...(normalizedLabel.startsWith('tên ') ? specificNameKeys : []),
+      field.key,
+      legacyLeafKey,
+      ...(commonAliases[field.key] || []),
+      ...(commonAliases[legacyLeafKey] || []),
+      ...(normalizedLabel.startsWith('mã ') ? genericCodeKeys : []),
+      ...(normalizedLabel.startsWith('tên ') ? genericNameKeys : []),
+    ].filter((key): key is string => !!key);
+    const resolvedKey = candidates.find((key) => getPopupValueByPath(data, key) !== undefined)
+      || candidates[0]
+      || legacyLeafKey;
+    return { ...field, key: resolvedKey };
+  });
+};

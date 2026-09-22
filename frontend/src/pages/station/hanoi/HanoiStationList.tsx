@@ -853,9 +853,6 @@ export default function HanoiStationList() {
       dataIndex: 'conditionStatus',
       width: 220,
       align: 'left' as const,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
       render: (val: ConditionStatus | string) => {
         const color = CONDITION_COLOR[val as ConditionStatus] || getConditionStatusColor(val as string);
         const label = CONDITION_STATUS_MAP[val as ConditionStatus] || getConditionStatusLabel(val as string);
@@ -872,9 +869,6 @@ export default function HanoiStationList() {
       dataIndex: 'approvalStatus',
       width: 260,
       align: 'left' as const,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
       render: (val: ApprovalStatus | string) => <ApprovalStatusBadge status={val} />,
     },
     ...(isRejectionTabActive ? [{

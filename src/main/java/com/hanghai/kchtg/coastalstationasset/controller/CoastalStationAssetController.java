@@ -140,7 +140,7 @@ public class CoastalStationAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'infraasset:read', 'coastalstation:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'infraasset:manage', 'coastalstationasset:history', 'coastalstation:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản đài thành công", service.getHistory(id)));
     }

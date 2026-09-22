@@ -363,14 +363,23 @@ export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => b
   for (const n of nodes) {
     if (n.hidden) continue;
     const children = n.children ? accessibleTree(n.children, canAccess) : undefined;
-    const selfOk = !n.route || canAccess(n.route);
     if (n.disabled) {
       out.push({ ...n, children });
       continue;
     }
-    if (!n.route && children && children.length === 0) continue; // nhóm cha không có con khả dụng → bỏ
-    if (selfOk) out.push({ ...n, children });
-    else if (children && children.length > 0) out.push({ ...n, children }); // cha có con khả dụng → giữ làm nhóm
+    if (!n.route) {
+      if (children && children.length > 0) {
+        out.push({ ...n, children });
+      }
+      continue;
+    }
+    const selfOk = canAccess(n.route);
+    if (selfOk) {
+      out.push({ ...n, children });
+    } else if (children && children.length > 0) {
+      // Khi con/cháu có quyền truy cập, giữ nguyên route của cha/ông để user click vào xem danh sách không bị chặn quyền
+      out.push({ ...n, route: n.route, children });
+    }
   }
   return out;
 }

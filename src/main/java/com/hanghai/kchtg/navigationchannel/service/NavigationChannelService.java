@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
@@ -31,6 +32,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
@@ -650,9 +652,32 @@ public class NavigationChannelService {
                 .stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList());
     }
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null) {
+            return EntityFields.UPDATED_AT;
+        }
+        return switch (sortBy) {
+            case "channelName", "name" -> NavigationChannel.Fields.channelName;
+            case "channelCode", "code" -> NavigationChannel.Fields.channelCode;
+            case "provinceId" -> BaseApprovableEntity.Fields.provinceId;
+            case "conditionStatus", "status", "operationalStatus" -> NavigationChannel.Fields.conditionStatus;
+            case "approvalStatus" -> BaseApprovableEntity.Fields.approvalStatus;
+            case "createdAt" -> EntityFields.CREATED_AT;
+            case "updatedAt" -> EntityFields.UPDATED_AT;
+            default -> EntityFields.UPDATED_AT;
+        };
+    }
+
     @Transactional(readOnly = true)
     public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
             ConditionStatus conditionStatus, String kw, String statusStr, int page, int size) {
+        return searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus, kw, statusStr, page, size, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
+            ConditionStatus conditionStatus, String kw, String statusStr, int page, int size,
+            String sortBy, String sortDir) {
         ApprovalStatus status = null;
         if (statusStr != null && !statusStr.trim().isEmpty()) {
             try {
@@ -662,9 +687,22 @@ public class NavigationChannelService {
             }
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus,
-                keywordLike, status,
-                PageRequest.of(page, size, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT), Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID))));
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        String sortProperty = mapSortProperty(sortBy);
+        Sort sort = Sort.by(new Sort.Order(direction, sortProperty),
+                Sort.Order.desc(EntityFields.CREATED_AT),
+                Sort.Order.asc(EntityFields.ID));
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        java.util.Collection<UUID> orgUnitIds = orgUnitId != null
+                ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
+                : null;
+        Page<NavigationChannel> r = orgUnitIds != null
+                ? repo.searchDocumentsByOrgUnitIds(orgUnitIds, seaportId, provinceId, conditionStatus,
+                        keywordLike, status, pageable)
+                : repo.searchDocuments(null, seaportId, provinceId, conditionStatus,
+                        keywordLike, status, pageable);
+
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

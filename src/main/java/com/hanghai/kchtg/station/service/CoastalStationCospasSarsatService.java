@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service xử lý nghiệp vụ cho Đài thông tin vệ tinh Cospas-Sarsat.
@@ -781,8 +783,18 @@ public class CoastalStationCospasSarsatService {
         boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED
                 || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
 
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.COSPAS_SARSAT_STATION);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
         java.nio.file.Path basePath = java.nio.file.Paths.get("uploads", "cospas-attachments");
         List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> savedAttachments = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
         LocalDateTime batchNow = LocalDateTime.now();
 
         for (org.springframework.web.multipart.MultipartFile file : files) {
@@ -810,19 +822,34 @@ public class CoastalStationCospasSarsatService {
                     .uploadedBy(userId)
                     .build();
             savedAttachments.add(attachmentRepository.save(attachment));
+            if (originalFilename != null && !originalFilename.isBlank()) {
+                uploadedFileNames.add(originalFilename.trim());
+            }
+        }
 
-            if (historyService != null && wasApproved) {
-                boolean isNewlyCreated = entity.getCreatedAt() != null
-                        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
-                if (!isNewlyCreated) {
-                    historyService.recordHistory(
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (!fileListAfter.contains(fn)) {
+                fileListAfter.add(fn);
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        if (historyService != null && wasApproved && !uploadedFileNames.isEmpty()) {
+            boolean isNewlyCreated = entity.getCreatedAt() != null
+                    && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 5;
+            if (!isNewlyCreated) {
+                String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+                String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+                if (!Objects.equals(oldVal, newVal)) {
+                    historyService.recordAttachmentHistory(
                             InfrastructureType.COSPAS_SARSAT_STATION,
                             id,
-                            StationHistoryActionType.UPDATE,
+                            InfrastructureHistoryStatus.ATTACHMENT_UPLOADED,
                             "Tài liệu đính kèm",
-                            "—",
-                            originalFilename,
-                            "Tải lên tài liệu đính kèm: " + originalFilename,
+                            oldVal != null ? oldVal : "—",
+                            newVal != null ? newVal : "—",
+                            "Tải lên tệp: " + String.join(", ", uploadedFileNames),
                             userId,
                             batchNow
                     );
@@ -848,6 +875,21 @@ public class CoastalStationCospasSarsatService {
         com.hanghai.kchtg.common.entity.InfrastructureAttachment attachment = attachmentRepository.findByIdAndRefIdAndRefType(attachmentId, id, InfrastructureType.COSPAS_SARSAT_STATION)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy file đính kèm với ID: " + attachmentId));
         String fileName = attachment.getFileName();
+        List<com.hanghai.kchtg.common.entity.InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.COSPAS_SARSAT_STATION);
+        String oldFilesSummary = existingAtts.stream()
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attachmentId))
+                .map(com.hanghai.kchtg.common.entity.InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -856,15 +898,18 @@ public class CoastalStationCospasSarsatService {
         attachmentRepository.delete(attachment);
 
         if (historyService != null && wasApproved) {
-            historyService.recordHistory(
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            historyService.recordAttachmentHistory(
                     InfrastructureType.COSPAS_SARSAT_STATION,
                     id,
-                    StationHistoryActionType.UPDATE,
+                    InfrastructureHistoryStatus.ATTACHMENT_DELETED,
                     "Tài liệu đính kèm",
-                    fileName,
-                    "—",
-                    "Xóa tài liệu đính kèm: " + fileName,
-                    userId
+                    oldVal != null ? oldVal : "—",
+                    newVal != null ? newVal : "—",
+                    "Xóa tệp: " + fileName,
+                    userId,
+                    LocalDateTime.now()
             );
         }
     }

@@ -181,6 +181,21 @@ public class PermissionMiddleware extends OncePerRequestFilter {
         if (path.startsWith("/api/gis/") || path.startsWith("/api/v1/gis/") || path.startsWith("/api/v1/kchtgis/") || path.startsWith("/api/kchtgis/")) {
             return true;
         }
+
+        // Endpoint infra-assets là endpoint đa hình dùng chung cho 24 loại tài sản hạ tầng;
+        // việc kiểm soát quyền truy cập chi tiết (berthasset, anchorageasset...) được thực thi chặt chẽ bởi
+        // @PreAuthorize tại InfraAssetController thông qua checkAssetApproval và checkAssetAction.
+        if (path.startsWith("/api/v1/asset/infra-assets") || path.startsWith("/api/asset/infra-assets")) {
+            return true;
+        }
+
+        // Bỏ qua phân quyền cho các API biến động/khai thác tài sản (phục vụ hiển thị tab trong chi tiết tài sản)
+        if (path.startsWith("/api/v1/asset/asset-exploitations") || path.startsWith("/api/asset/asset-exploitations")
+                || path.startsWith("/api/v1/asset/asset-increase-requests") || path.startsWith("/api/asset/asset-increase-requests")
+                || path.startsWith("/api/v1/asset/asset-decrease-requests") || path.startsWith("/api/asset/asset-decrease-requests")) {
+            return true;
+        }
+
         return PUBLIC_PATH_PREFIXES.stream().anyMatch(path::startsWith);
     }
 

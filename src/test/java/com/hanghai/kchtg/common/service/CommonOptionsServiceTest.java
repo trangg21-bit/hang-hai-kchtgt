@@ -67,6 +67,21 @@ class CommonOptionsServiceTest {
     }
 
     @Test
+    void approvedPortOptionsUseSelectedOrganizationSubtree() {
+        UUID parentId = UUID.randomUUID();
+        UUID childId = UUID.randomUUID();
+        PortOptionResponse option = new PortOptionResponse();
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(orgUnitScopeService.resolveSubtreeIds(parentId)).thenReturn(List.of(parentId, childId));
+        when(portRepository.findOptionsByOrgUnitIdsAndApprovalStatus(
+                List.of(parentId, childId), ApprovalStatus.APPROVED)).thenReturn(List.of(option));
+
+        assertThat(service.getPortOptions(ApprovalStatus.APPROVED, parentId)).containsExactly(option);
+        verify(portRepository).findOptionsByOrgUnitIdsAndApprovalStatus(
+                List.of(parentId, childId), ApprovalStatus.APPROVED);
+    }
+
+    @Test
     void getNavigationChannelOptionsDelegatesToNavigationChannelService() {
         var opt = new com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse();
         when(navigationChannelService.getOptions()).thenReturn(List.of(opt));

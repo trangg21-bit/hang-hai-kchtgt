@@ -402,8 +402,19 @@ export default function PierListPage() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Pier[]>([]); const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false); const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [rawUsers, setRawUsers] = useState<any[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
@@ -742,6 +753,8 @@ export default function PierListPage() {
         operationalFunction: filterOperationalFunction || undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
+        sortBy,
+        sortDir,
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
@@ -749,7 +762,7 @@ export default function PierListPage() {
     finally { setIsLoading(false); }
   }, [orgUnit, pierNameInput, pierCodeInput, filterBerthId, filterPortId, filterPierType, filterProvince, filterOperationalStatus,
     filterWaterwayId, filterConstructionGrade, filterStructureType, filterOperationalFunction, filterUpdatedFrom, filterUpdatedTo,
-    activeTab, page, pageSize]);
+    activeTab, page, pageSize, sortBy, sortDir]);
 
   useEffect(() => { if (initialLoadDone) void fetchData(); }, [fetchData, initialLoadDone]);
   useEffect(() => { void fetchCounts(orgUnit); }, [orgUnit, fetchCounts]);
@@ -795,6 +808,7 @@ export default function PierListPage() {
           void openDetailDrawer(record);
         } else {
           setEditPierId(linkedRecordId);
+          setEditBaseStatus(record.approvalStatus);
           setCreateDrawerVisible(true);
         }
       })
@@ -806,7 +820,7 @@ export default function PierListPage() {
 
   const notifyEmbeddedActionClosed = useCallback(() => {
     if (isEmbeddedAction) {
-      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, window.location.origin);
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
     }
   }, [isEmbeddedAction]);
 
@@ -1076,29 +1090,6 @@ export default function PierListPage() {
     ];
   }, [userMap]);
 
-  // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'pierName') return r.pierName ?? '';
-    if (field === 'structureType') return STRUCTURE_TYPE_OPTIONS.find(o => o.value === r.structureType)?.label ?? '';
-    if (field === 'portId') return portMap.get(r.portId) ?? r.portId ?? '';
-    if (field === 'berthName') return berthOptions.find(b => b.value === r.berthId)?.label ?? r.berthName ?? r.tenBenCang ?? r.berthId ?? '';
-    if (field === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
-    if (field === 'province') return r.province ?? '';
-    if (field === 'constructionGrade') return CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === r.constructionGrade)?.label ?? '';
-    if (field === 'operationalFunction') return formatOperationalFunction(r.operationalFunction, '');
-    if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    if (field === 'approvalStatus') {
-      if (isDeletedPier(r)) return 'Đã xóa';
-      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt') return r.updatedAt ?? '';
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ?? '';
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ?? '';
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ?? '';
-    return r[field] ?? '';
-  }, [organizations, orgMap, portMap, berthOptions, waterwayMap]);
-
   const columns = useMemo(() => {
     const baseColumns: any[] = [
     { label: 'STT', key: 'stt', width: 60, fixed: 'left' as const, align: 'center' as const,
@@ -1112,25 +1103,25 @@ export default function PierListPage() {
       ) },
     { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
       render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span> },
-    { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240, sortable: true,
+    { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
-    { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,
+    { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200,
       render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span> },
-    { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 210, sortable: true,
+    { label: 'Thuộc bến cảng', dataIndex: 'berthName', key: 'berthName', width: 210,
       render: (v: string, r: Pier) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || r.tenBenCang || berthOptions.find(b => b.value === r.berthId)?.label || r.berthId || ''}</span> },
-    { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
+    { label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (waterwayMap.get(v) || v) : ''}</span> },
-    { label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', key: 'province', width: 250, sortable: true,
+    { label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', key: 'province', width: 250,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span> },
-    { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 220, sortable: true,
+    { label: 'Phân cấp công trình', dataIndex: 'constructionGrade', key: 'constructionGrade', width: 220,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (CONSTRUCTION_GRADE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
-    { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
+    { label: 'Công năng khai thác', dataIndex: 'operationalFunction', key: 'operationalFunction', width: 240, ellipsis: true,
       render: (v?: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatOperationalFunction(v, '')}</span> },
-    { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
+    { label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false,
       render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; } },
     ];
     const tailColumns: any[] = [
-      { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false, sortable: true,
+      { label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false,
         render: (v: string, record: Pier) => {
           if (isDeletedPier(record)) {
             return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
@@ -1149,9 +1140,9 @@ export default function PierListPage() {
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map(col => ({
       ...col,
-      sortOrder: col.sortable ? (col.key === sortField ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key) : undefined,
     }));
-  }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
+  }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
@@ -1295,18 +1286,15 @@ export default function PierListPage() {
         onStatusTabChange={handleTabChange} onFilterApply={handleFilterApply} onFilterReset={handleFilterReset}
         filterCollapsed={filterCollapsed} onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
         loading={isLoading} error={isError} onRetry={() => void fetchData()}>
-        <DataTable columns={columns} dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField || !sortOrder) return 0; if (sortField === 'stt') { const arr = [...dataSource]; return sortOrder === 'descend' ? (arr.reverse(), 0) : 0; } const av = getSortValue(a, sortField); const bv = getSortValue(b, sortField); const c = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv), 'vi'); return sortOrder === 'ascend' ? c : -c; })}
-          rowKey="id" rowActions={rowActions} loading={false} onSort={(k: string, o: 'asc' | 'desc' | null) => {
-            if (!o) {
-              setSortField(null);
-              setSortOrder(null);
-            } else {
-              setSortField(k);
-              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
-            }
-            setPage(1);
-          }}
-          scroll={{ x: 'max-content' }} />
+        <DataTable
+          columns={columns}
+          dataSource={dataSource}
+          rowKey="id"
+          rowActions={rowActions}
+          loading={false}
+          onSort={handleSort}
+          scroll={{ x: 'max-content' }}
+        />
         <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
       </FilterTableLayout>
 
@@ -1327,7 +1315,7 @@ export default function PierListPage() {
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>
-          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { setCreateDrawerVisible(false); createForm.resetFields(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
+          <PierForm ref={pierFormRef} form={createForm} id={editPierId} onFinish={() => { closeFormDrawer(); setSortBy(undefined); setSortDir(undefined); setPage(1); void fetchData(); void fetchCounts(orgUnit); }} onSubmittingChange={setSubmitting} />
         </Form>
       </AppDrawer>
 

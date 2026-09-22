@@ -381,8 +381,19 @@ export default function TransferAreaListPage() {
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
   const [dataSource, setDataSource] = useState<TransferArea[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -733,7 +744,7 @@ export default function TransferAreaListPage() {
         c[k] = r.status === 'fulfilled' ? r.value.total : 0;
       });
       const allChildSum = TAB_STATUS_LIST
-        .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+        .filter((t) => t.key !== 'all')
         .reduce((acc, t) => acc + (c[t.key] ?? 0), 0);
       c['all'] = allChildSum;
       setTabCounts(c);
@@ -760,8 +771,8 @@ export default function TransferAreaListPage() {
         updatedTo: filterUpdatedTo,
         page,
         pageSize,
-        sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
-        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
+        sortBy: (sortBy && sortBy !== 'stt' && sortBy !== 'sequenceNo') ? sortBy : 'updatedAt',
+        sortDir: sortDir === 'asc' ? 'ASC' : (sortDir === 'desc' ? 'DESC' : undefined),
       });
       const mapped = (r.data || []).map((item: any) => ({
         ...item,
@@ -787,8 +798,8 @@ export default function TransferAreaListPage() {
     filterUpdatedTo,
     page,
     pageSize,
-    sortField,
-    sortOrder,
+    sortBy,
+    sortDir,
   ]);
 
   useEffect(() => {
@@ -907,8 +918,7 @@ export default function TransferAreaListPage() {
       toast.success('Đã xóa khu chuyển tải');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -929,8 +939,7 @@ export default function TransferAreaListPage() {
       toast.success(record.approvalStatus === 'APPROVED_LEVEL1' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ/Chi cục');
       setApproveModalOpen(false);
       setApprovingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -951,8 +960,7 @@ export default function TransferAreaListPage() {
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -982,8 +990,7 @@ export default function TransferAreaListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1282,7 +1289,6 @@ export default function TransferAreaListPage() {
         key: 'operationalFunctions',
         width: 240,
         ellipsis: true,
-        sortable: true,
         cellTitle: (r: TransferArea) => formatOperationalFunctions(r.operationalFunctions) || '',
         render: (v?: string) => renderCellWithTooltip(formatOperationalFunctions(v) || null),
       },
@@ -1292,7 +1298,6 @@ export default function TransferAreaListPage() {
         key: 'operationalStatus',
         width: 240,
         ellipsis: false,
-        sortable: true,
         render: (v: string) => {
           const b = v && OPERATIONAL_STYLE_MAP[v];
           return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null;
@@ -1304,7 +1309,6 @@ export default function TransferAreaListPage() {
         key: 'approvalStatus',
         width: 320,
         ellipsis: false,
-        sortable: true,
         cellTitle: (record: TransferArea) => {
           if (isTransferAreaDeleted(record)) return 'Đã xóa';
           const s = record.approvalStatus && (APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus.toUpperCase()]);
@@ -1345,7 +1349,7 @@ export default function TransferAreaListPage() {
     const allColumns = [...baseColumns, ...auditColumns];
     return allColumns.map((col) => ({
       ...col,
-      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined,
     }));
   }, [
     page,
@@ -1356,19 +1360,18 @@ export default function TransferAreaListPage() {
     portMap,
     userMap,
     auditColumns,
-    sortField,
-    sortOrder,
+    sortOrderFor,
   ]);
 
   const statusTabs = useMemo(() => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
       let count = tabCounts[tab.key] ?? 0;
       if (tab.key === 'all') {
-        count = activeTab === 'all' ? total : allChildSum;
+        count = allChildSum;
       } else if (tab.key === activeTab) {
         count = total;
       }
@@ -1628,17 +1631,6 @@ export default function TransferAreaListPage() {
               width: 100% !important;
             }
           }
-          .transfer-area-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label {
-            height: auto !important;
-            min-height: 44px !important;
-            align-items: flex-start !important;
-          }
-          .transfer-area-drawer-scope .ant-form-item.cn-op-2line-label .ant-form-item-label > label {
-            height: auto !important;
-            white-space: normal !important;
-            line-height: 1.45 !important;
-            overflow-wrap: break-word;
-          }
         `}</style>
         <ScreenHeader
           breadcrumb={[{ label: 'Tài sản KCHTGT' }, { label: 'Khu chuyển tải' }]}
@@ -1662,16 +1654,7 @@ export default function TransferAreaListPage() {
             rowKey="id"
             rowActions={rowActions}
             loading={isLoading}
-            onSort={(k: string, o: 'asc' | 'desc' | null) => {
-              setPage(1);
-              if (!o) {
-                setSortField('updatedAt');
-                setSortOrder('descend');
-              } else {
-                setSortField(k);
-                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
-              }
-            }}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination
@@ -1778,8 +1761,7 @@ export default function TransferAreaListPage() {
               id={editTransferAreaId}
               onFinish={() => {
                 closeFormDrawer();
-                setSortField('updatedAt');
-                setSortOrder('descend');
+                setSortBy(undefined); setSortDir(undefined);
                 setPage(1);
                 void fetchData();
                 void fetchCounts(orgUnit);

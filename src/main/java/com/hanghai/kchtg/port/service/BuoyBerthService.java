@@ -255,6 +255,21 @@ public class BuoyBerthService {
         return toResponse(entity);
     }
 
+    private String mapSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) return null;
+        return switch (sortBy.trim()) {
+            case "buoyBerthCode", "code" -> "buoyBerthCode";
+            case "buoyBerthName", "name" -> "buoyBerthName";
+            case "classification" -> "classification";
+            case "provinceId" -> "provinceId";
+            case "operationalStatus", "status", "conditionStatus" -> "operationalStatus";
+            case "approvalStatus" -> "approvalStatus";
+            case "updatedAt", "updatedByName" -> EntityFields.UPDATED_AT;
+            case "createdAt", "createdDate" -> EntityFields.CREATED_AT;
+            default -> null;
+        };
+    }
+
     @Transactional(readOnly = true)
     public Page<BuoyBerthResponse> findAll(int page, int size, UUID orgUnitId,
                                            String search, String buoyBerthCode, String buoyBerthName,
@@ -262,9 +277,29 @@ public class BuoyBerthService {
                                            Integer provinceId,
                                            String operationalStatus, String approvalStatus,
                                            String updatedFrom, String updatedTo) {
+        return findAll(page, size, orgUnitId, search, buoyBerthCode, buoyBerthName, portId, waterwayId,
+                classification, provinceId, operationalStatus, approvalStatus, updatedFrom, updatedTo, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BuoyBerthResponse> findAll(int page, int size, UUID orgUnitId,
+                                           String search, String buoyBerthCode, String buoyBerthName,
+                                           UUID portId, UUID waterwayId, String classification,
+                                           Integer provinceId,
+                                           String operationalStatus, String approvalStatus,
+                                           String updatedFrom, String updatedTo,
+                                           String sortBy, String sortDir) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
-                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID)));
+        Sort sort = Sort.by(Sort.Order.desc(EntityFields.UPDATED_AT),
+                Sort.Order.desc(EntityFields.CREATED_AT), Sort.Order.asc(EntityFields.ID));
+        if (sortBy != null && !sortBy.isBlank()) {
+            String property = mapSortProperty(sortBy);
+            if (property != null) {
+                Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+                sort = Sort.by(direction, property).and(sort);
+            }
+        }
+        Pageable pageable = PageRequest.of(page, pageSize, sort);
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         java.time.LocalDateTime updatedFromDt = parseLocalDateTime(updatedFrom);
@@ -273,10 +308,11 @@ public class BuoyBerthService {
         boolean includeAll = orgUnitId == null;
         List<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : List.of();
         String searchTrim = search != null ? search.trim() : null;
+        String classificationTrim = (classification != null && !classification.trim().isEmpty()) ? classification.trim() : null;
         Page<BuoyBerth> result = buoyBerthRepository.searchBuoyBerths(
                 includeAll, orgUnitIds,
                 searchTrim, buoyBerthCode, buoyBerthName, portId,
-                waterwayId, classification, provinceId,
+                waterwayId, classificationTrim, provinceId,
                 approvalEnum, statusEnum, false,
                 updatedFromDt, updatedToDt,
                 pageable);

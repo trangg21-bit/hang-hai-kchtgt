@@ -33,6 +33,7 @@ import {
   radarStationCRUD,
   radarStationApproval,
   radarStationAttachment,
+  normalizeRadarIdentityFilters,
 } from '../../services/radarStationService';
 import type {
   RadarStationResponse,
@@ -48,6 +49,7 @@ import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 import api from '../../services/api';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
@@ -968,6 +970,10 @@ export default function RadarStationList() {
   const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
   const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
   const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
+  const [formSeaportOptions, setFormSeaportOptions] = useState<typeof seaportOptions>([]);
+  const [formVtsOptions, setFormVtsOptions] = useState<typeof vtsOptions>([]);
+  const [formVtsOperationCenterOptions, setFormVtsOperationCenterOptions] = useState<Array<{ id: string; code?: string; name?: string; vtsSystemId?: string }>>([]);
+  const [operatingUnitOptions, setOperatingUnitOptions] = useState<Array<{ id: string; code?: string; name?: string }>>([]);
 
   const filteredSeaportOptions = useMemo(() => {
     if (!filterOrgUnitId || filterOrgUnitId === '__all__') return seaportOptions;
@@ -993,19 +999,18 @@ export default function RadarStationList() {
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
   const createFormOrgUnitId = Form.useWatch('orgUnitId', createForm);
+  const createFormVtsSystemId = Form.useWatch('vtsSystemId', createForm);
   const watchedSeaportId = Form.useWatch('seaportId', createForm);
   const editSeaportIdRef = useRef<string | undefined>(undefined);
   const [codeLoading, setCodeLoading] = useState(false);
   const watchedGeometryType = Form.useWatch('geometryType', createForm);
   const [geometryTypeState, setGeometryTypeState] = useState<string>('');
   const effectiveGeom = watchedGeometryType || geometryTypeState;
-  const filteredFormSeaportOptions = useMemo(() => {
-    if (!createFormOrgUnitId) return [];
-    const rawSet = resolveOrgSubtreeIds(orgOptions, String(createFormOrgUnitId));
-    const normalizedSet = new Set<string>();
-    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
-    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
-  }, [createFormOrgUnitId, orgOptions, seaportOptions]);
+  const filteredFormSeaportOptions = formSeaportOptions;
+  const filteredFormVtsOperationCenterOptions = useMemo(
+    () => formVtsOperationCenterOptions.filter((center) => !createFormVtsSystemId || center.vtsSystemId === createFormVtsSystemId),
+    [createFormVtsSystemId, formVtsOperationCenterOptions],
+  );
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [gisFormModalOpen, setGisFormModalOpen] = useState(false);
   const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
@@ -1359,6 +1364,13 @@ export default function RadarStationList() {
         console.error('Không tải được danh sách trung tâm điều hành VTS', err);
       }
       try {
+        const operatingRes = await api.get('/common/options/operating-units');
+        const operatingUnits = operatingRes.data?.data || operatingRes.data || [];
+        setOperatingUnitOptions(Array.isArray(operatingUnits) ? operatingUnits : []);
+      } catch (err) {
+        console.error('Không tải được danh sách đơn vị khai thác', err);
+      }
+      try {
         const resp = await userService.list({ pageSize: 1000 });
         const users = resp.data || (resp as any).content || [];
         setUserOptions(users.map((u: any) => ({ value: u.id, label: u.fullName || u.username || u.id })));
@@ -1375,13 +1387,41 @@ export default function RadarStationList() {
     })();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (!createFormOrgUnitId) {
+      setFormSeaportOptions([]);
+      setFormVtsOptions([]);
+      setFormVtsOperationCenterOptions([]);
+      return () => { cancelled = true; };
+    }
+
+    Promise.all([
+      vtsSystemCRUD.getScopedPortOptions({ approvalStatus: 'APPROVED', orgUnitId: String(createFormOrgUnitId) }),
+      vtsSystemCRUD.getOptions({ orgUnitId: String(createFormOrgUnitId) }),
+      vtsOperationCenterService.getOptions(String(createFormOrgUnitId)),
+    ]).then(([ports, systems, centers]) => {
+      if (cancelled) return;
+      setFormSeaportOptions(ports || []);
+      setFormVtsOptions((systems || []).map((item) => ({ id: item.id, code: item.code, systemName: item.name })));
+      setFormVtsOperationCenterOptions(centers || []);
+    }).catch((err) => {
+      if (cancelled) return;
+      setFormSeaportOptions([]);
+      setFormVtsOptions([]);
+      setFormVtsOperationCenterOptions([]);
+      console.error('Không tải được danh mục theo đơn vị quản lý đã chọn', err);
+    });
+
+    return () => { cancelled = true; };
+  }, [createFormOrgUnitId]);
+
   // ── Fetch tab counts (mỗi tab = một search riêng với ĐẦY ĐỦ bộ lọc) ────────────────
   const fetchCounts = useCallback(async (orgId?: string) => {
     try {
       const targetOrg = orgId !== undefined ? orgId : filterOrgUnitId;
       const baseFilterParams = {
-        stationName: filterStationName.trim() || undefined,
-        code: filterCode.trim() || undefined,
+        ...normalizeRadarIdentityFilters(filterStationName, filterCode),
         orgUnitId: (targetOrg && targetOrg !== '__all__') ? targetOrg : undefined,
         seaportId: filterSeaportId,
         vtsSystemId: filterVtsSystemId,
@@ -1431,8 +1471,7 @@ export default function RadarStationList() {
     setIsError(false);
     try {
       const res = await radarStationCRUD.searchPaged({
-        stationName: filterStationName.trim() || undefined,
-        code: filterCode.trim() || undefined,
+        ...normalizeRadarIdentityFilters(filterStationName, filterCode),
         orgUnitId: (filterOrgUnitId && filterOrgUnitId !== '__all__') ? filterOrgUnitId : undefined,
         seaportId: filterSeaportId,
         vtsSystemId: filterVtsSystemId,
@@ -2200,8 +2239,7 @@ export default function RadarStationList() {
     },
     {
       key: 'conditionStatus', label: 'Tình trạng', dataIndex: 'conditionStatus', width: 210,
-      sortOrder: sortOrderFor('conditionStatus'),
-      render: (v: string) => {
+            render: (v: string) => {
         const s = CONDITION_STATUS_STYLE_MAP[v];
         return s
           ? <span style={statusBadgeStyle(s.color)}>{s.label}</span>
@@ -2210,8 +2248,7 @@ export default function RadarStationList() {
     },
     {
       key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 300,
-      sortOrder: sortOrderFor('status'),
-      render: (status: string, record: RadarStationResponse) => {
+            render: (status: string, record: RadarStationResponse) => {
         if (isRecordDeleted(record)) {
           return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
         }
@@ -2397,16 +2434,19 @@ export default function RadarStationList() {
   );
 
   // ── Status tabs config (FilterTableLayout renders StatusTabs itself) ──
-  const statusTabs = useMemo(() =>
-    STATUS_TAB_LIST.map((tab) => ({
+  const statusTabs = useMemo(() => {
+    const allChildSum = STATUS_TAB_LIST
+      .filter((t) => t.key !== '')
+      .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
+
+    return STATUS_TAB_LIST.map((tab) => ({
       key: tab.key,
       label: tab.label,
-      count: tab.key === activeTab ? total : (tabCounts[tab.key] ?? (tab.key === '' ? total : 0)),
+      count: tab.key === '' ? (tabCounts[''] ?? allChildSum) : (tab.key === activeTab ? total : (tabCounts[tab.key] ?? 0)),
       color: tab.color,
       active: activeTab === tab.key,
-    })),
-    [tabCounts, activeTab, total],
-  );
+    }));
+  }, [tabCounts, activeTab, total]);
 
   const headerActions = useMemo(
     () =>
@@ -2477,8 +2517,8 @@ export default function RadarStationList() {
 
   const detailTechnicalRows: DetailRow[] = detailRecord
     ? [
-        { label: 'Chiều cao tháp radar (m)', value: detailRecord.towerHeight != null ? fmtNum(detailRecord.towerHeight) : null },
-        { label: 'Tầm hiệu lực radar', value: detailRecord.radarRange != null ? fmtNum(detailRecord.radarRange) : null },
+        { label: 'Chiều cao tháp radar (m)', value: detailRecord.towerHeight != null ? fmtNum(detailRecord.towerHeight, 4) : null },
+        { label: 'Tầm hiệu lực radar', value: detailRecord.radarRange != null ? fmtNum(detailRecord.radarRange, 4) : null },
         { label: 'Ghi chú', value: detailRecord.note || null, fullWidth: true },
       ]
     : [];
@@ -3799,6 +3839,8 @@ export default function RadarStationList() {
                                 style={selectStyle}
                                 onChange={(orgUnitId) => {
                                   createForm.setFieldValue('orgUnitId', orgUnitId);
+                                  createForm.setFieldValue('vtsSystemId', undefined);
+                                  createForm.setFieldValue('vtsOperationCenterId', undefined);
                                   const seaportId = createForm.getFieldValue('seaportId');
                                   if (!orgUnitId) {
                                     createForm.setFieldValue('seaportId', undefined);
@@ -3886,7 +3928,8 @@ export default function RadarStationList() {
                                 showSearch
                                 optionFilterProp="label"
                                 onChange={() => createForm.setFieldValue('vtsOperationCenterId', undefined)}
-                                options={vtsOptions.map((vts) => ({ value: vts.id, label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id }))}
+                                disabled={!createFormOrgUnitId}
+                                options={formVtsOptions.map((vts) => ({ value: vts.id, label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id }))}
                                 style={selectStyle}
                               />
                             </Form.Item>
@@ -3898,7 +3941,8 @@ export default function RadarStationList() {
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                options={vtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
+                                disabled={!createFormOrgUnitId}
+                                options={filteredFormVtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
                                 style={selectStyle}
                               />
                             </Form.Item>
@@ -3907,11 +3951,15 @@ export default function RadarStationList() {
                         <Row gutter={[24, 0]}>
                           <Col span={12}>
                             <Form.Item name="operatingUnitId" {...labelProps('Đơn vị khai thác')} style={{ marginBottom: spaceFormField }}>
-                              <OrgUnitTreeSelect
-                                organizations={orgOptions}
+                              <Select
                                 placeholder="Chọn đơn vị khai thác"
                                 allowClear
                                 showSearch
+                                optionFilterProp="label"
+                                options={operatingUnitOptions.map((unit) => ({
+                                  value: unit.id,
+                                  label: unit.code ? `${unit.code} - ${unit.name || ''}` : unit.name || unit.id,
+                                }))}
                                 style={selectStyle}
                               />
                             </Form.Item>

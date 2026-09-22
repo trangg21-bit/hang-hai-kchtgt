@@ -61,6 +61,7 @@ const STATUS_TAB_LIST = [
   { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', statuses: ['APPROVED_LEVEL1'] },
   { key: 'APPROVED', label: 'Đã duyệt', statuses: ['APPROVED'] },
   { key: 'REJECTED', label: 'Từ chối', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
+  { key: 'ARCHIVED', label: 'Đã xóa', statuses: ['ARCHIVED'] },
 ];
 
 // ── F-039/F-040 — Gating nút Sửa theo trạng thái phê duyệt ─────────────
@@ -75,6 +76,7 @@ const TAB_COLOR: Record<string, string> = {
   APPROVED_LEVEL1: actionPrimary,
   APPROVED: statusOperational,
   REJECTED: statusCritical,
+  ARCHIVED: statusCritical,
 };
 
 export default function NavigationChannelChkList() {
@@ -201,6 +203,8 @@ export default function NavigationChannelChkList() {
       STATUS_TAB_LIST.forEach((tab, i) => {
         next[tab.key] = results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<number>).value : 0;
       });
+      const subTotal = STATUS_TAB_LIST.filter((t) => t.key !== 'all').reduce((sum, t) => sum + (next[t.key] || 0), 0);
+      next['all'] = subTotal;
       setTabCounts(next);
     } catch (err) {
       console.error('Không tính được số lượng theo trạng thái', err);
@@ -331,7 +335,6 @@ export default function NavigationChannelChkList() {
         label: 'Tình trạng',
         dataIndex: 'conditionStatus',
         width: 150,
-        sortable: true,
         render: (v: string | undefined) => {
           if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };

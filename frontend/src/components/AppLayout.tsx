@@ -75,6 +75,7 @@ import * as themeTokenChk from '../themetokenchk';
 import { actionPrimary } from '../themetokenchk';
 import {
   MENU_PERMISSION_MAP,
+  canAccessMenu,
   collectOpenableKeys,
   filterEmptyChildren,
   filterMenuByQuery,
@@ -84,22 +85,7 @@ import LogoutConfirmModal from './shared/LogoutConfirmModal';
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
-export { MENU_PERMISSION_MAP };
-
-
-const canAccessMenu = (path: string): boolean => {
-  let required = MENU_PERMISSION_MAP[path];
-  if (!required && path.startsWith('/reports/')) {
-    required = 'report:read';
-  }
-  if (!required) return true;
-
-  if (Array.isArray(required)) {
-    return usePermissionStore.getState().hasAnyPermission(required);
-  }
-
-  return usePermissionStore.getState().hasPermission(required);
-};
+export { MENU_PERMISSION_MAP, canAccessMenu };
 
 type AntMenuItem = NonNullable<NonNullable<MenuProps['items']>[number]>;
 

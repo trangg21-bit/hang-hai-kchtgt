@@ -1,14 +1,12 @@
 import {
   AuditOutlined,
   BankOutlined,
-  MinusCircleOutlined,
-  PlusCircleOutlined,
   ProfileOutlined,
   SlidersOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { fmtNum } from '../../utils/numFmt';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { fmtNum } from '../../utils/numFmt';
 import {
   CommonTable,
   TableColumnType,
@@ -34,7 +32,6 @@ import { AssetCondition, UsageStatus } from '../../constants/assetDropdown';
 import {
   colors,
   fontWeightBold,
-  fontWeightMedium,
   statusAttention,
   statusCritical,
   statusOperational,
@@ -297,132 +294,6 @@ export default function VtsSystemAssetDetailContent({
     });
     return list;
   }, [increaseRows, decreaseRows]);
-
-  const adjustmentTableOption = useMemo<TableOption<AdjustmentRowItem>>(
-    () => ({
-      dataKey: 'id',
-      hideActionColumn: true,
-      enablePaging: false,
-      bordered: true,
-      scroll: { x: 'max-content', y: 350 },
-      mainColumns: [
-        {
-          title: 'Loại biến động',
-          dataIndex: 'adjustmentType',
-          type: TableColumnType.Template,
-          width: 160,
-          render: (_v, row) =>
-            row.adjustmentType === 'TANG' ? (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '2px 10px',
-                  borderRadius: 999,
-                  fontSize: 12,
-                  fontWeight: fontWeightMedium,
-                  background: `${statusOperational}15`,
-                  border: `1px solid ${statusOperational}40`,
-                  color: statusOperational,
-                }}
-              >
-                <PlusCircleOutlined /> Tăng nguyên giá
-              </span>
-            ) : (
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  padding: '2px 10px',
-                  borderRadius: 999,
-                  fontSize: 12,
-                  fontWeight: fontWeightMedium,
-                  background: `${statusCritical}15`,
-                  border: `1px solid ${statusCritical}40`,
-                  color: statusCritical,
-                }}
-              >
-                <MinusCircleOutlined /> Giảm nguyên giá
-              </span>
-            ),
-        },
-        {
-          title: 'Mã yêu cầu',
-          dataIndex: 'code',
-          type: TableColumnType.Text,
-          width: 160,
-        },
-        {
-          title: 'Số quyết định',
-          dataIndex: 'decisionNumber',
-          type: TableColumnType.Text,
-          width: 180,
-        },
-        {
-          title: 'Ngày ra quyết định',
-          dataIndex: 'decisionDate',
-          type: TableColumnType.Date,
-          width: 165,
-        },
-        {
-          title: 'Ngày điều chỉnh',
-          dataIndex: 'adjustmentDate',
-          type: TableColumnType.Date,
-          width: 150,
-        },
-        {
-          title: 'Nguyên giá trước (VNĐ)',
-          dataIndex: 'originalValueBefore',
-          type: TableColumnType.Money,
-          width: 200,
-          align: 'right',
-        },
-        {
-          title: 'Nguyên giá sau (VNĐ)',
-          dataIndex: 'originalValueAfter',
-          type: TableColumnType.Money,
-          width: 190,
-          align: 'right',
-        },
-        {
-          title: 'Giá trị còn lại trước (VNĐ)',
-          dataIndex: 'remainingValueBefore',
-          type: TableColumnType.Money,
-          width: 210,
-          align: 'right',
-        },
-        {
-          title: 'Giá trị còn lại sau (VNĐ)',
-          dataIndex: 'remainingValueAfter',
-          type: TableColumnType.Money,
-          width: 200,
-          align: 'right',
-        },
-        {
-          title: 'Lý do điều chỉnh',
-          dataIndex: 'adjustmentReason',
-          type: TableColumnType.Text,
-          width: 200,
-        },
-        {
-          title: 'Ghi chú',
-          dataIndex: 'notes',
-          type: TableColumnType.Description,
-          width: 200,
-        },
-        {
-          title: 'Trạng thái',
-          dataIndex: 'status',
-          type: TableColumnType.Template,
-          width: 140,
-          render: (_v, row) => renderApprovalStatusBadge(row.status),
-        },
-      ],
-    }),
-    []
-  );
 
   const viewTabs = useMemo<ViewTabConfig<VtsSystemAsset>[]>(() => {
     if (!r) return [];

@@ -111,7 +111,7 @@ public class PortTerminalAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'berthasset:manage', 'berthasset:read', 'berth:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'berthasset:manage', 'berthasset:history', 'portterminalasset:history', 'berth:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

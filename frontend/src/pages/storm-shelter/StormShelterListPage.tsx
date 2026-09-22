@@ -384,8 +384,19 @@ export default function StormShelterListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
 
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [rawUsers, setRawUsers] = useState<any[]>([]);
@@ -619,6 +630,8 @@ export default function StormShelterListPage() {
         approvalStatus: TAB_QUERY_MAP[activeTab],
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
+        sortBy,
+        sortDir,
         page, pageSize,
       });
       setDataSource(r.data); setTotal(r.total);
@@ -630,7 +643,7 @@ export default function StormShelterListPage() {
   }, [
     orgUnit, nameInput, codeInput, filterPortId, filterNavigationChannelId,
     filterBuoyStationId, filterClassification, filterProvince, filterOperationalStatus,
-    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize,
+    filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, sortBy, sortDir,
   ]);
 
   useEffect(() => { if (initialLoadDone && !isEmbeddedAction) void fetchData(); }, [fetchData, initialLoadDone, isEmbeddedAction]);
@@ -745,8 +758,7 @@ export default function StormShelterListPage() {
       toast.success('Đã xóa khu tránh, trú bão');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -767,8 +779,7 @@ export default function StormShelterListPage() {
       toast.success(record.approvalStatus === 'PENDING_APPROVAL' ? 'Đã phê duyệt cấp Cảng vụ/Chi cục' : 'Đã phê duyệt cấp Cục');
       setApproveModalOpen(false);
       setApprovingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -789,8 +800,7 @@ export default function StormShelterListPage() {
       toast.success('Đã gửi phê duyệt');
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -814,8 +824,7 @@ export default function StormShelterListPage() {
       setRejectingRecord(null);
       setRejectReason('');
       setRejectError('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts(orgUnit);
@@ -1203,32 +1212,6 @@ export default function StormShelterListPage() {
     ];
   }, [isAuditViewer, userMap]);
 
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || r.orgUnitName || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'stormShelterName') return r.stormShelterName ?? '';
-    if (field === 'stormShelterCode') return r.stormShelterCode ?? '';
-    if (field === 'portId') return r.portName || portMap.get(r.portId) || r.portId || '';
-    if (field === 'navigationChannelId') return (r as any).navigationChannelName || waterwayMap.get(r.navigationChannelId) || r.navigationChannelId || '';
-    if (field === 'buoyStationId') return r.buoyStationName || buoyStationMap.get(r.buoyStationId) || r.buoyStationId || '';
-    if (field === 'provinceId' || field === 'province') return r.provinceId ? (VIETNAM_PROVINCES[Number(r.provinceId) - 1] || '') : ((r as any).province || '');
-    if (field === 'classification') return r.classification ?? '';
-    if (field === 'operationalStatus') {
-      return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      if (isDeletedStormShelter(r)) return 'Đã xóa';
-      return (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()])?.label || r.approvalStatus || '';
-    }
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap]);
-
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       {
@@ -1253,23 +1236,23 @@ export default function StormShelterListPage() {
         render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{portMap.get(v || '') || v || ''}</span>,
       },
       {
-        label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
+        label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true,
         render: (v?: string, r?: StormShelterArea) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{(r as any)?.navigationChannelName || (v ? (waterwayMap.get(v) || v) : '')}</span>,
       },
       {
-        label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
+        label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220,
         render: (v: string, r: StormShelterArea) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{r.buoyStationName || (v ? buoyStationMap.get(v) || v : '')}</span>,
       },
       {
-        label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
+        label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230,
         render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : ''}</span>,
       },
       {
-        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false, sortable: true,
+        label: 'Tình trạng', dataIndex: 'operationalStatus', key: 'operationalStatus', width: 240, ellipsis: false,
         render: (v: string) => { const b = v && OPERATIONAL_STYLE_MAP[v]; return b ? <span style={statusBadgeStyle(b.color)}>{b.label}</span> : null; },
       },
       {
-        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false, sortable: true,
+        label: 'Trạng thái', dataIndex: 'approvalStatus', key: 'approvalStatus', width: 260, ellipsis: false,
         render: (v: string, record: StormShelterArea) => {
           if (isDeletedStormShelter(record)) {
             return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
@@ -1290,23 +1273,8 @@ export default function StormShelterListPage() {
     ];
     const tailColumns: any[] = [];
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
-    return allColumns.map(col => ({ ...col, sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined }));
-  }, [page, pageSize, organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap, auditColumns, sortField, sortOrder, openDetailDrawer]);
-
-  const sortedDataSource = useMemo(() => {
-    if (!sortField || !sortOrder) return dataSource;
-    if (sortField === 'stt') {
-      return sortOrder === 'descend' ? [...dataSource].reverse() : [...dataSource];
-    }
-    return [...dataSource].sort((a, b) => {
-      const av = getSortValue(a, sortField);
-      const bv = getSortValue(b, sortField);
-      const c = typeof av === 'number' && typeof bv === 'number'
-        ? av - bv
-        : String(av ?? '').localeCompare(String(bv ?? ''), 'vi');
-      return sortOrder === 'ascend' ? c : -c;
-    });
-  }, [dataSource, sortField, sortOrder, getSortValue]);
+    return allColumns.map(col => ({ ...col, sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined }));
+  }, [page, pageSize, organizations, orgMap, portMap, buoyStationMap, waterwayMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
@@ -1467,20 +1435,11 @@ export default function StormShelterListPage() {
         >
           <DataTable
             columns={columns}
-            dataSource={sortedDataSource}
+            dataSource={dataSource}
             rowKey="id"
             rowActions={rowActions}
             loading={false}
-            onSort={(k: string, o: 'asc' | 'desc' | null) => {
-              if (!o) {
-                setSortField(null);
-                setSortOrder(null);
-              } else {
-                setSortField(k);
-                setSortOrder(o === 'asc' ? 'ascend' : 'descend');
-              }
-              setPage(1);
-            }}
+            onSort={handleSort}
             scroll={{ x: 'max-content' }}
           />
           <Pagination
@@ -1501,7 +1460,7 @@ export default function StormShelterListPage() {
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editStormShelterId ? 'Chỉnh sửa thông tin Khu tránh, trú bão' : 'Thêm mới Khu tránh, trú bão'}</span>}
           open={createDrawerVisible}
           destroyOnHidden
-          onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+          onClose={closeFormDrawer}
           afterOpenChange={(open) => { if (!open) { setEditStormShelterId(undefined); setEditBaseStatus(undefined); } }}
           extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           footer={<div style={drawerFooterStyle}>{(() => {
@@ -1546,8 +1505,7 @@ export default function StormShelterListPage() {
               id={editStormShelterId}
               onFinish={() => {
                 closeFormDrawer();
-                setSortField('updatedAt');
-                setSortOrder('descend');
+                setSortBy(undefined); setSortDir(undefined);
                 setPage(1);
                 void fetchData();
                 void fetchCounts(orgUnit);

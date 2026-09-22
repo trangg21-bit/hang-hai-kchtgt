@@ -36,7 +36,9 @@ import {
   BUOY_TYPE_OPTIONS,
   COLOR_LABEL_MAP, SHAPE_LABEL_MAP, LIGHT_CHAR_LABEL_MAP, BUOY_FIELD_MAP,
   CLASSIFICATION_OPTIONS,
-  CONDITION_OPTIONS, buoyStatusBadge, TAB_STATUS_LIST,
+  CLASSIFICATION_LABEL_MAP, CLASSIFICATION_BUOY_LABEL_MAP, CLASSIFICATION_MARK_LABEL_MAP,
+  formatClassification, formatClassificationBuoy, formatClassificationMark,
+  CONDITION_OPTIONS, buoyStatusBadge, TAB_STATUS_LIST, normalizeBuoyStatus,
 } from './schema';
 import type { Buoy, ChangeHistory, CreateBuoyRequest } from './types';
 import { documentApi } from '../../app/document/api';
@@ -237,6 +239,7 @@ const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined, DRAFT: 'DRAFT', PENDING_APPROVAL: 'PENDING_APPROVAL',
   APPROVED_L1: 'APPROVED_L1', PUBLISHED: 'PUBLISHED', REJECTED_L1: 'REJECTED_L1', REJECTED_L2: 'REJECTED_L2',
+  DELETED: 'DELETED',
 };
 
 function ddToDms(dd: number | null | undefined): { d: number; m: number; s: number } {
@@ -568,16 +571,20 @@ export default function BuoyListPage() {
       const channelFiltered = filterWaterwayId ? stationFiltered.filter((d) => d.navigationChannelId === filterWaterwayId) : stationFiltered;
       const classFiltered = filterClassification ? channelFiltered.filter((d) => d.classification === filterClassification) : channelFiltered;
 
-      // Tab counts từ FULL dataset (không lọc theo tab đang chọn — giống BerthList fetchCounts)
-      const counts: Record<string, number> = { all: classFiltered.length };
+      // Tab counts từ FULL dataset (chuẩn hóa status legacy, tính tổng Tất cả = sum các tab con)
+      const counts: Record<string, number> = {};
       TAB_STATUS_LIST.slice(1).forEach((tab) => {
-        counts[tab.key] = classFiltered.filter((d) => d.status === tab.key).length;
+        counts[tab.key] = classFiltered.filter((d) => normalizeBuoyStatus(d.status) === tab.key).length;
       });
+      // Tổng tab Tất cả bắt buộc bằng tổng các tab con (Tất cả = Lưu tạm + Chờ Cảng vụ duyệt + Chờ Cục duyệt + Đã duyệt + Từ chối C1 + Từ chối C2 + Đã xóa)
+      counts.all = TAB_STATUS_LIST.slice(1).reduce((sum, tab) => sum + (counts[tab.key] || 0), 0);
       setTabCounts(counts);
 
       // Lọc trạng thái theo tab đang chọn (bộ lọc nâng cao đã bỏ trạng thái — tab là nguồn duy nhất)
       const effectiveStatus = TAB_QUERY_MAP[activeTab];
-      const tabFiltered = effectiveStatus ? classFiltered.filter((d) => d.status === effectiveStatus) : classFiltered;
+      const tabFiltered = effectiveStatus
+        ? classFiltered.filter((d) => normalizeBuoyStatus(d.status) === effectiveStatus)
+        : classFiltered;
       setTotal(tabFiltered.length);
 
       const start = (page - 1) * pageSize;
@@ -730,9 +737,9 @@ export default function BuoyListPage() {
         lightCharacteristic: data.lightCharacteristic || undefined,
         range: normalizeSafeNumber(data.range),
         buoyStationId: data.buoyStationId || undefined,
-        classification: data.classification || undefined,
-        classificationBuoy: data.classificationBuoy || undefined,
-        classificationMark: data.classificationMark || undefined,
+        classification: data.classification ? (CLASSIFICATION_LABEL_MAP[String(data.classification).trim()] || data.classification) : undefined,
+        classificationBuoy: data.classificationBuoy ? (CLASSIFICATION_BUOY_LABEL_MAP[String(data.classificationBuoy).trim()] || data.classificationBuoy) : undefined,
+        classificationMark: data.classificationMark ? (CLASSIFICATION_MARK_LABEL_MAP[String(data.classificationMark).trim()] || data.classificationMark) : undefined,
         provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
         locationDetail: data.locationDetail || undefined,
         condition: data.condition || undefined,
@@ -1136,12 +1143,15 @@ export default function BuoyListPage() {
     if (!val || val === 'null' || val === '(null)') return '';
     if (fn === 'isActive') return val === 'true' ? 'Có' : 'Ngừng';
     if (fn === 'type') return BUOY_TYPE_OPTIONS.find((o) => o.value === val)?.label || val;
+    if (fn === 'classification') return formatClassification(val);
+    if (fn === 'classificationBuoy') return formatClassificationBuoy(val);
+    if (fn === 'classificationMark') return formatClassificationMark(val);
     if (fn === 'color') return COLOR_LABEL_MAP[val] || val;
     if (fn === 'shape') return SHAPE_LABEL_MAP[val] || val;
     if (fn === 'lightCharacteristic') return LIGHT_CHAR_LABEL_MAP[val] || val;
-    if (fn === 'unitId' || fn === 'orgUnitId') return orgMap.get(val) || val;
-    if (fn === 'buoyStationId') return stationMap.get(val) || val;
-    if (fn === 'navigationChannelId') return waterwayMap.get(val) || val;
+    if (fn === 'unitId' || fn === 'orgUnitId') return orgLevel2Map.get(val) || orgMap.get(val) || (!isUuidString(val) ? val : '');
+    if (fn === 'buoyStationId') return stationMap.get(val) || (!isUuidString(val) ? val : '');
+    if (fn === 'navigationChannelId') return waterwayMap.get(val) || (!isUuidString(val) ? val : '');
     if (fn === 'status') return buoyStatusBadge(val).label;
     if (fn === 'approvalStatus') return approvalStatusLabel(val);
     if (fn === 'geometryType') return GEOMETRY_TYPE_LABELS[val] || val;
@@ -1149,7 +1159,7 @@ export default function BuoyListPage() {
     if (fn === 'coordinateSystem') return COORD_SYS_LABELS[val] || val;
     if (fn === 'lastInspectionDate' || fn === 'nextInspectionDate') return formatDateOnly(val);
     return val;
-  }, [orgMap, stationMap, waterwayMap]);
+  }, [orgLevel2Map, orgMap, stationMap, waterwayMap]);
 
   const actorName = useCallback((actor: string | undefined) => {
     if (!actor) return '';
@@ -1421,9 +1431,10 @@ export default function BuoyListPage() {
       dataIndex: 'unitId',
       width: 260,
       sortable: true,
-      render: (v: string) => {
+      render: (v: string, record: Buoy) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
-        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || ''}</span>;
+        const name = level2 || (record as any).unitName || (record as any).orgUnitName || (v ? orgMap.get(v) : undefined);
+        return <span style={{ fontWeight: fontWeightBold }}>{name || (!isUuidString(v) ? v : '') || ''}</span>;
       },
     },
     {
@@ -1433,7 +1444,10 @@ export default function BuoyListPage() {
       width: 460,
       ellipsis: false,
       sortable: true,
-      render: (v: string, rec: Buoy) => (v || (rec?.buoyStationId ? (buoyStations.find((s) => s.id === rec.buoyStationId)?.name || '') : '')),
+      render: (v: string, rec: Buoy) => {
+        const name = v || (rec?.buoyStationId ? (buoyStations.find((s) => s.id === rec.buoyStationId)?.name || '') : '');
+        return name || (!isUuidString(rec?.buoyStationId) ? (rec?.buoyStationId || '') : '');
+      },
     },
     {
       key: 'navigationChannelId',
@@ -1442,11 +1456,14 @@ export default function BuoyListPage() {
       width: 280,
       ellipsis: true,
       sortable: true,
-      render: (v?: string) => (
-        <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
-          {v ? (waterwayMap.get(v) || v) : ''}
-        </span>
-      ),
+      render: (v?: string) => {
+        const name = v ? waterwayMap.get(v) : '';
+        return (
+          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            {name || (v && !isUuidString(v) ? v : '')}
+          </span>
+        );
+      },
     },
     {
       key: 'provinceId',
@@ -1454,7 +1471,6 @@ export default function BuoyListPage() {
       dataIndex: 'provinceId',
       width: 250,
       ellipsis: false,
-      sortable: true,
       render: (v: number) => (v != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(v))?.label || String(v)) : ''),
     },
     {
@@ -1463,7 +1479,6 @@ export default function BuoyListPage() {
       dataIndex: 'condition',
       width: 250,
       ellipsis: false,
-      sortable: true,
       render: (v: string) => {
         if (!v) return '';
         const s = CONDITION_STYLE[v] || { color: textTertiary, label: v };
@@ -1475,7 +1490,6 @@ export default function BuoyListPage() {
       label: 'Trạng thái',
       dataIndex: 'status',
       width: 260,
-      sortable: true,
       render: (status: string) => { const b = buoyStatusBadge(status); return <span style={statusBadgeStyle(b.color)}>{b.label}</span>; },
     },
     {

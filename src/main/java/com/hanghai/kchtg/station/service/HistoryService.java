@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.station.service;
 
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -84,6 +85,31 @@ public class HistoryService {
                               String previousValue, String newValue,
                               UUID changedBy) {
         recordHistory(refType, refId, action, null, previousValue, newValue, null, changedBy, LocalDateTime.now());
+    }
+
+    @Transactional
+    public void recordAttachmentHistory(InfrastructureType refType, UUID refId,
+                                        InfrastructureHistoryStatus status,
+                                        String changedField,
+                                        String previousValue, String newValue,
+                                        String approvalContent,
+                                        UUID changedBy,
+                                        LocalDateTime approvedDate) {
+        if (refType == null || refId == null) {
+            return;
+        }
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(refId)
+                .refType(refType)
+                .status(status != null ? status : InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
+                .approvedBy(changedBy)
+                .approvedDate(approvedDate != null ? approvedDate : LocalDateTime.now())
+                .changedField(changedField != null ? changedField : "Tài liệu đính kèm")
+                .approvalContent(approvalContent)
+                .previousValue(previousValue)
+                .newValue(newValue)
+                .build());
     }
 
     @Transactional

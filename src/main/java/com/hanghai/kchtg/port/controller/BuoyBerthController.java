@@ -91,15 +91,17 @@ public class BuoyBerthController {
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String updatedFrom,
-            @RequestParam(required = false) String updatedTo) {
+            @RequestParam(required = false) String updatedTo,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(required = false) String sortDir) {
         log.info(
-                "Listing BuoyBerths: page={}, size={}, orgUnitId={}, search={}, buoyBerthCode={}, buoyBerthName={}, portId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, buoyBerthCode, buoyBerthName, portId, operationalStatus, approvalStatus);
+                "Listing BuoyBerths: page={}, size={}, orgUnitId={}, search={}, buoyBerthCode={}, buoyBerthName={}, portId={}, status={}, approvalStatus={}, sortBy={}, sortDir={}",
+                page, size, orgUnitId, search, buoyBerthCode, buoyBerthName, portId, operationalStatus, approvalStatus, sortBy, sortDir);
         Page<BuoyBerthResponse> result = buoyBerthService.findAll(
                 page, size, orgUnitId,
                 search, buoyBerthCode, buoyBerthName, portId, waterwayId, classification,
                 provinceId,
-                operationalStatus, approvalStatus, updatedFrom, updatedTo);
+                operationalStatus, approvalStatus, updatedFrom, updatedTo, sortBy, sortDir);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến phao thành công", result));
     }
 

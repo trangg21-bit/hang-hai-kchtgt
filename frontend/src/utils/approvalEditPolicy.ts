@@ -146,7 +146,16 @@ export function canEditApprovalRecord(
   }
 
   // Đã duyệt (APPROVED): cần đủ cả 2 quyền update và phê duyệt C2 (quy tắc 12/T12)
+  // hoặc người dùng cấp Cục được phép chỉnh sửa hồ sơ đã duyệt qua allowEditApproved
   if (st === 'APPROVED') {
+    const allowApproved = Boolean(
+      optionsOrResource &&
+      typeof optionsOrResource === 'object' &&
+      optionsOrResource.allowEditApproved
+    );
+    if (allowApproved) {
+      return true;
+    }
     const hasApproveC2 =
       checkPerm(`${resource}:approvec2`) ||
       checkPerm(`${resource}:approve:c2`) ||

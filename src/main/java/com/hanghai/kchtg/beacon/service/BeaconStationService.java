@@ -44,6 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service for BeaconStation CRUD + approval workflow (F-068 to F-072).
@@ -1160,6 +1161,17 @@ public class BeaconStationService {
         }
         List<Attachment> saved = new ArrayList<>();
         java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
+
+        // 1. Snapshot danh sách file trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+        List<String> uploadedFileNames = new ArrayList<>();
+
         for (MultipartFile file : files) {
             String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
             String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
@@ -1182,7 +1194,18 @@ public class BeaconStationService {
             attachment.setContentType(file.getContentType());
             attachment.setUploadedBy(userId);
             saved.add(attachmentRepository.save(attachment));
+            uploadedFileNames.add(originalFilename);
         }
+
+        // 2. Snapshot danh sách file sau khi upload
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
         // Ghi nhật ký "Tài liệu đính kèm" (chuẩn /vts-operation-center) — chỉ khi bản ghi ĐÃ DUYỆT
         // Guard: Thêm mới không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát thời điểm hiện tại).
         BeaconStation station = beaconStationRepo.findById(entityId).orElse(null);
@@ -1192,11 +1215,10 @@ public class BeaconStationService {
                 && (isApprovedStatus(station.getStatus())
                         || station.getApprovalStatus() == ApprovalStatus.APPROVED
                         || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2);
-        if (wasApproved) {
-            String uploadedNames = files.stream()
-                    .map(f -> f.getOriginalFilename() != null ? f.getOriginalFilename() : "unknown")
-                    .collect(java.util.stream.Collectors.joining("; "));
-            if (infraHistoryRepo != null) {
+        if (wasApproved && !uploadedFileNames.isEmpty()) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal) && infraHistoryRepo != null) {
                 infraHistoryRepo.save(InfrastructureHistory.builder()
                         .refId(entityId)
                         .refType(InfrastructureType.LIGHTHOUSE)
@@ -1205,8 +1227,9 @@ public class BeaconStationService {
                         .approvedBy(userId)
                         .approvedDate(LocalDateTime.now())
                         .changedField("Tài liệu đính kèm")
-                        .previousValue("—")
-                        .newValue(uploadedNames)
+                        .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
                         .build());
             }
         }
@@ -1225,6 +1248,22 @@ public class BeaconStationService {
         if (!attachment.getEntityId().equals(entityId)) {
             throw new IllegalArgumentException("File không thuộc đèn biển này");
         }
+        String fileName = attachment.getFileName();
+        final String entityType = "BEACON_LIGHT";
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
         try {
             java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
         } catch (Exception e) {
@@ -1237,6 +1276,8 @@ public class BeaconStationService {
                 || station.getApprovalStatus() == ApprovalStatus.APPROVED
                 || station.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
             if (infraHistoryRepo != null) {
+                String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+                String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
                 infraHistoryRepo.save(InfrastructureHistory.builder()
                         .refId(entityId)
                         .refType(InfrastructureType.LIGHTHOUSE)
@@ -1245,8 +1286,9 @@ public class BeaconStationService {
                         .approvedBy(SecurityUtils.getCurrentUserId())
                         .approvedDate(LocalDateTime.now())
                         .changedField("Tài liệu đính kèm")
-                        .previousValue(attachment.getFileName())
-                        .newValue("—")
+                        .approvalContent("Xóa tệp: " + fileName)
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
                         .build());
             }
         }

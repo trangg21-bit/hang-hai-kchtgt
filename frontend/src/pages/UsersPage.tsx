@@ -15,7 +15,7 @@ import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService, type Organization } from '../services/organizationService';
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
-import { expandPermissionAliases, getVisiblePermissionKeys, mergePermissionKeys, usePermissions } from '../hooks/usePermissions';
+import { isStructuralNodeKey, usePermissions } from '../hooks/usePermissions';
 import {
   actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
   fontWeightBold, fontWeightMedium, radiusPill, radiusMd, radiusTextArea, borderDefault,
@@ -324,13 +324,14 @@ export default function UsersPage() {
     try {
       const grants = await userService.getUserPermissions(user.id);
       const rawCodes = grants.map((grant) => typeof grant === 'string' ? grant : grant.permissionCode).filter(Boolean);
+      const cleanCodes = rawCodes.filter((code) => !isHiddenPermission(code));
       if (rawCodes.includes('*')) {
-        setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : rawCodes);
+        setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : cleanCodes);
       } else {
-        setSelectedPermissionKeys(rawCodes);
+        setSelectedPermissionKeys(cleanCodes);
       }
     } catch (err: any) {
-      const fallbackCodes = user.permissionCodes || [];
+      const fallbackCodes = (user.permissionCodes || []).filter((code) => !isHiddenPermission(code));
       if (fallbackCodes.includes('*')) {
         setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : fallbackCodes);
       } else {
@@ -358,9 +359,8 @@ export default function UsersPage() {
     setPermissionSaving(true);
     try {
       const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
-      const expandedKeys = expandPermissionAliases(selectedPermissionKeys, validCodes);
-      const keysToSave = Array.from(expandedKeys).filter((k) => {
-        if (k === '*' || k.startsWith('group_')) return false;
+      const keysToSave = selectedPermissionKeys.filter((k) => {
+        if (k === '*' || isStructuralNodeKey(k)) return false;
         return validCodes.size === 0 || validCodes.has(k.toLowerCase());
       });
 
@@ -404,9 +404,19 @@ export default function UsersPage() {
     return filter(indexedPermissionTree);
   }, [indexedPermissionTree, rawPermissionTree, appliedPermissionSearch]);
 
-  const allPermissionsSelected = allPermissionKeys.length > 0
-    && allPermissionKeys.every((key) => selectedPermissionKeys.includes(key));
-  const somePermissionsSelected = allPermissionKeys.some((key) => selectedPermissionKeys.includes(key));
+  const allLeafKeys = useMemo(
+    () => Array.from(getPermissionTreeKeys(rawPermissionTree)).filter((k) => !isStructuralNodeKey(k)),
+    [rawPermissionTree],
+  );
+
+  const visibleSelectedKeys = useMemo(
+    () => getVisiblePermissionKeys(selectedPermissionKeys, rawPermissionTree),
+    [selectedPermissionKeys, rawPermissionTree],
+  );
+
+  const allPermissionsSelected = allLeafKeys.length > 0
+    && allLeafKeys.every((key) => visibleSelectedKeys.includes(key));
+  const somePermissionsSelected = visibleSelectedKeys.length > 0 && !allPermissionsSelected;
 
   const rowActions = useCallback((record: User) => {
     const actions: {
@@ -863,9 +873,15 @@ export default function UsersPage() {
                   <div style={{ marginBottom: spaceMd, flexShrink: 0 }}>
                     <Checkbox
                       checked={allPermissionsSelected}
-                      indeterminate={!allPermissionsSelected && somePermissionsSelected}
-                      disabled={permissionLoading || permissionCatalogLoading || allPermissionKeys.length === 0}
-                      onChange={(event) => setSelectedPermissionKeys(event.target.checked ? [...allPermissionKeys] : [])}
+                      indeterminate={somePermissionsSelected}
+                      disabled={permissionLoading || permissionCatalogLoading || allLeafKeys.length === 0}
+                      onChange={() => {
+                        if (allPermissionsSelected || somePermissionsSelected) {
+                          setSelectedPermissionKeys([]);
+                        } else {
+                          setSelectedPermissionKeys([...allPermissionKeys]);
+                        }
+                      }}
                     >
                       HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
                     </Checkbox>
@@ -876,16 +892,15 @@ export default function UsersPage() {
                       defaultExpandAll
                       treeData={permissionTreeData}
                       checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)}
-                      onCheck={(checked) => {
-                        const keys = Array.isArray(checked) ? checked : checked.checked;
-                        const nextMerged = mergePermissionKeys(
+                      onCheck={(checked, info) => {
+                        const next = handleTreeCheck(
+                          checked,
+                          info,
                           selectedPermissionKeys,
-                          keys.map(String),
-                          permissionTreeData,
+                          rawPermissionTree,
                           validCodesSet,
-                        ).filter((key) => !key.startsWith('group_'));
-
-                        setSelectedPermissionKeys(nextMerged.filter((k) => k !== '*'));
+                        );
+                        setSelectedPermissionKeys(next);
                       }}
                     />
                   </div>

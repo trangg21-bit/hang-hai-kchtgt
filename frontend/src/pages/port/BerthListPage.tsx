@@ -350,8 +350,19 @@ export default function BerthList() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc' | undefined>(undefined);
+
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null => {
+    if (sortBy !== key || !sortDir) return null;
+    return sortDir === 'asc' ? 'ascend' : 'descend';
+  }, [sortBy, sortDir]);
+
+  const handleSort = useCallback((field: string, direction: 'asc' | 'desc' | null) => {
+    setSortBy(direction ? field : undefined);
+    setSortDir(direction ?? undefined);
+    setPage(1);
+  }, []);
 
   // ── Organizations + Users for lookup ────────────────────────────
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -568,11 +579,11 @@ export default function BerthList() {
     finally { setHistoryLoading(false); }
   }, []);
 
-  const renderBerthHistoryTimeline = (_records: any[]) => {
+  const renderBerthHistoryTimeline = (records: any[]) => {
     const q = historySearch.toLowerCase().trim();
 
     return renderStandardHistoryCards({
-      records: filteredHistory,
+      records,
       fieldLabels: historyFieldLabels,
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -741,13 +752,15 @@ export default function BerthList() {
       const res = await berthCRUD.search({
         ...getBaseSearchParams(),
         approvalStatus: TAB_QUERY_MAP[activeTab],
+        sortBy,
+        sortDir,
         page, pageSize,
       });
       setDataSource(res.data); setTotal(res.total);
     } catch {
       setIsError(true);
     } finally { setIsLoading(false); }
-  }, [getBaseSearchParams, activeTab, page, pageSize]);
+  }, [getBaseSearchParams, activeTab, page, pageSize, sortBy, sortDir]);
 
   useEffect(() => { if (orgUnitReady) void fetchData(); }, [fetchData, orgUnitReady]);
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
@@ -879,6 +892,12 @@ export default function BerthList() {
     notifyEmbeddedActionClosed();
   }, [notifyEmbeddedActionClosed]);
 
+  const closeFormDrawer = useCallback(() => {
+    setCreateDrawerVisible(false);
+    createForm.resetFields();
+    notifyEmbeddedActionClosed();
+  }, [createForm, notifyEmbeddedActionClosed]);
+
   const ddToDms = (dd: number): { d: number; m: number; s: number } => {
     if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
     const abs = Math.abs(dd);
@@ -902,8 +921,7 @@ export default function BerthList() {
       toast.success('Đã xóa bến cảng');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
       void fetchCounts();
@@ -921,8 +939,7 @@ export default function BerthList() {
       await berthApproval.approve(record.id, cap, content || 'Đã phê duyệt');
       toast.success('Đã phê duyệt bến cảng');
       setApproveModalOpen(false); setApprovingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
@@ -934,8 +951,7 @@ export default function BerthList() {
       await berthCRUD.update({ id: submittingRecord.id, saveAction: 'SUBMIT' });
       toast.success('Đã gửi phê duyệt bến cảng');
       setSubmitModalOpen(false); setSubmittingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
@@ -953,8 +969,7 @@ export default function BerthList() {
       await berthApproval.reject(rejectingRecord.id, cap, reason);
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData(); void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
@@ -1112,38 +1127,6 @@ export default function BerthList() {
   }));
 
   // ── Table columns (F-018 section 10.2) ────────────────────────────
-  // Giá trị sort theo cột hiển thị (map id → label) để click header cột nào cũng sort đúng thứ tự nhìn thấy
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    if (field === 'berthName') return r.berthName ?? '';
-    if (field === 'structureType') return STRUCTURE_TYPE_OPTIONS.find(o => o.value === r.structureType)?.label ?? '';
-    if (field === 'portId') return portOptions.find(o => o.value === r.portId)?.label ?? r.portId ?? '';
-    if (field === 'waterwayId') return waterwayMap.get(r.waterwayId) ?? r.waterway ?? r.waterwayId ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[r.provinceId - 1] || '') : '';
-    if (field === 'operationalFunction') return formatOperationalFunction(r.operationalFunction, '');
-    if (field === 'operationalStatus') {
-      const m: Record<string, string> = {
-        OPERATIONAL: 'Đang khai thác/vận hành',
-        NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
-        SUSPENDED: 'Dừng khai thác/vận hành',
-      };
-      return m[r.operationalStatus || ''] || r.operationalStatus || '';
-    }
-    if (field === 'approvalStatus') {
-      const s = r.approvalStatus && (APPROVAL_STYLE_MAP[r.approvalStatus] || APPROVAL_STYLE_MAP[r.approvalStatus?.toUpperCase()]);
-      return s ? s.label : (r.approvalStatus || '');
-    }
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    if (field === 'portId') return r.portId ? portMap.get(r.portId) ?? r.portId : '';
-    return r[field] ?? '';
-  }, [organizations, orgMap, portMap, waterwayMap]);
-
   const columns = useMemo(() => {
     const baseColumns: any[] = [
       { key: 'sequenceNo', label: 'STT', width: 60, fixed: 'left' as const, align: 'center' as const,
@@ -1174,17 +1157,17 @@ export default function BerthList() {
             {v ? (waterwayMap.get(v) || record?.waterway || v) : (record?.waterway || '')}
           </span>
         ) },
-      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true,
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250,
         cellTitle: (record: Berth) => record.provinceId ? (VIETNAM_PROVINCES[record.provinceId - 1] || '') : '',
         render: (v: number | null) => v ? (VIETNAM_PROVINCES[v - 1] || '') : '' },
-      { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, ellipsis: true, sortable: true,
+      { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, ellipsis: true,
         cellTitle: (record: Berth) => formatOperationalFunction(record.operationalFunction, ''),
         render: (v: string | null) => (
           <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
             {formatOperationalFunction(v, '')}
           </span>
         ) },
-      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190, sortable: true,
+      { key: 'operationalStatus', label: 'Tình trạng', dataIndex: 'operationalStatus', width: 190,
         cellTitle: (record: Berth) => {
           const m: Record<string, string> = {
             OPERATIONAL: 'Đang khai thác/vận hành',
@@ -1248,7 +1231,7 @@ export default function BerthList() {
     ];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true, ellipsis: false,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, ellipsis: false,
         cellTitle: (record: Berth) => {
           if (record.deletedAt || record.deletedBy) return 'Đã xóa';
           const s = APPROVAL_STYLE_MAP[record.approvalStatus] || APPROVAL_STYLE_MAP[record.approvalStatus?.toUpperCase()];
@@ -1298,9 +1281,9 @@ export default function BerthList() {
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map(col => ({
       ...col,
-      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined,
     }));
-  }, [page, pageSize, portMap, organizations, orgMap, userMap, waterwayMap, sortField, sortOrder, openDetailDrawer]);
+  }, [page, pageSize, portOptions, organizations, orgMap, userMap, waterwayMap, sortOrderFor, openDetailDrawer]);
 
   // ── Detail drawer content ────────────────────────────────────────
   const openPierDetail = useCallback(async (id: string) => {
@@ -1481,18 +1464,9 @@ export default function BerthList() {
         onRetry={() => void fetchData()}
       >
         <DataTable columns={columns}
-          dataSource={[...dataSource].sort((a: any, b: any) => { if (!sortField || !sortOrder) return 0; const aVal = getSortValue(a, sortField); const bVal = getSortValue(b, sortField); const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi'); return sortOrder === 'ascend' ? cmp : -cmp; })}
+          dataSource={dataSource}
           rowKey="id" rowActions={rowActions} loading={false}
-          onSort={(key: string, order: 'asc' | 'desc' | null) => {
-            if (!order) {
-              setSortField(null);
-              setSortOrder(null);
-            } else {
-              setSortField(key);
-              setSortOrder(order === 'asc' ? 'ascend' : 'descend');
-            }
-            setPage(1);
-          }}
+          onSort={handleSort}
           scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}
@@ -1508,7 +1482,7 @@ export default function BerthList() {
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Thêm mới Bến cảng</span>}
         open={createDrawerVisible}
         destroyOnHidden
-        onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+        onClose={closeFormDrawer}
         footer={
           <div style={drawerFooterStyle}>
             <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
@@ -1526,7 +1500,7 @@ export default function BerthList() {
       >
         <style>{requiredMarkStyle}</style>
         <Form form={createForm} layout="vertical" initialValues={{}}>
-          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { setCreateDrawerVisible(false); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(); }} onSubmittingChange={setSubmitting} />
+          <BerthForm ref={berthFormRef} form={createForm} onFinish={() => { closeFormDrawer(); setSortBy(undefined); setSortDir(undefined); setPage(1); void fetchData(); void fetchCounts(); }} onSubmittingChange={setSubmitting} />
         </Form>
       </AppDrawer>
 
@@ -1642,7 +1616,7 @@ export default function BerthList() {
         {editBerthId && (<>
           <style>{requiredMarkStyle}</style>
           <Form form={updateForm} layout="vertical" initialValues={{}}>
-            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); setSortField('updatedAt'); setSortOrder('descend'); setPage(1); void fetchData(); void fetchCounts(); }} onSubmittingChange={setSubmitting} />
+            <BerthForm ref={editBerthFormRef} form={updateForm} id={editBerthId} onFinish={() => { closeEditDrawer(); setSortBy(undefined); setSortDir(undefined); setPage(1); void fetchData(); void fetchCounts(); }} onSubmittingChange={setSubmitting} />
           </Form>
         </>)}
       </AppDrawer>

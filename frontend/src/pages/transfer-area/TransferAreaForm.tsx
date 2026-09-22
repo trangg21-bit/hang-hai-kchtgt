@@ -509,14 +509,22 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       .finally(() => setTransferAreaCodeLoading(false));
   }, [watchedPortId, isEdit, form]);
 
+  // Track loaded geometry type to avoid resetting coordinateList on initial edit load
+  const prevGeometryTypeRef = useRef<string | undefined>(undefined);
+
   // Sync geometryType to coordinateList
   useEffect(() => {
     if (isEdit && !isInitialLoadDoneRef.current) {
       return;
     }
     if (!watchedGeometryType) {
+      prevGeometryTypeRef.current = undefined;
       return;
     }
+    if (prevGeometryTypeRef.current === watchedGeometryType) {
+      return;
+    }
+    prevGeometryTypeRef.current = watchedGeometryType;
     form.setFieldsValue({
       displayRule: 'Độ, phút, giây (DMS)',
       coordinateSystem: form.getFieldValue('coordinateSystem') ?? 1,
@@ -612,6 +620,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
           displayRule: (d.displayRule != null || geomType) ? 'Độ, phút, giây (DMS)' : undefined,
         });
 
+        prevGeometryTypeRef.current = geomType;
         isInitialLoadDoneRef.current = true;
 
         // Mooring water areas
@@ -922,7 +931,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
 
   // Main Save logic
   const handleSave = useCallback(async (saveAction: SaveAction) => {
-    const vals = form.getFieldsValue();
+    const vals = form.getFieldsValue(true);
     try {
       await form.validateFields();
     } catch (e: any) {
@@ -1124,7 +1133,6 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
               headers: { 'Content-Type': 'multipart/form-data' },
               params: { skipHistory: !wasApproved },
             });
-            toast.success(`Đã tải lên ${newFiles.length} tệp đính kèm`);
           } catch {
             toast.error('Tải lên tệp đính kèm thất bại');
           }
@@ -1159,19 +1167,6 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       label: 'Thông tin chung',
       children: (
         <div style={drawerFormScrollStyle}>
-          <style>{`
-            .cn-op-2line-label .ant-form-item-label {
-              height: auto !important;
-              min-height: 44px !important;
-              align-items: flex-start !important;
-            }
-            .cn-op-2line-label .ant-form-item-label > label {
-              height: auto !important;
-              white-space: normal !important;
-              line-height: 1.45 !important;
-              overflow-wrap: break-word;
-            }
-          `}</style>
           {/* Card 1: Thông tin cơ bản & Quản lý vận hành */}
           <div style={sectionBoxStyle}>
             <div style={sectionHeaderStyle}>
@@ -1339,7 +1334,6 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                   <Col span={12}>
                     <Form.Item
                       name="operationalFunctions"
-                      className="cn-op-2line-label"
                       {...labelProps('Công năng khai thác')}
                       required
                       style={{ marginBottom: spaceFormField }}
@@ -1355,7 +1349,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item name="underInvestmentTransferCount" className="cn-op-2line-label" {...labelProps('Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} getValueFromEvent={getValueFromEvent5}>
+                    <Form.Item name="underInvestmentTransferCount" {...labelProps('Số lượng khu chuyển tải đang được thỏa thuận đầu tư xây dựng')} style={{ marginBottom: spaceFormField }} getValueFromEvent={getValueFromEvent5}>
                       <NumberInputWithCount min={0} step={1} precision={0} maxLength={5} placeholder="0" style={numberStyle} parser={parseNumber5} />
                     </Form.Item>
                   </Col>
@@ -1514,8 +1508,8 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                   <DetailTable
                     size="small"
                     scrollY={130}
-                    pageSize={5}
-                    pageSizeOptions={[5, 10, 20]}
+                    pageSize={20}
+                    pageSizeOptions={[20, 50, 100]}
                     dataSource={waterAreaList.map((w, i) => ({ ...w, key: i }))}
                     rowKey={(r: MooringWaterAreaItem & { key: number }) => String(r.key)}
                     emptyText="Chưa có dữ liệu"
@@ -1581,6 +1575,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           <div style={sectionBoxStyle}>
@@ -1795,7 +1790,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* Drawer thêm/sửa Khu nước neo buộc tàu */}
       <Drawer

@@ -84,6 +84,7 @@ export function useKchtPermissions(
 ) {
   const {
     approvalLevels = 2,
+    extraReadPerms = [],
   } = options;
 
   const authStoreUser = useAuthStore((s: AuthState) => s.user);
@@ -114,8 +115,9 @@ export function useKchtPermissions(
 
   // Base Capabilities
   const canRead = useMemo(() => {
-    return hasPerm(`${resource}:read`);
-  }, [hasPerm, resource]);
+    if (hasPerm(`${resource}:read`)) return true;
+    return extraReadPerms.some((p) => hasPerm(p));
+  }, [hasPerm, resource, extraReadPerms]);
 
   const canCreate = useMemo(() => {
     return hasExplicitPerm(`${resource}:create`);
@@ -181,6 +183,7 @@ export function useKchtPermissions(
     return canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource,
+      allowEditApproved: isCucLevel,
     });
   };
 

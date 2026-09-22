@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP } from '../../types/buoy';
 import {
-  statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textTertiary,
+  statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary,
 } from '../../tokens';
 
 export { BUOY_TYPE_OPTIONS, BUOY_TYPE_MAP };
@@ -70,7 +70,7 @@ export const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }
   REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
   REJECTED_L2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-  DELETED: { color: textTertiary, label: 'Đã xóa' },
+  DELETED: { color: statusCritical, label: 'Đã xóa' },
 };
 
 export const APPROVAL_STATUS_OPTIONS = [
@@ -81,6 +81,7 @@ export const APPROVAL_STATUS_OPTIONS = [
   { value: 'REJECTED', label: 'Từ chối cấp Cảng vụ/Chi cục' },
   { value: 'REJECTED_L1', label: 'Từ chối cấp Cảng vụ/Chi cục' },
   { value: 'REJECTED_L2', label: 'Từ chối cấp Cục' },
+  { value: 'DELETED', label: 'Đã xóa' },
 ];
 
 export const TAB_STATUS_LIST = [
@@ -91,6 +92,7 @@ export const TAB_STATUS_LIST = [
   { key: 'PUBLISHED', label: 'Đã phê duyệt', color: statusOperational },
   { key: 'REJECTED_L1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
   { key: 'REJECTED_L2', label: 'Từ chối cấp Cục', color: statusCritical },
+  { key: 'DELETED', label: 'Đã xóa', color: statusCritical },
 ];
 
 // ── Nhãn trường cho lịch sử thay đổi ──────────────────────────────────

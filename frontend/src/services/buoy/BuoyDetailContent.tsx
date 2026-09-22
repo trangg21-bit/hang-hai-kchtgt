@@ -26,6 +26,9 @@ import {
 } from '../../themetokenchk';
 import {
   SHAPE_LABEL_MAP,
+  formatClassification,
+  formatClassificationBuoy,
+  formatClassificationMark,
 } from './schema';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import type { Buoy } from './types';
@@ -317,14 +320,14 @@ export default function BuoyDetailContent({
                     ['Mã phao tiêu', r.code ? <span style={{ ...statusBadgeStyle(actionPrimary), whiteSpace: 'nowrap' }}>{r.code}</span> : '', false, isLongCode],
                     ['Tên phao tiêu', <span style={{ fontWeight: fontWeightBold }}>{r.name || ''}</span>],
                     ['Đơn vị quản lý', (() => {
-                      const name = orgUnits.find((o) => o.id === r.unitId)?.name || r.unitId || '';
-                      return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
+                      const name = orgUnits.find((o) => o.id === r.unitId)?.name || (r as any).orgUnitName || (r as any).unitName || '';
+                      return <span style={{ fontWeight: fontWeightBold }}>{name || (!isUuidString(r.unitId) ? r.unitId : '') || ''}</span>;
                     })()],
-                    ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || ''],
-                    ['Thuộc luồng hàng hải', waterwayMap?.get(r.navigationChannelId || '') || r.navigationChannelId || ''],
-                    ['Phân loại', r.classification || ''],
-                    ['Phân loại phao', r.classificationBuoy || ''],
-                    ['Phân loại tiêu', r.classificationMark || ''],
+                    ['Thuộc nhà trạm quản lý vận hành phao, tiêu', r.buoyStationName || (!isUuidString(r.buoyStationId) ? r.buoyStationId : '') || ''],
+                    ['Thuộc luồng hàng hải', (r.navigationChannelId ? (waterwayMap?.get(r.navigationChannelId) || (!isUuidString(r.navigationChannelId) ? r.navigationChannelId : '')) : '')],
+                    ['Phân loại', formatClassification(r.classification)],
+                    ['Phân loại phao', formatClassificationBuoy(r.classificationBuoy)],
+                    ['Phân loại tiêu', formatClassificationMark(r.classificationMark)],
                     ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
                     ['Tình trạng', (() => { const s = r.condition ? CONDITION_STYLE[r.condition] : null; return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : ''; })()],
                     ['Địa điểm chi tiết', r.locationDetail || '', true],

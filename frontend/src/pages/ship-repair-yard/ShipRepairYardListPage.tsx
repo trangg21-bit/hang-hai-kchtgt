@@ -569,13 +569,13 @@ export default function ShipRepairYardList() {
     finally { setHistoryLoading(false); }
   }, []);
 
-  const renderShipRepairYardHistoryTimeline = (_records: any[]) => {
+  const renderShipRepairYardHistoryTimeline = (records: any[]) => {
     const q = historySearch.toLowerCase().trim();
     const from = historyFrom ? historyFrom.trim() : '';
     const to = historyTo ? historyTo.trim() : '';
 
     return renderStandardHistoryCards({
-      records: filteredHistory,
+      records,
       fieldLabels: historyFieldLabels,
       groupOrder: HISTORY_FIELD_ORDER,
       formatValue: (fn, raw) => {
@@ -763,7 +763,7 @@ export default function ShipRepairYardList() {
         counts[tabKey] = result.status === 'fulfilled' ? result.value.total : 0;
       });
       const allChildSum = TAB_STATUS_LIST
-        .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+        .filter((t) => t.key !== 'all')
         .reduce((acc, t) => acc + (counts[t.key] || 0), 0);
       counts['all'] = allChildSum;
       setTabCounts(counts);
@@ -1093,7 +1093,7 @@ export default function ShipRepairYardList() {
   // ── Status tabs config ──────────────────────────────────────────
   const statusTabs = useMemo(() => {
     const allChildSum = TAB_STATUS_LIST
-      .filter((t) => t.key !== 'all' && t.key !== 'DELETED')
+      .filter((t) => t.key !== 'all')
       .reduce((acc, t) => acc + (tabCounts[t.key] ?? 0), 0);
 
     return TAB_STATUS_LIST.map((tab) => {
@@ -1277,7 +1277,6 @@ export default function ShipRepairYardList() {
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'provinceId',
         width: 250,
-        sortable: true,
         cellTitle: (record: ShipRepairYard) => (record?.provinceId ? VIETNAM_PROVINCES[record.provinceId - 1] : '') || '',
         render: (v: number | null) => renderCellWithTooltip(v ? VIETNAM_PROVINCES[v - 1] : null),
       },
@@ -1286,7 +1285,6 @@ export default function ShipRepairYardList() {
         label: 'Tình trạng',
         dataIndex: 'operationalStatus',
         width: 210,
-        sortable: true,
         render: (v: string | null) => {
           if (!v) return '';
           const m: Record<string, { color: string; label: string }> = {
@@ -1393,7 +1391,7 @@ export default function ShipRepairYardList() {
     ];
 
     const tailColumns: any[] = [
-      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260, sortable: true,
+      { key: 'approvalStatus', label: 'Trạng thái', dataIndex: 'approvalStatus', width: 260,
         render: (v: string, record: ShipRepairYard) => {
           if (isShipRepairYardDeleted(record)) {
             return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;

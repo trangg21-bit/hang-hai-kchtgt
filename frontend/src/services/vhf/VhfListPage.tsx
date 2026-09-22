@@ -1138,14 +1138,15 @@ const VhfListPage = () => {
       counts.DELETED = counts.ARCHIVED || 0;
       setTabCounts(counts);
 
-      // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối (Từ chối cấp Cảng vụ/Chi cục + Từ chối cấp cục)
+      // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
       setTotalAll(
         (counts.DRAFT || 0) +
           (counts.PENDING_APPROVAL || 0) +
           (counts.APPROVED_LEVEL1 || 0) +
           (counts.APPROVED || 0) +
           (counts.REJECTED_LEVEL1 || 0) +
-          (counts.REJECTED_LEVEL2 || 0)
+          (counts.REJECTED_LEVEL2 || 0) +
+          (counts.ARCHIVED || counts.DELETED || 0)
       );
     } catch {
       // ignore
@@ -1381,8 +1382,6 @@ const validHistoryGroups = useMemo(() => {
       const rec0 = g.items[0] || {};
       const actionMeta = resolveHistoryActionMeta(rec0);
       const isCreate = actionMeta.label === 'Thêm mới';
-      const isUpdate = isUpdateAction(g.status, rec0.reason || rec0.note) || actionMeta.label === 'Cập nhật';
-
       const seenLabels = new Set<string>();
       const nonAttachmentChanges: { field: string; oldValue: string | null; newValue: string | null }[] = [];
       for (const item of g.items) {
@@ -1547,12 +1546,25 @@ const validHistoryGroups = useMemo(() => {
                         ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 }
                         : {};
                       const renderValueNode = (rawVal: string | null, val: string | null) => {
-                        const node = renderCell(rawVal) ?? (val ?? null);
-                        return isGisHistoryField(fn) ? (
-                          <span style={gisCellStyle}>{node}</span>
-                        ) : (
-                          node
-                        );
+                        const custom = renderCell(rawVal);
+                        if (custom) return custom;
+                        const textVal = val ?? '';
+                        if (isGisHistoryField(fn)) {
+                          return <span style={gisCellStyle}>{textVal}</span>;
+                        }
+                        if (isAttachmentField(fn) && typeof textVal === 'string' && textVal.includes(',')) {
+                          const files = textVal.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
+                          if (files.length > 1) {
+                            return (
+                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
+                                {files.map((file, idx) => (
+                                  <span key={idx} style={{ wordBreak: 'break-all' }}>{file}</span>
+                                ))}
+                              </span>
+                            );
+                          }
+                        }
+                        return textVal;
                       };
                       if (isCreate) {
                         return (
@@ -1809,8 +1821,7 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "operationalStatus",
       width: 270,
       type: "status" as const,
-      sortOrder: sortOrderFor("operationalStatus"),
-      cellTitle: (record: VhfResponse) => {
+            cellTitle: (record: VhfResponse) => {
         if (record.operationalStatus === undefined || record.operationalStatus === null || record.operationalStatus === '') return '';
         return operationalStatusBadge(record.operationalStatus).label;
       },
@@ -1830,8 +1841,7 @@ const validHistoryGroups = useMemo(() => {
       dataIndex: "approvalStatus",
       width: 300,
       type: "status" as const,
-      sortOrder: sortOrderFor("approvalStatus"),
-      render: (val: string, record: VhfResponse) => renderApprovalBadge(val, record),
+            render: (val: string, record: VhfResponse) => renderApprovalBadge(val, record),
     },
     {
       key: "updatedByName",
@@ -2463,7 +2473,7 @@ const validHistoryGroups = useMemo(() => {
             {
               key: "all",
               label: "Tất cả",
-              count: (!filterValues.approvalStatus ? total : totalAll) || 0,
+              count: totalAll || 0,
               color: actionPrimary,
               active: !filterValues.approvalStatus,
             },

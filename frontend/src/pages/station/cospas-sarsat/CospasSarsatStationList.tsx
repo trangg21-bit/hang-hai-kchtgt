@@ -611,9 +611,6 @@ export default function CospasSarsatStationList() {
       dataIndex: 'conditionStatus',
       width: 220,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('conditionStatus'),
       render: (val: ConditionStatus | string) => {
         const s = CONDITION_STYLE_MAP[val] || { color: textTertiary, label: val || '—' };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
@@ -625,9 +622,6 @@ export default function CospasSarsatStationList() {
       dataIndex: 'approvalStatus',
       width: 260,
       ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('approvalStatus'),
       render: (status: ApprovalStatus | string) => <ApprovalStatusBadge status={status} />,
     },
     {

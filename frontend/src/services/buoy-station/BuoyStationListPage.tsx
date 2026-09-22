@@ -47,7 +47,10 @@ import {
   BUOY_TYPE_OPTIONS, APPROVAL_STYLE_MAP, TAB_STATUS_LIST, STATION_FIELD_MAP,
   COLOR_MAP, SHAPE_MAP, LIGHT_MAP, GEO_MAP, COORD_MAP,
 } from './schema';
-import { CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS } from '../buoy/schema';
+import {
+  CONDITION_OPTIONS, CLASSIFICATION_OPTIONS, CLASSIFICATION_BUOY_OPTIONS,
+  formatClassification, formatClassificationBuoy, formatClassificationMark,
+} from '../buoy/schema';
 import BuoyStationFormContent from './BuoyStationFormContent';
 import type { ExistingFile, BuoyStationFormContentHandle } from './BuoyStationFormContent';
 import BuoyStationDetailContent from './BuoyStationDetailContent';
@@ -63,19 +66,15 @@ import {
   statusOperational,
   statusAttention,
   statusCritical,
-  statusDraft,
   actionPrimary,
   textPrimary,
   textSecondary,
   textTertiary,
   borderDefault,
   fontSizeLg,
-  fontSizeSm,
-  fontWeightMedium,
   fontWeightBold,
   spaceMd,
   spaceSm,
-  spaceXs,
   spaceXl,
   spaceFormField,
   radiusPill,
@@ -194,27 +193,6 @@ function stationFieldLabel(fn: string): string {
 }
 
 // ── History helpers (chuẩn VTS CHK) ───────────────────────────────
-function historyTimestamp(item: any): string {
-  return item?.approvedDate || item?.changedAt || item?.createdAt || '';
-}
-
-function historyActor(item: any): string {
-  const raw = item?.approvedBy || item?.changedBy || item?.performedBy || item?.actorName || '';
-  return raw || '';
-}
-
-function historyField(item: any): string {
-  return item?.fieldName || item?.changedField || '';
-}
-
-function historyOldValue(item: any): string | null {
-  return item?.oldValue ?? item?.previousValue ?? null;
-}
-
-function historyNewValue(item: any): string | null {
-  return item?.newValue ?? null;
-}
-
 export default function BuoyStationListPage() {
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
@@ -285,6 +263,27 @@ export default function BuoyStationListPage() {
     });
     return map;
   }, [organizations]);
+
+  // Danh mục đơn vị khai thác thật từ backend /common/options/operating-organizations
+  const [operatingUnits, setOperatingUnits] = useState<Array<{ id: string; code: string; name: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/common/options/operating-organizations');
+        const data = res.data?.data;
+        if (Array.isArray(data) && data.length > 0 && !cancelled) setOperatingUnits(data);
+      } catch {
+        // Giữ danh sách mặc định nếu endpoint lỗi
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const operatingUnitsMap = useMemo(() => {
+    const m = new Map<string, string>();
+    operatingUnits.forEach((o) => { if (o.id) m.set(o.id, o.name); });
+    return m;
+  }, [operatingUnits]);
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [stationBuoys, setStationBuoys] = useState<Record<string, { classifications: string[]; classificationBuoys: string[]; classificationMarks: string[] }>>({});
   const [viewBuoyOpen, setViewBuoyOpen] = useState(false);
@@ -618,10 +617,17 @@ export default function BuoyStationListPage() {
     }
     if (fn === 'approvalLevel') return val === 'LEVEL_1' ? 'Cấp Cảng vụ/Chi cục' : val === 'LEVEL_2' ? 'Cấp Cục' : val;
     if (fn === 'isActive') return val === 'true' ? 'Hoạt động' : 'Ngừng';
-    if (fn === 'unitId' || fn === 'operatingOrgId') return orgMap.get(val) || val;
-    if (fn === 'portId') return portMap.get(val) || val;
-    if (fn === 'waterwayId') return waterwayMap.get(val) || val;
-    if (fn === 'waterwayRouteId') return routeMap.get(val) || val;
+    if (fn === 'unitId') {
+      const name = orgLevel2Map.get(val) || orgMap.get(val);
+      return name || (!isUuidString(val) ? val : '');
+    }
+    if (fn === 'operatingOrgId') {
+      const name = operatingUnitsMap.get(val) || orgMap.get(val) || DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === val)?.name;
+      return name || (!isUuidString(val) ? val : '');
+    }
+    if (fn === 'portId') return portMap.get(val) || (!isUuidString(val) ? val : '');
+    if (fn === 'waterwayId') return waterwayMap.get(val) || (!isUuidString(val) ? val : '');
+    if (fn === 'waterwayRouteId') return routeMap.get(val) || (!isUuidString(val) ? val : '');
     if (fn === 'icon') return symbolMap.get(val) || val;
     if (fn === 'sentApprovedBy' || fn === 'approvedBy' || fn === 'level1ApprovedBy' || fn === 'level2ApprovedBy' || fn === 'createdBy' || fn === 'updatedBy') return formatUserDisplayName(val, null, userMap);
     if (fn === 'constructionDate' || fn === 'lastInspectionDate' || fn === 'nextInspectionDate' || fn === 'lastRepairDate') {
@@ -631,7 +637,7 @@ export default function BuoyStationListPage() {
       try { return dayjs(val).format('DD/MM/YYYY HH:mm:ss'); } catch { return val; }
     }
     return val;
-  }, [orgMap, portMap, waterwayMap, routeMap, symbolMap, userMap]);
+  }, [orgLevel2Map, orgMap, operatingUnitsMap, portMap, waterwayMap, routeMap, symbolMap, userMap]);
 
   const actorName = useCallback((actor: string | undefined) => {
     if (!actor) return '';
@@ -877,54 +883,59 @@ export default function BuoyStationListPage() {
     },
     {
       key: 'unitId', label: 'Đơn vị quản lý', dataIndex: 'unitId', width: 260, ellipsis: true, sortable: true,
-      render: (v: string) => {
+      render: (v: string, record: BuoyStationResponse) => {
         const level2 = v ? orgLevel2Map.get(v) : undefined;
-        return <span style={{ fontWeight: fontWeightBold }}>{level2 || v || ''}</span>;
+        const name = level2 || (record as any).unitName || (record as any).orgUnitName || (v ? orgMap.get(v) : undefined);
+        return <span style={{ fontWeight: fontWeightBold }}>{name || (!isUuidString(v) ? v : '') || ''}</span>;
       },
     },
     {
       key: 'classifications', label: 'Phân loại', width: 140, ellipsis: true, sortable: true,
       render: (_: unknown, record: BuoyStationResponse) => {
         const arr = stationBuoys[record.id]?.classifications || [];
-        return arr.length ? arr.join(', ') : '';
+        return arr.length ? formatClassification(arr) : '';
       },
     },
     {
       key: 'classificationBuoys', label: 'Phân loại phao', width: 170, ellipsis: true, sortable: true,
       render: (_: unknown, record: BuoyStationResponse) => {
         const arr = stationBuoys[record.id]?.classificationBuoys || [];
-        return arr.length ? arr.join(', ') : '';
+        return arr.length ? formatClassificationBuoy(arr) : '';
       },
     },
     {
       key: 'classificationMarks', label: 'Phân loại tiêu', width: 170, ellipsis: true, sortable: true,
       render: (_: unknown, record: BuoyStationResponse) => {
         const arr = stationBuoys[record.id]?.classificationMarks || [];
-        return arr.length ? arr.join(', ') : '';
+        return arr.length ? formatClassificationMark(arr) : '';
       },
     },
     {
       key: 'operatingOrgId', label: 'Đơn vị khai thác', dataIndex: 'operatingOrgId', width: 220, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === v)?.name || v) : ''),
+      render: (v: string, record: BuoyStationResponse) => {
+        if (!v && !(record as any).operatingOrgName) return '';
+        const name = (record as any).operatingOrgName || (v ? (operatingUnitsMap.get(v) || orgMap.get(v) || DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === v)?.name) : undefined);
+        return name || (!isUuidString(v) ? v : '') || '';
+      },
     },
     {
-      key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 220, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (portMap.get(v) || v) : ''),
+      key: 'portId', label: 'Thuộc cảng biển', dataIndex: 'portId', width: 220, ellipsis: true,
+      render: (v: string) => (v ? (portMap.get(v) || (!isUuidString(v) ? v : '')) : ''),
     },
     {
-      key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true, sortable: true,
-      render: (v: string) => (v ? (waterwayMap.get(v) || v) : ''),
+      key: 'waterwayId', label: 'Thuộc luồng hàng hải', dataIndex: 'waterwayId', width: 280, ellipsis: true,
+      render: (v: string) => (v ? (waterwayMap.get(v) || (!isUuidString(v) ? v : '')) : ''),
     },
     {
-      key: 'province', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', width: 250, sortable: true,
+      key: 'province', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', width: 250,
       render: (v: string) => (v || ''),
     },
     {
-      key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 230, sortable: true,
+      key: 'condition', label: 'Tình trạng', dataIndex: 'condition', width: 230,
       render: (v: string) => { const s = v && CONDITION_STYLE[v]; return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : null; },
     },
     {
-      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 260, sortable: true,
+      key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 260,
       render: (s: string) => {
         if (!s) return null;
         const m = APPROVAL_STYLE_MAP[s];
@@ -1274,6 +1285,7 @@ export default function BuoyStationListPage() {
             ddToDms={ddToDms}
             symbolMap={symbolMap}
             symbolImageMap={symbolImageMap}
+            operatingUnitsMap={operatingUnitsMap}
           />
         ) : null}
       </AppDrawer>

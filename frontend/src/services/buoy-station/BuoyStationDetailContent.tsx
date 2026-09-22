@@ -15,7 +15,7 @@ import {
 } from './schema';
 import {
   colors, actionPrimary, statusOperational, statusAttention, statusCritical, surfaceCard,
-  textPrimary, textTertiary,
+  textPrimary,
   fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField, statusBadgeStyle,
   outlineButtonStyle, primaryButtonStyle,
@@ -33,6 +33,7 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganiz
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { detailLabelStyle } from '../../components/detail-drawer/detailSkin';
 import { fmtNum } from '../../utils/numFmt';
+import { formatClassification, formatClassificationBuoy, formatClassificationMark } from '../buoy/schema';
 
 // ── Style badge Tình trạng (giống Quản lý phao tiêu) ─────────────────
 const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
@@ -105,6 +106,7 @@ export interface BuoyStationDetailContentProps {
   ddToDms: (v: number) => { d: number; m: number; s: number };
   symbolMap: Map<string, string>;
   symbolImageMap: Map<string, string>;
+  operatingUnitsMap?: Map<string, string>;
 }
 
 function parseGisCoordinates(record: any): Array<{ lat: number; lng: number }> {
@@ -159,6 +161,7 @@ export default function BuoyStationDetailContent({
   ddToDms,
   symbolMap,
   symbolImageMap,
+  operatingUnitsMap,
 }: BuoyStationDetailContentProps) {
   const r = selectedRecord;
   const [gisModalOpen, setGisModalOpen] = useState(false);
@@ -166,7 +169,14 @@ export default function BuoyStationDetailContent({
   const [maintenanceOpen, setMaintenanceOpen] = useState(true);
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
-  const orgName = (id: string | undefined) => (id ? (orgUnits.find((o) => o.id === id)?.name || id) : '');
+  const orgName = (id: string | undefined) => {
+    if (!id) return (r as any).unitName || (r as any).orgUnitName || '';
+    const found = orgUnits.find((o) => o.id === id)?.name;
+    if (found) return found;
+    const fallback = (r as any).unitName || (r as any).orgUnitName;
+    if (fallback) return fallback;
+    return isUuidString(id) ? '' : id;
+  };
   const userName = (id: string | number | undefined | null, fallbackName?: string | null) =>
     formatUserDisplayName(id != null ? String(id) : null, fallbackName, userMap);
 
@@ -349,10 +359,10 @@ export default function BuoyStationDetailContent({
                         const name = orgName(r.unitId);
                         return <span style={{ fontWeight: fontWeightBold }}>{name}</span>;
                       })()],
-                    ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingOrgId)?.name || r.operatingOrgId || ''}</span>],
-                    ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || r.portId) : ''],
-                    ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || r.waterwayId) : ''],
-                    ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || r.waterwayRouteId) : ''],
+                    ['Đơn vị khai thác', <span style={{ fontWeight: fontWeightBold }}>{(r as any).operatingOrgName || (r.operatingOrgId ? (operatingUnitsMap?.get(r.operatingOrgId) || DEFAULT_OPERATING_ORGANIZATIONS.find(o => o.id === r.operatingOrgId)?.name || (!isUuidString(r.operatingOrgId) ? r.operatingOrgId : '')) : '')}</span>],
+                    ['Thuộc cảng biển', r.portId ? (portMap.get(r.portId) || (!isUuidString(r.portId) ? r.portId : '')) : ''],
+                    ['Thuộc luồng hàng hải', r.waterwayId ? (waterwayMap.get(r.waterwayId) || (!isUuidString(r.waterwayId) ? r.waterwayId : '')) : ''],
+                    ['Tuyến luồng hàng hải', r.waterwayRouteId ? (routeMap.get(r.waterwayRouteId) || (!isUuidString(r.waterwayRouteId) ? r.waterwayRouteId : '')) : ''],
                     ['Địa điểm (Tỉnh/Thành Phố)', r.province || ''],
                     ['Địa điểm chi tiết', r.address || '', true],
                     ['Thời điểm xây dựng', formatDate(r.constructionDate)],
@@ -506,9 +516,9 @@ export default function BuoyStationDetailContent({
               columns={[
                 { title: 'Mã phao, tiêu', key: 'code', dataIndex: 'code', render: (v: string) => v ? <span style={statusBadgeStyle(actionPrimary)}>{v}</span> : '' },
                 { title: 'Tên phao, tiêu', key: 'name', dataIndex: 'name', render: (v: string, rec: any) => onViewBuoy ? <Button type="link" onClick={() => onViewBuoy(rec.id)} style={{ fontWeight: fontWeightBold, color: actionPrimary, padding: 0, height: 'auto' }}>{v || ''}</Button> : <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold }}>{v || ''}</span> },
-                { title: 'Phân loại', key: 'classification', dataIndex: 'classification', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span> },
-                { title: 'Phân loại phao', key: 'classificationBuoy', dataIndex: 'classificationBuoy', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span> },
-                { title: 'Phân loại tiêu', key: 'classificationMark', dataIndex: 'classificationMark', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v || ''}</span> },
+                { title: 'Phân loại', key: 'classification', dataIndex: 'classification', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatClassification(v)}</span> },
+                { title: 'Phân loại phao', key: 'classificationBuoy', dataIndex: 'classificationBuoy', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatClassificationBuoy(v)}</span> },
+                { title: 'Phân loại tiêu', key: 'classificationMark', dataIndex: 'classificationMark', render: (v: string) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{formatClassificationMark(v)}</span> },
               ]}
             />
           ),
