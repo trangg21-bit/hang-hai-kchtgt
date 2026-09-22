@@ -890,7 +890,7 @@ export default function StormShelterAssetList() {
         width: 260,
         fixed: 'left',
         allowSort: true,
-        onClick: (record) => void openDetail(record),
+        onClick: perms.canRead ? ((record) => void openDetail(record)) : undefined,
       },
       {
         title: 'ĐƠN VỊ QUẢN LÝ',
@@ -1084,7 +1084,7 @@ export default function StormShelterAssetList() {
             onClick: () => handleOpenApproveModal(record, 'c1'),
           });
         }
-        if (perms.canReject || perms.canApproveC1) {
+        if (perms.canRejectC1) {
           actionsList.push({
             key: 'rejectC1',
             label: 'Từ chối cấp Cảng vụ/Chi cục',
@@ -1104,7 +1104,7 @@ export default function StormShelterAssetList() {
             onClick: () => handleOpenApproveModal(record, 'c2'),
           });
         }
-        if (perms.canReject || perms.canApproveC2) {
+        if (perms.canRejectC2) {
           actionsList.push({
             key: 'rejectC2',
             label: 'Từ chối cấp Cục',

@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
-import { Result, Button, Spin } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
-import { usePermissionStore } from '../store/permissionStore';
+import { Button, Result, Spin } from 'antd';
+import type { ReactNode } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { usePermissionStore } from '../store/permissionStore';
 
 interface Props {
   permission: string | string[];
@@ -16,7 +16,7 @@ export default function PermissionGuard({ permission, children, fallback, disabl
   const hasAnyPermission = usePermissionStore((s) => s.hasAnyPermission);
   const userPermissions = useAuthStore((s) => s.user?.permissions);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  
+
   const checkPermission = () => {
     if (Array.isArray(permission)) {
       return hasAnyPermission(permission);

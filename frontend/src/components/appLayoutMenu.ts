@@ -2,19 +2,37 @@ import type { Key, ReactNode } from 'react';
 import type { MenuProps } from 'antd';
 
 export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
+  // Quản trị hệ thống
   '/users': 'user:read',
   '/organizations': 'orgunit:read',
   '/groups': ['group:read', 'groupmember:read'],
+  '/logs': ['log:read', 'log:view'],
+  '/history': ['history:read', 'history:view'],
+  '/interconnect': ['connection:read', 'interconnect:read'],
+  '/connections': ['connection:read', 'interconnect:read'],
+  '/settings': 'admin:manage',
+
+  // GIS & Bản đồ
   '/gis/map': 'data:read',
-  '/gis/points': 'data:read',
-  '/gis/lines': 'data:read',
-  '/gis/polygons': 'data:read',
+  '/gis/points': ['gispoint:read', 'pointobject:read', 'data:read'],
+  '/gis/lines': ['gisline:read', 'lineobject:read', 'data:read'],
+  '/gis/polygons': ['gispolygon:read', 'polygonobject:read', 'data:read'],
   '/gis/layers': 'map:manage',
   '/gis/permits': 'data:read',
-  '/beacon-stations': 'beaconstation:read',
-  '/buoys': 'buoy:read',
-  '/buoy-station': 'buoystation:read',
-  '/history': ['history:read', 'history:view'],
+  '/symbols': 'data:read',
+
+  // Báo cáo
+  '/reports': 'report:read',
+  '/dashboard': 'report:read',
+
+  // Quy hoạch & Vận hành
+  '/documents/legal': 'document:read',
+  '/documents/incidents': ['incident:read', 'document:read'],
+  '/documents/port-planning': ['portplanning:read', 'document:read'],
+  '/documents/operation': ['operationplan:read', 'document:read'],
+  '/documents/maintenance': ['maintenanceplan:read', 'document:read'],
+
+  // Quản lý KCHT hàng hải (28 loại KCHT)
   '/port': 'port:read',
   '/berth': 'berth:read',
   '/pier': 'pier:read',
@@ -24,45 +42,15 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/transfer-area': 'transferarea:read',
   '/storm-shelter': 'stormshelter:read',
   '/buoy-berth': 'buoyberth:read',
-  '/dai-ttdh': ['daittdh:read', 'coastalstation:read'],
-  '/ship-repair-yard': ['shiprepairyard:read', 'shiprepairfacility:read', 'shiprepair:read'],
-  '/asset/increase': ['assetincrease:manage', 'assetincrease:read'],
-  '/asset/decrease': ['assetdecrease:manage', 'assetdecrease:read'],
-  '/asset/inventory': ['inventoryasset:manage', 'inventoryasset:read', 'inventoryplan:read', 'inventoryreport:read'],
-  '/asset/exploitation': ['assetexploitation:manage', 'assetexploitation:read'],
-  '/asset/berth': ['berthasset:manage', 'berthasset:read', 'berth:read', 'berth:manage'],
-  '/asset/vts-system': ['vtsasset:manage', 'vtsasset:read', 'vts:read', 'vtssystem:read'],
-  '/asset/radar-station': ['radarasset:manage', 'radarasset:read', 'radarstation:read', 'tramradar:read'],
-  '/asset/ais-system': ['aisasset:manage', 'aisasset:read', 'aissystem:read'],
-  '/asset/cctv-system': ['cctvasset:manage', 'cctvasset:read', 'cctv:read'],
-  '/asset/scada-system': ['scadaasset:manage', 'scadaasset:read', 'scada:read'],
-  '/asset/transmission': ['transmissionasset:manage', 'transmissionasset:read', 'transmission:read', 'transmission:manage'],
-  '/asset/vts-assist': ['vtsassistasset:manage', 'vtsassistasset:read', 'vtsassist:read', 'vtsassist:manage'],
-  '/asset/vhf': ['vhfasset:manage', 'vhfasset:read', 'vhf:read', 'vhf:manage'],
-  '/asset/dai-ttdh': ['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage'],
-  '/asset/inmarsat': ['inmarsatasset:manage', 'inmarsatasset:read', 'inmarsat:read'],
-  '/asset/transfer-area': ['transferareaasset:manage', 'transferareaasset:read', 'transferarea:read', 'transferarea:manage'],
-  '/asset/storm-shelter': ['stormshelterasset:manage', 'stormshelterasset:read', 'stormshelter:read', 'stormshelter:manage'],
-  '/asset/buoy-berth': ['buoyberthasset:manage', 'buoyberthasset:read', 'buoyberth:read', 'buoyberth:manage'],
-  '/asset/pier': ['pierasset:manage', 'pierasset:read', 'pier:read', 'pier:manage'],
-  '/asset/anchorage': ['anchorageasset:manage', 'anchorageasset:read', 'anchorage:read', 'anchorage:manage'],
-  '/asset/lighthouse': ['lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:read', 'lighthouse:manage', 'beaconstation:read'],
-  '/asset/dike-revetment': ['dikerevetmentasset:manage', 'dikerevetmentasset:read', 'dikerevetment:read', 'dikerevetment:manage'],
-  '/asset/buoy': ['buoyasset:manage', 'buoyasset:read', 'buoy:read', 'buoy:manage', 'buoystation:read'],
-  '/asset/buoy-station': ['buoyasset:manage', 'buoyasset:read', 'buoy:read', 'buoystation:read'],
-  '/asset/channel': ['channelasset:manage', 'channelasset:read', 'channel:read', 'channel:manage', 'navigationchannel:read'],
-  '/asset/navigation-channel': ['channelasset:manage', 'channelasset:read', 'channel:read', 'channel:manage', 'navigationchannel:read'],
-  '/asset/dry-port': ['dryportasset:manage', 'dryportasset:read', 'dryport:read', 'dryport:manage'],
-  '/asset/cang-can': ['dryportasset:manage', 'dryportasset:read', 'dryport:read', 'dryport:manage'],
-  '/asset/lrit': ['lritasset:manage', 'lritasset:read', 'lrit:read', 'lrit:manage', 'coastalstationlrit:read'],
-  '/asset/cospas-sarsat': ['cospassarsatasset:manage', 'cospassarsatasset:read', 'cospassarsat:read', 'cospassarsat:manage', 'coastalstationcospassarsat:read'],
-  '/asset/ttxltt': ['ttxlttasset:manage', 'ttxlttasset:read'],
-  '/asset/ttdh': ['daittdhasset:manage', 'daittdhasset:read', 'daittdh:read', 'daittdh:manage'],
   '/navigation-channel': ['navigationchannel:read', 'channel:read'],
   '/navigation-channel-chk': ['navigationchannel:read', 'channel:read'],
   '/luong-hang-hai': ['navigationchannel:read', 'channel:read'],
   '/luong-hang-hai-chk': ['navigationchannel:read', 'channel:read'],
   '/dike-revetment': 'dikerevetment:read',
+  '/buoy-station': 'buoystation:read',
+  '/buoys': 'buoy:read',
+  '/beacon-stations': ['beaconstation:read', 'lighthouse:read'],
+  '/ship-repair-yard': ['shiprepairfacility:read', 'shiprepairyard:read', 'shiprepair:read'],
   '/ship-repair-facility': ['shiprepairfacility:read', 'shiprepair:read', 'shiprepairyard:read'],
   '/radar-station': ['radarstation:read', 'tramradar:read'],
   '/vts-system': ['vts:read', 'vtssystem:read'],
@@ -73,23 +61,71 @@ export const MENU_PERMISSION_MAP: Record<string, string | string[]> = {
   '/transmission': 'transmission:read',
   '/vts-assist': 'vtsassist:read',
   '/vhf': 'vhf:read',
-  '/station/coastal': ['coastalstation:read', 'specialstation:read', 'station:read'],
-  '/station/inmarsat': 'coastalstationinmarsat:read',
-  '/station/cospas-sarsat': ['specialstation:read', 'coastalstationcospassarsat:read', 'coastalstation:read'],
-  '/station/lrit': ['specialstation:read', 'coastalstationlrit:read', 'coastalstation:read'],
-  '/station/hanoi': ['specialstation:read', 'coastalstationhaiphong:read', 'coastalstation:read'],
-  '/connections': ['connection:read', 'interconnect:read'],
-  '/interconnect': ['connection:read', 'interconnect:read'],
-  '/reports': 'report:read',
-  '/dashboard': 'report:read',
-  '/settings': 'admin:manage',
-  '/logs': ['log:read', 'log:view', 'log:manage', 'admin:view', 'admin:manage'],
-  '/symbols': 'data:read',
-  '/documents/legal': 'document:read',
-  '/documents/incidents': 'document:read',
-  '/documents/port-planning': ['document:read', 'portplanning:read'],
-  '/documents/operation': ['document:read', 'operationplan:read'],
-  '/documents/maintenance': ['document:read', 'maintenanceplan:read'],
+  '/dai-ttdh': 'daittdh:read',
+  '/station/coastal': 'coastalstation:read',
+  '/station/inmarsat': ['inmarsat:read', 'coastalstationinmarsat:read'],
+  '/station/cospas-sarsat': ['cospassarsat:read', 'coastalstationcospassarsat:read'],
+  '/station/lrit': ['lrit:read', 'coastalstationlrit:read'],
+  '/station/hanoi': ['ttxltt:read', 'coastalstationhaiphong:read'],
+
+  // Quản lý tài sản KCHT hàng hải (24 loại tài sản + 4 nghiệp vụ biến động)
+  '/asset/berth': 'berthasset:read',
+  '/asset/transfer-area': 'transferareaasset:read',
+  '/asset/storm-shelter': 'stormshelterasset:read',
+  '/asset/buoy-berth': 'buoyberthasset:read',
+  '/asset/pier': 'pierasset:read',
+  '/asset/anchorage': 'anchorageasset:read',
+  '/asset/lighthouse': 'lighthouseasset:read',
+  '/asset/dike-revetment': 'dikerevetmentasset:read',
+  '/asset/buoy': 'buoyasset:read',
+  '/asset/buoy-station': 'buoyasset:read',
+  '/asset/channel': 'channelasset:read',
+  '/asset/navigation-channel': 'channelasset:read',
+  '/asset/dry-port': 'dryportasset:read',
+  '/asset/cang-can': 'dryportasset:read',
+  '/asset/lrit': 'lritasset:read',
+  '/asset/cospas-sarsat': 'cospassarsatasset:read',
+  '/asset/ttxltt': 'ttxlttasset:read',
+  '/asset/ttdh': 'daittdhasset:read',
+  '/asset/vts-system': 'vtsasset:read',
+  '/asset/radar-station': 'radarasset:read',
+  '/asset/ais-system': 'aisasset:read',
+  '/asset/cctv-system': 'cctvasset:read',
+  '/asset/scada-system': 'scadaasset:read',
+  '/asset/transmission': 'transmissionasset:read',
+  '/asset/vts-assist': 'vtsassistasset:read',
+  '/asset/vhf': 'vhfasset:read',
+  '/asset/dai-ttdh': 'daittdhasset:read',
+  '/asset/inmarsat': 'inmarsatasset:read',
+  '/asset/increase': 'assetincrease:read',
+  '/asset/decrease': 'assetdecrease:read',
+  '/asset/inventory': ['inventoryasset:read', 'inventoryplan:read', 'inventoryreport:read'],
+  '/asset/exploitation': 'assetexploitation:read',
+};
+
+import { usePermissionStore } from '../store/permissionStore';
+
+export const canAccessMenu = (path: string): boolean => {
+  if (path === '/') return true;
+
+  let required = MENU_PERMISSION_MAP[path];
+  if (!required) {
+    const parentRoute = Object.keys(MENU_PERMISSION_MAP)
+      .filter((k) => path.startsWith(k + '/'))
+      .sort((a, b) => b.length - a.length)[0];
+    if (parentRoute) {
+      required = MENU_PERMISSION_MAP[parentRoute];
+    }
+  }
+  if (!required) return true;
+
+  const permStore = usePermissionStore.getState();
+
+  if (Array.isArray(required)) {
+    return required.some((req) => permStore.hasPermission(req));
+  }
+
+  return permStore.hasPermission(required);
 };
 
 type TraversableMenuItem = {

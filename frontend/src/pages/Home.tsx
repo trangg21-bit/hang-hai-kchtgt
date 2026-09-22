@@ -6,7 +6,7 @@ import DashboardPage from './DashboardPage';
 import type { CSSProperties } from 'react';
 import { usePermissionStore } from '../store/permissionStore';
 import { useAuthStore } from '../store/authStore';
-import { MENU_PERMISSION_MAP } from '../components/appLayoutMenu';
+import { MENU_PERMISSION_MAP, canAccessMenu } from '../components/appLayoutMenu';
 import {
   NAV_GROUPS,
   accessibleTree,
@@ -56,12 +56,7 @@ type DirectoryCard = {
 };
 
 function canAccessRoute(path: string): boolean {
-  const required = MENU_PERMISSION_MAP[path];
-  if (!required) return true;
-  if (Array.isArray(required)) {
-    return usePermissionStore.getState().hasAnyPermission(required);
-  }
-  return usePermissionStore.getState().hasPermission(required);
+  return canAccessMenu(path);
 }
 
 // Scoped CSS: hover / focus-visible của card landing (inline style không hỗ trợ

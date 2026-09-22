@@ -111,7 +111,7 @@ public class TransferAreaAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'transferareaasset:manage', 'transferareaasset:read', 'transferarea:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'transferareaasset:manage', 'transferareaasset:history', 'transferarea:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

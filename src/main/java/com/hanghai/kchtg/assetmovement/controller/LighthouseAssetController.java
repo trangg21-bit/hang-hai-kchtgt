@@ -111,7 +111,7 @@ public class LighthouseAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'lighthouseasset:manage', 'lighthouseasset:read', 'lighthouse:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'lighthouseasset:manage', 'lighthouseasset:history', 'lighthouse:history', 'beaconstation:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

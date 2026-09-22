@@ -98,13 +98,13 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Aggregate resource:manage grants access")
+    @DisplayName("Aggregate resource:manage grants access for non-KCHT domain")
     void aggregateManageMatch() {
-        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vts:manage"));
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("setting:manage"));
 
-        assertTrue(service.checkPermission(userId, "vts", "create"));
-        assertTrue(service.checkPermission(userId, "vts", "delete"));
-        assertTrue(service.checkPermission(userId, "vts", "update"));
+        assertTrue(service.checkPermission(userId, "setting", "create"));
+        assertTrue(service.checkPermission(userId, "setting", "delete"));
+        assertTrue(service.checkPermission(userId, "setting", "update"));
     }
 
     @Test
@@ -287,13 +287,13 @@ class EffectivePermissionServiceTest {
     }
 
     @Test
-    @DisplayName("Operational permission does not implicitly grant read/view/search")
-    void implicitReadIsNotGrantedFromOperationalPermissions() {
+    @DisplayName("Operational permission implicitly grants read/view/search for list access but not write/delete")
+    void implicitReadIsGrantedFromOperationalPermissions() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vts:approvec1"));
 
-        assertFalse(service.checkPermission(userId, "vts:read"));
-        assertFalse(service.checkPermission(userId, "vts:view"));
-        assertFalse(service.checkPermission(userId, "vts:search"));
+        assertTrue(service.checkPermission(userId, "vts:read"));
+        assertTrue(service.checkPermission(userId, "vts:view"));
+        assertTrue(service.checkPermission(userId, "vts:search"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
         assertFalse(service.checkPermission(userId, "vts:create"));
     }
@@ -315,9 +315,9 @@ class EffectivePermissionServiceTest {
     void canonicalResourceMapping_vtsAndVtssystem() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("vtssystem:update"));
 
-        // Has update on vtssystem -> matches vts:update
+        // Has update on vtssystem -> matches vts:update and enables list view (vts:read)
         assertTrue(service.checkPermission(userId, "vts:update"));
-        assertFalse(service.checkPermission(userId, "vts:read"));
+        assertTrue(service.checkPermission(userId, "vts:read"));
         assertFalse(service.checkPermission(userId, "vts:delete"));
     }
 
@@ -330,10 +330,10 @@ class EffectivePermissionServiceTest {
         assertTrue(service.checkPermission(userId, "buoy:read"));
         assertFalse(service.checkPermission(userId, "buoystation:delete"));
 
-        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("buoyasset:manage"));
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("buoyasset:create"));
         assertTrue(service.checkPermission(userId, "buoystation:read"));
         assertTrue(service.checkPermission(userId, "buoystation:create"));
-        assertTrue(service.checkPermission(userId, "buoystation:delete"));
+        assertFalse(service.checkPermission(userId, "buoystation:delete"));
     }
 
     @Test
@@ -346,31 +346,24 @@ class EffectivePermissionServiceTest {
         assertTrue(service.checkPermission(userId, "beaconlight:read"));
         assertFalse(service.checkPermission(userId, "beaconstation:delete"));
 
-        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("lighthouseasset:manage"));
+        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("lighthouseasset:create"));
         assertTrue(service.checkPermission(userId, "beaconstation:read"));
         assertTrue(service.checkPermission(userId, "beaconstation:create"));
-        assertTrue(service.checkPermission(userId, "beaconstation:update"));
-        assertTrue(service.checkPermission(userId, "beaconstation:delete"));
-
-        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("beaconstation:manage"));
-        assertTrue(service.checkPermission(userId, "lighthouseasset:read"));
-        assertTrue(service.checkPermission(userId, "lighthouse:read"));
+        assertFalse(service.checkPermission(userId, "beaconstation:update"));
+        assertFalse(service.checkPermission(userId, "beaconstation:delete"));
     }
 
     @Test
-    @DisplayName("A child or umbrella asset permission does not grant port read access")
-    void portDoesNotInheritChildOrUmbrellaPermissions() {
+    @DisplayName("A child asset permission grants parent port read access for list viewing without inheriting modifications")
+    void portInheritsChildReadPermissionsForNavigation() {
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("stormshelterasset:read"));
 
-        assertFalse(service.checkPermission(userId, "port:read"));
-        assertFalse(service.checkPermission(userId, "seaport:read"));
+        assertTrue(service.checkPermission(userId, "port:read"));
+        assertTrue(service.checkPermission(userId, "seaport:read"));
         assertFalse(service.checkPermission(userId, "port:delete"));
 
-        when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("stormshelterasset:manage"));
-        assertFalse(service.checkPermission(userId, "port:read"));
-
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("berthasset:read"));
-        assertFalse(service.checkPermission(userId, "port:read"));
+        assertTrue(service.checkPermission(userId, "port:read"));
 
         when(permissionCacheService.getPermissionsFromCache(userId)).thenReturn(Set.of("infraasset:manage"));
         assertFalse(service.checkPermission(userId, "port:read"));

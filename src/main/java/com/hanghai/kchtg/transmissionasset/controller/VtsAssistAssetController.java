@@ -81,7 +81,7 @@ public class VtsAssistAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'vtsassistasset:manage', 'vtsassistasset:read', 'vtsassist:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'vtsassistasset:manage', 'vtsassistasset:history', 'vtsassist:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", service.getHistory(id)));
     }

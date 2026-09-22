@@ -111,7 +111,7 @@ public class TtxlttAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'ttxlttasset:manage', 'ttxlttasset:history', 'ttxltt:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

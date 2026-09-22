@@ -111,7 +111,7 @@ public class DryPortAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'dryportasset:manage', 'dryportasset:read', 'dryport:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'dryportasset:manage', 'dryportasset:history', 'dryport:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

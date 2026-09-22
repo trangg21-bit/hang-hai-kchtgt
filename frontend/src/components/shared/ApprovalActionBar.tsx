@@ -38,10 +38,16 @@ export default function ApprovalActionBar({
     hasPermission(`${entityPermissionPrefix}:approve${level}`) ||
     hasPermission(`${entityPermissionPrefix}:approve_${level}`);
 
+  const hasRejectPerm = (level: 'c1' | 'c2') =>
+    hasPermission(`${entityPermissionPrefix}:reject:${level}`) ||
+    hasPermission(`${entityPermissionPrefix}:reject${level}`) ||
+    hasPermission(`${entityPermissionPrefix}:reject_${level}`) ||
+    hasPermission(`${entityPermissionPrefix}:reject`);
+
   // C1 is available only for PROPOSED. REJECTED must be edited and resubmitted first.
   const isC1Stage = currentStatus === 'PROPOSED';
   const canApproveC1 = isC1Stage && hasApprovePerm('c1');
-  const canRejectAtC1 = isC1Stage && hasApprovePerm('c1');
+  const canRejectAtC1 = isC1Stage && hasRejectPerm('c1');
 
   // C2 stage: PENDING_APPROVAL
   const isC2Stage = currentStatus === 'PENDING_APPROVAL';
@@ -49,7 +55,7 @@ export default function ApprovalActionBar({
   const canRejectAtC2 =
     isC2Stage &&
     !(currentUserId && nguoiPheDuyetC1 === currentUserId) &&
-    (hasApprovePerm('c1') || hasApprovePerm('c2'));
+    hasRejectPerm('c2');
 
   const canDelete = currentStatus === 'APPROVED' && hasPermission(`${entityPermissionPrefix}:delete`);
 

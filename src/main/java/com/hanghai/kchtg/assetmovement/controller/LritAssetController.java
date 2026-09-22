@@ -111,7 +111,7 @@ public class LritAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'lritasset:manage', 'lritasset:read', 'lrit:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'lritasset:manage', 'lritasset:history', 'lrit:history', 'coastalstationlrit:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));

@@ -25,21 +25,17 @@ import java.util.Set;
 @Slf4j
 public class PermissionSeeder implements CommandLineRunner {
 
-        /** KCHT business resources use explicit action permissions; `manage` is redundant. */
+        /** KCHT business resources use explicit action permissions; `manage` is redundant for these. */
         private static final Set<String> KCHT_RESOURCES_WITHOUT_MANAGE = Set.of(
                         "port", "seaport", "berth", "berthasset", "pier", "pierasset", "buoyberth", "buoyberthasset",
-                        "anchorage", "anchorageasset", "transferarea", "transferareaasset", "stormshelter", "stormshelterasset",
-                        "dryport", "dryportasset", "waterzone", "waterarea", "navigationchannel", "channel", "channelasset", "dikerevetment", "dikerevetmentasset",
-                        "shiprepair", "shiprepairfacility", "shiprepairyard", "radarstation", "tramradar",
+                        "anchorageasset", "transferareaasset", "stormshelter", "stormshelterasset",
+                        "dryportasset", "waterzone", "waterarea", "navigationchannel", "channel", "channelasset", "dikerevetment", "dikerevetmentasset",
+                        "tramradar", "radarasset",
                         "beaconstation", "beaconlight", "lighthouseasset", "buoystation", "buoy", "buoyasset", "lighthouse", "lighthousestation",
-                        "vts", "vtssystem", "vtsasset", "vtsoperationcenter", "vtsassist", "vtsassistasset", "aissystem", "aisasset", "cctv", "cctvasset", "scada", "scadaasset",
-                        "transmission", "transmissionasset", "vhf", "vhfasset", "daittdh", "daittdhasset", "ttxltt", "ttxlttasset", "coastalstation", "specialstation", "station",
+                        "vts", "vtssystem", "vtsasset", "vtsoperationcenter", "vtsassistasset", "aissystem", "aisasset", "cctvasset", "scadaasset",
+                        "transmissionasset", "vhf", "vhfasset", "daittdh", "daittdhasset", "ttxltt", "ttxlttasset", "coastalstation", "specialstation", "station",
                         "coastalstationinmarsat", "coastalstationcospassarsat", "coastalstationlrit",
-                        "coastalstationhaiphong", "inmarsat", "inmarsatasset", "cospassarsat", "cospassarsatasset", "lrit", "lritasset", "asset", "infraasset",
-                        "assetincrease", "assetdecrease", "assetexploitation", "movementrequest", "inventoryasset",
-                        "inventoryplan", "inventoryreport", "approvalrecord", "processingrecord", "maintenanceplan",
-                        "operationplan", "incident", "gispoint", "pointobject", "gisline", "lineobject",
-                        "gispolygon", "polygonobject");
+                        "coastalstationhaiphong", "inmarsat", "inmarsatasset", "cospassarsat", "cospassarsatasset", "lrit", "lritasset", "asset", "infraasset");
 
         private final PermissionRepository permissionRepository;
         private final JdbcTemplate jdbcTemplate;
@@ -820,8 +816,47 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationhaiphong", "approvec2", "Phê duyệt C2 đài TTXLTT Hà Nội", "Phê duyệt cấp 2 đài TTXLTT");
                 seedPermission(definitions, "coastalstationhaiphong", "history", "Lịch sử phê duyệt đài TTXLTT Hà Nội", "Xem lịch sử thay đổi và phê duyệt đài TTXLTT");
 
-                // 11. Quản lý tài sản kết cấu hạ tầng, Điều chuyển, Kiểm kê & Bảo trì (Asset
-                // Management & Operations)
+                // 10.7 Chuẩn hóa mã đài thông tin vệ tinh & chuyên dùng (Inmarsat, Cospas-Sarsat, LRIT, TTXLTT)
+                seedKchtModulePermissions(definitions, "inmarsat", "đài Inmarsat");
+                seedKchtModulePermissions(definitions, "cospassarsat", "đài Cospas-Sarsat");
+                seedKchtModulePermissions(definitions, "lrit", "đài LRIT");
+                seedKchtModulePermissions(definitions, "ttxltt", "đài TTXLTT");
+
+                // 11. Phân hệ Quản lý tài sản KCHT hàng hải (Module cha Quản lý tài sản + 24 loại tài sản KCHT + 4 nghiệp vụ tài sản)
+                seedKchtModulePermissions(definitions, "asset", "Quản lý tài sản");
+                seedKchtModulePermissions(definitions, "infraasset", "Tài sản kết cấu hạ tầng");
+                seedKchtModulePermissions(definitions, "berthasset", "Tài sản bến cảng");
+                seedKchtModulePermissions(definitions, "transferareaasset", "Tài sản khu chuyển tải");
+                seedKchtModulePermissions(definitions, "stormshelterasset", "Tài sản khu tránh, trú bão");
+                seedKchtModulePermissions(definitions, "buoyberthasset", "Tài sản bến phao");
+                seedKchtModulePermissions(definitions, "pierasset", "Tài sản cầu cảng");
+                seedKchtModulePermissions(definitions, "anchorageasset", "Tài sản khu neo đậu");
+                seedKchtModulePermissions(definitions, "lighthouseasset", "Tài sản đèn biển và nhà trạm");
+                seedKchtModulePermissions(definitions, "dikerevetmentasset", "Tài sản đê/kè");
+                seedKchtModulePermissions(definitions, "buoyasset", "Tài sản phao, tiêu và nhà trạm");
+                seedKchtModulePermissions(definitions, "channelasset", "Tài sản luồng hàng hải");
+                seedKchtModulePermissions(definitions, "dryportasset", "Tài sản cảng cạn");
+                seedKchtModulePermissions(definitions, "lritasset", "Tài sản đài LRIT");
+                seedKchtModulePermissions(definitions, "cospassarsatasset", "Tài sản đài Cospas-Sarsat");
+                seedKchtModulePermissions(definitions, "ttxlttasset", "Tài sản đài TTXLTT");
+                seedKchtModulePermissions(definitions, "vtsasset", "Tài sản hệ thống VTS");
+                seedKchtModulePermissions(definitions, "radarasset", "Tài sản trạm radar");
+                seedKchtModulePermissions(definitions, "aisasset", "Tài sản hệ thống AIS");
+                seedKchtModulePermissions(definitions, "cctvasset", "Tài sản HT CCTV");
+                seedKchtModulePermissions(definitions, "scadaasset", "Tài sản HT SCADA");
+                seedKchtModulePermissions(definitions, "transmissionasset", "Tài sản HT truyền dẫn");
+                seedKchtModulePermissions(definitions, "vtsassistasset", "Tài sản hệ thống phụ trợ VTS");
+                seedKchtModulePermissions(definitions, "vhfasset", "Tài sản HTTT liên lạc VHF");
+                seedKchtModulePermissions(definitions, "daittdhasset", "Tài sản đài TTDH");
+                seedKchtModulePermissions(definitions, "inmarsatasset", "Tài sản đài Inmarsat");
+
+                // 4 chức năng nghiệp vụ quản lý tài sản
+                seedKchtModulePermissions(definitions, "assetincrease", "Yêu cầu tăng tài sản");
+                seedKchtModulePermissions(definitions, "assetdecrease", "Yêu cầu giảm tài sản");
+                seedKchtModulePermissions(definitions, "inventoryasset", "Kiểm kê tài sản");
+                seedKchtModulePermissions(definitions, "assetexploitation", "Khai thác tài sản");
+
+                // 11.2 Điều chuyển, Kiểm kê & Bảo trì chung (Asset Operations)
                 seedPermission(definitions, "movementrequest", "manage", "Quản lý yêu cầu điều chuyển",
                                 "Toàn quyền lập và xử lý yêu cầu điều chuyển tài sản kết cấu hạ tầng");
                 seedPermission(definitions, "inventoryplan", "manage", "Quản lý kế hoạch kiểm kê",
@@ -1061,6 +1096,18 @@ public class PermissionSeeder implements CommandLineRunner {
                 if (inserted > 0 || updated > 0) {
                         log.info("Permissions sync complete: inserted={}, updated={}", inserted, updated);
                 }
+        }
+
+        private void seedKchtModulePermissions(Map<String, Permission> definitions, String resource, String displayName) {
+                seedPermission(definitions, resource, "read", "Xem " + displayName, "Xem danh sách và chi tiết " + displayName);
+                seedPermission(definitions, resource, "create", "Thêm mới " + displayName, "Tạo mới hồ sơ " + displayName);
+                seedPermission(definitions, resource, "update", "Cập nhật " + displayName, "Chỉnh sửa thông tin " + displayName);
+                seedPermission(definitions, resource, "delete", "Xóa " + displayName, "Xóa hồ sơ " + displayName);
+                seedPermission(definitions, resource, "approvec1", "Phê duyệt C1 " + displayName, "Phê duyệt cấp 1 (Chi cục/Cảng vụ) " + displayName);
+                seedPermission(definitions, resource, "rejectc1", "Từ chối C1 " + displayName, "Từ chối phê duyệt cấp 1 (Chi cục/Cảng vụ) " + displayName);
+                seedPermission(definitions, resource, "approvec2", "Phê duyệt C2 " + displayName, "Phê duyệt cấp 2 (Cục Hàng hải) " + displayName);
+                seedPermission(definitions, resource, "rejectc2", "Từ chối C2 " + displayName, "Từ chối phê duyệt cấp 2 (Cục Hàng hải) " + displayName);
+                seedPermission(definitions, resource, "history", "Lịch sử phê duyệt " + displayName, "Xem lịch sử thay đổi và phê duyệt " + displayName);
         }
 
         private void seedPermission(Map<String, Permission> definitions, String resource, String action, String name,

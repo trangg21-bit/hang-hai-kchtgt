@@ -24,12 +24,37 @@ public class KchtgApplication {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KchtgApplication.class);
 
     @Bean
-    public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy() {
+    public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy(
+            javax.sql.DataSource dataSource) {
         return flyway -> {
+            // Fix Flyway schema history corruption: remove duplicate DELETE entries
+            try (java.sql.Connection conn = dataSource.getConnection()) {
+                conn.setAutoCommit(false);
+                try (java.sql.Statement stmt = conn.createStatement()) {
+                    // Remove duplicate DELETE-type entries keeping only the first one per version
+                    stmt.executeUpdate(
+                        "DELETE FROM flyway_schema_history " +
+                        "WHERE installed_rank IN (" +
+                        "  SELECT installed_rank FROM (" +
+                        "    SELECT installed_rank, version, type," +
+                        "           ROW_NUMBER() OVER (PARTITION BY version, type ORDER BY installed_rank) AS rn" +
+                        "    FROM flyway_schema_history WHERE type = 'DELETE'" +
+                        "  ) t WHERE rn > 1" +
+                        ")"
+                    );
+                    conn.commit();
+                } catch (Exception ex) {
+                    conn.rollback();
+                    // Non-fatal: log and continue
+                    System.err.println("[WARN] Flyway history cleanup failed (non-fatal): " + ex.getMessage());
+                }
+            } catch (Exception e) {
+                System.err.println("[WARN] Could not connect to clean Flyway history: " + e.getMessage());
+            }
             try {
                 flyway.repair();
             } catch (Exception e) {
-                log.warn("Flyway repair encountered an issue (proceeding with migrate): {}", e.getMessage());
+                System.err.println("[WARN] Flyway repair failed (continuing): " + e.getMessage());
             }
             flyway.migrate();
         };

@@ -111,7 +111,7 @@ public class BuoyBerthAssetController {
     }
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("@auth.checkAny(authentication, 'buoyberthasset:manage', 'buoyberthasset:read', 'buoyberth:read', 'data:read')")
+    @PreAuthorize("@auth.checkAny(authentication, 'buoyberthasset:manage', 'buoyberthasset:history', 'buoyberth:history')")
     public ResponseEntity<ApiResponse<Object>> getHistory(@PathVariable UUID id) {
         Object history = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lấy lịch sử tài sản thành công", history));
