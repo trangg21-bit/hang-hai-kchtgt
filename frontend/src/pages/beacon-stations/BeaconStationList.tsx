@@ -279,19 +279,19 @@ function formatOperationTableDateTime(dateStr: string | null | undefined): strin
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return ''; }
 }
 
-// Số hiển thị: hàng nghìn ngăn bằng dấu phẩy (,), phần thập phân dùng dấu chấm (.)
+// Số hiển thị chuẩn vi-VN: hàng nghìn dùng dấu chấm, phần thập phân dùng dấu phẩy.
 const formatNumber = (v: number | string | null | undefined, maxFractionDigits = 6): string | null => {
   if (v === null || v === undefined || v === '') return null;
   const safeStr = normalizeSafeNumber(v);
   if (!safeStr) return null;
-  if (safeStr === '99999999999999999999') return '99,999,999,999,999,999,999';
+  if (safeStr === '99999999999999999999') return '99.999.999.999.999.999.999';
   const n = Number(safeStr);
   if (!Number.isFinite(n) || safeStr.replace(/\./g, '').length > 15) {
     const parts = safeStr.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return parts.join(',');
   }
-  return n.toLocaleString('en-US', { maximumFractionDigits: maxFractionDigits });
+  return n.toLocaleString('vi-VN', { maximumFractionDigits: maxFractionDigits });
 };
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>

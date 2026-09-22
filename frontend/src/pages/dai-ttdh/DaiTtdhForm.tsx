@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, react-refresh/only-export-components */
 import { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Tabs, Row, Col, Input, InputNumber, Select, Form, Space, Button, Modal } from 'antd';
+import { Tabs, Row, Col, Input, Select, Form, Space, Button, Modal } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { fmtInputNumber } from '../../utils/numFmt';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';

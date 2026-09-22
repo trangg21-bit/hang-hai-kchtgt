@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, InputNumber, Modal, Row, Select, Spin } from 'antd';
+import { Button, Col, DatePicker, Descriptions, Drawer, Form, Input, Modal, Row, Select, Spin } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import api from '../../services/api';

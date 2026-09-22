@@ -197,9 +197,9 @@ describe('changeHistoryRenderer - countHistoryUpdates', () => {
       expect(autoFormatHistoryValue('commissioningYear', 2020)).toBe('2020');
       expect(autoFormatHistoryValue('manufactureYear', '2019')).toBe('2019');
       // Regular numeric fields should still format with separators
-      expect(autoFormatHistoryValue('quantity', '2020')).toBe('2,020');
+      expect(autoFormatHistoryValue('quantity', '2020')).toBe('2.020');
       expect(formatHistoryNumber('2020', 'yearOfUse')).toBe('2020');
-      expect(formatHistoryNumber('2020', 'quantity')).toBe('2,020');
+      expect(formatHistoryNumber('2020', 'quantity')).toBe('2.020');
     });
   });
 });

@@ -4,7 +4,6 @@ import {
   Form,
   Button,
   Input,
-  InputNumber,
   Select,
   DatePicker,
   Table,
@@ -18,6 +17,7 @@ import {
   Upload,
   Space,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadFile } from 'antd';
 import {
   PlusOutlined,

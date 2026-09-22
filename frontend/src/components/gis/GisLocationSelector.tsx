@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Select, Table, InputNumber, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
+import { Select, Table, Button, Space, Card, Row, Col, Typography, Modal } from 'antd';
+import InputNumber from '../shared/LocalizedInputNumber';
 import { PlusOutlined, DeleteOutlined, CompassOutlined, EnvironmentOutlined, HolderOutlined } from '@ant-design/icons';
 import { colors } from '../../theme';
 

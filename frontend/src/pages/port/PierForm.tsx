@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
-import { Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, type InputNumberProps } from 'antd';
+import { Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, type InputNumberProps } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {

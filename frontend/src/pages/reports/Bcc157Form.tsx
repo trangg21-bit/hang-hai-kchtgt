@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Form,
   Input,
-  InputNumber,
   Table,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { BankOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { message } from '../../components/ToastNotification';
 import dayjs from 'dayjs';
@@ -332,14 +332,6 @@ export default function Bcc157Form({ open = true, reportId, onClose, onSaved }: 
               }}
               disabled={record.isCalcField || record.isReadOnly}
               onChange={handleFieldChange}
-              formatter={(value) => {
-                if (value === undefined || value === null) return '';
-                return `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-              }}
-              parser={(value) => {
-                if (!value) return 0;
-                return Number(value.replace(/,/g, ''));
-              }}
               placeholder="0"
               stringMode={false}
             />
@@ -364,14 +356,6 @@ export default function Bcc157Form({ open = true, reportId, onClose, onSaved }: 
                 height: 40,
               }}
               disabled={true}
-              formatter={(value) => {
-                if (value === undefined || value === null) return '';
-                return `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-              }}
-              parser={(value) => {
-                if (!value) return 0;
-                return Number(value.replace(/,/g, ''));
-              }}
               placeholder="0"
               stringMode={false}
             />

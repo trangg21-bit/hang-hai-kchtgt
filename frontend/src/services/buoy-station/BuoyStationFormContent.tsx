@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import dayjs from 'dayjs';
-import { Tabs, Form, Row, Col, InputNumber, Select, Input, DatePicker, Space, Button, Modal } from 'antd';
+import { Tabs, Form, Row, Col, Select, Input, DatePicker, Space, Button, Modal } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { FormInstance, UploadFile, InputNumberProps } from 'antd';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined } from '@ant-design/icons';
 import api from '../../services/api';

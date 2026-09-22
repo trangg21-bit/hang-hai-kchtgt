@@ -4,7 +4,8 @@ import {
   SlidersOutlined,
 } from "@ant-design/icons";
 import type { FormInstance } from "antd";
-import { Form, InputNumber } from "antd";
+import { Form } from "antd";
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { Dayjs } from "dayjs";
 import { useCallback, useMemo } from "react";
 import {

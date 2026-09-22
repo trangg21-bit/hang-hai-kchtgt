@@ -3,7 +3,6 @@ import {
   Card,
   Tabs,
   Form,
-  InputNumber,
   Input,
   Switch,
   Button,
@@ -16,6 +15,7 @@ import {
   Spin,
   Alert,
 } from 'antd';
+import InputNumber from '../components/shared/LocalizedInputNumber';
 import { message } from '../components/ToastNotification';
 import {
   SaveOutlined,

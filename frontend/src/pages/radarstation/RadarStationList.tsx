@@ -3,7 +3,6 @@ import {
   Button,
   Modal,
   Input,
-  InputNumber,
   Select,
   Space,
   Typography,
@@ -14,6 +13,7 @@ import {
   Tabs,
   Tooltip,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import toast from '../../components/ToastNotification';
 import {
   PlusOutlined,
@@ -2502,7 +2502,7 @@ export default function RadarStationList() {
         { label: 'Địa điểm (Tỉnh/TP)', value: safeText(getProvinceLabel(detailRecord.provinceId)) },
         { label: 'Địa điểm chi tiết', value: detailRecord.location || null },
         { label: 'Đơn vị tính', value: detailRecord.unitOfMeasure || null },
-        { label: 'Số lượng', value: detailRecord.quantity != null ? Number(detailRecord.quantity).toLocaleString('en-US') : null },
+        { label: 'Số lượng', value: detailRecord.quantity != null ? Number(detailRecord.quantity).toLocaleString('vi-VN') : null },
         {
           label: 'Tình trạng',
           value: (() => {

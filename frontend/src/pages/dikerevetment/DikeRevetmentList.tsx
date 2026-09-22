@@ -19,7 +19,6 @@ import {
   DatePicker,
   Form,
   Input,
-  InputNumber,
   Modal,
   Row,
   Select,
@@ -28,6 +27,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -520,11 +520,7 @@ const renderDmsGroup = (
       key: 's', base: 'Giây', value: sVal, max: 59.99,
       radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
       step: 0.01,
-      formatter: (val?: number | string) => {
-        if (val === undefined || val === null || val === '') return '';
-        const num = typeof val === 'number' ? val : parseFloat(val);
-        return isNaN(num) ? '' : num.toFixed(2);
-      },
+      formatter: fmtInputNumber,
       msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },

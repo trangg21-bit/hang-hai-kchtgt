@@ -27,34 +27,62 @@ export function fmtNum(v: number | string | null | undefined, maxDec = 2): strin
   }).format(num);
 }
 
+type InputNumberFormatInfo = { userTyping?: boolean; input?: string };
+
 /**
- * Formatter cho AntD InputNumber: phân tách hàng nghìn bằng dấu chấm '.'
+ * Formatter chuẩn vi-VN cho AntD InputNumber.
+ * - Dấu chấm phân tách hàng nghìn.
+ * - Dấu phẩy phân tách phần thập phân.
+ * - Vẫn định dạng ngay trong lúc người dùng đang nhập.
  */
-export function formatDotNumber(v: string | number | null | undefined): string {
+export function formatDotNumber(
+  v: string | number | null | undefined,
+  info?: InputNumberFormatInfo,
+): string {
   if (v === null || v === undefined || v === '') return '';
-  const s = String(v).replace(/\./g, '').trim();
+
+  let s = String(v).trim().replace(/\s+/g, '');
   if (s === '') return '';
-  const m = s.match(/^(-?\d+)(\.\d+)?$/);
-  if (m) {
-    const intPart = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return m[2] ? `${intPart}${m[2]}` : intPart;
+
+  const negative = s.startsWith('-');
+  s = s.replace(/[^0-9.,]/g, '');
+
+  // AntD giữ giá trị nội bộ theo chuẩn JS (dấu chấm thập phân). Nếu formatter
+  // nhận chuỗi đã hiển thị, dấu phẩy vẫn được ưu tiên làm dấu thập phân.
+  const commaIndex = s.lastIndexOf(',');
+  const decimalIndex = commaIndex >= 0 ? commaIndex : s.indexOf('.');
+  let integerPart = decimalIndex >= 0 ? s.slice(0, decimalIndex) : s;
+  let decimalPart = decimalIndex >= 0 ? s.slice(decimalIndex + 1) : '';
+  integerPart = integerPart.replace(/[.,]/g, '') || '0';
+  decimalPart = decimalPart.replace(/[.,]/g, '');
+
+  if (!info?.userTyping && decimalPart) {
+    decimalPart = decimalPart.replace(/0+$/, '');
   }
-  const num = Number(s);
-  if (isNaN(num)) return s;
-  return `${num}`.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  const groupedInteger = integerPart.replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const sign = negative ? '-' : '';
+  const hasDecimalSeparator = decimalIndex >= 0 && (info?.userTyping || decimalPart.length > 0);
+  return `${sign}${groupedInteger}${hasDecimalSeparator ? `,${decimalPart}` : ''}`;
 }
 
 /**
- * Parser cho AntD InputNumber dùng dấu chấm '.'
+ * Parser chuẩn vi-VN cho AntD InputNumber: bỏ dấu chấm hàng nghìn và đổi dấu
+ * phẩy thập phân về dấu chấm chuẩn của JavaScript/API.
  */
 export function parseDotNumber(v: string | undefined | null): string {
   if (!v) return '';
-  return v
-    .replace(/\./g, '')
-    .replace(/,/g, '')
+  let s = v
     .replace(/\s+/g, '')
     .replace(/VNĐ|VND|vnd|vnđ/g, '')
     .trim();
+  const negative = s.startsWith('-');
+  s = s.replace(/[^0-9.,]/g, '');
+  const commaIndex = s.lastIndexOf(',');
+  const integerPart = (commaIndex >= 0 ? s.slice(0, commaIndex) : s).replace(/[.,]/g, '');
+  const decimalPart = commaIndex >= 0 ? s.slice(commaIndex + 1).replace(/[.,]/g, '') : '';
+  if (!integerPart && !decimalPart) return '';
+  return `${negative ? '-' : ''}${integerPart || '0'}${commaIndex >= 0 ? `.${decimalPart}` : ''}`;
 }
 
 /**
@@ -72,16 +100,9 @@ export function formatVndCurrency(v: number | string | null | undefined): string
  */
 export function fmtInputNumber(
   v: string | number | null | undefined,
-  info?: { userTyping?: boolean },
+  info?: InputNumberFormatInfo,
 ): string {
-  if (info?.userTyping) return v === null || v === undefined ? '' : String(v);
-  if (v === null || v === undefined || v === '') return '';
-  let s = String(v).trim();
-  if (s === '') return '';
-  if (s.includes('.')) {
-    s = s.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
-  }
-  return s;
+  return formatDotNumber(v, info);
 }
 
 /**
@@ -138,7 +159,7 @@ export function isYearField(fn: string | null | undefined): boolean {
 }
 
 /**
- * Format giá trị năm: giữ nguyên 4 chữ số năm (ví dụ: 2020), không thêm dấu phân cách hàng nghìn (2.020 hoặc 2,020)
+ * Format giá trị năm: giữ nguyên 4 chữ số năm (ví dụ: 2020), không thêm dấu phân cách hàng nghìn (2.020)
  */
 export function formatYearValue(val: unknown): string {
   if (val == null) return '';
@@ -151,10 +172,11 @@ export function formatYearValue(val: unknown): string {
 }
 
 /**
- * Format số trong Lịch sử thay đổi:
- * - Phân tách hàng nghìn bằng dấu phẩy ',' (chuẩn en-US), KHÔNG dùng dấu chấm '.'
+ * Format số trong Lịch sử thay đổi theo chuẩn vi-VN:
+ * - Phân tách hàng nghìn bằng dấu chấm '.'.
+ * - Phân tách thập phân bằng dấu phẩy ','.
  * - Định dạng chuỗi thuần túy không qua Number() để tránh làm tròn số lớn (20 số 9)
- * - Tự động sửa 100.000.000.000.000.000.000 / 100000000000000000000 về 99,999,999,999,999,999,999
+ * - Tự động sửa 100.000.000.000.000.000.000 / 100000000000000000000 về 99.999.999.999.999.999.999
  */
 export function formatHistoryNumber(valStr: string | null | undefined, fieldName?: string): string {
   if (valStr == null) return '';
@@ -170,15 +192,15 @@ export function formatHistoryNumber(valStr: string | null | undefined, fieldName
   if (s === '100000000000000000000' || s === '10000000000000000000' ||
       s === '100.000.000.000.000.000.000' || s === '100,000,000,000,000,000,000' ||
       /^10{19,20}$/.test(s) || s.toLowerCase() === '1e+20' || s.toLowerCase() === '1e+19') {
-    return '99,999,999,999,999,999,999';
+    return '99.999.999.999.999.999.999';
   }
   if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
-    return s.replace(/\./g, ',');
+    return s;
   }
   const m = s.match(/^(-?\d+)(\.\d+)?$/);
   if (m) {
-    const intPart = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const decPart = m[2] ? m[2] : '';
+    const intPart = m[1].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const decPart = m[2] ? `,${m[2].slice(1)}` : '';
     return `${intPart}${decPart}`;
   }
   return s;

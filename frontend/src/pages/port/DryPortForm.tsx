@@ -5,7 +5,6 @@ import {
   Col,
   Form,
   Input,
-  InputNumber,
   Select,
   Tabs,
   Button,
@@ -14,6 +13,7 @@ import {
   Modal,
   Tooltip,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import {
   PlusOutlined,
   DeleteOutlined,

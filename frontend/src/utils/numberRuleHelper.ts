@@ -1,4 +1,5 @@
 import type { Rule } from 'antd/es/form';
+import { parseDotNumber } from './numFmt';
 
 /**
  * Chuẩn hóa số thập phân theo quy chuẩn:
@@ -42,7 +43,10 @@ export const normalizeDecimal20_4 = (val: unknown): string => {
   return `${intPart}.${decPart}`;
 };
 
-export const parseNumber20 = (value: unknown): string => normalizeDecimal20_4(value);
+export const parseNumber20 = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '';
+  return normalizeDecimal20_4(parseDotNumber(String(value)));
+};
 
 export const getValueFromEvent20 = (val: unknown): string | null => {
   if (val === null || val === undefined || val === '') return null;
@@ -54,7 +58,7 @@ export const decimalNumberRule: Rule = {
     if (value === null || value === undefined || value === '') return Promise.resolve();
     const raw = String(value).trim();
     if (!/^\d+([.,]\d+)?$/.test(raw) && !/^\d+[.,]$/.test(raw) && !/^[.,]\d+$/.test(raw)) {
-      return Promise.reject(new Error('Chỉ chấp nhận chữ số và dấu "." hoặc ","'));
+      return Promise.reject(new Error('Chỉ chấp nhận chữ số, dấu "." hàng nghìn và dấu "," thập phân'));
     }
     const s = raw.replace(',', '.');
     const dotIdx = s.indexOf('.');
@@ -62,10 +66,10 @@ export const decimalNumberRule: Rule = {
       const intPart = s.slice(0, dotIdx);
       const decPart = s.slice(dotIdx + 1);
       if (intPart.length > 16) {
-        return Promise.reject(new Error('Giới hạn chữ số khi có dấu "." là 16'));
+        return Promise.reject(new Error('Giới hạn phần nguyên là 16 chữ số'));
       }
       if (decPart.length > 4) {
-        return Promise.reject(new Error('Số sau dấu "." tối đa 4 chữ số'));
+        return Promise.reject(new Error('Phần thập phân tối đa 4 chữ số'));
       }
       const digitsCount = s.replace(/\./g, '').length;
       if (digitsCount > 20) {

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, InputNumber, Select, Tabs,
+  Row, Col, Form, Input, Select, Tabs,
   Button, Space, Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadFile } from 'antd';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined } from '@ant-design/icons';
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';

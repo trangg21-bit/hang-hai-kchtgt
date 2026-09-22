@@ -1,5 +1,5 @@
 import type { InputNumberProps } from 'antd';
-import { InputNumber } from 'antd';
+import InputNumber from './LocalizedInputNumber';
 import { fontSizeMd, textSecondary } from '../../themetokenchk';
 import { formatDotNumber, parseDotNumber } from '../../utils/numFmt';
 
@@ -25,6 +25,7 @@ export function NumberInputWithCount({
 
   const effectiveFormatter = formatter ?? formatDotNumber;
   const effectiveParser = (parser ?? parseDotNumber) as (displayValue: string | undefined) => string | number;
+  const acceptsDecimal = inputProps.precision !== 0;
 
   return (
     <InputNumber
@@ -50,7 +51,15 @@ export function NumberInputWithCount({
           return;
         }
 
-        // Chỉ cho phép nhập chữ số 0-9
+        if (acceptsDecimal && e.key === ',') {
+          const inputEl = e.currentTarget as HTMLInputElement;
+          if (!inputEl.value.includes(',')) {
+            onKeyDown?.(e);
+            return;
+          }
+        }
+
+        // Chỉ cho phép nhập chữ số 0-9; dấu chấm hàng nghìn được formatter tự thêm.
         if (e.key < '0' || e.key > '9') {
           e.preventDefault();
           return;
@@ -69,23 +78,31 @@ export function NumberInputWithCount({
       }}
       onPaste={(e) => {
         e.preventDefault();
-        const pasteDigits = e.clipboardData.getData('text').replace(/\D/g, '');
+        const pastedText = e.clipboardData.getData('text');
         const inputEl = e.currentTarget as HTMLInputElement;
         const currentStr = inputEl ? inputEl.value : valStr;
         const start = inputEl ? (inputEl.selectionStart ?? 0) : currentStr.length;
         const end = inputEl ? (inputEl.selectionEnd ?? start) : start;
 
-        // Tách chuỗi trước và sau vị trí paste, giữ lại chữ số
-        const beforeDigits = currentStr.slice(0, start).replace(/\D/g, '');
-        const afterDigits = currentStr.slice(end).replace(/\D/g, '');
-        const combined = (beforeDigits + pasteDigits + afterDigits).slice(0, maxDigits);
+        const candidate = `${currentStr.slice(0, start)}${pastedText}${currentStr.slice(end)}`;
+        const parsed = String(effectiveParser(candidate));
+        const negative = parsed.startsWith('-');
+        const unsigned = parsed.replace(/^-/, '');
+        const [integerPart = '', decimalPart] = unsigned.split('.');
+        const limitedInteger = integerPart.slice(0, maxDigits);
+        const remainingDigits = Math.max(0, maxDigits - limitedInteger.length);
+        const limitedDecimal = decimalPart?.slice(0, remainingDigits);
+        const combined = `${negative ? '-' : ''}${limitedInteger}${decimalPart !== undefined ? `.${limitedDecimal}` : ''}`;
 
         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
           window.HTMLInputElement.prototype,
           'value'
         )?.set;
         if (inputEl && nativeInputValueSetter) {
-          nativeInputValueSetter.call(inputEl, combined);
+          nativeInputValueSetter.call(
+            inputEl,
+            effectiveFormatter(combined, { userTyping: true, input: combined }),
+          );
           inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         }
         onPaste?.(e);

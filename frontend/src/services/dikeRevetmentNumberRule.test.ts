@@ -9,9 +9,9 @@ import {
 
 describe('DikeRevetment Number Input & Limit Rules', () => {
   describe('normalizeDecimal20_4 & parseNumber20', () => {
-    it('chỉ chấp nhận chữ số và dấu ".", loại bỏ ký tự khác', () => {
+    it('nhận dấu chấm hàng nghìn và dấu phẩy thập phân', () => {
       expect(normalizeDecimal20_4('abc123xyz')).toBe('123');
-      expect(parseNumber20('12,345.67')).toBe('12345.67');
+      expect(parseNumber20('12.345,67')).toBe('12345.67');
       expect(normalizeDecimal20_4('12a.3b4c')).toBe('12.34');
       expect(normalizeDecimal20_4('-15.2')).toBe('15.2');
     });
@@ -27,7 +27,7 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
     it('số sau dấu "." tối đa 4 chữ số', () => {
       expect(normalizeDecimal20_4('12.3')).toBe('12.3');
       expect(normalizeDecimal20_4('12.3456')).toBe('12.3456');
-      expect(parseNumber20('12.345678')).toBe('12.3456');
+      expect(parseNumber20('12,345678')).toBe('12.3456');
     });
 
     it('giới hạn chữ số phần nguyên khi có dấu "." là 16 và phần thập phân tối đa 4 chữ số', () => {
@@ -64,16 +64,16 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
     });
 
     it('từ chối ký tự không hợp lệ', async () => {
-      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
-      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
+      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số');
+      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số');
     });
 
     it('từ chối khi số sau dấu "." vượt quá 4 chữ số', async () => {
-      await expect(validator({}, '12.34567')).rejects.toThrow('Số sau dấu "." tối đa 4 chữ số');
+      await expect(validator({}, '12.34567')).rejects.toThrow('Phần thập phân tối đa 4 chữ số');
     });
 
     it('từ chối khi phần nguyên khi có dấu "." vượt quá 16 chữ số', async () => {
-      await expect(validator({}, '12345678901234567.3456')).rejects.toThrow('Giới hạn chữ số khi có dấu "." là 16');
+      await expect(validator({}, '12345678901234567.3456')).rejects.toThrow('Giới hạn phần nguyên là 16 chữ số');
     });
 
     it('từ chối khi số chữ số khi không có dấu "." vượt quá 20', async () => {
@@ -100,20 +100,20 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
   describe('DikeRevetment display number formatting (fmtInputNumber, normalizeSafeNumber, fmtNum)', () => {
     it('fmtInputNumber hiển thị đúng "1100" thay vì "1100.00"', async () => {
       const { fmtInputNumber } = await import('../utils/numFmt');
-      expect(fmtInputNumber('1100.00')).toBe('1100');
-      expect(fmtInputNumber('1100')).toBe('1100');
-      expect(fmtInputNumber(1100)).toBe('1100');
-      expect(fmtInputNumber('1100.0')).toBe('1100');
-      expect(fmtInputNumber('1100.50')).toBe('1100.5');
-      expect(fmtInputNumber('1100.25')).toBe('1100.25');
-      expect(fmtInputNumber('1100.1234')).toBe('1100.1234');
+      expect(fmtInputNumber('1100.00')).toBe('1.100');
+      expect(fmtInputNumber('1100')).toBe('1.100');
+      expect(fmtInputNumber(1100)).toBe('1.100');
+      expect(fmtInputNumber('1100.0')).toBe('1.100');
+      expect(fmtInputNumber('1100.50')).toBe('1.100,5');
+      expect(fmtInputNumber('1100.25')).toBe('1.100,25');
+      expect(fmtInputNumber('1100.1234')).toBe('1.100,1234');
     });
 
-    it('fmtInputNumber giữ nguyên chuỗi khi người dùng đang nhập (userTyping)', async () => {
+    it('fmtInputNumber định dạng vi-VN ngay khi người dùng đang nhập', async () => {
       const { fmtInputNumber } = await import('../utils/numFmt');
-      expect(fmtInputNumber('1100.', { userTyping: true })).toBe('1100.');
-      expect(fmtInputNumber('1100.0', { userTyping: true })).toBe('1100.0');
-      expect(fmtInputNumber('1100.00', { userTyping: true })).toBe('1100.00');
+      expect(fmtInputNumber('1100.', { userTyping: true })).toBe('1.100,');
+      expect(fmtInputNumber('1100.0', { userTyping: true })).toBe('1.100,0');
+      expect(fmtInputNumber('1100.00', { userTyping: true })).toBe('1.100,00');
     });
 
     it('normalizeSafeNumber loại bỏ .00 / .0000 thừa khi nạp bản ghi từ backend', async () => {

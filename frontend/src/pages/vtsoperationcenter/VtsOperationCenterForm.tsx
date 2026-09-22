@@ -8,10 +8,10 @@ import {
   Space,
   Row,
   Col,
-  InputNumber,
   Spin,
   Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import {
   EnvironmentOutlined,
   PlusOutlined,

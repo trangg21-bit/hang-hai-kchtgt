@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, Drawer,
+  Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, Drawer,
   type InputNumberProps,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -32,6 +33,10 @@ import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import {
+  buildStormShelterBuoyBerthQuery,
+  toStormShelterBuoyBerthOptions,
+} from './stormShelterBuoyBerthOptions';
 import {
   textSecondary, textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
@@ -340,6 +345,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingWaterways, setLoadingWaterways] = useState(false);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingBuoyStations, setLoadingBuoyStations] = useState(false);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
   const [stormShelterCodeLoading, setStormShelterCodeLoading] = useState(false);
@@ -506,12 +512,43 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     }
   }, [form]);
 
-  // Load buoy stations
+  // Load approved buoy stations belonging to the selected management unit.
   useEffect(() => {
-    buoyBerthCRUD.getOptions()
-      .then(items => setBuoyStationOptions(items.map(b => ({ value: b.id, label: b.buoyBerthName || b.buoyBerthCode || '' }))))
-      .catch(() => {});
-  }, []);
+    let cancelled = false;
+    const loadBuoyStations = async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+
+      if (!watchedOrgUnitId) {
+        setBuoyStationOptions([]);
+        setLoadingBuoyStations(false);
+        return;
+      }
+
+      setBuoyStationOptions([]);
+      setLoadingBuoyStations(true);
+      try {
+        const response = await buoyBerthCRUD.search(
+          buildStormShelterBuoyBerthQuery(String(watchedOrgUnitId)),
+        );
+        if (cancelled) return;
+        const options = toStormShelterBuoyBerthOptions(response.data || []);
+        setBuoyStationOptions(options);
+        const currentId = form.getFieldValue('buoyStationId');
+        if (currentId && !options.some((option) => option.value === currentId)) {
+          form.setFieldValue('buoyStationId', undefined);
+        }
+      } catch {
+        if (!cancelled) setBuoyStationOptions([]);
+      } finally {
+        if (!cancelled) setLoadingBuoyStations(false);
+      }
+    };
+
+    void loadBuoyStations();
+
+    return () => { cancelled = true; };
+  }, [form, watchedOrgUnitId]);
 
   // Filter ports when orgUnit changes
   useEffect(() => {
@@ -690,7 +727,11 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   }, [isEdit, id, form]);
 
   const handleOrgUnitChange = () => {
-    form.setFieldsValue({ portId: undefined, stormShelterCode: undefined });
+    form.setFieldsValue({
+      portId: undefined,
+      buoyStationId: undefined,
+      stormShelterCode: undefined,
+    });
   };
 
   const handlePortChange = () => {
@@ -1242,7 +1283,17 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
               </Col>
               <Col span={12}>
                 <Form.Item name="buoyStationId" {...labelProps('Thuộc bến phao')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn bến phao..." options={buoyStationOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+                  <Select
+                    placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn bến phao...'}
+                    options={buoyStationOptions}
+                    loading={loadingBuoyStations}
+                    disabled={!watchedOrgUnitId}
+                    showSearch
+                    allowClear
+                    optionFilterProp="label"
+                    notFoundContent={loadingBuoyStations ? 'Đang tải...' : 'Không có bến phao đã phê duyệt thuộc đơn vị quản lý'}
+                    style={selectStyle}
+                  />
                 </Form.Item>
               </Col>
             </Row>

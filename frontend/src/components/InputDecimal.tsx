@@ -4,9 +4,9 @@
  * EN component name / VI không cần nhãn — nhãn do Form.Item cung cấp.
  */
 import React from 'react';
-import { InputNumber } from 'antd';
 import type { InputNumberProps } from 'antd';
 import { radiusPill, inputStyle } from '../themetokenchk';
+import InputNumber from './shared/LocalizedInputNumber';
 
 export interface InputDecimalProps extends Omit<InputNumberProps, 'onChange'> {
   /** Số nguyên (passenger_trips) — precision 0; mặc định thập phân precision 2. */

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
+  Row, Col, Form, Input, Select, Tabs,
   Button, Space, DatePicker, Modal, type InputNumberProps,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadFile } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
@@ -25,7 +26,6 @@ import type { SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
-import { normalizeDecimal20_4 } from '../../utils/numberRuleHelper';
 import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
@@ -90,13 +90,6 @@ function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWi
     />
   );
 }
-
-const formatDecimalCommaInput = (
-  value: string | number | null | undefined,
-  info?: { userTyping?: boolean },
-): string => fmtInputNumber(value, info).replace('.', ',');
-
-const parseDecimalCommaInput = (value: string | undefined): string => normalizeDecimal20_4(value);
 
 const LOCATION_TAB_FIELD_NAMES = new Set([
   'geometryType',
@@ -888,24 +881,24 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="plannedVesselDWT" {...labelProps('Cỡ tàu khai thác theo quy hoạch')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>

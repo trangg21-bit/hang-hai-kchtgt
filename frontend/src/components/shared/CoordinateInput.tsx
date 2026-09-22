@@ -1,4 +1,5 @@
-import { InputNumber, Form } from 'antd';
+import { Form } from 'antd';
+import InputNumber from './LocalizedInputNumber';
 import type { FormItemProps } from 'antd';
 
 interface CoordinateInputProps extends Omit<FormItemProps, 'children'> {

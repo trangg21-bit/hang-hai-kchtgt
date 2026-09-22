@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance, type InputNumberProps } from 'antd';
+import { Row, Col, Form, Input, Select, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance, type InputNumberProps } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, DownOutlined, RightOutlined, EyeOutlined, EditOutlined, FileTextOutlined } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';

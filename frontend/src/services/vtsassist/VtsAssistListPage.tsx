@@ -18,7 +18,6 @@ import {
     Drawer,
     Form,
     Input,
-    InputNumber,
     Modal,
     Row,
     Select,
@@ -27,6 +26,7 @@ import {
     Tooltip,
     Typography,
 } from "antd";
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";

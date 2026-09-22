@@ -4,7 +4,6 @@ import {
   Form,
   Button,
   Input,
-  InputNumber,
   Select,
   DatePicker,
   Card,
@@ -19,6 +18,7 @@ import {
   Tabs,
   Upload,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadFile } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';

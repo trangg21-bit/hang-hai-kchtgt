@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Form,
   Input,
-  InputNumber,
   Select,
   Button,
   Tabs,
@@ -12,6 +11,7 @@ import {
   Spin,
   Modal,
 } from 'antd';
+import InputNumber from '../../../components/shared/LocalizedInputNumber';
 import {
   EnvironmentOutlined,
   PlusOutlined,

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Tabs, Row, Col, Input, InputNumber, Select, DatePicker, Form, Space, Button, Modal, Drawer, Tooltip,
+  Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, Drawer, Tooltip,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {

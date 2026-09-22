@@ -5,9 +5,10 @@ import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import {
-  Row, Col, Form, Input, InputNumber, Select, DatePicker, Button, Tabs,
+  Row, Col, Form, Input, Select, DatePicker, Button, Tabs,
   message, Space, Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadProps, InputNumberProps } from 'antd';
 import { DeleteOutlined, PlusOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';

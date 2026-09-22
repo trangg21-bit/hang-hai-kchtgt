@@ -72,16 +72,16 @@ describe('RadarStation Number Input Rules (Chuẩn Chiều cao tháp radar lấy
     });
 
     it('từ chối ký tự không hợp lệ', async () => {
-      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
-      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
+      await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số');
+      await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số');
     });
 
     it('từ chối khi số sau dấu "." vượt quá 4 chữ số', async () => {
-      await expect(validator({}, '12.34567')).rejects.toThrow('Số sau dấu "." tối đa 4 chữ số');
+      await expect(validator({}, '12.34567')).rejects.toThrow('Phần thập phân tối đa 4 chữ số');
     });
 
     it('từ chối khi phần nguyên khi có dấu "." vượt quá 16 chữ số', async () => {
-      await expect(validator({}, '12345678901234567.3456')).rejects.toThrow('Giới hạn chữ số khi có dấu "." là 16');
+      await expect(validator({}, '12345678901234567.3456')).rejects.toThrow('Giới hạn phần nguyên là 16 chữ số');
     });
 
     it('từ chối khi số chữ số khi không có dấu "." vượt quá 20', async () => {
@@ -117,19 +117,19 @@ describe('RadarStation Number Input Rules (Chuẩn Chiều cao tháp radar lấy
 
   describe('RadarStation display number formatting (fmtInputNumber, normalizeSafeNumber, fmtNum)', () => {
     it('fmtInputNumber hiển thị đúng "1100" thay vì "1100.00"', () => {
-      expect(fmtInputNumber('1100.00')).toBe('1100');
-      expect(fmtInputNumber('1100')).toBe('1100');
-      expect(fmtInputNumber(1100)).toBe('1100');
-      expect(fmtInputNumber('1100.0')).toBe('1100');
-      expect(fmtInputNumber('1100.50')).toBe('1100.5');
-      expect(fmtInputNumber('1100.25')).toBe('1100.25');
-      expect(fmtInputNumber('1100.1234')).toBe('1100.1234');
+      expect(fmtInputNumber('1100.00')).toBe('1.100');
+      expect(fmtInputNumber('1100')).toBe('1.100');
+      expect(fmtInputNumber(1100)).toBe('1.100');
+      expect(fmtInputNumber('1100.0')).toBe('1.100');
+      expect(fmtInputNumber('1100.50')).toBe('1.100,5');
+      expect(fmtInputNumber('1100.25')).toBe('1.100,25');
+      expect(fmtInputNumber('1100.1234')).toBe('1.100,1234');
     });
 
-    it('fmtInputNumber giữ nguyên chuỗi khi người dùng đang nhập (userTyping)', () => {
-      expect(fmtInputNumber('1100.', { userTyping: true })).toBe('1100.');
-      expect(fmtInputNumber('1100.0', { userTyping: true })).toBe('1100.0');
-      expect(fmtInputNumber('1100.00', { userTyping: true })).toBe('1100.00');
+    it('fmtInputNumber định dạng vi-VN ngay khi người dùng đang nhập', () => {
+      expect(fmtInputNumber('1100.', { userTyping: true })).toBe('1.100,');
+      expect(fmtInputNumber('1100.0', { userTyping: true })).toBe('1.100,0');
+      expect(fmtInputNumber('1100.00', { userTyping: true })).toBe('1.100,00');
     });
 
     it('normalizeSafeNumber loại bỏ .00 / .0000 thừa khi nạp bản ghi từ backend', () => {
