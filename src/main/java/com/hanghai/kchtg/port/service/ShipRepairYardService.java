@@ -112,8 +112,11 @@ public class ShipRepairYardService {
         applySaveAction(entity, action);
 
         ShipRepairYard saved = shipRepairYardRepository.save(entity);
+        boolean hasGeomCreate = request.getGeometryType() != null;
+        boolean hasCoordsCreate = (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty())
+                || (request.getLongitude() != null && request.getLatitude() != null);
         persistGis(saved, request.getGeometryType(), request.getCoordinates(),
-                request.getLongitude(), request.getLatitude());
+                request.getLongitude(), request.getLatitude(), false, hasGeomCreate && hasCoordsCreate);
         // [TẠM TẮT GHI LỊCH SỬ] Bảng change_logs đã bị V20260825162500 drop; không ghi lịch sử (chuẩn Khu neo đậu)
         evictAfterCommit();
 
@@ -158,59 +161,66 @@ public class ShipRepairYardService {
             }
         }
 
-        boolean shouldClearLocation = request.getGeometryType() == null
-                || (request.getCoordinates() != null && request.getCoordinates().trim().isEmpty());
-
-        String coordinates = request.getCoordinates();
-        if (!shouldClearLocation && (coordinates == null || coordinates.trim().isEmpty())
-                && request.getLongitude() != null && request.getLatitude() != null) {
+        String coordinates = trimToNull(request.getCoordinates());
+        if (coordinates == null && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
+
+        boolean hasGeometryType = request.getGeometryType() != null;
+        boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
+        boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
+                && (!hasGeometryType || !hasCoordinates);
 
         // if (request.getSecurityLevel() != null) {
         //     RecordSecurityLevel.validateAssignment(request.getSecurityLevel(), "shiprepairyard",
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
         //     entity.setSecurityLevel(request.getSecurityLevel());
         // }
-        if (request.getShipRepairYardName() != null)
-            entity.setShipRepairYardName(request.getShipRepairYardName());
-        if (request.getPortId() != null) {
-            Port parent = portRepository.findById(request.getPortId())
-                    .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
-            entity.setPortId(request.getPortId());
-            entity.setOrgUnitId(parent.getOrgUnitId());
+        if (request.isFieldPresent("shipRepairYardName"))
+            entity.setShipRepairYardName(trimToNull(request.getShipRepairYardName()));
+        if (request.isFieldPresent("portId")) {
+            if (request.getPortId() != null) {
+                Port parent = portRepository.findById(request.getPortId())
+                        .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
+                entity.setPortId(request.getPortId());
+                entity.setOrgUnitId(parent.getOrgUnitId());
+            } else {
+                entity.setPortId(null);
+            }
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
         }
-        if (request.getPierId() != null)
+        if (request.isFieldPresent("orgUnitId"))
+            entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.isFieldPresent("pierId"))
             entity.setPierId(request.getPierId());
-        if (request.getProvinceId() != null)
+        if (request.isFieldPresent("provinceId"))
             entity.setProvinceId(request.getProvinceId());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getOperationalStatus() != null)
+        if (request.isFieldPresent("detailedLocation"))
+            entity.setDetailedLocation(trimToNull(request.getDetailedLocation()));
+        if (request.isFieldPresent("operationalStatus"))
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getUsageFunction() != null)
-            entity.setUsageFunction(request.getUsageFunction());
-        if (request.getWorkshopArea() != null)
+        if (request.isFieldPresent("usageFunction"))
+            entity.setUsageFunction(trimToNull(request.getUsageFunction()));
+        if (request.isFieldPresent("workshopArea"))
             entity.setWorkshopArea(request.getWorkshopArea());
-        if (request.getVesselType() != null)
-            entity.setVesselType(request.getVesselType());
-        if (request.getVesselDwt() != null)
-            entity.setVesselDwt(request.getVesselDwt());
-        if (request.getBusinessType() != null)
-            entity.setBusinessType(request.getBusinessType());
-        if (request.getActivity() != null)
-            entity.setActivity(request.getActivity());
-        if (request.getSlipwayCount() != null)
+        if (request.isFieldPresent("vesselType"))
+            entity.setVesselType(trimToNull(request.getVesselType()));
+        if (request.isFieldPresent("vesselDwt"))
+            entity.setVesselDwt(trimToNull(request.getVesselDwt()));
+        if (request.isFieldPresent("businessType"))
+            entity.setBusinessType(trimToNull(request.getBusinessType()));
+        if (request.isFieldPresent("activity"))
+            entity.setActivity(trimToNull(request.getActivity()));
+        if (request.isFieldPresent("slipwayCount"))
             entity.setSlipwayCount(request.getSlipwayCount());
-        if (request.getRemarks() != null)
-            entity.setRemarks(request.getRemarks());
+        if (request.isFieldPresent("remarks"))
+            entity.setRemarks(trimToNull(request.getRemarks()));
         if (shouldClearLocation) {
             entity.setMapSymbolId(null);
             entity.setCoordinateSystem(null);
             entity.setDisplayRule(null);
-        } else {
+        } else if (hasGeometryType && hasCoordinates) {
             entity.setMapSymbolId(request.getMapSymbolId());
             if (request.getCoordinateSystem() != null)
                 entity.setCoordinateSystem(request.getCoordinateSystem());
@@ -226,7 +236,7 @@ public class ShipRepairYardService {
 
         ShipRepairYard saved = shipRepairYardRepository.saveAndFlush(entity);
         persistGis(saved, request.getGeometryType(), coordinates,
-                request.getLongitude(), request.getLatitude());
+                request.getLongitude(), request.getLatitude(), shouldClearLocation, hasGeometryType && hasCoordinates);
 
         // ── Ghi lịch sử thay đổi (chuẩn Cảng biển PortService.update) ──
         // Chỉ ghi khi hồ sơ ĐÃ duyệt (APPROVED / APPROVED_LEVEL2) trước lần sửa này.
@@ -893,11 +903,8 @@ public class ShipRepairYardService {
     }
 
     private void persistGis(ShipRepairYard saved, GisGeometryType geometryType, String coordinates,
-                            BigDecimal longitude, BigDecimal latitude) {
-        boolean shouldClear = geometryType == null
-                || ((coordinates == null || coordinates.trim().isEmpty()) && (longitude == null || latitude == null));
-
-        if (!shouldClear) {
+                            BigDecimal longitude, BigDecimal latitude, boolean shouldClear, boolean shouldUpdate) {
+        if (shouldUpdate) {
             String wkt = coordinates;
             if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
                 wkt = "POINT(" + longitude + " " + latitude + ")";
@@ -913,19 +920,21 @@ public class ShipRepairYardService {
             }
         }
 
-        UUID spatialIdToDelete = saved.getSpatialId();
-        if (spatialIdToDelete == null && saved.getId() != null) {
-            spatialIdToDelete = gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.SHIP_REPAIR_YARD)
-                    .or(() -> gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.SHIP_REPAIR_FACILITY))
-                    .map(GisSpatialObject::getId)
-                    .orElse(null);
-        }
-        if (spatialIdToDelete != null) {
-            gisSpatialObjectService.delete(spatialIdToDelete);
-        }
-        if (saved.getSpatialId() != null) {
-            saved.setSpatialId(null);
-            shipRepairYardRepository.saveAndFlush(saved);
+        if (shouldClear) {
+            UUID spatialIdToDelete = saved.getSpatialId();
+            if (spatialIdToDelete == null && saved.getId() != null) {
+                spatialIdToDelete = gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.SHIP_REPAIR_YARD)
+                        .or(() -> gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.SHIP_REPAIR_FACILITY))
+                        .map(GisSpatialObject::getId)
+                        .orElse(null);
+            }
+            if (spatialIdToDelete != null) {
+                gisSpatialObjectService.delete(spatialIdToDelete);
+            }
+            if (saved.getSpatialId() != null) {
+                saved.setSpatialId(null);
+                shipRepairYardRepository.saveAndFlush(saved);
+            }
         }
     }
 
@@ -999,5 +1008,9 @@ public class ShipRepairYardService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static String trimToNull(String value) {
+        return (value != null && !value.trim().isEmpty()) ? value.trim() : null;
     }
 }

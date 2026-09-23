@@ -55,6 +55,7 @@ export {
 };
 export type { SelectOptionItem } from "../shared/dynamic-form-sidebar/dynamic-form-sidebar.model";
 export type { ScreenHeaderProps, ScreenHeaderAction };
+export type { DataTableColumn, DataTableProps } from "./DataTable";
 export type { FilterTableLayoutProps, FilterTableLayoutContextType };
 export type { ListPageContainerProps } from "./ListPageContainer";
 export type { SidebarFilterFieldProps } from "./SidebarFilterField";

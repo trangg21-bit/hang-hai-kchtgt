@@ -141,8 +141,11 @@ public class AnchorageService {
         applySaveAction(entity, action);
 
         Anchorage saved = anchorageRepository.saveAndFlush(entity);
+        boolean hasGeomCreate = request.getGeometryType() != null;
+        boolean hasCoordsCreate = (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty())
+                || (request.getLongitude() != null && request.getLatitude() != null);
         persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
-                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
+                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas(), false, hasGeomCreate && hasCoordsCreate);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -156,9 +159,8 @@ public class AnchorageService {
             throw new IllegalStateException("Không thể chỉnh sửa khu neo đậu đã bị xóa");
         }
 
-        String coordinates = request.getCoordinates();
-        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
-                && request.getLatitude() != null) {
+        String coordinates = trimToNull(request.getCoordinates());
+        if (coordinates == null && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
@@ -170,9 +172,9 @@ public class AnchorageService {
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
         //     entity.setSecurityLevel(request.getSecurityLevel());
         // }
-        if (request.getAnchorageName() != null) {
-            String trimmedName = request.getAnchorageName().trim();
-            if (trimmedName.isEmpty()) {
+        if (request.isFieldPresent("anchorageName")) {
+            String trimmedName = trimToNull(request.getAnchorageName());
+            if (trimmedName == null || trimmedName.isEmpty()) {
                 throw new IllegalArgumentException("Tên khu neo đậu không được để trống");
             }
             if (!trimmedName.equalsIgnoreCase(entity.getAnchorageName())
@@ -181,61 +183,70 @@ public class AnchorageService {
             }
             entity.setAnchorageName(trimmedName);
         }
-        if (request.getPortId() != null) {
-            Port parent = portRepository.findById(request.getPortId())
-                    .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
-            entity.setPortId(request.getPortId());
-            entity.setOrgUnitId(parent.getOrgUnitId());
+        if (request.isFieldPresent("portId")) {
+            if (request.getPortId() != null) {
+                Port parent = portRepository.findById(request.getPortId())
+                        .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
+                entity.setPortId(request.getPortId());
+                entity.setOrgUnitId(parent.getOrgUnitId());
+            } else {
+                entity.setPortId(null);
+            }
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
         }
-        if (request.getNavigationChannelId() != null)
+        if (request.isFieldPresent("orgUnitId"))
+            entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.isFieldPresent("navigationChannelId"))
             entity.setNavigationChannelId(request.getNavigationChannelId());
-        if (request.getBuoyStationId() != null)
+        if (request.isFieldPresent("buoyStationId"))
             entity.setBuoyStationId(request.getBuoyStationId());
-        if (request.getProvinceId() != null)
+        if (request.isFieldPresent("provinceId"))
             entity.setProvinceId(request.getProvinceId());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getOperationalStatus() != null)
+        if (request.isFieldPresent("detailedLocation"))
+            entity.setDetailedLocation(trimToNull(request.getDetailedLocation()));
+        if (request.isFieldPresent("operationalStatus"))
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getShapeDescription() != null)
-            entity.setShapeDescription(request.getShapeDescription());
-        if (request.getArea() != null)
+        if (request.isFieldPresent("shapeDescription"))
+            entity.setShapeDescription(trimToNull(request.getShapeDescription()));
+        if (request.isFieldPresent("area"))
             entity.setArea(request.getArea());
-        if (request.getDesignWaterDepth() != null)
-            entity.setDesignWaterDepth(request.getDesignWaterDepth());
-        if (request.getCurrentWaterDepth() != null)
-            entity.setCurrentWaterDepth(request.getCurrentWaterDepth());
-        if (request.getBottomElevationDesign() != null)
-            entity.setBottomElevationDesign(request.getBottomElevationDesign());
-        if (request.getMaxVesselDWT() != null)
-            entity.setMaxVesselDWT(request.getMaxVesselDWT());
-        if (request.getActiveAnchorageCount() != null)
+        if (request.isFieldPresent("designWaterDepth"))
+            entity.setDesignWaterDepth(trimToNull(request.getDesignWaterDepth()));
+        if (request.isFieldPresent("currentWaterDepth"))
+            entity.setCurrentWaterDepth(trimToNull(request.getCurrentWaterDepth()));
+        if (request.isFieldPresent("bottomElevationDesign"))
+            entity.setBottomElevationDesign(trimToNull(request.getBottomElevationDesign()));
+        if (request.isFieldPresent("maxVesselDWT"))
+            entity.setMaxVesselDWT(trimToNull(request.getMaxVesselDWT()));
+        if (request.isFieldPresent("activeAnchorageCount"))
             entity.setActiveAnchorageCount(request.getActiveAnchorageCount());
-        if (request.getPublishedAnchorageCount() != null)
+        if (request.isFieldPresent("publishedAnchorageCount"))
             entity.setPublishedAnchorageCount(request.getPublishedAnchorageCount());
-        if (request.getUnderInvestmentAnchorageCount() != null)
+        if (request.isFieldPresent("underInvestmentAnchorageCount"))
             entity.setUnderInvestmentAnchorageCount(request.getUnderInvestmentAnchorageCount());
-        if (request.getRemarks() != null)
-            entity.setRemarks(request.getRemarks());
-        if (request.getOpeningAnnouncementDate() != null)
+        if (request.isFieldPresent("remarks"))
+            entity.setRemarks(trimToNull(request.getRemarks()));
+        if (request.isFieldPresent("openingAnnouncementDate"))
             entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
-        if (request.getPublicDecision() != null)
-            entity.setPublicDecision(request.getPublicDecision());
-        if (request.getInvestmentAgreement() != null)
-            entity.setInvestmentAgreement(request.getInvestmentAgreement());
+        if (request.isFieldPresent("publicDecision"))
+            entity.setPublicDecision(trimToNull(request.getPublicDecision()));
+        if (request.isFieldPresent("investmentAgreement"))
+            entity.setInvestmentAgreement(trimToNull(request.getInvestmentAgreement()));
+
         boolean hasGeometryType = request.getGeometryType() != null;
         boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
+        boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
+                && (!hasGeometryType || !hasCoordinates);
 
-        if (hasGeometryType && hasCoordinates) {
-            entity.setMapSymbolId(request.getMapSymbolId());
-            entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
-            entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
-        } else {
+        if (shouldClearLocation) {
             entity.setMapSymbolId(null);
             entity.setCoordinateSystem(null);
             entity.setDisplayRule(null);
+        } else if (hasGeometryType && hasCoordinates) {
+            entity.setMapSymbolId(request.getMapSymbolId());
+            entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
+            entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
         }
 
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
@@ -273,7 +284,7 @@ public class AnchorageService {
 
         Anchorage saved = anchorageRepository.saveAndFlush(entity);
         persistGisAndMooring(saved, request.getGeometryType(), coordinates,
-                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
+                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas(), shouldClearLocation, hasGeometryType && hasCoordinates);
 
         // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
@@ -293,7 +304,7 @@ public class AnchorageService {
                             oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
                             geometryTypeLabel(geomType), actorId);
                 }
-            } else if (oldWkt != null || oldGeomType != null) {
+            } else if (shouldClearLocation && (oldWkt != null || oldGeomType != null)) {
                 if (oldWkt != null && !oldWkt.trim().isEmpty()) {
                     changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Tọa độ GIS",
                             oldWkt.trim(), "Chưa có", actorId);
@@ -870,20 +881,23 @@ public class AnchorageService {
 
     private void persistGisAndMooring(Anchorage saved, GisGeometryType geometryType, String coordinates,
                                       BigDecimal longitude, BigDecimal latitude,
-                                      List<MooringWaterAreaRequest> mooringWaterAreas) {
-        String wkt = coordinates;
-        if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
-            wkt = "POINT(" + longitude + " " + latitude + ")";
-        }
-        if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
-            GisGeometryType geomType = geometryType;
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    saved.getSpatialId(), saved.getAnchorageName(), "ANCHORAGE_" + saved.getAnchorageCode(),
-                    geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
-                    InfrastructureType.ANCHORAGE_AREA);
-            saved.setSpatialId(spatialObj.getId());
-            anchorageRepository.saveAndFlush(saved);
-        } else {
+                                      List<MooringWaterAreaRequest> mooringWaterAreas,
+                                      boolean shouldClear, boolean shouldUpdate) {
+        if (shouldUpdate) {
+            String wkt = coordinates;
+            if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
+                wkt = "POINT(" + longitude + " " + latitude + ")";
+            }
+            if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
+                GisGeometryType geomType = geometryType;
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        saved.getSpatialId(), saved.getAnchorageName(), "ANCHORAGE_" + saved.getAnchorageCode(),
+                        geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
+                        InfrastructureType.ANCHORAGE_AREA);
+                saved.setSpatialId(spatialObj.getId());
+                anchorageRepository.saveAndFlush(saved);
+            }
+        } else if (shouldClear) {
             if (saved.getSpatialId() != null) {
                 gisSpatialObjectService.delete(saved.getSpatialId());
             }
@@ -894,7 +908,9 @@ public class AnchorageService {
             saved.setSpatialId(null);
             anchorageRepository.saveAndFlush(saved);
         }
-        replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
+        if (mooringWaterAreas != null) {
+            replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
+        }
     }
 
     private void replaceMooringWaterAreas(UUID anchorageId, List<MooringWaterAreaRequest> requests) {
@@ -969,7 +985,11 @@ public class AnchorageService {
     }
   }
 
-    public void evictAfterCommit() {
+  private static String trimToNull(String value) {
+      return (value != null && !value.trim().isEmpty()) ? value.trim() : null;
+  }
+
+  public void evictAfterCommit() {
         portCacheService.evictAfterCommit();
     }
 

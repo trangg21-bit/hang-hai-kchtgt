@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Form, Input, InputNumber, Select } from 'antd';
+import { Form, Input, Select } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';

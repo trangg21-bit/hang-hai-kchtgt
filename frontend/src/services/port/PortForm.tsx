@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Row, Col, Form, Input, Select, InputNumber, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance, type InputNumberProps } from 'antd';
+import { Row, Col, Form, Input, Select, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance, type InputNumberProps } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, DownOutlined, RightOutlined, EyeOutlined, EditOutlined, FileTextOutlined } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
@@ -148,11 +149,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) dù có lỗi hay không:
-  // dòng tọa độ tự cao sẵn đủ chỗ (DetailTable cho ô GPS height auto) → khi message
-  // "Độ/Phút/Giây bắt buộc" xuất hiện hay biến mất, chiều cao nhóm KHÔNG đổi và ô input
-  // đứng yên, không bị đẩy lên trên; chỉ chèn text lỗi vào đúng ô thiếu khi cần.
-  const messageRow = (
+  const hasError = started && inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasError ? (
     <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -160,7 +159,7 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
     <div
@@ -985,12 +984,14 @@ export default function PortForm({
                 title: 'STT',
                 width: 60,
                 align: 'center' as const,
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
                 render: (_value, _record, index) => (gpsPage - 1) * 10 + index + 1,
               },
               {
                 title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                 key: 'lat',
-                  render: (_value, record) => renderDmsGroup(
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                render: (_value, record) => renderDmsGroup(
                   record.latD,
                   record.latM,
                   record.latS,
@@ -1001,7 +1002,8 @@ export default function PortForm({
               {
                 title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                 key: 'lng',
-                  render: (_value, record) => renderDmsGroup(
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                render: (_value, record) => renderDmsGroup(
                   record.lngD,
                   record.lngM,
                   record.lngS,
@@ -1013,8 +1015,7 @@ export default function PortForm({
                 title: '',
                 width: 50,
                 align: 'center' as const,
-                // Căn top với hàng ô Độ/Phút/Giây, loại bỏ hàng message dự phòng bên dưới (chuẩn Bến cảng BerthForm).
-                onCell: () => ({ style: { verticalAlign: 'top' } }),
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
                 render: (_value, record) => (
                   <Button
                     type="text"

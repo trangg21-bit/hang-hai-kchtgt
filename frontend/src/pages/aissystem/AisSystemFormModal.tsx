@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   Form,
   Input,
-  InputNumber,
   Select,
   Row,
   Col,
@@ -12,6 +11,7 @@ import {
   Modal,
   DatePicker,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import {
   PlusOutlined,
   DeleteOutlined,

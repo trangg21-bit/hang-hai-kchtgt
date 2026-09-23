@@ -63,7 +63,7 @@ public class F186ReportHandler extends BaseReportHandler {
             r.put("Chiều cao tháp đèn (m)", b.getTowerHeight() != null ? b.getTowerHeight() : BigDecimal.valueOf(25.0));
             r.put("Chiều cao tâm sáng (m)", b.getLightHeight() != null ? b.getLightHeight() : BigDecimal.valueOf(32.0));
             r.put("Tầm hiệu lực địa lý (hải lý)", b.getGeographicRange() != null ? b.getGeographicRange() : "18");
-            r.put("Tầm hiệu lực ánh sáng (hải lý)", b.getLightRange() != null ? BigDecimal.valueOf(b.getLightRange()) : BigDecimal.valueOf(20.0));
+            r.put("Tầm hiệu lực ánh sáng (hải lý)", b.getLightRange() != null ? b.getLightRange() : BigDecimal.valueOf(20.0));
             r.put("Chủng loại đèn chính", b.getPrimaryLightModel() != null ? b.getPrimaryLightModel() : "Đèn chính xoay PRB-21");
             r.put("Nguồn cấp năng lượng", b.getPowerSupply() != null ? b.getPowerSupply() : "Lưới điện & Máy phát dự phòng");
             r.put("Tình trạng", b.getStatus() != null ? b.getStatus() : "Đang vận hành tốt");

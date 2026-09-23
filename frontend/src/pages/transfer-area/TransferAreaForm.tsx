@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Tabs, Row, Col, Input, InputNumber, Select, DatePicker, Form, Space, Button, Modal, Drawer,
+  Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, Drawer,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -1070,37 +1071,56 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         ? vals.operationalFunctions.join(',')
         : (vals.operationalFunctions || undefined);
 
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+      const cleanDate = (val: any) => {
+        if (!val) return isEdit ? null : undefined;
+        return dayjs(val).format('YYYY-MM-DDTHH:mm:ss');
+      };
+
       const payload: Record<string, unknown> = {
         orgUnitId: vals.orgUnitId,
         portId: vals.portId,
         transferAreaCode: vals.transferAreaCode?.trim() || undefined,
         transferAreaName: vals.transferAreaName?.trim(),
-        provinceId: provinceNumber,
-        detailedLocation: vals.detailedLocation?.trim() || undefined,
-        operationalFunctions: opFunctions,
-        operationalStatus: vals.operationalStatus || undefined,
-        shapeDescription: vals.shapeDescription?.trim() || undefined,
-        area: safeDecimal(vals.area),
-        designWaterDepth: safeDecimal(vals.designWaterDepth),
-        currentWaterDepth: safeDecimal(vals.currentWaterDepth),
-        bottomElevationDesign: safeDecimal(vals.bottomElevationDesign),
-        maxVesselDWT: safeDecimal(vals.maxVesselDWT),
-        activeTransferCount: vals.activeTransferCount != null && vals.activeTransferCount !== '' && !isNaN(Number(vals.activeTransferCount)) ? Number(vals.activeTransferCount) : undefined,
-        publishedTransferCount: vals.publishedTransferCount != null && vals.publishedTransferCount !== '' && !isNaN(Number(vals.publishedTransferCount)) ? Number(vals.publishedTransferCount) : undefined,
-        underInvestmentTransferCount: vals.underInvestmentTransferCount != null && vals.underInvestmentTransferCount !== '' && !isNaN(Number(vals.underInvestmentTransferCount)) ? Number(vals.underInvestmentTransferCount) : undefined,
-        remarks: vals.remarks?.trim() || undefined,
-        openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        publicDecision: vals.publicDecision?.trim() || undefined,
-        investmentAgreement: vals.investmentAgreement?.trim() || undefined,
-        activityStartDate: vals.activityStartDate ? dayjs(vals.activityStartDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        activityEndDate: vals.activityEndDate ? dayjs(vals.activityEndDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        geometryType: hasGeom ? vals.geometryType : null,
-        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : null,
-        coordinateSystem: hasGeom ? (vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null) : null,
-        displayRule: hasGeom ? 1 : null,
-        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : null,
-        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : null,
-        coordinates: hasGeom ? (wktCoordinates || null) : null,
+        provinceId: provinceNumber != null ? provinceNumber : (isEdit ? null : undefined),
+        detailedLocation: cleanString(vals.detailedLocation),
+        operationalFunctions: opFunctions !== undefined ? opFunctions : (isEdit ? null : undefined),
+        operationalStatus: vals.operationalStatus || (isEdit ? null : undefined),
+        shapeDescription: cleanString(vals.shapeDescription),
+        area: cleanDecimal(vals.area),
+        designWaterDepth: cleanString(vals.designWaterDepth),
+        currentWaterDepth: cleanString(vals.currentWaterDepth),
+        bottomElevationDesign: cleanString(vals.bottomElevationDesign),
+        maxVesselDWT: cleanString(vals.maxVesselDWT),
+        activeTransferCount: cleanNumber(vals.activeTransferCount),
+        publishedTransferCount: cleanNumber(vals.publishedTransferCount),
+        underInvestmentTransferCount: cleanNumber(vals.underInvestmentTransferCount),
+        remarks: cleanString(vals.remarks),
+        openingAnnouncementDate: cleanDate(vals.openingAnnouncementDate),
+        publicDecision: cleanString(vals.publicDecision),
+        investmentAgreement: cleanString(vals.investmentAgreement),
+        activityStartDate: cleanDate(vals.activityStartDate),
+        activityEndDate: cleanDate(vals.activityEndDate),
+        geometryType: hasGeom ? vals.geometryType : (isEdit ? null : null),
+        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : (isEdit ? null : null),
+        coordinateSystem: hasGeom ? (vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null) : (isEdit ? null : null),
+        displayRule: hasGeom ? 1 : (isEdit ? null : null),
+        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : (isEdit ? null : null),
+        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : (isEdit ? null : null),
+        coordinates: hasGeom ? (wktCoordinates || null) : (isEdit ? null : null),
         mooringWaterAreas: mooringPayload,
       };
 

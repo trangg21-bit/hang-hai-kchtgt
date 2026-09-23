@@ -1,96 +1,141 @@
 import type { InputNumberProps } from 'antd';
-import { InputNumber } from 'antd';
+import InputNumber from './LocalizedInputNumber';
 import { fontSizeMd, textSecondary } from '../../themetokenchk';
-import { formatDotNumber, parseDotNumber } from '../../utils/numFmt';
+import {
+  buildPastedValue,
+  countDigits,
+  decideKeyInput,
+  DEFAULT_MAX_DIGITS,
+} from '../../utils/numberInputGuards';
 
-export type NumberInputWithCountProps = InputNumberProps<string | number> & { maxLength: number };
+export type NumberInputWithCountProps = Omit<InputNumberProps<string | number>, 'formatter'> & {
+  /** Số CHỮ SỐ 0-9 tối đa cho phép nhập (mặc định 20). Chỉ đếm chữ số — '-' và '.' không tính. */
+  maxDigits?: number;
+  /** @deprecated Dùng `maxDigits`. Vẫn được nhận để các màn hình cũ không phải sửa. */
+  maxLength?: number;
+  /**
+   * Cho phép 1 dấu '.' để nhập số thập phân (mặc định false = chỉ số nguyên).
+   * - CHƯA có dấu '.': vẫn nhập được đủ `maxDigits` chữ số (mặc định 20).
+   * - Dấu '.' chỉ được nhận khi phần nguyên đang có ≤ 16 chữ số; nếu đang có hơn 16 chữ số thì
+   *   phím '.' bị chặn — không cắt bớt số người dùng đang nhập.
+   * - Khi giá trị đã có dấu '.': phần nguyên ≤ 16 chữ số, phần thập phân ≤ 4 chữ số.
+   */
+  allowDecimal?: boolean;
+  /** Cho phép 1 dấu '-' ở ĐẦU để nhập giá trị âm (mặc định false). */
+  allowNegative?: boolean;
+  /**
+   * @deprecated KHÔNG còn tác dụng — bị bỏ qua có chủ đích.
+   * Ô số không bao giờ tự thêm dấu phân tách hàng nghìn ('.' hoặc ','): giá trị hiển thị luôn
+   * đúng bằng chuỗi đã nhập. Cần nhập thập phân thì dùng `allowDecimal`.
+   */
+  formatter?: InputNumberProps<string | number>['formatter'];
+  /** Chuẩn hoá giá trị khi AntD đọc chuỗi hiển thị (mặc định: giữ nguyên chuỗi đã nhập). */
+  parser?: InputNumberProps<string | number>['parser'];
+};
+
+const ALLOWED_NAV_KEYS = [
+  'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+  'Tab', 'Enter', 'Escape', 'Home', 'End',
+];
+
+/** Giữ nguyên chuỗi người dùng nhập — không phân tách hàng nghìn, không đổi định dạng. */
+const keepRawValue = (displayValue: string | undefined): string => displayValue ?? '';
 
 /**
- * Hiển thị số ký tự / số chữ số đã nhập để giới hạn 5/20 chữ số dễ nhận biết.
- * Hỗ trợ định dạng phân cách hàng nghìn (dấu chấm '.') và chuẩn hóa parseDotNumber.
+ * Ô số dùng chung: đếm và giới hạn CHỮ SỐ, không tự thêm dấu phân tách hàng nghìn.
+ * Chi tiết luật nhập xem `utils/numberInputGuards.ts`.
  */
 export function NumberInputWithCount({
+  maxDigits,
   maxLength,
+  allowDecimal,
+  allowNegative,
+  parser,
   value,
   onKeyDown,
   onPaste,
-  formatter,
-  parser,
+  formatter: ignoredFormatter,
   ...inputProps
 }: NumberInputWithCountProps) {
-  const maxDigits = maxLength || 20;
-  const valStr = String(value ?? '');
-  // Đếm đúng số chữ số thực tế (loại bỏ các ký tự định dạng hiển thị như dấu chấm phân cách)
-  const digitsCount = valStr.replace(/\D/g, '').length;
+  // `formatter` cũ bị BỎ QUA có chủ đích (xem JSDoc) — không truyền xuống InputNumber.
+  void ignoredFormatter;
 
-  const effectiveFormatter = formatter ?? formatDotNumber;
-  const effectiveParser = (parser ?? parseDotNumber) as (displayValue: string | undefined) => string | number;
+  const digitLimit = maxDigits ?? maxLength ?? DEFAULT_MAX_DIGITS;
+  const valStr = value === null || value === undefined ? '' : String(value);
+  const digitsCount = countDigits(valStr);
+  const effectiveParser = (parser ?? keepRawValue) as (
+    displayValue: string | undefined,
+  ) => string | number;
 
   return (
     <InputNumber
       stringMode
-      formatter={effectiveFormatter}
       parser={effectiveParser}
       {...inputProps}
       value={value}
       onKeyDown={(e) => {
-        // Cho phép các tổ hợp phím tắt Ctrl/Meta/Alt
+        // Cho phép các tổ hợp phím tắt Ctrl/Meta/Alt (copy/paste/cut/select all...)
         if (e.ctrlKey || e.metaKey || e.altKey) {
           onKeyDown?.(e);
           return;
         }
-
-        // Cho phép các phím điều hướng và phím điều khiển chuẩn
-        const allowedNavKeys = [
-          'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-          'Tab', 'Enter', 'Escape', 'Home', 'End',
-        ];
-        if (allowedNavKeys.includes(e.key)) {
+        if (ALLOWED_NAV_KEYS.includes(e.key)) {
           onKeyDown?.(e);
           return;
         }
 
-        // Chỉ cho phép nhập chữ số 0-9
-        if (e.key < '0' || e.key > '9') {
-          e.preventDefault();
-          return;
-        }
-
-        const inputEl = e.currentTarget as HTMLInputElement;
-        const isReplacing = inputEl && inputEl.selectionStart !== null && inputEl.selectionStart !== inputEl.selectionEnd;
-        const currentDigits = (inputEl ? inputEl.value : valStr).replace(/\D/g, '');
-
-        if (!isReplacing && currentDigits.length >= maxDigits) {
-          e.preventDefault();
-          return;
+        // Chỉ tự kiểm tra phím ký tự in được; các phím chức năng khác để AntD xử lý.
+        if (e.key.length === 1) {
+          const inputEl = e.currentTarget as HTMLInputElement;
+          const decision = decideKeyInput({
+            key: e.key,
+            currentValue: inputEl ? inputEl.value : valStr,
+            selectionStart: inputEl?.selectionStart,
+            selectionEnd: inputEl?.selectionEnd,
+            maxDigits: digitLimit,
+            allowDecimal,
+            allowNegative,
+          });
+          if (decision === 'block') {
+            e.preventDefault();
+            return;
+          }
         }
 
         onKeyDown?.(e);
       }}
       onPaste={(e) => {
         e.preventDefault();
-        const pasteDigits = e.clipboardData.getData('text').replace(/\D/g, '');
+        const rawText = e.clipboardData.getData('text');
         const inputEl = e.currentTarget as HTMLInputElement;
         const currentStr = inputEl ? inputEl.value : valStr;
         const start = inputEl ? (inputEl.selectionStart ?? 0) : currentStr.length;
         const end = inputEl ? (inputEl.selectionEnd ?? start) : start;
 
-        // Tách chuỗi trước và sau vị trí paste, giữ lại chữ số
-        const beforeDigits = currentStr.slice(0, start).replace(/\D/g, '');
-        const afterDigits = currentStr.slice(end).replace(/\D/g, '');
-        const combined = (beforeDigits + pasteDigits + afterDigits).slice(0, maxDigits);
+        const combined = buildPastedValue({
+          currentValue: currentStr,
+          pastedText: rawText,
+          selectionStart: start,
+          selectionEnd: end,
+          maxDigits: digitLimit,
+          allowDecimal,
+          allowNegative,
+        });
 
         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
           window.HTMLInputElement.prototype,
-          'value'
+          'value',
         )?.set;
         if (inputEl && nativeInputValueSetter) {
-          nativeInputValueSetter.call(inputEl, combined);
+          nativeInputValueSetter.call(
+            inputEl,
+            effectiveFormatter(combined, { userTyping: true, input: combined }),
+          );
           inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         }
         onPaste?.(e);
       }}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{digitsCount}/{maxDigits}</span>}
+      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{digitsCount}/{digitLimit}</span>}
     />
   );
 }

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,10 @@ import java.util.UUID;
 @Builder
 @FieldNameConstants
 public class NavigationChannelCreateRequest {
+
+    private ApprovalStatus approvalStatus;
+
+    private boolean submitForApproval;
 
     @NotNull(message = "Đơn vị quản lý là bắt buộc")
     private UUID orgUnitId;

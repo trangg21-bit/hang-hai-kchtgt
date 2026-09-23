@@ -170,6 +170,25 @@ class RadarStationServiceTest {
     }
 
     @Test
+    void testGetById_WithSpatialData_ReturnsCoordinateSystemAndDisplayRule() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+
+        GisSpatialObject spatial = new GisSpatialObject();
+        spatial.setId(spatialId);
+        spatial.setGeometryType(GisGeometryType.POINT);
+        spatial.setCoordinates("POINT (106.7 20.8)");
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatial));
+
+        RadarStationResponse response = service.getById(TEST_ID);
+
+        assertEquals(1, response.getCoordinateSystem());
+        assertEquals("Độ, phút, giây (DMS)", response.getDisplayRule());
+    }
+
+    @Test
     void testGetById_NotFound() {
         when(repository.findById(TEST_ID_2)).thenReturn(Optional.empty());
         assertThrows(RuntimeException.class, () -> service.getById(TEST_ID_2));
@@ -256,6 +275,39 @@ class RadarStationServiceTest {
 
         verify(gisSpatialObjectService).delete(spatialId);
         verify(repository, atLeastOnce()).save(entity);
+    }
+
+    @Test
+    @DisplayName("update when fields cleared - should set fields to null")
+    void update_whenFieldsCleared_shouldSetFieldsToNull() {
+        entity.setLocation("Địa điểm cũ");
+        entity.setCoverage("Vùng phủ sóng cũ");
+        entity.setTowerHeight(new BigDecimal("45.5"));
+        entity.setRadarRange(new BigDecimal("30.0"));
+        entity.setNote("Ghi chú cũ");
+        entity.setUnitOfMeasure("Trạm");
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                .stationName(entity.getStationName())
+                .location(null)
+                .coverage("")
+                .towerHeight(null)
+                .radarRange(null)
+                .note("   ")
+                .unitOfMeasure(null)
+                .build();
+
+        service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertNull(entity.getLocation());
+        assertNull(entity.getCoverage());
+        assertNull(entity.getTowerHeight());
+        assertNull(entity.getRadarRange());
+        assertNull(entity.getNote());
+        assertNull(entity.getUnitOfMeasure());
     }
 
     @Test
@@ -528,6 +580,8 @@ class RadarStationServiceTest {
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                    .stationName(entity.getStationName())
+                    .location(entity.getLocation())
                     .towerHeight(new BigDecimal("25"))
                     .radarRange(new BigDecimal("10"))
                     .emissionArea(new BigDecimal("50"))
@@ -548,6 +602,7 @@ class RadarStationServiceTest {
 
             RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
                     .stationName("Trạm Hiện Tại")
+                    .location(entity.getLocation())
                     .build();
 
             service.update(TEST_ID, updateReq, USER_ID);

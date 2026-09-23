@@ -93,6 +93,47 @@ export async function fetchVhfList(params: {
   return res.data.data;
 }
 
+export async function fetchVhfStatusCounts(params: {
+  orgUnitId?: string;
+  seaportId?: string;
+  search?: string;
+  deviceCode?: string;
+  deviceName?: string;
+  province?: string;
+  operationalStatus?: string;
+  attachedInfraType?: number;
+  attachedInfraId?: string;
+  yearOfUse?: number;
+  updatedFrom?: string;
+  updatedTo?: string;
+}): Promise<Record<string, number>> {
+  const sp = new URLSearchParams();
+  if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
+  if (params.seaportId) sp.set('seaportId', params.seaportId);
+  if (params.search) {
+    const trimmed = params.search.trim();
+    if (trimmed) sp.set('search', trimmed);
+  }
+  if (params.deviceCode) {
+    const trimmed = params.deviceCode.trim();
+    if (trimmed) sp.set('deviceCode', trimmed);
+  }
+  if (params.deviceName) {
+    const trimmed = params.deviceName.trim();
+    if (trimmed) sp.set('deviceName', trimmed);
+  }
+  if (params.province) sp.set('province', params.province);
+  if (params.operationalStatus !== undefined && params.operationalStatus !== '') sp.set('operatingStatus', String(params.operationalStatus));
+  if (params.attachedInfraType !== undefined) sp.set('attachedInfrastructureType', String(params.attachedInfraType));
+  if (params.attachedInfraId) sp.set('attachedInfrastructureId', params.attachedInfraId);
+  if (params.yearOfUse !== undefined) sp.set('yearOfUse', String(params.yearOfUse));
+  if (params.updatedFrom) sp.set('updatedFrom', params.updatedFrom);
+  if (params.updatedTo) sp.set('updatedTo', params.updatedTo);
+
+  const res = await api.get(`${BASE}/status-counts?${sp}`);
+  return res.data?.data || {};
+}
+
 export async function fetchVhfById(id: string): Promise<VhfResponse> {
   const res = await api.get(`${BASE}/${id}`);
   return res.data.data;

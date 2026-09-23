@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Button, Form, Input, InputNumber, Space, Table, Typography, Popconfirm } from 'antd';
+import { Button, Form, Input, Space, Table, Typography, Popconfirm } from 'antd';
+import InputNumber from './shared/LocalizedInputNumber';
 import type { ColumnsType, PopconfirmProps } from 'antd/es/popconfirm';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload/interface';

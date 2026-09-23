@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useEffect, useState, useCallback } from 'react';
-import { Form, Input, Select, InputNumber, Switch, Row, Col, type FormInstance } from 'antd';
+import { Form, Input, Select, Switch, Row, Col, type FormInstance } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { GlobalOutlined, EyeOutlined, DeploymentUnitOutlined } from '@ant-design/icons';
 import { mapLayerService } from '../../services/mapLayerService';
 import type { MapLayer } from '../../types/mapLayer';

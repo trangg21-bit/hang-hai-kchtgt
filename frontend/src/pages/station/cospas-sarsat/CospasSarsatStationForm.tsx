@@ -8,9 +8,9 @@ import {
   Space,
   Row,
   Col,
-  InputNumber,
   Modal,
 } from 'antd';
+import InputNumber from '../../../components/shared/LocalizedInputNumber';
 import {
   EnvironmentOutlined,
   FileTextOutlined,

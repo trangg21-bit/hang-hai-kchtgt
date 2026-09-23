@@ -3,6 +3,7 @@ package com.hanghai.kchtg.beacon.repository;
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,7 +25,8 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     Page<Buoy> findByType(String type, Pageable pageable);
     List<Buoy> findByNameContainingIgnoreCase(String name);
     List<Buoy> findByCodeContainingIgnoreCase(String code);
-    List<Buoy> findByBuoyStationId(UUID buoyStationId);
+    @Query("SELECT b FROM Buoy b WHERE b.buoyStationId = :buoyStationId AND b.deletedAt IS NULL")
+    List<Buoy> findByBuoyStationId(@Param("buoyStationId") UUID buoyStationId);
 
     @Query("SELECT b FROM Buoy b WHERE " +
            "(cast(:name as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:name as string), '%'))) AS string)) AND " +
@@ -34,7 +36,7 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
            "(:condition IS NULL OR b.condition = :condition) AND " +
            "(:provinceId IS NULL OR b.provinceId = :provinceId) AND " +
            "(cast(:locationDetail as string) IS NULL OR CAST(function('immutable_unaccent', LOWER(b.locationDetail)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', cast(:locationDetail as string), '%'))) AS string)) AND " +
-           "(:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus) ORDER BY b.updatedAt DESC, b.createdAt DESC, b.id ASC")
+           "(:approvalStatus IS NULL OR b.approvalStatus = :approvalStatus)")
     List<Buoy> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,
@@ -43,8 +45,16 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
         @Param("condition") String condition,
         @Param("provinceId") Integer provinceId,
         @Param("locationDetail") String locationDetail,
-        @Param("approvalStatus") String approvalStatus
+        @Param("approvalStatus") String approvalStatus,
+        Sort sort
     );
+
+    default List<Buoy> searchFiltered(
+            String name, String code, String type, String status,
+            String condition, Integer provinceId, String locationDetail, String approvalStatus) {
+        return searchFiltered(name, code, type, status, condition, provinceId, locationDetail,
+                approvalStatus, Sort.unsorted());
+    }
 
     default List<Buoy> searchFiltered(String name, String code, String type, String status) {
         return searchFiltered(name, code, type, status, null, null, null, null);

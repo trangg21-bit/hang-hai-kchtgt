@@ -17,4 +17,6 @@ public class SpatialObjectCategoryDto {
     private UUID createdBy;
     private java.time.LocalDateTime updatedAt;
     private UUID updatedBy;
+    private java.time.LocalDateTime deletedAt;
+    private UUID deletedBy;
 }

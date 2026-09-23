@@ -211,11 +211,11 @@ const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
 // 6 nhãn chuẩn trạng thái phê duyệt (status-text-map-6-nhan-2026-08-26)
 const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PROPOSED: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_L1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
+  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED_L2: { color: statusOperational, label: 'Đã phê duyệt' },
   APPROVED_LEVEL2: { color: statusOperational, label: 'Đã phê duyệt' },
   PUBLISHED: { color: statusOperational, label: 'Đã phê duyệt' },
@@ -279,19 +279,19 @@ function formatOperationTableDateTime(dateStr: string | null | undefined): strin
   try { return dayjs(dateStr).format('DD/MM/YYYY HH:mm:ss'); } catch { return ''; }
 }
 
-// Số hiển thị: hàng nghìn ngăn bằng dấu phẩy (,), phần thập phân dùng dấu chấm (.)
+// Số hiển thị chuẩn vi-VN: hàng nghìn dùng dấu chấm, phần thập phân dùng dấu phẩy.
 const formatNumber = (v: number | string | null | undefined, maxFractionDigits = 6): string | null => {
   if (v === null || v === undefined || v === '') return null;
   const safeStr = normalizeSafeNumber(v);
   if (!safeStr) return null;
-  if (safeStr === '99999999999999999999') return '99,999,999,999,999,999,999';
+  if (safeStr === '99999999999999999999') return '99.999.999.999.999.999.999';
   const n = Number(safeStr);
   if (!Number.isFinite(n) || safeStr.replace(/\./g, '').length > 15) {
     const parts = safeStr.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    return parts.join('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return parts.join(',');
   }
-  return n.toLocaleString('en-US', { maximumFractionDigits: maxFractionDigits });
+  return n.toLocaleString('vi-VN', { maximumFractionDigits: maxFractionDigits });
 };
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
@@ -1035,7 +1035,7 @@ export default function BeaconStationList() {
           status === 'DELETED' ||
           record.approvalStatus === 'ARCHIVED'
         );
-        const displayStatus = isDeleted ? 'ARCHIVED' : status;
+        const displayStatus = isDeleted ? 'ARCHIVED' : (status || record.approvalStatus);
         const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
@@ -1486,12 +1486,23 @@ export default function BeaconStationList() {
           label: 'Trạng thái',
           span: true,
           value: (() => {
-            const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'ARCHIVED' || detailRecord.status === 'DELETED');
+            const isDel = Boolean(
+              detailRecord.deletedAt ||
+              detailRecord.deletedBy ||
+              detailRecord.status === 'ARCHIVED' ||
+              detailRecord.status === 'DELETED' ||
+              detailRecord.approvalStatus === 'ARCHIVED'
+            );
             if (isDel) {
               const s = BEACON_STATUS_STYLE_MAP.ARCHIVED || { color: statusCritical, label: 'Đã xóa' };
               return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
             }
-            return <ApprovalStatusBadge status={detailRecord.status} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />;
+            const st = detailRecord.approvalStatus || detailRecord.status;
+            const s = BEACON_STATUS_STYLE_MAP[st];
+            if (s) {
+              return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+            }
+            return <ApprovalStatusBadge status={st} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />;
           })(),
         },
         { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || null}</span> },

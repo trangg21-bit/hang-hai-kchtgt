@@ -47,7 +47,7 @@ describe('approvalEditPolicy', () => {
     it('requires the exact delete permission and rejects legacy fallbacks', () => {
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'vts:manage', resource: 'vts' })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'data' })).toBe(true);
-      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:manage', resource: 'vts' })).toBe(false);
+      expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'admin:all', resource: 'vts' })).toBe(true);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts' })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'data:delete', resource: 'vts', extraDeletePerms: ['data:delete'] })).toBe(false);
       expect(canDeleteApprovalRecord('DRAFT', { hasPerm: (p) => p === 'infraasset:manage', resource: 'vts' })).toBe(false);
@@ -75,7 +75,7 @@ describe('approvalEditPolicy', () => {
       expect(canEditApprovalRecord('REJECTED_LEVEL2', { hasPerm: updatePerm, resource: 'vts' })).toBe(true);
     });
 
-    it('for APPROVED records: requires update permission', () => {
+    it('for APPROVED records: requires update AND approvec2 permission', () => {
       const updateOnly = (p: string) => p === 'vts:update';
       const approveC2 = (p: string) => p === 'vts:approvec2';
       const updateAndApproveC2 = (p: string) => p === 'vts:update' || p === 'vts:approvec2';
@@ -87,13 +87,28 @@ describe('approvalEditPolicy', () => {
       // Khi người quản trị bỏ tích quyền update: nút Chỉnh sửa phải ẩn (false) kể cả khi còn approvec2
       expect(canEditApprovalRecord('APPROVED', { hasPerm: approveC2, resource: 'vts' })).toBe(false);
       expect(canEditApprovalRecord('APPROVED', { hasPerm: (p) => p === 'vts:approve', resource: 'vts' })).toBe(false);
-      expect(canEditApprovalRecord('APPROVED', { hasPerm: none, resource: 'vts' })).toBe(false);
+      // Chỉ có quyền duyệt C2 mà THIẾU quyền cập nhật -> KHÔNG được sửa hồ sơ Đã duyệt.
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: approveC2, resource: 'vts' })).toBe(false);
+      // Có đủ cả hai -> được sửa qua "Lưu và phê duyệt".
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: (p) => p === 'vts:update' || p === 'vts:approvec2', resource: 'vts' })).toBe(true);
+    });
+
+    it('never allows edit on any status when :update is missing', () => {
+      // Tài khoản có mọi quyền vtsassist:* TRỪ vtsassist:update — đúng ca lỗi thực tế.
+      const allExceptUpdate = (p: string) => p !== 'vts:update';
+      const allExceptUpdateAndWrite = (p: string) => p !== 'vts:update' && p !== 'vts:write';
+
+      expect(canEditApprovalRecord('DRAFT', { hasPerm: allExceptUpdateAndWrite, resource: 'vts' })).toBe(false);
+      expect(canEditApprovalRecord('REJECTED_LEVEL1', { hasPerm: allExceptUpdateAndWrite, resource: 'vts' })).toBe(false);
+      expect(canEditApprovalRecord('REJECTED_LEVEL2', { hasPerm: allExceptUpdateAndWrite, resource: 'vts' })).toBe(false);
+      expect(canEditApprovalRecord('APPROVED', { hasPerm: allExceptUpdate, resource: 'vts' })).toBe(false);
     });
   });
 
   describe('status helper functions', () => {
     it('normalizes legacy aliases', () => {
       expect(normalizeApprovalStatus('NHAP')).toBe('DRAFT');
+      expect(normalizeApprovalStatus('PROPOSED')).toBe('PENDING_APPROVAL');
       expect(normalizeApprovalStatus('PENDING')).toBe('PENDING_APPROVAL');
       expect(normalizeApprovalStatus('APPROVED_L1')).toBe('APPROVED_LEVEL1');
       expect(normalizeApprovalStatus('APPROVED_L2')).toBe('APPROVED');

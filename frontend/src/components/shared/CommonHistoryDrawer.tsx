@@ -10,7 +10,7 @@ import {
 import { AppDrawer } from './AppDrawer';
 import dayjs from 'dayjs';
 import { symbolService, type SymbolOption } from '../../services/symbolService';
-import { getProvinceNameById } from '../../types/common';
+import { getProvinceLabel } from '../../types/common';
 import { colors, getRangePickerProps, DRAWER_WIDTH } from '../../themetokenchk';
 import {
   actionPrimary,
@@ -108,6 +108,7 @@ export interface CommonHistoryDrawerProps {
   width?: string | number;
   size?: 'default' | 'large' | '50%' | string;
   variant?: 'default' | 'berth';
+  userMap?: Map<string, string> | Record<string, string>;
   /**
    * Bật chế độ lọc ở server. Khi bật, drawer KHÔNG tự lọc `records` theo từ khóa
    * và khoảng ngày nữa mà báo điều kiện ra ngoài qua `onFilterChange` — bắt buộc
@@ -545,12 +546,28 @@ function parseCoordinatesPoints(raw: string | null): { typeName?: string; points
     return { x: clean, y: '', index: idx + 1 };
   });
 
+  // WKT polygon rings repeat the first vertex at the end. Strip duplicate closing vertex.
+  if ((typeName === 'Vùng' || /^POLYGON/i.test(str)) && points.length > 1) {
+    const first = points[0];
+    const last = points[points.length - 1];
+    if (first.x === last.x && first.y === last.y) {
+      points.pop();
+    }
+  }
+
   return { typeName, points };
 }
 
 function renderCoordinatesDisplay(val: string | null) {
   if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
     return val === 'Chưa có' ? <span style={{ color: textTertiary }}>Chưa có</span> : null;
+  }
+  if (val.includes('°') || /^#\d+:/m.test(val)) {
+    return (
+      <div style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, whiteSpace: 'pre-line', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+        {val}
+      </div>
+    );
   }
   const parsed = parseCoordinatesPoints(val);
   if (!parsed || parsed.points.length === 0) {
@@ -1386,6 +1403,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   formatValue,
   width,
   variant = 'default',
+  userMap,
   serverFiltered = false,
   onFilterChange,
   onLoadMore,
@@ -1511,7 +1529,15 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   };
 
   const getRecordActor = (r: CommonHistoryEntry): string => {
-    return r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '';
+    const raw = r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '';
+    if (raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw.trim())) {
+      if (userMap) {
+        const uName = userMap instanceof Map ? userMap.get(raw.trim()) : (userMap as Record<string, string>)[raw.trim()];
+        if (uName) return uName;
+      }
+      return 'Quản trị viên';
+    }
+    return raw || 'Quản trị viên';
   };
 
   const getRecordAction = (r: CommonHistoryEntry): string => {
@@ -1538,7 +1564,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     }
     if (custom !== undefined) return custom;
     if (fLower.includes('tinh') || fLower.includes('province') || fLower.includes('thanh pho') || fLower === 'provinceid') {
-      const provName = getProvinceNameById(val);
+      const provName = getProvinceLabel(val);
       if (provName) return provName;
     }
     if (fLower.includes('condition') || fLower.includes('tinhtrang') || fLower === 'tinhtranghoatdong') {

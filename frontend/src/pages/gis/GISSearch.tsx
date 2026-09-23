@@ -13,8 +13,8 @@ import {
   Row,
   Col,
   List,
-  InputNumber,
-} from 'antd';
+  } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import {
   SearchOutlined,
   ReloadOutlined,

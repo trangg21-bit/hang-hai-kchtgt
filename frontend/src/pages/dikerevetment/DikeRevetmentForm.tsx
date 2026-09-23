@@ -47,8 +47,12 @@ import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt'
 import {
   parseNumber20,
   getValueFromEvent20,
+  getValueFromEvent20Signed,
+  parseNumber20Signed,
   decimalNumberRule,
+  decimalNumberRuleSigned,
   safeDecimal,
+  safeDecimalSigned,
 } from '../../utils/numberRuleHelper';
 
 const DIKE_REVETMENT_TYPE_MAP: Record<string, string> = {
@@ -70,7 +74,8 @@ const STATUS_MAP: Record<string, string> = {
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 
 const OPERATING_ORG_OPTIONS = DEFAULT_OPERATING_ORGANIZATIONS.map((o) => ({ value: o.id, label: o.name }));
-const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || id || '';
+// Không tìm thấy trong danh mục đơn vị vận hành → rỗng, KHÔNG trả UUID thô
+const operatingUnitNameById = (id?: string): string => DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === id)?.name || '';
 
 export interface DikeRevetmentFormProps {
   open?: boolean;
@@ -95,7 +100,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const [form] = Form.useForm();
   // Hành động lưu ở chân form (chuẩn phê duyệt 2 cấp — infrastructure-screen-template §3.6):
   // 'draft' | 'submit' | 'approve'
-  const saveActionRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const [saveAction, setSaveAction] = useState<'draft' | 'submit' | 'approve'>('draft');
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS / port).
@@ -110,7 +115,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const isCreateMode = isModalMode ? mode === 'create' : !id;
 
   const [record, setRecord] = useState<DikeRevetmentResponse | null>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -119,7 +124,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const [hasChanges, setHasChanges] = useState(false);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name?: string; [key: string]: unknown }>>([]);
   const [seaports, setSeaports] = useState<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }[]>([]);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedSeaportId = Form.useWatch('seaportId', form);
@@ -156,11 +161,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         api.get('/v1/ports?size=1000').then((r) => {
           const list = r.data?.data?.content || r.data?.data || [];
           if (Array.isArray(list)) {
-            setSeaports(list.map((p: any) => ({
-              id: p.id,
-              portName: p.portName || p.name || '',
-              portCode: p.portCode || p.code,
-              orgUnitId: p.orgUnitId,
+            setSeaports(list.map((p: Record<string, unknown>) => ({
+              id: String(p.id),
+              portName: String(p.portName || p.name || ''),
+              portCode: p.portCode ? String(p.portCode) : undefined,
+              orgUnitId: p.orgUnitId ? String(p.orgUnitId) : undefined,
             })));
           }
         }).catch(() => {});
@@ -172,7 +177,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
 
   useEffect(() => {
     if (open) {
-      setHasChanges(false);
+      queueMicrotask(() => setHasChanges(false));
     }
   }, [open]);
 
@@ -250,7 +255,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       return;
     }
     if (isEditMode) return;
-    setCodeLoading(true);
+    queueMicrotask(() => setCodeLoading(true));
     api.get('/v1/dike-revetment/generate-code')
       .then((res) => {
         const code = res.data?.data?.code;
@@ -279,43 +284,58 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
     }
   }, [id, isDetailMode]);
 
-  const handleSubmitForm = async (values: any) => {
+  const handleSubmitForm = async (values: Record<string, unknown>) => {
     setIsSubmitting(true);
     try {
-      const spatialData = values.spatialData;
-      const payload: CreateDikeRevetmentRequest = {
-        dikeRevetmentType: values.dikeRevetmentType,
-        code: values.code,
-        location: values.location,
-        locationDetail: values.locationDetail,
-        dikeRevetmentName: values.dikeRevetmentName,
-        seaportId: values.seaportId,
-        operatingUnitId: values.operatingUnitId,
-        constructionDate: values.constructionDate
-          ? (dayjs.isDayjs(values.constructionDate)
-              ? values.constructionDate.format('YYYY-MM-DD')
-              : String(values.constructionDate))
-          : undefined,
-        lastMaintenanceYear: values.lastMaintenanceYear
-          ? (dayjs.isDayjs(values.lastMaintenanceYear)
-              ? Number(values.lastMaintenanceYear.format('YYYY'))
-              : Number(values.lastMaintenanceYear))
-          : undefined,
-        length: safeDecimal(values.length),
-        crestElevation: safeDecimal(values.crestElevation),
-        commissioningDate: values.commissioningDate || undefined,
-        height: safeDecimal(values.height),
-        status: values.status,
-        orgUnitId: values.orgUnitId,
-        geometryType: spatialData?.geometryType,
-        coordinates: spatialData?.coordinates,
-        symbolId: spatialData?.symbolId,
+      const spatialData = values.spatialData as { geometryType?: string; coordinates?: string; symbolId?: string } | undefined;
+      const cleanString = (val: unknown): string | null | undefined => {
+        if (val === null || val === undefined) return isEditMode ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEditMode ? null : undefined) : s;
       };
-      if (values.note !== undefined) {
-        (payload as any).note = values.note;
-      }
+      const cleanDecimal = (val: unknown): number | string | null | undefined => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEditMode ? null : undefined);
+      };
+      // Cao trình đỉnh cho phép giá trị âm — dùng bản GIỮ dấu '-' khi dựng payload
+      const cleanDecimalSigned = (val: unknown): number | string | null | undefined => {
+        const res = safeDecimalSigned(val);
+        return res !== undefined ? res : (isEditMode ? null : undefined);
+      };
+      const cleanDate = (v: unknown): string | null | undefined => {
+        if (!v) return isEditMode ? null : undefined;
+        return dayjs.isDayjs(v) ? v.format('YYYY-MM-DD') : String(v);
+      };
+      const cleanYear = (v: unknown): number | null | undefined => {
+        if (!v) return isEditMode ? null : undefined;
+        if (dayjs.isDayjs(v)) return Number(v.format('YYYY'));
+        const n = Number(v);
+        return Number.isNaN(n) ? (isEditMode ? null : undefined) : n;
+      };
 
-      const saveAction = saveActionRef.current;
+      const payload: CreateDikeRevetmentRequest = {
+        dikeRevetmentType: (values.dikeRevetmentType || (isEditMode ? null : undefined)) as string,
+        code: cleanString(values.code) || undefined,
+        location: (cleanString(values.location) || (isEditMode ? null : '')) as string,
+        locationDetail: (cleanString(values.locationDetail) || (isEditMode ? null : undefined)) as string | undefined,
+        dikeRevetmentName: (cleanString(values.dikeRevetmentName) || (isEditMode ? null : '')) as string,
+        seaportId: (values.seaportId || (isEditMode ? null : undefined)) as string | undefined,
+        operatingUnitId: (values.operatingUnitId || (isEditMode ? null : undefined)) as string | undefined,
+        constructionDate: cleanDate(values.constructionDate) || (isEditMode ? null : undefined) as string | undefined,
+        lastMaintenanceYear: cleanYear(values.lastMaintenanceYear) || (isEditMode ? null : undefined) as number | undefined,
+        length: cleanDecimal(values.length) || (isEditMode ? null : undefined) as number | string | undefined,
+        crestElevation: cleanDecimalSigned(values.crestElevation) || (isEditMode ? null : undefined) as number | string | undefined,
+        commissioningDate: cleanDate(values.commissioningDate) || (isEditMode ? null : undefined) as string | undefined,
+        height: cleanDecimal(values.height) || (isEditMode ? null : undefined) as number | string | undefined,
+        status: (cleanString(values.status) || (isEditMode ? null : undefined)) as string | undefined,
+        surfaceMaterial: (cleanString(values.surfaceMaterial) || (isEditMode ? null : undefined)) as string | undefined,
+        note: (cleanString(values.note) || (isEditMode ? null : undefined)) as string | undefined,
+        orgUnitId: (values.orgUnitId || (isEditMode ? null : undefined)) as string | undefined,
+        geometryType: (spatialData?.geometryType || (isEditMode ? null : undefined)) as 'POINT' | 'LINE' | 'POLYGON' | undefined,
+        coordinates: (spatialData?.coordinates || (isEditMode ? null : undefined)) as string | undefined,
+        symbolId: (spatialData?.symbolId || (isEditMode ? null : undefined)) as string | undefined,
+      };
+
       if (isCreateMode) {
         const created = await dikeRevetmentCRUD.create(payload);
         if (saveAction === 'submit') {
@@ -774,6 +794,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         ]}
       >
         <NumberInputWithCount
+          allowDecimal
           min={0}
           placeholder="0"
           style={numberInputStyle}
@@ -788,15 +809,17 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         {...labelProps('Cao trình đỉnh (m)')}
         name="crestElevation"
         style={formFieldStyle}
-        getValueFromEvent={getValueFromEvent20}
-        rules={[decimalNumberRule]}
+        getValueFromEvent={getValueFromEvent20Signed}
+        rules={[decimalNumberRuleSigned]}
       >
         <NumberInputWithCount
+          allowDecimal
+          allowNegative
           placeholder="0"
           style={numberInputStyle}
           step={0.01}
           maxLength={20}
-          parser={parseNumber20}
+          parser={parseNumber20Signed}
           formatter={fmtInputNumber}
         />
       </Form.Item>
@@ -867,6 +890,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         ]}
       >
         <NumberInputWithCount
+          allowDecimal
           min={0}
           placeholder="0"
           style={numberInputStyle}
@@ -1006,16 +1030,16 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         <Space wrap>
           {isCreateMode ? (
             <>
-              <Button onClick={() => { saveActionRef.current = 'draft'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'draft'} style={outlineButtonStyle}>
+              <Button onClick={() => { setSaveAction('draft'); form.submit(); }} loading={isSubmitting && saveAction === 'draft'} style={outlineButtonStyle}>
                 Lưu tạm
               </Button>
               {hasPermissionFromList(userPermissions, 'dikerevetment:create') && (
-                <Button type="primary" onClick={() => { saveActionRef.current = 'submit'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'submit'} style={primaryButtonStyle}>
+                <Button type="primary" onClick={() => { setSaveAction('submit'); form.submit(); }} loading={isSubmitting && saveAction === 'submit'} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
               )}
               {canApproveDirect && (
-                <Button type="primary" onClick={() => { saveActionRef.current = 'approve'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'approve'}
+                <Button type="primary" onClick={() => { setSaveAction('approve'); form.submit(); }} loading={isSubmitting && saveAction === 'approve'}
                   style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
@@ -1026,7 +1050,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               {/* T12 — chỉ người có quyền phê duyệt (approvec2) được sửa hồ sơ Đã duyệt;
                   không có quyền thì ẩn nút (quy tắc 4, approval-2-level-spec.md 3.9). */}
               {canApproveDirect && (
-                <Button type="primary" onClick={() => { saveActionRef.current = 'approve'; form.submit(); }} loading={isSubmitting}
+                <Button type="primary" onClick={() => { setSaveAction('approve'); form.submit(); }} loading={isSubmitting && saveAction === 'approve'}
                   style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
@@ -1034,10 +1058,10 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
             </>
           ) : (
             <>
-              <Button onClick={() => { saveActionRef.current = 'draft'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'draft'} style={outlineButtonStyle}>
+              <Button onClick={() => { setSaveAction('draft'); form.submit(); }} loading={isSubmitting && saveAction === 'draft'} style={outlineButtonStyle}>
                 Lưu tạm
               </Button>
-              <Button type="primary" onClick={() => { saveActionRef.current = 'submit'; form.submit(); }} loading={isSubmitting && saveActionRef.current === 'submit'} style={primaryButtonStyle}>
+              <Button type="primary" onClick={() => { setSaveAction('submit'); form.submit(); }} loading={isSubmitting && saveAction === 'submit'} style={primaryButtonStyle}>
                 Lưu và gửi phê duyệt
               </Button>
             </>

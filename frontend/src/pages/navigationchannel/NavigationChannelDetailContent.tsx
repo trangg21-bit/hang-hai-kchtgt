@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Tabs, Button, Modal, Tooltip } from 'antd';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Tabs, Button, Modal, Space } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   BankOutlined,
@@ -7,10 +7,6 @@ import {
   FileTextOutlined,
   AuditOutlined,
   EnvironmentOutlined,
-  FileOutlined,
-  FileImageOutlined,
-  DownloadOutlined,
-  EyeOutlined,
   DownOutlined,
   RightOutlined,
 } from '@ant-design/icons';
@@ -22,79 +18,95 @@ import {
   statusOperational,
   statusCritical,
   statusAttention,
-  statusDraft,
   textPrimary,
-  textSecondary,
   textTertiary,
   surfaceCard,
-  radiusPill,
-  fontSizeSm,
-  fontSizeLg,
-  fontWeightMedium,
+  fontSizeMd,
   fontWeightBold,
-  primaryButtonStyle,
   outlineButtonStyle,
   statusBadgeStyle,
-  spaceSm,
-  spaceMd,
-  spaceFormField,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import InfrastructureAttachmentTab, { triggerBlobDownload } from '../../components/shared/InfrastructureAttachmentTab';
+import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { CONDITION_STATUS_MAP } from '../../types/navigationChannel';
 import type {
   NavigationChannelResponse,
   ChannelRouteDetailResponse,
-  NavigationChannelCoordinateResponse,
-  NavigationChannelAttachment,
 } from '../../types/navigationChannel';
 import { getProvinceNameById } from '../../types/common';
+import { userService } from '../../services/userService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import { symbolService } from '../../services/symbolService';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
+import { DEFAULT_CHANNEL_GIS_SYMBOLS } from './NavigationChannelForm';
+import toast from '../../components/ToastNotification';
 
-const fontSizeMd = 13.5;
+// Cache tên cán bộ theo id ở mức module (như UserResolver) — tránh gọi lại /users/{id}
+// mỗi lần mở drawer cho cùng một cán bộ.
+const actorNameCache: Record<string, string> = {};
 
-// ── Style cho thẻ phân nhóm (Section Card) chuẩn Bến cảng ──
-const sectionBoxStyle: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  padding: '12px 18px 8px 18px',
-  marginBottom: 14,
-  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-};
+// ── Types ──────────────────────────────────────────────────────────────────
 
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottom: '1px solid #f1f5f9',
-};
+interface CoordinateItem {
+  id?: string;
+  sequenceNo?: number;
+  longitude: number;
+  latitude: number;
+}
 
-const sectionTitleStyle: React.CSSProperties = {
-  color: colors.sidebarBg,
-  fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-};
+interface OperationPlanItem {
+  id?: string;
+  planCode?: string;
+  code?: string;
+  planName?: string;
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  start?: string;
+  end?: string;
+}
 
-// ── Màu pill cho Tình trạng hoạt động (#8) ──
+interface IncidentItem {
+  id?: string;
+  incidentCode?: string;
+  code?: string;
+  incidentType?: string;
+  type?: string;
+  location?: string;
+  incidentLocation?: string;
+  incidentTime?: string;
+  time?: string;
+}
+
+// ── Mapping & Helper Functions ─────────────────────────────────────────────
+
 const CONDITION_COLOR_MAP: Record<string, string> = {
   OPERATIONAL: statusOperational,
+  NOT_YET_OPERATIONAL: statusAttention,
+  SUSPENDED: statusCritical,
   STOPPED: statusCritical,
   MAINTENANCE: statusAttention,
-  UNDER_CONSTRUCTION: statusDraft,
+  UNDER_CONSTRUCTION: statusAttention,
 };
 
 const ROUTE_TYPE_MAP: Record<number, string> = { 1: 'Công cộng', 2: 'Chuyên dùng' };
 
 const GEOMETRY_TYPE_MAP: Record<string, string> = {
-  POINT: 'Điểm',
-  LINE: 'Đường',
-  POLYGON: 'Vùng',
+  POINT: 'Đối tượng điểm',
+  LINE: 'Đối tượng đường',
+  POLYGON: 'Đối tượng vùng',
+};
+
+const COORD_SYS_MAP: Record<number | string, string> = {
+  1: 'WGS-84',
+  2: 'VN-2000',
+  'WGS-84': 'WGS-84',
+  'VN-2000': 'VN-2000',
 };
 
 const ddToDms = (dd: number): { d: number; m: number; s: number } => {
@@ -106,228 +118,631 @@ const ddToDms = (dd: number): { d: number; m: number; s: number } => {
   return { d, m, s };
 };
 
-const fmtDms = (dd?: number | null): string => {
-  if (dd === null || dd === undefined || Number.isNaN(dd)) return '';
-  const { d, m, s } = ddToDms(dd);
-  return `${d}° ${m}' ${s}"`;
+function formatDate(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatDateOnly(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY') : dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatMonthYear(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('MM/YYYY') : dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatOperationTableDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  try {
+    const d = dayjs(dateStr);
+    return d.isValid() ? d.format('DD/MM/YYYY HH:mm:ss') : '';
+  } catch {
+    return '';
+  }
+}
+
+const formatNumber = (v: number | string | null | undefined): string | null => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  if (Number.isNaN(n)) return String(v);
+  return n.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
 };
 
-const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '');
-const fmtDate = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY') : '');
-const fmtMonthYear = (v?: string | null): string => (v ? dayjs(v).format('MM/YYYY') : '');
-const fmtNum = (v?: number | null, unit?: string): string =>
-  v === null || v === undefined || Number.isNaN(v) ? '' : `${v.toLocaleString('vi-VN')}${unit ? ` ${unit}` : ''}`;
+/** Pill badge cho tình trạng hoạt động — chuẩn Pill Badge */
+const ConditionPill = ({ status }: { status?: string | number | null }) => {
+  if (status === null || status === undefined || status === '') return null;
+  const key = String(status);
+  const color = CONDITION_COLOR_MAP[key] || textTertiary;
+  const label = CONDITION_STATUS_MAP[key as keyof typeof CONDITION_STATUS_MAP] || key;
+  return <span style={statusBadgeStyle(color)}>{label}</span>;
+};
 
-type AttachmentRow = NavigationChannelAttachment & { uploadedBy?: string; uploadedAt?: string; filePath?: string };
+// ── Types & Styles — Chuẩn màn /beacon-stations & /berth ─────────────────────
+
+type DetailRow = { label: string; value: React.ReactNode; span?: boolean };
+
+const detailSectionBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  padding: '12px 18px 8px 18px',
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const detailSectionHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 8,
+  paddingBottom: 8,
+  borderBottom: '1px solid #f1f5f9',
+  cursor: 'pointer',
+  userSelect: 'none',
+};
+
+const detailSectionTitleStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  color: colors.sidebarBg,
+  fontWeight: fontWeightBold,
+  fontSize: 14,
+};
+
+const berthOperationBoxStyle: React.CSSProperties = {
+  background: '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: 8,
+  marginBottom: 14,
+  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+};
+
+const tabBarStyle: React.CSSProperties = {
+  marginBottom: 0,
+  paddingTop: 0,
+  position: 'sticky',
+  top: 0,
+  zIndex: 1,
+  background: surfaceCard,
+};
+
+const renderDetailRowsTwoCol = (rows: DetailRow[]) => {
+  let colIndex = 0;
+  return (
+    <div className="chk-detail-grid" style={{ paddingTop: 4 }}>
+      {rows.map((row) => {
+        let labelCls: string;
+        if (row.span) {
+          labelCls = 'sec-full-label';
+          colIndex = 0;
+        } else {
+          labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
+          colIndex += 1;
+        }
+        return (
+          <div key={row.label} className={row.span ? 'chk-detail-row chk-detail-row--full' : 'chk-detail-row'}>
+            <span className={`chk-detail-label ${labelCls}`}>{row.label}</span>
+            <span className="chk-detail-value">{row.value}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const renderDetailSectionCard = (opts: {
+  title: string;
+  icon: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  matchBerthOperationStyle?: boolean;
+}) => {
+  const matchBerthOperationStyle = opts.matchBerthOperationStyle === true;
+  const boxStyle = matchBerthOperationStyle
+    ? { ...detailSectionBoxStyle, ...berthOperationBoxStyle }
+    : detailSectionBoxStyle;
+  const cardPadding = opts.open
+    ? matchBerthOperationStyle
+      ? '12px 18px 12px 18px'
+      : '14px 18px'
+    : '10px 18px';
+  const openHeaderMarginBottom = matchBerthOperationStyle ? 12 : 8;
+  return (
+    <div style={{ ...boxStyle, padding: cardPadding }}>
+      <div
+        onClick={opts.onToggle}
+        style={{
+          ...detailSectionHeaderStyle,
+          borderBottom: opts.open ? '1px solid #f1f5f9' : 'none',
+          paddingBottom: opts.open ? 8 : 0,
+          marginBottom: opts.open ? openHeaderMarginBottom : 0,
+        }}
+      >
+        <div style={detailSectionTitleStyle}>
+          {opts.icon}
+          <span>{opts.title}</span>
+        </div>
+        <span style={{ color: actionPrimary, fontSize: 12 }}>
+          {opts.open ? <DownOutlined /> : <RightOutlined />}
+        </span>
+      </div>
+      {opts.open ? <div>{opts.children}</div> : null}
+    </div>
+  );
+};
+
+// ── Props ──────────────────────────────────────────────────────────────────
 
 export interface NavigationChannelDetailContentProps {
   record: NavigationChannelResponse;
   userMap?: Map<string, string>;
+  orgMap?: Map<string, string>;
+  seaportMap?: Map<string, string>;
+  seaportOptions?: { id: string; portCode?: string; portName?: string }[];
+  symbols?: any[];
+  defaultTabKey?: string;
   onClose?: () => void;
 }
 
-/** Pill badge cho tình trạng hoạt động — chuẩn Pill Badge */
-const ConditionPill = ({ status }: { status?: string | null }) => {
-  const s = status || '';
-  if (!s) return null;
-  const color = CONDITION_COLOR_MAP[s] || textTertiary;
-  const label = CONDITION_STATUS_MAP[s as keyof typeof CONDITION_STATUS_MAP] || s || '';
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding: '2px 10px',
-        borderRadius: radiusPill,
-        fontSize: fontSizeMd,
-        fontWeight: 500,
-        background: `${color}15`,
-        border: `1px solid ${color}40`,
-        color,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {label}
-    </span>
-  );
-};
+// ── Main Component ─────────────────────────────────────────────────────────
 
 export default function NavigationChannelDetailContent({
   record,
   userMap,
+  orgMap,
+  seaportMap,
+  seaportOptions,
+  symbols,
+  defaultTabKey,
 }: NavigationChannelDetailContentProps) {
   const r = record;
-  const [gisOpen, setGisOpen] = useState(false);
+  const rawRecord = r as Record<string, unknown>;
+  const [activeTabKey, setActiveTabKey] = useState(defaultTabKey || 'general');
+  const [detailTechOpen, setDetailTechOpen] = useState(true);
   const [announcementOpen, setAnnouncementOpen] = useState(true);
   const [approvalOpen, setApprovalOpen] = useState(true);
-  const [operationOpen, setOperationOpen] = useState(true);
-  const [maintenanceOpen, setMaintenanceOpen] = useState(true);
-  const [incidentOpen, setIncidentOpen] = useState(true);
   const [routesOpen, setRoutesOpen] = useState(true);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [opsOperationOpen, setOpsOperationOpen] = useState(true);
+  const [opsMaintenanceOpen, setOpsMaintenanceOpen] = useState(true);
+  const [opsIncidentOpen, setOpsIncidentOpen] = useState(true);
+  const [gisModalOpen, setGisModalOpen] = useState(false);
 
-  const coordinates = useMemo(
-    () =>
-      (Array.isArray(r?.coordinates) ? r.coordinates : []).map((c) => ({
-        id: c.id,
-        sequenceNo: c.sequenceNo,
-        longitude: Number(c.longitude),
-        latitude: Number(c.latitude),
-      })),
-    [r],
-  );
+  const coordinates = useMemo<CoordinateItem[]>(() => {
+    let rawList: any[] = [];
+    if (Array.isArray((r as any).coordinateList) && (r as any).coordinateList.length > 0) {
+      rawList = (r as any).coordinateList;
+    } else if (Array.isArray(r.coordinates) && r.coordinates.length > 0) {
+      rawList = r.coordinates;
+    } else if (typeof r.coordinates === 'string' && r.coordinates.trim()) {
+      rawList = parseWktToCoordinates(r.coordinates);
+    }
+    return rawList.map((c, idx) => ({
+      id: c.id || String(idx + 1),
+      sequenceNo: c.sequenceNo ?? (idx + 1),
+      longitude: Number(c.longitude),
+      latitude: Number(c.latitude),
+    }));
+  }, [r.coordinates, (r as any).coordinateList]);
 
   const routeDetails = useMemo(
-    () => (Array.isArray(r?.routeDetails) ? r.routeDetails : []),
-    [r],
+    () => (Array.isArray(r.routeDetails) ? r.routeDetails : []),
+    [r.routeDetails],
   );
 
-  const attachments = useMemo<AttachmentRow[]>(
-    () => (Array.isArray(r?.attachments) ? (r.attachments as AttachmentRow[]) : []),
-    [r],
-  );
+  const detailFiles = useMemo<InfrastructureAttachmentItem[]>(() => {
+    const list = Array.isArray(r.attachments) ? r.attachments : [];
+    return list.map((a, idx) => ({
+      id: a.id || String(idx),
+      fileName: a.fileName || `Tệp ${idx + 1}`,
+      fileSize: a.fileSize,
+      uploadedBy: a.uploadedBy,
+      uploadedAt: a.uploadedAt,
+      filePath: a.filePath,
+      url: (a as Record<string, unknown>).fileUrl as string | undefined || a.filePath,
+    }));
+  }, [r.attachments]);
 
   const gisView = useMemo(() => {
     const pts = coordinates.filter((c) => !Number.isNaN(c.longitude) && !Number.isNaN(c.latitude));
-    if (pts.length === 0) return { geometryType: 'POINT', coordinates: '' };
+    if (pts.length === 0) {
+      if (typeof r.coordinates === 'string' && r.coordinates.trim()) {
+        const geom =
+          r.geometryType ||
+          (r.coordinates.toUpperCase().startsWith('LINE')
+            ? 'LINE'
+            : r.coordinates.toUpperCase().startsWith('POLY')
+              ? 'POLYGON'
+              : 'POINT');
+        return { geometryType: geom, coordinates: r.coordinates };
+      }
+      return { geometryType: 'POINT', coordinates: '' };
+    }
     if (pts.length === 1)
       return { geometryType: 'POINT', coordinates: `POINT(${pts[0].longitude} ${pts[0].latitude})` };
     return {
       geometryType: 'LINE',
       coordinates: `LINESTRING(${pts.map((p) => `${p.longitude} ${p.latitude}`).join(', ')})`,
     };
-  }, [coordinates]);
+  }, [coordinates, r.coordinates, r.geometryType]);
+
+  // Biểu tượng GIS — mirror /vts-operation-center
+  const [localSymbols, setLocalSymbols] = useState<any[]>([]);
+  const symId = r.mapIconId || (r as any).mapSymbolId || (r as any).symbolId || '';
+
+  useEffect(() => {
+    let isMounted = true;
+    if (symbols && symbols.length > 0) {
+      setLocalSymbols(symbols);
+    } else {
+      symbolService
+        .getAll()
+        .then((items) => {
+          if (isMounted) setLocalSymbols(items && items.length > 0 ? items : DEFAULT_CHANNEL_GIS_SYMBOLS);
+        })
+        .catch(() => {
+          if (isMounted) setLocalSymbols(DEFAULT_CHANNEL_GIS_SYMBOLS);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [symbols]);
+
+  // Tự động tải biểu tượng nếu chưa có trong danh mục (chuẩn /vts-operation-center)
+  useEffect(() => {
+    if (!symId) return;
+    const exists = localSymbols.some((s) => String(s.id) === String(symId) || String(s.code) === String(symId));
+    if (!exists) {
+      const fallbackName = (r as any).symbolName;
+      const fallbackCode = (r as any).symbolCode;
+      const fallbackImage = (r as any).symbolImage;
+      if (fallbackName) {
+        setLocalSymbols((prev) => [...prev, { id: String(symId), name: fallbackName, code: fallbackCode, image: fallbackImage }]);
+      } else {
+        symbolService
+          .getById(String(symId))
+          .then((s) => {
+            if (s) {
+              setLocalSymbols((prev) => {
+                if (prev.some((item) => String(item.id) === String(s.id))) return prev;
+                return [...prev, s];
+              });
+            }
+          })
+          .catch(() => {
+            setLocalSymbols((prev) => {
+              if (prev.some((item) => String(item.id) === String(symId))) return prev;
+              return [...prev, { id: String(symId), name: 'Biểu tượng luồng hàng hải', code: 'CHANNEL', image: '' }];
+            });
+          });
+      }
+    }
+  }, [symId, localSymbols, r]);
+
+  const allSymbols = useMemo(() => {
+    const combined = [...(symbols || []), ...localSymbols, ...DEFAULT_CHANNEL_GIS_SYMBOLS];
+    const map = new Map<string, any>();
+    combined.forEach((s) => {
+      if (s?.id && !map.has(String(s.id))) map.set(String(s.id), s);
+      if (s?.code && !map.has(String(s.code))) map.set(String(s.code), s);
+    });
+    return Array.from(map.values());
+  }, [symbols, localSymbols]);
+
+  const matchedSymbol = useMemo(() => {
+    if (!symId) return null;
+    return allSymbols.find((s) => String(s.id) === String(symId) || String(s.code) === String(symId)) || null;
+  }, [symId, allSymbols]);
+
+  const symbolNode = useMemo(() => {
+    if (!symId) return null;
+    const symName = matchedSymbol?.name || (r as any).symbolName || matchedSymbol?.code || (r as any).symbolCode || 'Luồng hàng hải';
+    const rawImg = matchedSymbol?.image || (r as any).symbolImage;
+    const symImg = rawImg
+      ? rawImg.startsWith('data:') || rawImg.startsWith('http') || rawImg.startsWith('/')
+        ? rawImg
+        : `data:image/png;base64,${rawImg}`
+      : undefined;
+
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        {symImg ? (
+          <img
+            src={symImg}
+            alt=""
+            style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
+            onError={(e) => {
+              (e.target as HTMLElement).style.display = 'none';
+            }}
+          />
+        ) : null}
+        <span style={{ color: textPrimary, fontWeight: 500 }}>{symName}</span>
+      </span>
+    );
+  }, [symId, matchedSymbol, r]);
+
+  // userMap (prop) chỉ chứa tối đa 100 tài khoản mới nhất — UserController.list cap
+  // size bằng MAX_PAGE_SIZE = 100 — nên cán bộ gửi phê duyệt / cấp duyệt cũ hơn bị
+  // thiếu và trước đây UI rơi về hiển thị chính UUID. Tra bổ sung qua /users/{id}.
+  const [resolvedActorNames, setResolvedActorNames] = useState<Record<string, string>>({});
+
+  const pendingActorIds = useMemo(
+    () =>
+      [r.submittedBy, r.approverLevel1 || r.level1ApprovedBy, r.approverLevel2 || r.level2ApprovedBy, r.updatedBy, r.createdBy]
+        .filter((id): id is string => !!id && !userMap?.has(id) && !actorNameCache[id]),
+    [r.submittedBy, r.approverLevel1, r.level1ApprovedBy, r.approverLevel2, r.level2ApprovedBy, r.updatedBy, r.createdBy, userMap],
+  );
+
+  useEffect(() => {
+    if (pendingActorIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const found = await Promise.all(
+        pendingActorIds.map(async (id) => {
+          try {
+            const res = await userService.getById(id);
+            const name = res.data?.fullName || res.data?.username;
+            return name ? ([id, name] as const) : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+      const patch: Record<string, string> = {};
+      found.forEach((entry) => {
+        if (entry) {
+          actorNameCache[entry[0]] = entry[1];
+          patch[entry[0]] = entry[1];
+        }
+      });
+      if (Object.keys(patch).length > 0) setResolvedActorNames((prev) => ({ ...prev, ...patch }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingActorIds]);
 
   const actorName = (id?: string | null): string => {
     if (!id) return '';
-    return userMap?.get(id) || id || '';
+    return userMap?.get(id) || resolvedActorNames[id] || actorNameCache[id] || id || '';
   };
 
+  const unitName = r.orgUnitName || (r.orgUnitId ? orgMap?.get(r.orgUnitId) : null) || null;
+  // Đơn vị vận hành không còn tồn tại trong danh mục đơn vị → null (trống), KHÔNG rơi về UUID thô của CSDL
+  const opUnitName =
+    r.operatingUnitName || (r.operatingUnitId ? orgMap?.get(r.operatingUnitId) : null) || null;
+  const portName =
+    r.seaportName ||
+    (r.seaportId
+      ? seaportOptions?.find((p) => p.id === r.seaportId)?.portName || seaportMap?.get(r.seaportId)
+      : null) ||
+    null;
   const provinceName =
     r.provinceId !== undefined && r.provinceId !== null
-      ? getProvinceNameById(r.provinceId) || ''
-      : '';
+      ? getProvinceNameById(Number(r.provinceId)) || null
+      : null;
 
-  const isImageFile = (fileName?: string) => {
-    if (!fileName) return false;
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    return ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'bmp'].includes(ext);
-  };
+  // ── Tab 1: Rows Definition ─────────────────────────────────────────
 
-  // ── Tab 2: Thông tin vị trí ────────────────────────────────────────
-  const coordinateColumns: ColumnsType<NavigationChannelCoordinateResponse> = [
+  const detailBasicRows: DetailRow[] = [
     {
-      title: 'STT',
-      dataIndex: 'sequenceNo',
-      width: 60,
-      align: 'center',
-      render: (_: unknown, __: unknown, i: number) => i + 1,
+      label: 'Mã luồng hàng hải',
+      value: r.channelCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.channelCode}</span> : null,
     },
     {
-      title: 'Kinh độ DMS',
-      dataIndex: 'longitude',
-      width: 240,
-      render: (v: number) => <span style={{ color: textPrimary }}>{fmtDms(v)}</span>,
+      label: 'Tên luồng hàng hải',
+      value: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold }}>{r.channelName || null}</span>,
     },
     {
-      title: 'Vĩ độ DMS',
-      dataIndex: 'latitude',
-      width: 240,
-      render: (v: number) => <span style={{ color: textPrimary }}>{fmtDms(v)}</span>,
+      label: 'Đơn vị quản lý',
+      value: <span style={{ fontWeight: fontWeightBold, color: textPrimary }}>{unitName}</span>,
     },
     {
-      title: 'Độ thập phân',
-      dataIndex: 'decimal',
-      width: 180,
-      render: (_: unknown, rec: NavigationChannelCoordinateResponse) => (
-        <span style={{ color: textSecondary, fontSize: fontSizeSm }}>
-          {rec.longitude}, {rec.latitude}
-        </span>
-      ),
+      label: 'Thuộc cảng biển',
+      value: portName,
+    },
+    {
+      label: 'Đơn vị vận hành',
+      value: opUnitName,
+    },
+    {
+      label: 'Địa điểm (Tỉnh/TP)',
+      value: provinceName,
+    },
+    {
+      label: 'Địa điểm chi tiết',
+      value: r.detailedLocation || null,
+      span: true,
+    },
+    {
+      label: 'Tình trạng',
+      value: <ConditionPill status={r.conditionStatus} />,
+    },
+    {
+      label: 'Trạm quản lý luồng',
+      value: r.managementStation || null,
+    },
+    {
+      label: 'Số lượng trạm',
+      value: formatNumber(r.stationCount),
+    },
+    {
+      label: 'Số lượng nhân sự tại trạm',
+      value: formatNumber(r.stationStaffCount),
+    },
+    {
+      label: 'Diện tích trạm (m²)',
+      value: formatNumber(r.stationAreaSquareMeters),
+    },
+    {
+      label: 'Số lượng phao',
+      value: formatNumber(r.buoyCount),
+    },
+    {
+      label: 'Số lượng tiêu',
+      value: formatNumber(r.beaconCount),
+    },
+    {
+      label: 'Ghi chú',
+      value: r.notes || null,
+      span: true,
     },
   ];
 
-  // ── Tab 3: File đính kèm ───────────────────────────────────────────
-  const attachmentColumns: ColumnsType<AttachmentRow> = [
+  const detailTechnicalRows: DetailRow[] = [
     {
-      title: 'STT',
-      dataIndex: 'idx',
-      width: 50,
-      align: 'center',
-      render: (_: unknown, __: unknown, i: number) => i + 1,
+      label: 'Phạm vi bảo vệ luồng (m)',
+      value: formatNumber(r.protectionScopeMeters),
     },
     {
-      title: 'Tên tài liệu',
-      dataIndex: 'fileName',
-      width: 320,
-      render: (name: string) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%' }}>
-          <FileOutlined style={{ color: actionPrimary }} />
-          <Tooltip title={name}>
-            <span style={{ color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {name || ''}
-            </span>
-          </Tooltip>
-        </span>
-      ),
+      label: 'KL nạo vét (m³)',
+      value: formatNumber(r.latestDredgingVolumeCubicMeters),
     },
     {
-      title: 'Dung lượng',
-      dataIndex: 'fileSize',
-      width: 110,
-      render: (size?: number) => {
-        if (!size) return '';
-        return size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(2)} MB` : `${Math.round(size / 1024)} KB`;
-      },
+      label: 'Sửa chữa trạm gần nhất',
+      value: formatMonthYear(r.latestStationRepairMonth),
     },
     {
-      title: 'Người tải lên',
-      dataIndex: 'uploadedBy',
-      width: 150,
-      render: (id?: string) => actorName(id),
+      label: 'Năm bảo trì gần nhất',
+      value: r.latestMaintenanceYear ? String(r.latestMaintenanceYear) : null,
     },
     {
-      title: 'Ngày tải lên',
-      dataIndex: 'uploadedAt',
-      width: 170,
-      render: (v?: string) => fmtDateTime(v),
+      label: 'Ghi chú phạm vi bảo vệ',
+      value: r.protectionNotes || null,
+      span: true,
+    },
+  ];
+
+  const detailAnnouncementRows: DetailRow[] = [
+    {
+      label: 'Số quyết định công bố',
+      value: r.announcementDecisionNumber || null,
     },
     {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 100,
-      align: 'center',
-      render: (_: unknown, rec: AttachmentRow) => {
-        const isImg = isImageFile(rec.fileName);
-        const url = rec.filePath || rec.fileUrl || rec.fileName || '';
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            {isImg ? (
-              <Button
-                type="text"
-                size="small"
-                icon={<EyeOutlined style={{ color: actionPrimary }} />}
-                onClick={() => setPreviewImage(url)}
-                title="Xem ảnh"
-              />
-            ) : (
-              <Button
-                type="text"
-                size="small"
-                icon={<DownloadOutlined style={{ color: actionPrimary }} />}
-                onClick={() => {
-                  if (url) window.open(url, '_blank');
-                }}
-                title="Tải xuống"
-              />
-            )}
-          </div>
+      label: 'Ngày ra quyết định',
+      value: formatDateOnly(r.announcementDecisionDate),
+    },
+    {
+      label: 'Đơn vị ra quyết định',
+      value: r.announcementDecisionIssuer || null,
+      span: true,
+    },
+  ];
+
+  const detailHandlingRows: DetailRow[] = [
+    {
+      label: 'Trạng thái',
+      span: true,
+      value: (() => {
+        const isDel = Boolean(
+          r.deletedAt ||
+          r.deletedBy ||
+          r.approvalStatus === 'ARCHIVED' ||
+          rawRecord.status === 'ARCHIVED' ||
+          rawRecord.status === 'DELETED'
         );
-      },
+        if (isDel) {
+          return <span style={statusBadgeStyle(statusCritical)}>Đã xóa</span>;
+        }
+        return r.approvalStatus ? <ApprovalStatusBadge status={r.approvalStatus} /> : null;
+      })(),
+    },
+    {
+      label: 'Cán bộ cập nhật',
+      value: <span style={{ fontWeight: fontWeightBold }}>{actorName(r.updatedBy) || null}</span>,
+    },
+    {
+      label: 'Ngày cập nhật',
+      value: formatDate(r.updatedAt || r.createdAt),
+    },
+    {
+      label: 'Cán bộ gửi phê duyệt',
+      value: <span style={{ fontWeight: fontWeightBold }}>{actorName(r.submittedBy) || null}</span>,
+    },
+    {
+      label: 'Ngày gửi phê duyệt',
+      value: formatDate(r.submittedAt),
+    },
+    {
+      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+      value: <span style={{ fontWeight: fontWeightBold }}>{actorName(r.approverLevel1 || r.level1ApprovedBy) || null}</span>,
+    },
+    {
+      label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục',
+      value: formatDate(r.approvedDateLevel1 || r.level1ApprovedAt),
+    },
+    {
+      label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục',
+      value: r.level1ApprovalContent || null,
+      span: true,
+    },
+    {
+      label: 'Cán bộ phê duyệt cấp Cục',
+      value: <span style={{ fontWeight: fontWeightBold }}>{actorName(r.approverLevel2 || r.level2ApprovedBy) || null}</span>,
+    },
+    {
+      label: 'Ngày phê duyệt cấp Cục',
+      value: formatDate(r.approvedDateLevel2 || r.level2ApprovedAt),
+    },
+    {
+      label: 'Nội dung phê duyệt cấp Cục',
+      value: r.level2ApprovalContent || null,
+      span: true,
+    },
+    ...(r.rejectionReason
+      ? [
+          {
+            label: 'Lý do từ chối',
+            value: <span style={{ color: statusCritical }}>{r.rejectionReason}</span>,
+            span: true,
+          } as DetailRow,
+        ]
+      : []),
+  ];
+
+  // ── Tab 2: GIS Meta Rows ───────────────────────────────────────────
+
+  const detailGisMetaRows: DetailRow[] = [
+    {
+      label: 'Loại đối tượng',
+      value: GEOMETRY_TYPE_MAP[r.geometryType || ''] || r.geometryType || '',
+    },
+    {
+      label: 'Biểu tượng',
+      value: symbolNode || (symId ? String(symId) : '—'),
+    },
+    {
+      label: 'Hệ quy chiếu',
+      value: (r.coordinateReferenceSystem && COORD_SYS_MAP[r.coordinateReferenceSystem]) || r.coordinateReferenceSystem || 'WGS-84',
+    },
+    {
+      label: 'Quy tắc hiển thị',
+      value: r.displayRule || (coordinates.length > 0 ? 'Độ, phút, giây (DMS)' : ''),
     },
   ];
 
-  // ── Tab 4: Tuyến luồng ─────────────────────────────────────────────
+  // ── Tab 4: Tuyến luồng Columns ──────────────────────────────────────
+
   const routeColumns: ColumnsType<ChannelRouteDetailResponse> = [
     { title: 'STT', dataIndex: 'sequenceNo', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
     { title: 'Phân loại tuyến', dataIndex: 'routeClassification', width: 140, render: (v?: string) => v || '' },
@@ -355,21 +770,21 @@ export default function NavigationChannelDetailContent({
       dataIndex: 'channelLengthKilometers',
       width: 110,
       align: 'right',
-      render: (v?: number) => fmtNum(v),
+      render: (v?: number) => formatNumber(v),
     },
     {
       title: 'Độ sâu thiết kế (m)',
       dataIndex: 'designDepthMeters',
       width: 130,
       align: 'right',
-      render: (v?: number) => fmtNum(v),
+      render: (v?: number) => formatNumber(v),
     },
     {
       title: 'Độ sâu hiện trạng (m)',
       dataIndex: 'currentDepthMeters',
       width: 130,
       align: 'right',
-      render: (v?: number) => fmtNum(v),
+      render: (v?: number) => formatNumber(v),
     },
     {
       title: 'Bề rộng thiết kế (m)',
@@ -379,14 +794,14 @@ export default function NavigationChannelDetailContent({
       render: (_: unknown, rec: ChannelRouteDetailResponse) =>
         rec.maximumDesignWidthMeters !== undefined && rec.minimumDesignWidthMeters !== undefined
           ? `${rec.minimumDesignWidthMeters}–${rec.maximumDesignWidthMeters}`
-          : fmtNum(rec.maximumDesignWidthMeters ?? rec.minimumDesignWidthMeters),
+          : formatNumber(rec.maximumDesignWidthMeters ?? rec.minimumDesignWidthMeters),
     },
     {
       title: 'Bán kính cong nhỏ nhất (m)',
       dataIndex: 'minimumCurveRadiusMeters',
       width: 160,
       align: 'right',
-      render: (v?: number) => fmtNum(v),
+      render: (v?: number) => formatNumber(v),
     },
     {
       title: 'Vị trí vũng quay tàu',
@@ -399,12 +814,16 @@ export default function NavigationChannelDetailContent({
       dataIndex: 'turningBasinRadiusMeters',
       width: 140,
       align: 'right',
-      render: (v?: number) => fmtNum(v),
+      render: (v?: number) => formatNumber(v),
     },
   ];
 
-  // ── Tab 5: Vận hành & bảo trì ──────────────────────────────────────
-  const operationList = useMemo(() => {
+  // ── Tab 5: Lists Definition ────────────────────────────────────────
+
+  const operationList = useMemo<OperationPlanItem[]>(() => {
+    if (Array.isArray(rawRecord.operationPlanList) && rawRecord.operationPlanList.length > 0) {
+      return rawRecord.operationPlanList as OperationPlanItem[];
+    }
     if (!r.operationPlanCode && !r.operationPlanName && !r.operationStartDate && !r.operationEndDate) return [];
     return [
       {
@@ -414,60 +833,329 @@ export default function NavigationChannelDetailContent({
         endDate: r.operationEndDate || '',
       },
     ];
-  }, [r]);
+  }, [r, rawRecord]);
 
-  const maintenanceList = useMemo(() => {
+  const maintenanceList = useMemo<OperationPlanItem[]>(() => {
+    if (Array.isArray(rawRecord.maintenancePlanList) && rawRecord.maintenancePlanList.length > 0) {
+      return rawRecord.maintenancePlanList as OperationPlanItem[];
+    }
     if (!r.maintenancePlanCode && !r.maintenancePlanName && !r.maintenanceStartTime && !r.maintenanceEndTime) return [];
     return [
       {
         planCode: r.maintenancePlanCode || '',
         planName: r.maintenancePlanName || '',
+        startTime: r.maintenanceStartTime || '',
+        endTime: r.maintenanceEndTime || '',
         startDate: r.maintenanceStartTime || '',
         endDate: r.maintenanceEndTime || '',
       },
     ];
-  }, [r]);
+  }, [r, rawRecord]);
 
-  const incidentList = useMemo(() => {
+  const incidentList = useMemo<IncidentItem[]>(() => {
+    if (Array.isArray(rawRecord.incidentList) && rawRecord.incidentList.length > 0) {
+      return rawRecord.incidentList as IncidentItem[];
+    }
     if (!r.incidentCode && !r.incidentType && !r.incidentLocation && !r.incidentTime) return [];
     return [
       {
         incidentCode: r.incidentCode || '',
         incidentType: r.incidentType || '',
-        incidentLocation: r.incidentLocation || '',
+        location: r.incidentLocation || '',
         incidentTime: r.incidentTime || '',
       },
     ];
-  }, [r]);
+  }, [r, rawRecord]);
+
+  // ── Tab Items ──────────────────────────────────────────────────────
+
+  const detailTabItems = [
+    {
+      key: 'general',
+      label: 'Thông tin chung',
+      children: (
+        <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
+          <div style={detailSectionBoxStyle}>
+            <div style={{ ...detailSectionHeaderStyle, cursor: 'default' }}>
+              <div style={detailSectionTitleStyle}>
+                <BankOutlined style={{ color: actionPrimary }} />
+                <span>Thông tin cơ bản & Quản lý vận hành</span>
+              </div>
+            </div>
+            {renderDetailRowsTwoCol(detailBasicRows)}
+          </div>
+
+          {renderDetailSectionCard({
+            title: 'Thông số kỹ thuật & Năng lực khai thác',
+            icon: <SlidersOutlined style={{ color: actionPrimary }} />,
+            open: detailTechOpen,
+            onToggle: () => setDetailTechOpen((v) => !v),
+            children: renderDetailRowsTwoCol(detailTechnicalRows),
+          })}
+
+          {renderDetailSectionCard({
+            title: 'Thông tin công bố mở, đưa vào sử dụng',
+            icon: <FileTextOutlined style={{ color: actionPrimary }} />,
+            open: announcementOpen,
+            onToggle: () => setAnnouncementOpen((v) => !v),
+            children: renderDetailRowsTwoCol(detailAnnouncementRows),
+          })}
+
+          {renderDetailSectionCard({
+            title: 'Thông tin phê duyệt',
+            icon: <AuditOutlined style={{ color: actionPrimary }} />,
+            open: approvalOpen,
+            onToggle: () => setApprovalOpen((v) => !v),
+            children: renderDetailRowsTwoCol(detailHandlingRows),
+          })}
+        </div>
+      ),
+    },
+    {
+      key: 'gis',
+      label: `Thông tin vị trí (${coordinates.length})`,
+      forceRender: true,
+      children: (
+        <DetailTable
+          scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+          dataSource={coordinates}
+          emptyHeightAuto
+          emptyText="Chưa có tọa độ GPS nào"
+          headerNode={
+            <>
+              <div style={{ paddingTop: 6 }}>
+                <div
+                  style={{
+                    padding: '12px 18px 8px 18px',
+                    borderRadius: 8,
+                    border: '1px solid #e2e8f0',
+                    background: '#ffffff',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                    marginBottom: 14,
+                  }}
+                >
+                  <div className="chk-detail-grid">
+                    {detailGisMetaRows.map((row, i) => (
+                      <div key={row.label} className="chk-detail-row">
+                        <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
+                        <span className="chk-detail-value">{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px' }}>
+                    Tọa độ GPS ({coordinates.length})
+                  </span>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeMd, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
+                </div>
+              </div>
+            </>
+          }
+          columns={[
+            {
+              title: 'STT',
+              width: 50,
+              align: 'center' as const,
+              render: (_: unknown, __: unknown, i: number) => i + 1,
+            },
+            {
+              title: 'Vĩ độ (Latitude - N)',
+              key: 'lat',
+              render: (_: unknown, rec: CoordinateItem) => {
+                const dms = ddToDms(rec.latitude);
+                return `${dms.d}° ${dms.m}' ${dms.s}" N`;
+              },
+            },
+            {
+              title: 'Kinh độ (Longitude - E)',
+              key: 'lng',
+              render: (_: unknown, rec: CoordinateItem) => {
+                const dms = ddToDms(rec.longitude);
+                return `${dms.d}° ${dms.m}' ${dms.s}" E`;
+              },
+            },
+          ]}
+        />
+      ),
+    },
+    {
+      key: 'files',
+      label: `File đính kèm (${detailFiles.length})`,
+      forceRender: true,
+      children: (
+        <div style={{ paddingTop: 6 }}>
+          <div style={{ marginBottom: 8 }}>
+            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13.5 }}>File đính kèm</span>
+          </div>
+          <InfrastructureAttachmentTab
+            attachments={detailFiles}
+            readonly={true}
+            readonlyBerthLayout={true}
+            userMap={userMap}
+            onDownload={(attachmentId, fileName) => {
+              if (r?.id) {
+                navigationChannelCRUD
+                  .downloadAttachment(r.id, attachmentId)
+                  .then((blob) => triggerBlobDownload(blob, fileName))
+                  .catch(() => toast.error('Không thể tải xuống tệp đính kèm'));
+                return;
+              }
+              const file = detailFiles.find((f) => f.id === attachmentId);
+              const url = file?.filePath || file?.url || '';
+              if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                window.open(url, '_blank');
+              } else if (url) {
+                triggerBlobDownload(url, fileName);
+              }
+            }}
+            loadReadonlyPreviewImage={(attachmentId) => {
+              const entityId = r?.id;
+              return entityId
+                ? navigationChannelCRUD.downloadAttachment(entityId, attachmentId)
+                : Promise.reject(new Error('Chưa xác định được bản ghi luồng hàng hải để tải tệp đính kèm'));
+            }}
+            loadPreviewAttachment={(attachmentId) => {
+              const entityId = r?.id;
+              return entityId
+                ? navigationChannelCRUD.downloadAttachment(entityId, attachmentId)
+                : Promise.reject(new Error('Chưa xác định được bản ghi luồng hàng hải để tải tệp đính kèm'));
+            }}
+            scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'routes',
+      label: `Tuyến luồng (${routeDetails.length})`,
+      children: (
+        <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+          {renderDetailSectionCard({
+            title: 'Thông tin phân đoạn tuyến luồng',
+            icon: <SlidersOutlined style={{ color: actionPrimary }} />,
+            open: routesOpen,
+            onToggle: () => setRoutesOpen((v) => !v),
+            matchBerthOperationStyle: true,
+            children: (
+              <DetailTable<ChannelRouteDetailResponse>
+                dataSource={routeDetails}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(it: ChannelRouteDetailResponse) => it.id || it.routeCode || it.routeName}
+                scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
+                columns={routeColumns}
+              />
+            ),
+          })}
+        </div>
+      ),
+    },
+    {
+      key: 'operationMaintenance',
+      label: 'Vận hành & bảo trì',
+      children: (
+        <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
+          {/* ── Section Vận hành ── */}
+          {renderDetailSectionCard({
+            title: 'Thông tin vận hành khai thác',
+            icon: <SlidersOutlined style={{ color: actionPrimary }} />,
+            open: opsOperationOpen,
+            onToggle: () => setOpsOperationOpen((v) => !v),
+            matchBerthOperationStyle: true,
+            children: (
+              <DetailTable<OperationPlanItem>
+                scrollY={160}
+                dataSource={operationList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(it: OperationPlanItem) => it.id || it.planCode || it.code || 'op-key'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'planCode', render: (v: unknown, rec: OperationPlanItem) => String(v || rec?.code || '') },
+                  { title: 'Tên kế hoạch', dataIndex: 'planName', render: (v: unknown, rec: OperationPlanItem) => String(v || rec?.name || '') },
+                  { title: 'Ngày bắt đầu', dataIndex: 'startDate', width: 150, align: 'center' as const, render: (v: unknown, rec: OperationPlanItem) => formatOperationTableDateTime((v || rec?.startTime || rec?.start || null) as string | null) },
+                  { title: 'Ngày kết thúc', dataIndex: 'endDate', width: 150, align: 'center' as const, render: (v: unknown, rec: OperationPlanItem) => formatOperationTableDateTime((v || rec?.endTime || rec?.end || null) as string | null) },
+                ]}
+              />
+            ),
+          })}
+
+          {/* ── Section Bảo trì ── */}
+          {renderDetailSectionCard({
+            title: 'Thông tin bảo trì',
+            icon: <SlidersOutlined style={{ color: actionPrimary }} />,
+            open: opsMaintenanceOpen,
+            onToggle: () => setOpsMaintenanceOpen((v) => !v),
+            matchBerthOperationStyle: true,
+            children: (
+              <DetailTable<OperationPlanItem>
+                scrollY={160}
+                dataSource={maintenanceList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(it: OperationPlanItem) => it.id || it.planCode || it.code || 'maint-key'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã kế hoạch', dataIndex: 'planCode', render: (v: unknown, rec: OperationPlanItem) => String(v || rec?.code || '') },
+                  { title: 'Tên kế hoạch', dataIndex: 'planName', render: (v: unknown, rec: OperationPlanItem) => String(v || rec?.name || '') },
+                  { title: 'Thời gian bắt đầu', dataIndex: 'startTime', width: 150, align: 'center' as const, render: (v: unknown, rec: OperationPlanItem) => formatOperationTableDateTime((v || rec?.start || rec?.startDate || null) as string | null) },
+                  { title: 'Thời gian kết thúc', dataIndex: 'endTime', width: 150, align: 'center' as const, render: (v: unknown, rec: OperationPlanItem) => formatOperationTableDateTime((v || rec?.end || rec?.endDate || null) as string | null) },
+                ]}
+              />
+            ),
+          })}
+
+          {/* ── Section Sự cố ── */}
+          {renderDetailSectionCard({
+            title: 'Thông tin sự cố',
+            icon: <SlidersOutlined style={{ color: actionPrimary }} />,
+            open: opsIncidentOpen,
+            onToggle: () => setOpsIncidentOpen((v) => !v),
+            matchBerthOperationStyle: true,
+            children: (
+              <DetailTable<IncidentItem>
+                scrollY={160}
+                dataSource={incidentList}
+                emptyText="Chưa có dữ liệu"
+                rowKey={(it: IncidentItem) => it.id || it.incidentCode || it.code || 'inc-key'}
+                columns={[
+                  { title: 'STT', width: 50 },
+                  { title: 'Mã sự cố', dataIndex: 'incidentCode', render: (v: unknown, it: IncidentItem) => String(v || it?.code || '') },
+                  { title: 'Loại sự cố', dataIndex: 'incidentType', render: (v: unknown, it: IncidentItem) => String(v || it?.type || '') },
+                  { title: 'Địa điểm', dataIndex: 'location', render: (v: unknown) => String(v || '') },
+                  { title: 'Thời gian', dataIndex: 'incidentTime', width: 150, align: 'center' as const, render: (v: unknown, it: IncidentItem) => formatOperationTableDateTime((v || it?.time || null) as string | null) },
+                ]}
+              />
+            ),
+          })}
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <div className="channel-detail-content-wrapper">
+    <div className="chk-detail-tabs">
       <style>{`
-        .channel-detail-content-wrapper {
-          overflow: hidden !important;
-          width: 100% !important;
-          box-sizing: border-box !important;
-        }
-
-        .channel-detail-content-wrapper,
-        .channel-detail-content-wrapper .chk-detail-label,
-        .channel-detail-content-wrapper .chk-detail-value,
-        .channel-detail-content-wrapper .ant-table,
-        .channel-detail-content-wrapper .ant-table-cell,
-        .channel-detail-content-wrapper .ant-table-thead > tr > th,
-        .channel-detail-content-wrapper .ant-tabs-tab,
-        .channel-detail-content-wrapper .ant-btn {
+        .chk-detail-tabs .ant-tabs-tab {
           font-size: 13.5px !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-grid {
+        .chk-detail-tabs .ant-table,
+        .chk-detail-tabs .ant-table-cell,
+        .chk-detail-tabs .ant-table-thead > tr > th,
+        .chk-detail-tabs .ant-table-tbody > tr > td {
+          font-size: 13.5px !important;
+        }
+        .chk-detail-grid {
           display: grid !important;
           grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
           column-gap: 28px !important;
           row-gap: 0 !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-row {
+        .chk-detail-row {
           display: flex !important;
           align-items: flex-start !important;
           min-height: 36px !important;
@@ -476,34 +1164,46 @@ export default function NavigationChannelDetailContent({
           line-height: 1.5 !important;
           gap: 10px !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-row:last-child {
+        .chk-detail-row:last-child {
           border-bottom: none !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-row--full {
+        .chk-detail-row--full {
           grid-column: 1 / -1 !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-label {
+        .chk-detail-label {
           width: 215px !important;
           min-width: 215px !important;
           max-width: 215px !important;
           flex-shrink: 0 !important;
-          color: ${colors.sidebarBg} !important;
           font-weight: 600 !important;
           font-size: 13.5px !important;
           text-align: left !important;
           line-height: 1.5 !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-label::after {
+        .sec-col1-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .sec-col2-label {
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          flex-shrink: 0 !important;
+        }
+        .sec-full-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .chk-detail-label::after {
           content: ':' !important;
           margin-left: 1px !important;
           margin-right: 4px !important;
         }
-
-        .channel-detail-content-wrapper .chk-detail-value {
+        .chk-detail-value {
           color: #1e293b !important;
           font-size: 13.5px !important;
           flex: 1 !important;
@@ -512,648 +1212,49 @@ export default function NavigationChannelDetailContent({
           line-height: 1.5 !important;
           word-break: break-word !important;
         }
-
         @media (max-width: 960px) {
-          .channel-detail-content-wrapper .chk-detail-grid {
+          .chk-detail-grid {
             grid-template-columns: 1fr !important;
             column-gap: 0 !important;
           }
-          .channel-detail-content-wrapper .chk-detail-row--full {
+          .chk-detail-row--full {
             grid-column: 1 !important;
+          }
+          .chk-detail-label,
+          .sec-col1-label,
+          .sec-col2-label,
+          .sec-full-label {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+            padding: 6px 0 !important;
+          }
+          .chk-detail-label,
+          .sec-col1-label,
+          .sec-col2-label,
+          .sec-full-label {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+          }
+          .chk-detail-value {
+            width: 100% !important;
           }
         }
       `}</style>
 
       <Tabs
-        defaultActiveKey="general"
-        tabBarStyle={{
-          marginBottom: 0,
-          paddingTop: 0,
-          position: 'sticky',
-          top: 0,
-          zIndex: 1,
-          background: surfaceCard,
-        }}
-        items={[
-          {
-            key: 'general',
-            label: 'Thông tin chung',
-            children: (
-              <div
-                style={{
-                  paddingTop: 6,
-                  paddingRight: 4,
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  maxHeight: 'calc(100vh - 190px)',
-                  minHeight: 350,
-                }}
-              >
-                {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
-                <div style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <div style={sectionTitleStyle}>
-                      <BankOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin cơ bản & Quản lý vận hành</span>
-                    </div>
-                  </div>
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Mã luồng hàng hải</span>
-                      <span className="chk-detail-value">
-                        {r.channelCode ? <span style={statusBadgeStyle(actionPrimary)}>{r.channelCode}</span> : ''}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Tên luồng hàng hải</span>
-                      <span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>
-                        {r.channelName || ''}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Đơn vị quản lý</span>
-                      <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
-                        {r.orgUnitName || ''}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Thuộc cảng biển</span>
-                      <span className="chk-detail-value">{r.seaportName || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Đơn vị vận hành</span>
-                      <span className="chk-detail-value">{r.operatingUnitId || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Địa điểm (Tỉnh/TP)</span>
-                      <span className="chk-detail-value">{provinceName}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Địa điểm chi tiết</span>
-                      <span className="chk-detail-value">{r.detailedLocation || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Tình trạng</span>
-                      <span className="chk-detail-value">
-                        <ConditionPill status={r.conditionStatus} />
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Trạng thái</span>
-                      <span className="chk-detail-value">
-                        {r.approvalStatus ? <ApprovalStatusBadge status={r.approvalStatus} /> : ''}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Trạm quản lý luồng</span>
-                      <span className="chk-detail-value">{r.managementStation || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Số lượng trạm</span>
-                      <span className="chk-detail-value">{fmtNum(r.stationCount)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Số lượng nhân sự tại trạm</span>
-                      <span className="chk-detail-value">{fmtNum(r.stationStaffCount)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Diện tích trạm (m²)</span>
-                      <span className="chk-detail-value">{fmtNum(r.stationAreaSquareMeters)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Số lượng phao</span>
-                      <span className="chk-detail-value">{fmtNum(r.buoyCount)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Số lượng tiêu</span>
-                      <span className="chk-detail-value">{fmtNum(r.beaconCount)}</span>
-                    </div>
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label">Ghi chú</span>
-                      <span className="chk-detail-value">{r.notes || ''}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Section 2: Thông số kỹ thuật & Năng lực khai thác ── */}
-                <div style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <div style={sectionTitleStyle}>
-                      <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Thông số kỹ thuật & Năng lực khai thác</span>
-                    </div>
-                  </div>
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Phạm vi bảo vệ luồng (m)</span>
-                      <span className="chk-detail-value">{fmtNum(r.protectionScopeMeters)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">KL nạo vét (m³)</span>
-                      <span className="chk-detail-value">{fmtNum(r.latestDredgingVolumeCubicMeters)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Sửa chữa trạm gần nhất</span>
-                      <span className="chk-detail-value">{fmtMonthYear(r.latestStationRepairMonth)}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Năm bảo trì gần nhất</span>
-                      <span className="chk-detail-value">{fmtNum(r.latestMaintenanceYear)}</span>
-                    </div>
-                    <div className="chk-detail-row chk-detail-row--full">
-                      <span className="chk-detail-label">Ghi chú phạm vi bảo vệ</span>
-                      <span className="chk-detail-value">{r.protectionNotes || ''}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Section 3: Thông tin công bố mở, đưa vào sử dụng (Collapsible) ── */}
-                <div style={sectionBoxStyle}>
-                  <div
-                    style={{ ...sectionHeaderStyle, cursor: 'pointer', marginBottom: announcementOpen ? 10 : 0, borderBottom: announcementOpen ? '1px solid #f1f5f9' : 'none' }}
-                    onClick={() => setAnnouncementOpen(!announcementOpen)}
-                  >
-                    <div style={sectionTitleStyle}>
-                      <FileTextOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin công bố mở, đưa vào sử dụng</span>
-                    </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {announcementOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
-                  </div>
-                  {announcementOpen && (
-                    <div className="chk-detail-grid">
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Số quyết định công bố</span>
-                        <span className="chk-detail-value">{r.announcementDecisionNumber || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label">Ngày ra quyết định</span>
-                        <span className="chk-detail-value">{fmtDate(r.announcementDecisionDate)}</span>
-                      </div>
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label">Đơn vị ra quyết định</span>
-                        <span className="chk-detail-value">{r.announcementDecisionIssuer || ''}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Section 4: Thông tin phê duyệt (Collapsible) ── */}
-                <div style={sectionBoxStyle}>
-                  <div
-                    style={{ ...sectionHeaderStyle, cursor: 'pointer', marginBottom: approvalOpen ? 10 : 0, borderBottom: approvalOpen ? '1px solid #f1f5f9' : 'none' }}
-                    onClick={() => setApprovalOpen(!approvalOpen)}
-                  >
-                    <div style={sectionTitleStyle}>
-                      <AuditOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin phê duyệt</span>
-                    </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {approvalOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
-                  </div>
-                  {approvalOpen && (
-                    <div className="chk-detail-grid">
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-col1-label">Trạng thái</span>
-                        <span className="chk-detail-value">
-                          {r.approvalStatus ? <ApprovalStatusBadge status={r.approvalStatus} /> : ''}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ cập nhật</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
-                          {actorName(r.updatedBy)}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày cập nhật</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.updatedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ gửi phê duyệt</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
-                          {actorName(r.submittedBy)}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày gửi phê duyệt</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.submittedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
-                          {actorName(r.level1ApprovedBy)}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.level1ApprovedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cảng vụ/Chi cục</span>
-                        <span className="chk-detail-value">{r.level1ApprovalContent || ''}</span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col1-label">Cán bộ phê duyệt cấp Cục</span>
-                        <span className="chk-detail-value" style={{ fontWeight: fontWeightBold }}>
-                          {actorName(r.level2ApprovedBy)}
-                        </span>
-                      </div>
-                      <div className="chk-detail-row">
-                        <span className="chk-detail-label sec-col2-label">Ngày phê duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{fmtDateTime(r.level2ApprovedAt)}</span>
-                      </div>
-                      <div className="chk-detail-row chk-detail-row--full">
-                        <span className="chk-detail-label sec-col1-label">Nội dung phê duyệt cấp Cục</span>
-                        <span className="chk-detail-value">{r.level2ApprovalContent || ''}</span>
-                      </div>
-                      {r.rejectionReason && (
-                        <div className="chk-detail-row chk-detail-row--full">
-                          <span className="chk-detail-label sec-col1-label" style={{ color: statusCritical }}>
-                            Lý do từ chối
-                          </span>
-                          <span className="chk-detail-value" style={{ color: statusCritical }}>
-                            {r.rejectionReason}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: 'gis',
-            label: `Thông tin vị trí (${coordinates.length})`,
-            children: (
-              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)', minHeight: 350 }}>
-                {/* ── Section Card: Thông số đối tượng bản đồ ── */}
-                <div style={sectionBoxStyle}>
-                  <div style={sectionHeaderStyle}>
-                    <div style={sectionTitleStyle}>
-                      <EnvironmentOutlined style={{ color: actionPrimary }} />
-                      <span>Thông số đối tượng bản đồ</span>
-                    </div>
-                  </div>
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Loại đối tượng</span>
-                      <span className="chk-detail-value">
-                        {({ POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' } as Record<string, string>)[r.geometryType || ''] || r.geometryType || ''}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Biểu tượng</span>
-                      <span className="chk-detail-value">{r.mapIconId || r.mapSymbolId || ''}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Hệ quy chiếu</span>
-                      <span className="chk-detail-value">{r.coordinateReferenceSystem || 'WGS-84'}</span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label">Quy tắc hiển thị</span>
-                      <span className="chk-detail-value">{r.displayRule || (coordinates.length > 0 ? 'Độ, phút, giây (DMS)' : '')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Bảng Tọa độ GPS ── */}
-                <div style={{ marginTop: spaceMd }}>
-                  <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                      Tọa độ GPS ({coordinates.length})
-                    </span>
-                    <Button
-                      icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-                      onClick={() => setGisOpen(true)}
-                      style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: radiusPill }}
-                    >
-                      Xem vị trí trên bản đồ
-                    </Button>
-                  </div>
-                  <DetailTable
-                    dataSource={coordinates.map((p, i) => ({ ...p, _idx: i }))}
-                    emptyText="Chưa có tọa độ GPS nào"
-                    rowKey={(rec: any) => String(rec._idx ?? `${rec.latitude}-${rec.longitude}`)}
-                    scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-                    columns={[
-                      { title: 'STT', width: 50, align: 'center' },
-                      {
-                        title: 'Vĩ độ (Latitude - N)',
-                        key: 'lat',
-                        render: (_v: any, rec: any) => {
-                          const dms = ddToDms(rec.latitude);
-                          return `${dms.d}° ${dms.m}' ${dms.s}" N`;
-                        },
-                      },
-                      {
-                        title: 'Kinh độ (Longitude - E)',
-                        key: 'lng',
-                        render: (_v: any, rec: any) => {
-                          const dms = ddToDms(rec.longitude);
-                          return `${dms.d}° ${dms.m}' ${dms.s}" E`;
-                        },
-                      },
-                    ]}
-                  />
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: 'files',
-            label: `File đính kèm (${attachments.length})`,
-            children: (
-              <div style={{ paddingTop: 6, overflowY: 'auto', maxHeight: 'calc(100vh - 190px)' }}>
-                <div style={{ marginBottom: spaceSm }}>
-                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>File đính kèm</span>
-                </div>
-                <DetailTable<AttachmentRow>
-                  dataSource={attachments}
-                  emptyText="Chưa có tài liệu đính kèm"
-                  scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
-                  columns={[
-                    { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                    {
-                      title: 'Tên tài liệu',
-                      dataIndex: 'fileName',
-                      key: 'fileName',
-                      render: (v: string, rec: AttachmentRow) => {
-                        const isImg = isImageFile(v);
-                        const url = rec.filePath || rec.fileUrl || rec.fileName || '';
-                        return (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              cursor: 'pointer',
-                              color: actionPrimary,
-                              fontWeight: fontWeightMedium,
-                            }}
-                            title={isImg ? `${v} (Nhấp để xem chi tiết ảnh)` : `${v} (Nhấp để tải xuống)`}
-                            onClick={() => {
-                              if (isImg) setPreviewImage(url);
-                              else if (url) window.open(url, '_blank');
-                            }}
-                          >
-                            {isImg ? (
-                              <FileImageOutlined style={{ color: actionPrimary, flexShrink: 0 }} />
-                            ) : (
-                              <FileOutlined style={{ color: textTertiary, flexShrink: 0 }} />
-                            )}
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {v || ''}
-                            </span>
-                          </span>
-                        );
-                      },
-                    },
-                    {
-                      title: 'Dung lượng',
-                      dataIndex: 'fileSize',
-                      key: 'fileSize',
-                      width: 120,
-                      align: 'left' as const,
-                      render: (size?: number) => {
-                        if (!size) return '';
-                        return size >= 1024 * 1024 ? `${(size / (1024 * 1024)).toFixed(2)} MB` : `${Math.round(size / 1024)} KB`;
-                      },
-                    },
-                    {
-                      title: 'Người tải lên',
-                      dataIndex: 'uploadedBy',
-                      key: 'uploadedBy',
-                      width: 180,
-                      render: (id?: string) => actorName(id),
-                    },
-                    {
-                      title: 'Ngày tải lên',
-                      dataIndex: 'uploadedAt',
-                      key: 'uploadedAt',
-                      width: 150,
-                      align: 'left' as const,
-                      render: (v?: string) => fmtDateTime(v),
-                    },
-                    {
-                      title: 'Thao tác',
-                      key: 'actions',
-                      width: 90,
-                      align: 'center' as const,
-                      render: (_: any, rec: AttachmentRow) => {
-                        const isImg = isImageFile(rec.fileName);
-                        const url = rec.filePath || rec.fileUrl || rec.fileName || '';
-                        return (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                            {isImg ? (
-                              <Tooltip title="Xem chi tiết ảnh">
-                                <Button
-                                  type="text"
-                                  size="small"
-                                  icon={<EyeOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
-                                  onClick={() => setPreviewImage(url)}
-                                  style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                />
-                              </Tooltip>
-                            ) : (
-                              <span style={{ width: 28, height: 28, display: 'inline-block' }} />
-                            )}
-                            <Tooltip title="Tải xuống tệp">
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<DownloadOutlined style={{ color: actionPrimary, fontSize: 16 }} />}
-                                onClick={() => {
-                                  if (url) window.open(url, '_blank');
-                                }}
-                                style={{ width: 28, height: 28, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                              />
-                            </Tooltip>
-                          </div>
-                        );
-                      },
-                    },
-                  ]}
-                />
-              </div>
-            ),
-          },
-          {
-            key: 'routes',
-            label: `Tuyến luồng (${routeDetails.length})`,
-            children: (
-              <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
-                {/* ── Section Card: Thông tin phân đoạn tuyến luồng ── */}
-                <div style={{ ...sectionBoxStyle, padding: routesOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
-                  <div
-                    style={{
-                      ...sectionHeaderStyle,
-                      marginBottom: routesOpen ? 12 : 0,
-                      paddingBottom: routesOpen ? 8 : 0,
-                      borderBottom: routesOpen ? '1px solid #f1f5f9' : 'none',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                    onClick={() => setRoutesOpen(!routesOpen)}
-                  >
-                    <div style={sectionTitleStyle}>
-                      <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin phân đoạn tuyến luồng</span>
-                    </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {routesOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
-                  </div>
-                  {routesOpen && (
-                    <DetailTable<ChannelRouteDetailResponse>
-                      dataSource={routeDetails}
-                      emptyText="Chưa có dữ liệu"
-                      rowKey={(r: any) => r.id || r.routeCode || r.routeName}
-                      scrollY={DRAWER_TABLE_SCROLL_Y.pureTable}
-                      columns={routeColumns}
-                    />
-                  )}
-                </div>
-              </div>
-            ),
-          },
-          {
-            key: 'operationMaintenance',
-            label: 'Vận hành & bảo trì',
-            children: (
-              <div
-                style={{
-                  paddingTop: 6,
-                  paddingRight: 4,
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                  maxHeight: 'calc(100vh - 190px)',
-                  minHeight: 350,
-                }}
-              >
-                {/* ── Thông tin vận hành khai thác ── */}
-                <div style={{ ...sectionBoxStyle, padding: operationOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
-                  <div
-                    style={{
-                      ...sectionHeaderStyle,
-                      marginBottom: operationOpen ? 12 : 0,
-                      paddingBottom: operationOpen ? 8 : 0,
-                      borderBottom: operationOpen ? '1px solid #f1f5f9' : 'none',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                    onClick={() => setOperationOpen(!operationOpen)}
-                  >
-                    <div style={sectionTitleStyle}>
-                      <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin vận hành khai thác</span>
-                    </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {operationOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
-                  </div>
-                  {operationOpen && (
-                    <DetailTable
-                      dataSource={operationList}
-                      columns={[
-                        { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', render: (v: string) => v || '' },
-                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName', render: (v: string) => v || '' },
-                        { title: 'Ngày bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                        { title: 'Ngày kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                      ]}
-                      rowKey="planCode"
-                      scrollY={160}
-                      emptyText="Chưa có dữ liệu"
-                    />
-                  )}
-                </div>
-
-                {/* ── Thông tin bảo trì ── */}
-                <div style={{ ...sectionBoxStyle, padding: maintenanceOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
-                  <div
-                    style={{
-                      ...sectionHeaderStyle,
-                      marginBottom: maintenanceOpen ? 12 : 0,
-                      paddingBottom: maintenanceOpen ? 8 : 0,
-                      borderBottom: maintenanceOpen ? '1px solid #f1f5f9' : 'none',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                    onClick={() => setMaintenanceOpen(!maintenanceOpen)}
-                  >
-                    <div style={sectionTitleStyle}>
-                      <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin bảo trì</span>
-                    </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {maintenanceOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
-                  </div>
-                  {maintenanceOpen && (
-                    <DetailTable
-                      dataSource={maintenanceList}
-                      columns={[
-                        { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                        { title: 'Mã kế hoạch', dataIndex: 'planCode', key: 'planCode', render: (v: string) => v || '' },
-                        { title: 'Tên kế hoạch', dataIndex: 'planName', key: 'planName', render: (v: string) => v || '' },
-                        { title: 'Thời gian bắt đầu', dataIndex: 'startDate', key: 'startDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                        { title: 'Thời gian kết thúc', dataIndex: 'endDate', key: 'endDate', width: 140, align: 'center', render: (v: string) => fmtDate(v) },
-                      ]}
-                      rowKey="planCode"
-                      scrollY={160}
-                      emptyText="Chưa có dữ liệu"
-                    />
-                  )}
-                </div>
-
-                {/* ── Thông tin sự cố ── */}
-                <div style={{ ...sectionBoxStyle, padding: incidentOpen ? '12px 18px 12px 18px' : '10px 18px' }}>
-                  <div
-                    style={{
-                      ...sectionHeaderStyle,
-                      marginBottom: incidentOpen ? 12 : 0,
-                      paddingBottom: incidentOpen ? 8 : 0,
-                      borderBottom: incidentOpen ? '1px solid #f1f5f9' : 'none',
-                      cursor: 'pointer',
-                      userSelect: 'none',
-                    }}
-                    onClick={() => setIncidentOpen(!incidentOpen)}
-                  >
-                    <div style={sectionTitleStyle}>
-                      <SlidersOutlined style={{ color: actionPrimary }} />
-                      <span>Thông tin sự cố</span>
-                    </div>
-                    <span style={{ color: actionPrimary, fontSize: 12 }}>
-                      {incidentOpen ? <DownOutlined /> : <RightOutlined />}
-                    </span>
-                  </div>
-                  {incidentOpen && (
-                    <DetailTable
-                      dataSource={incidentList}
-                      columns={[
-                        { title: 'STT', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-                        { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v: string) => v || '' },
-                        { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v: string) => v || '' },
-                        { title: 'Địa điểm', dataIndex: 'incidentLocation', key: 'location', render: (v: string) => v || '' },
-                        { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 160, align: 'center', render: (v: string) => fmtDateTime(v) },
-                      ]}
-                      rowKey="incidentCode"
-                      scrollY={160}
-                      emptyText="Chưa có dữ liệu"
-                    />
-                  )}
-                </div>
-              </div>
-            ),
-          },
-        ]}
+        activeKey={activeTabKey}
+        onChange={setActiveTabKey}
+        tabBarStyle={tabBarStyle}
+        items={detailTabItems}
       />
 
       {/* ── Modal xem vị trí GIS ── */}
@@ -1161,58 +1262,31 @@ export default function NavigationChannelDetailContent({
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <EnvironmentOutlined style={{ color: actionPrimary }} />
-            <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
+            <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: 16 }}>
               Xem vị trí trên bản đồ chuyên dụng
             </span>
           </div>
         }
-        open={gisOpen}
-        onCancel={() => setGisOpen(false)}
+        open={gisModalOpen}
+        onCancel={() => setGisModalOpen(false)}
         destroyOnHidden
-        width="94vw"
+        width="90vw"
         style={{ top: 20, maxWidth: '1400px' }}
-        footer={[
-          <Button key="close" type="primary" onClick={() => setGisOpen(false)} style={{ ...primaryButtonStyle }}>
-            Đóng
-          </Button>,
-        ]}
+        footer={null}
       >
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline
-            defaultGeometryType={(gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON') || 'POINT'}
+            height={560}
             disabled
-            height={520}
             value={{
-              geometryType: gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON',
-              coordinates: gisView.coordinates,
+              geometryType: (r?.geometryType as 'POINT' | 'LINE' | 'POLYGON') || (gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON') || 'POINT',
+              coordinates: gisView.coordinates || '',
+              symbolId: r?.mapIconId || r?.mapSymbolId || undefined,
             }}
+            defaultGeometryType={(r?.geometryType as 'POINT' | 'LINE' | 'POLYGON') || (gisView.geometryType as 'POINT' | 'LINE' | 'POLYGON') || 'POINT'}
           />
         </div>
-      </Modal>
-
-      {/* ── Modal xem ảnh phóng to ── */}
-      <Modal
-        open={!!previewImage}
-        title={
-          <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-            Xem trước hình ảnh
-          </span>
-        }
-        footer={null}
-        onCancel={() => setPreviewImage(null)}
-        destroyOnHidden
-        width={800}
-      >
-        {previewImage && (
-          <div style={{ textAlign: 'center', padding: '12px 0' }}>
-            <img
-              src={previewImage}
-              alt="Preview"
-              style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: 4 }}
-            />
-          </div>
-        )}
       </Modal>
     </div>
   );

@@ -36,12 +36,12 @@ import {
   statusCritical,
   statusOperational,
 } from '../../themetokenchk';
+import { fmtNum } from '../../utils/numFmt';
 import {
   downloadAttachmentFile,
   getAttachmentPreviewUrl,
   getOrGenerateAttachmentBlob,
 } from '../../utils/attachmentStorage';
-import { fmtNum } from '../../utils/numFmt';
 
 export { renderApprovalStatusBadge };
 

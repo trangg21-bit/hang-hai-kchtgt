@@ -10,7 +10,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.*;
 import lombok.*;
-import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 
@@ -22,7 +21,6 @@ import lombok.experimental.FieldNameConstants;
  */
 @Entity
 @Table(name = "buoy")
-@SQLRestriction("deleted_at IS NULL")
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @Getter
 @Setter

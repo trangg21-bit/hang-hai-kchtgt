@@ -278,7 +278,10 @@ public class CctvService {
         : List.of();
 
     OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
-    Boolean isDeleted = Boolean.FALSE;
+    // isDeleted = null  → trả về mọi bản ghi (kể cả đã xóa) — dùng cho tab "Tất cả"
+    // isDeleted = true  → chỉ bản ghi đã xóa mềm (tab "Đã xóa")
+    // isDeleted = false → chỉ bản ghi chưa xóa (các tab trạng thái phê duyệt)
+    Boolean isDeleted = null;
     ApprovalStatus apprStatus = null;
     if (approvalStatus != null && !approvalStatus.isBlank() && !"ALL".equalsIgnoreCase(approvalStatus.trim())) {
       String upper = approvalStatus.trim().toUpperCase();

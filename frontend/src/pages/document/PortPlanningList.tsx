@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Col, DatePicker, Descriptions, Form, Input, InputNumber, Row, Select, Tabs } from 'antd';
+import { Button, Col, DatePicker, Descriptions, Form, Input, Row, Select, Tabs } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { FormInstance } from 'antd';
 import {
   AppstoreOutlined,

@@ -11,9 +11,9 @@ import {
   DatePicker,
   Button,
   Tooltip,
-  InputNumber,
   Checkbox,
 } from 'antd';
+import InputNumber from '../LocalizedInputNumber';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
   SearchOutlined,

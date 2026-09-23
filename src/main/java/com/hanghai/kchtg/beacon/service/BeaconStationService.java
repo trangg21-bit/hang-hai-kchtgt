@@ -521,122 +521,56 @@ public class BeaconStationService {
         boolean hasGeometryType = request.getGeometryType() != null && !request.getGeometryType().trim().isEmpty();
 
         Map<String, String> previousValues = new LinkedHashMap<>();
-        if (request.getName() != null && !EntityUpdateUtils.areEqual(entity.getName(), request.getName())) {
-            previousValues.put("name", entity.getName());
-            entity.setName(request.getName());
-        }
-        if (request.getType() != null && !EntityUpdateUtils.areEqual(entity.getType(), request.getType())) {
-            if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
-                throw new IllegalArgumentException("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.");
+        if (request.isFieldPresent("name")) {
+            String cleanName = trimToNull(request.getName());
+            if (cleanName != null) {
+                applyIfChanged("name", entity.getName(), cleanName, entity::setName, previousValues, request);
             }
-            previousValues.put("type", entity.getType());
-            entity.setType(request.getType());
         }
-        if (request.getTowerColor() != null && !EntityUpdateUtils.areEqual(entity.getTowerColor(), request.getTowerColor())) {
-            previousValues.put("towerColor", entity.getTowerColor());
-            entity.setTowerColor(request.getTowerColor());
+        if (request.isFieldPresent("type")) {
+            String cleanType = trimToNull(request.getType());
+            if (cleanType != null && !EntityUpdateUtils.areEqual(entity.getType(), cleanType)) {
+                if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
+                    throw new IllegalArgumentException("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.");
+                }
+                applyIfChanged("type", entity.getType(), cleanType, entity::setType, previousValues, request);
+            }
         }
-        if (request.getPrimaryLightModel() != null && !EntityUpdateUtils.areEqual(entity.getPrimaryLightModel(), request.getPrimaryLightModel())) {
-            previousValues.put("primaryLightModel", entity.getPrimaryLightModel());
-            entity.setPrimaryLightModel(request.getPrimaryLightModel());
+        applyIfChanged("towerColor", entity.getTowerColor(), trimToNull(request.getTowerColor()), entity::setTowerColor, previousValues, request);
+        applyIfChanged("primaryLightModel", entity.getPrimaryLightModel(), trimToNull(request.getPrimaryLightModel()), entity::setPrimaryLightModel, previousValues, request);
+        applyIfChanged("backupLightModel", entity.getBackupLightModel(), trimToNull(request.getBackupLightModel()), entity::setBackupLightModel, previousValues, request);
+        applyIfChanged("lightRange", entity.getLightRange(), request.getLightRange(), entity::setLightRange, previousValues, request);
+        applyIfChanged("area", entity.getArea(), request.getArea(), entity::setArea, previousValues, request);
+        applyIfChanged("location", entity.getLocation(), trimToNull(request.getLocation()), entity::setLocation, previousValues, request);
+        applyIfChanged("detailedLocation", entity.getDetailedLocation(), trimToNull(request.getDetailedLocation()), entity::setDetailedLocation, previousValues, request);
+        if (request.isFieldPresent("unitId")) {
+            if (request.getUnitId() != null) {
+                orgUnitScopeService.requireOrganizationInScope(request.getUnitId());
+            }
+            if (!EntityUpdateUtils.areEqual(entity.getUnitId(), request.getUnitId())) {
+                previousValues.put("unitId", entity.getUnitId() != null ? entity.getUnitId().toString() : null);
+                entity.setUnitId(request.getUnitId());
+                entity.setOrgUnitId(request.getUnitId());
+            }
         }
-        if (request.getBackupLightModel() != null && !EntityUpdateUtils.areEqual(entity.getBackupLightModel(), request.getBackupLightModel())) {
-            previousValues.put("backupLightModel", entity.getBackupLightModel());
-            entity.setBackupLightModel(request.getBackupLightModel());
-        }
-        if (request.getLightRange() != null && !EntityUpdateUtils.areEqual(entity.getLightRange(), request.getLightRange())) {
-            previousValues.put("lightRange", entity.getLightRange() != null ? String.valueOf(entity.getLightRange()) : null);
-            entity.setLightRange(request.getLightRange());
-        }
-        if (request.getArea() != null && !EntityUpdateUtils.areEqual(entity.getArea(), request.getArea())) {
-            previousValues.put("area", entity.getArea() != null ? String.valueOf(entity.getArea()) : null);
-            entity.setArea(request.getArea());
-        }
-        if (request.getLocation() != null && !EntityUpdateUtils.areEqual(entity.getLocation(), request.getLocation())) {
-            previousValues.put("location", entity.getLocation());
-            entity.setLocation(request.getLocation());
-        }
-        if (request.getDetailedLocation() != null && !EntityUpdateUtils.areEqual(entity.getDetailedLocation(), request.getDetailedLocation())) {
-            previousValues.put("detailedLocation", entity.getDetailedLocation());
-            entity.setDetailedLocation(request.getDetailedLocation());
-        }
-        if (request.getUnitId() != null && !EntityUpdateUtils.areEqual(entity.getUnitId(), request.getUnitId())) {
-            previousValues.put("unitId", entity.getUnitId() != null ? entity.getUnitId().toString() : null);
-            entity.setUnitId(request.getUnitId());
-            entity.setOrgUnitId(request.getUnitId());
-        }
-        if (request.getProvinceId() != null && !EntityUpdateUtils.areEqual(entity.getProvinceId(), request.getProvinceId())) {
-            previousValues.put("provinceId", entity.getProvinceId() != null ? String.valueOf(entity.getProvinceId()) : null);
-            entity.setProvinceId(request.getProvinceId());
-        }
-        if (request.getSeaportId() != null && !EntityUpdateUtils.areEqual(entity.getSeaportId(), request.getSeaportId())) {
-            previousValues.put("seaportId", entity.getSeaportId() != null ? entity.getSeaportId().toString() : null);
-            entity.setSeaportId(request.getSeaportId());
-        }
-        if (request.getOperator() != null && !EntityUpdateUtils.areEqual(entity.getOperator(), request.getOperator())) {
-            previousValues.put("operator", entity.getOperator());
-            entity.setOperator(request.getOperator());
-        }
-        if (request.getLastRepairDate() != null && !EntityUpdateUtils.areEqual(entity.getLastRepairDate(), request.getLastRepairDate())) {
-            previousValues.put("lastRepairDate", entity.getLastRepairDate() != null ? entity.getLastRepairDate().toString() : null);
-            entity.setLastRepairDate(request.getLastRepairDate());
-        }
-        if (request.getCommissionedDate() != null && !EntityUpdateUtils.areEqual(entity.getCommissionedDate(), request.getCommissionedDate())) {
-            previousValues.put("commissionedDate", entity.getCommissionedDate() != null ? entity.getCommissionedDate().toString() : null);
-            entity.setCommissionedDate(request.getCommissionedDate());
-        }
-        if (request.getIsActive() != null && !EntityUpdateUtils.areEqual(entity.getIsActive(), request.getIsActive())) {
-            previousValues.put("isActive", entity.getIsActive() != null ? String.valueOf(entity.getIsActive()) : null);
-            entity.setIsActive(request.getIsActive());
-        }
-        if (request.getShape() != null && !EntityUpdateUtils.areEqual(entity.getShape(), request.getShape())) {
-            previousValues.put("shape", entity.getShape());
-            entity.setShape(request.getShape());
-        }
-        if (request.getStructure() != null && !EntityUpdateUtils.areEqual(entity.getStructure(), request.getStructure())) {
-            previousValues.put("structure", entity.getStructure());
-            entity.setStructure(request.getStructure());
-        }
-        if (request.getTowerHeight() != null && !EntityUpdateUtils.areEqual(entity.getTowerHeight(), request.getTowerHeight())) {
-            previousValues.put("towerHeight", entity.getTowerHeight() != null ? String.valueOf(entity.getTowerHeight()) : null);
-            entity.setTowerHeight(request.getTowerHeight());
-        }
-        if (request.getLightHeight() != null && !EntityUpdateUtils.areEqual(entity.getLightHeight(), request.getLightHeight())) {
-            previousValues.put("lightHeight", entity.getLightHeight() != null ? String.valueOf(entity.getLightHeight()) : null);
-            entity.setLightHeight(request.getLightHeight());
-        }
-        if (request.getGeographicRange() != null && !EntityUpdateUtils.areEqual(entity.getGeographicRange(), request.getGeographicRange())) {
-            previousValues.put("geographicRange", entity.getGeographicRange());
-            entity.setGeographicRange(request.getGeographicRange());
-        }
-        if (request.getPowerSupply() != null && !EntityUpdateUtils.areEqual(entity.getPowerSupply(), request.getPowerSupply())) {
-            previousValues.put("powerSupply", entity.getPowerSupply());
-            entity.setPowerSupply(request.getPowerSupply());
-        }
-        if (request.getStaffCount() != null && !EntityUpdateUtils.areEqual(entity.getStaffCount(), request.getStaffCount())) {
-            previousValues.put("staffCount", entity.getStaffCount() != null ? String.valueOf(entity.getStaffCount()) : null);
-            entity.setStaffCount(request.getStaffCount());
-        }
-        if (request.getStationArea() != null && !EntityUpdateUtils.areEqual(entity.getStationArea(), request.getStationArea())) {
-            previousValues.put("stationArea", entity.getStationArea() != null ? String.valueOf(entity.getStationArea()) : null);
-            entity.setStationArea(request.getStationArea());
-        }
-        if (request.getOperationalStatus() != null && !EntityUpdateUtils.areEqual(entity.getOperationalStatus(), request.getOperationalStatus())) {
-            previousValues.put("operationalStatus", entity.getOperationalStatus() != null ? String.valueOf(entity.getOperationalStatus()) : null);
-            entity.setOperationalStatus(request.getOperationalStatus());
-        }
-        if (request.getRegion() != null && !EntityUpdateUtils.areEqual(entity.getRegion(), request.getRegion())) {
-            previousValues.put("region", entity.getRegion());
-            entity.setRegion(request.getRegion());
-        }
-        if (request.getIdentifyingFeature() != null && !EntityUpdateUtils.areEqual(entity.getIdentifyingFeature(), request.getIdentifyingFeature())) {
-            previousValues.put("identifyingFeature", entity.getIdentifyingFeature());
-            entity.setIdentifyingFeature(request.getIdentifyingFeature());
-        }
-        if (request.getNote() != null && !EntityUpdateUtils.areEqual(entity.getNote(), request.getNote())) {
-            previousValues.put("note", entity.getNote());
-            entity.setNote(request.getNote());
-        }
+        applyIfChanged("provinceId", entity.getProvinceId(), request.getProvinceId(), entity::setProvinceId, previousValues, request);
+        applyIfChanged("seaportId", entity.getSeaportId(), request.getSeaportId(), entity::setSeaportId, previousValues, request);
+        applyIfChanged("operator", entity.getOperator(), trimToNull(request.getOperator()), entity::setOperator, previousValues, request);
+        applyIfChanged("lastRepairDate", entity.getLastRepairDate(), request.getLastRepairDate(), entity::setLastRepairDate, previousValues, request);
+        applyIfChanged("commissionedDate", entity.getCommissionedDate(), request.getCommissionedDate(), entity::setCommissionedDate, previousValues, request);
+        applyIfChanged("isActive", entity.getIsActive(), request.getIsActive(), entity::setIsActive, previousValues, request);
+        applyIfChanged("shape", entity.getShape(), trimToNull(request.getShape()), entity::setShape, previousValues, request);
+        applyIfChanged("structure", entity.getStructure(), trimToNull(request.getStructure()), entity::setStructure, previousValues, request);
+        applyIfChanged("towerHeight", entity.getTowerHeight(), request.getTowerHeight(), entity::setTowerHeight, previousValues, request);
+        applyIfChanged("lightHeight", entity.getLightHeight(), request.getLightHeight(), entity::setLightHeight, previousValues, request);
+        applyIfChanged("geographicRange", entity.getGeographicRange(), trimToNull(request.getGeographicRange()), entity::setGeographicRange, previousValues, request);
+        applyIfChanged("powerSupply", entity.getPowerSupply(), trimToNull(request.getPowerSupply()), entity::setPowerSupply, previousValues, request);
+        applyIfChanged("staffCount", entity.getStaffCount(), request.getStaffCount(), entity::setStaffCount, previousValues, request);
+        applyIfChanged("stationArea", entity.getStationArea(), request.getStationArea(), entity::setStationArea, previousValues, request);
+        applyIfChanged("operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus(), entity::setOperationalStatus, previousValues, request);
+        applyIfChanged("region", entity.getRegion(), trimToNull(request.getRegion()), entity::setRegion, previousValues, request);
+        applyIfChanged("identifyingFeature", entity.getIdentifyingFeature(), trimToNull(request.getIdentifyingFeature()), entity::setIdentifyingFeature, previousValues, request);
+        applyIfChanged("note", entity.getNote(), trimToNull(request.getNote()), entity::setNote, previousValues, request);
         if (hasGeometryType) {
             String wkt = !requestedWkt.isEmpty() ? requestedWkt : existingWkt;
             GisGeometryType updateGeomType = !requestedWkt.isEmpty()
@@ -1508,5 +1442,25 @@ public class BeaconStationService {
         dto.setUploadedBy(entity.getUploadedBy());
         dto.setUploadedAt(entity.getUploadedAt());
         return dto;
+    }
+
+    private static String trimToNull(String value) {
+        return (value != null && !value.trim().isEmpty()) ? value.trim() : null;
+    }
+
+    private <T> void applyIfChanged(String fieldName, T oldValue, T newValue, java.util.function.Consumer<T> setter,
+            Map<String, String> previousValues, UpdateBeaconStationRequest request) {
+        if (request != null) {
+            if (!request.isFieldPresent(fieldName)) {
+                return;
+            }
+        } else if (newValue == null) {
+            return;
+        }
+        if (EntityUpdateUtils.areEqual(oldValue, newValue)) {
+            return;
+        }
+        previousValues.put(fieldName, oldValue != null ? String.valueOf(oldValue) : null);
+        setter.accept(newValue);
     }
 }

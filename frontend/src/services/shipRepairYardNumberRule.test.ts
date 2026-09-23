@@ -18,7 +18,7 @@ describe('ShipRepairYard Number Input Rules (/ship-repair-yard parity with /beac
         expect(normalizeDecimal20_4('12,345.67')).toBe('12345.67');
         expect(normalizeDecimal20_4('12a.3b4c')).toBe('12.34');
         expect(normalizeDecimal20_4('-15.2')).toBe('15.2');
-        expect(parseNumber20('abc99.88')).toBe('99.88');
+        expect(parseNumber20('abc99,88')).toBe('99.88');
       });
 
       it('giới hạn tối đa 20 chữ số khi không có dấu "."', () => {
@@ -85,16 +85,16 @@ describe('ShipRepairYard Number Input Rules (/ship-repair-yard parity with /beac
       });
 
       it('từ chối ký tự không hợp lệ', async () => {
-        await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
-        await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "." hoặc ","');
+        await expect(validator({}, 'abc')).rejects.toThrow('Chỉ chấp nhận chữ số');
+        await expect(validator({}, '-12.34')).rejects.toThrow('Chỉ chấp nhận chữ số');
       });
 
       it('từ chối khi số sau dấu "." vượt quá 4 chữ số', async () => {
-        await expect(validator({}, '12.34567')).rejects.toThrow('Số sau dấu "." tối đa 4 chữ số');
+        await expect(validator({}, '12.34567')).rejects.toThrow('Phần thập phân tối đa 4 chữ số');
       });
 
       it('từ chối khi phần nguyên khi có dấu "." vượt quá 16 chữ số', async () => {
-        await expect(validator({}, '12345678901234567.3456')).rejects.toThrow('Giới hạn chữ số khi có dấu "." là 16');
+        await expect(validator({}, '12345678901234567.3456')).rejects.toThrow('Giới hạn phần nguyên là 16 chữ số');
       });
 
       it('từ chối khi số chữ số khi không có dấu "." vượt quá 20', async () => {

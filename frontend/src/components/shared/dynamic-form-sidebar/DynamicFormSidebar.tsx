@@ -4,12 +4,12 @@ import {
   DatePicker,
   Form,
   Input,
-  InputNumber,
   Row,
   Select,
   Spin,
   Tabs,
 } from "antd";
+import InputNumber from '../LocalizedInputNumber';
 import type { FormInstance, Rule } from "antd/es/form";
 import React, { useCallback, useMemo } from "react";
 import { useThemeToken } from "../../../context/ThemeTokenContext";

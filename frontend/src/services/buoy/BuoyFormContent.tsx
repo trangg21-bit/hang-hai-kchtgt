@@ -5,9 +5,10 @@ import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
 import {
-  Row, Col, Form, Input, InputNumber, Select, DatePicker, Button, Tabs,
+  Row, Col, Form, Input, Select, DatePicker, Button, Tabs,
   message, Space, Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadProps, InputNumberProps } from 'antd';
 import { DeleteOutlined, PlusOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';
@@ -18,6 +19,7 @@ import {
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
   primaryButtonStyle, outlineButtonStyle,
   DRAWER_TABLE_SCROLL_Y, textAreaStyle,
+  iconButtonStyle,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
@@ -173,10 +175,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) → khi cột Vĩ độ hiện lỗi
-  // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
-  // input thẳng hàng.
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -184,10 +185,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -235,7 +236,7 @@ export interface BuoyFormContentProps {
   /** For create mode: code auto-generation in-flight (mã sinh tự động). */
   codeLoading?: boolean;
   uploadFileList: any[];
-  setUploadFileList: (files: any[]) => void;
+  setUploadFileList: React.Dispatch<React.SetStateAction<any[]>>;
   symbols: Array<{ id: string; name: string; code?: string; image?: string }>;
   /** Map id người dùng → tên hiển thị (cột Người tải lên trong bảng file đính kèm). */
   userMap?: Map<string, string>;
@@ -247,6 +248,7 @@ export interface BuoyFormContentProps {
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
   updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
+  replaceGpsPoints: React.Dispatch<React.SetStateAction<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>>;
   ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
   onDeleteAttachment?: (uid: string) => void;
 }
@@ -270,6 +272,7 @@ export default function BuoyFormContent({
   addGpsPoint,
   removeGpsPoint,
   updateGpsPoint,
+  replaceGpsPoints,
   ddToDms,
   buoyStations,
   loadingStations,
@@ -294,10 +297,6 @@ export default function BuoyFormContent({
       message.error(`Định dạng .${ext} không được hỗ trợ`);
       return false;
     }
-    if (uploadFileList.length >= MAX_FILE_COUNT) {
-      message.error('Chỉ được upload tối đa 10 file');
-      return false;
-    }
     const nowIso = dayjs().toISOString();
     const uploaderName = currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý';
     const uploadFile: any = {
@@ -316,7 +315,13 @@ export default function BuoyFormContent({
       status: 'done',
       originFileObj: file,
     };
-    setUploadFileList([...uploadFileList, uploadFile]);
+    setUploadFileList((previousFiles) => {
+      if (previousFiles.length >= MAX_FILE_COUNT) {
+        message.error('Chỉ được upload tối đa 10 file');
+        return previousFiles;
+      }
+      return [...previousFiles, uploadFile];
+    });
     return false;
   };
 
@@ -384,12 +389,14 @@ export default function BuoyFormContent({
                   style={{ marginBottom: spaceFormField }}
                 >
                   <Select
-                    placeholder="Chọn luồng hàng hải..."
+                    placeholder={!selectedUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải đã phê duyệt'}
                     options={waterwayOptions}
                     loading={loadingWaterways}
+                    disabled={!selectedUnitId}
                     showSearch
                     allowClear
                     optionFilterProp="label"
+                    notFoundContent="Không có luồng hàng hải đã phê duyệt thuộc đơn vị quản lý"
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -760,11 +767,13 @@ export default function BuoyFormContent({
                     title: 'STT',
                     width: 60,
                     align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
                   },
                   {
                     title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lat',
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) =>
                       renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) =>
                         updateGpsPoint(record._idx, 'lat', d, m, s)
@@ -773,6 +782,7 @@ export default function BuoyFormContent({
                   {
                     title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lng',
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) =>
                       renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) =>
                         updateGpsPoint(record._idx, 'lng', d, m, s)
@@ -783,11 +793,13 @@ export default function BuoyFormContent({
                     key: 'action',
                     width: 70,
                     align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) => (
                       <Button
                         type="text"
                         danger
                         icon={<DeleteOutlined />}
+                        style={{ ...iconButtonStyle, width: 32, height: 32, padding: 0, color: statusCritical }}
                         onClick={() => removeGpsPoint(record._idx)}
                         title="Xóa tọa độ"
                       />
@@ -877,7 +889,23 @@ export default function BuoyFormContent({
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType="POINT"
+            defaultGeometryType={(geometryType as 'POINT' | 'LINE' | 'POLYGON' | undefined) || 'POINT'}
+            value={(() => {
+              const points = gpsCoordList
+                .filter((row) => row.latD != null && row.latM != null && row.latS != null && row.lngD != null && row.lngM != null && row.lngS != null)
+                .map((row) => ({
+                  latitude: row.latD! + row.latM! / 60 + row.latS! / 3600,
+                  longitude: row.lngD! + row.lngM! / 60 + row.lngS! / 3600,
+                }));
+              if (!geometryType || points.length === 0) return undefined;
+              const pairs = points.map((point) => `${point.longitude} ${point.latitude}`);
+              const coordinates = geometryType === 'POLYGON'
+                ? `POLYGON((${[...pairs, pairs[0]].join(',')}))`
+                : geometryType === 'LINE'
+                  ? `LINESTRING(${pairs.join(',')})`
+                  : `POINT(${pairs[0]})`;
+              return { geometryType, coordinates };
+            })()}
             height={520}
             onChange={(val) => {
               if (val?.coordinates) {
@@ -888,17 +916,7 @@ export default function BuoyFormContent({
                     const lngDms = ddToDms(p.longitude);
                     return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
                   };
-                  const rowKey = (row: any) => `${Math.round(((row.latD ?? 0) + (row.latM ?? 0) / 60 + (row.latS ?? 0) / 3600) * 1e5)}_${Math.round(((row.lngD ?? 0) + (row.lngM ?? 0) / 60 + (row.lngS ?? 0) / 3600) * 1e5)}`;
-                  const existingKeys = new Set(gpsCoordList.map(rowKey));
-                  const toAdd = points.map(toDmsRow).filter((r) => !existingKeys.has(rowKey(r)));
-                  if (toAdd.length > 0) {
-                    const baseIdx = gpsCoordList.length;
-                    toAdd.forEach(() => { addGpsPoint(); });
-                    toAdd.forEach((row, k) => {
-                      updateGpsPoint(baseIdx + k, 'lat', row.latD, row.latM, row.latS);
-                      updateGpsPoint(baseIdx + k, 'lng', row.lngD, row.lngM, row.lngS);
-                    });
-                  }
+                  replaceGpsPoints(points.map(toDmsRow));
                 }
               }
             }}

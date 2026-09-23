@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Tabs, Row, Col, Input, InputNumber, Select, DatePicker, Form, Space, Button, Modal, Drawer, Tooltip,
+  Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, Drawer, Tooltip,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -1104,36 +1105,55 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
             })),
         }));
 
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const payload: Record<string, unknown> = {
         orgUnitId: vals.orgUnitId,
         portId: vals.portId,
-        navigationChannelId: vals.navigationChannelId || undefined,
-        buoyStationId: vals.buoyStationId || undefined,
+        navigationChannelId: vals.navigationChannelId || (isEdit ? null : undefined),
+        buoyStationId: vals.buoyStationId || (isEdit ? null : undefined),
         anchorageCode: vals.anchorageCode?.trim() || undefined,
         anchorageName: vals.anchorageName?.trim(),
-        provinceId: provinceNumber,
-        detailedLocation: vals.detailedLocation?.trim() || undefined,
-        operationalStatus: vals.operationalStatus || undefined,
-        shapeDescription: vals.shapeDescription?.trim() || undefined,
-        area: safeDecimal(vals.area),
-        designWaterDepth: safeDecimal(vals.designWaterDepth),
-        currentWaterDepth: safeDecimal(vals.currentWaterDepth),
-        bottomElevationDesign: safeDecimal(vals.bottomElevationDesign),
-        maxVesselDWT: safeDecimal(vals.maxVesselDWT),
-        activeAnchorageCount: vals.activeAnchorageCount != null && vals.activeAnchorageCount !== '' && !isNaN(Number(vals.activeAnchorageCount)) ? Number(vals.activeAnchorageCount) : undefined,
-        publishedAnchorageCount: vals.publishedAnchorageCount != null && vals.publishedAnchorageCount !== '' && !isNaN(Number(vals.publishedAnchorageCount)) ? Number(vals.publishedAnchorageCount) : undefined,
-        underInvestmentAnchorageCount: vals.underInvestmentAnchorageCount != null && vals.underInvestmentAnchorageCount !== '' && !isNaN(Number(vals.underInvestmentAnchorageCount)) ? Number(vals.underInvestmentAnchorageCount) : undefined,
-        remarks: vals.remarks?.trim() || undefined,
-        openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        publicDecision: vals.publicDecision?.trim() || undefined,
-        investmentAgreement: vals.investmentAgreement?.trim() || undefined,
-        geometryType: hasGeom ? vals.geometryType : null,
-        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : null,
-        coordinateSystem: hasGeom ? (vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null) : null,
-        displayRule: hasGeom ? 1 : null,
-        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : null,
-        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : null,
-        coordinates: hasGeom ? (wktCoordinates || null) : null,
+        provinceId: provinceNumber != null ? provinceNumber : (isEdit ? null : undefined),
+        detailedLocation: cleanString(vals.detailedLocation),
+        operationalStatus: vals.operationalStatus || (isEdit ? null : undefined),
+        shapeDescription: cleanString(vals.shapeDescription),
+        area: cleanDecimal(vals.area),
+        designWaterDepth: cleanDecimal(vals.designWaterDepth),
+        currentWaterDepth: cleanDecimal(vals.currentWaterDepth),
+        bottomElevationDesign: cleanDecimal(vals.bottomElevationDesign),
+        maxVesselDWT: cleanDecimal(vals.maxVesselDWT),
+        activeAnchorageCount: cleanNumber(vals.activeAnchorageCount),
+        publishedAnchorageCount: cleanNumber(vals.publishedAnchorageCount),
+        underInvestmentAnchorageCount: cleanNumber(vals.underInvestmentAnchorageCount),
+        remarks: cleanString(vals.remarks),
+        openingAnnouncementDate: vals.openingAnnouncementDate
+          ? (typeof vals.openingAnnouncementDate === 'string'
+              ? vals.openingAnnouncementDate
+              : (dayjs.isDayjs(vals.openingAnnouncementDate) ? vals.openingAnnouncementDate.toISOString() : String(vals.openingAnnouncementDate)))
+          : (isEdit ? null : undefined),
+        publicDecision: cleanString(vals.publicDecision),
+        investmentAgreement: cleanString(vals.investmentAgreement),
+        geometryType: hasGeom ? (vals.geometryType || null) : (isEdit ? null : null),
+        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : (isEdit ? null : null),
+        coordinateSystem: hasGeom && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : (isEdit ? null : null),
+        displayRule: hasGeom && vals.displayRule != null ? Number(vals.displayRule) : (isEdit ? null : null),
+        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : (isEdit ? null : null),
+        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : (isEdit ? null : null),
+        coordinates: hasGeom ? (wktCoordinates || null) : (isEdit ? null : null),
         mooringWaterAreas: mooringPayload,
       };
 
@@ -1354,31 +1374,31 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                   </Col>
                   <Col span={12}>
                     <Form.Item name="area" {...labelProps('Diện tích (ha)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0.01} step={0.01} placeholder="0" style={numberStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="designWaterDepth" {...labelProps('Độ sâu khu nước theo thiết kế (m)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={1} precision={0} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} />
+                      <NumberInputWithCount allowDecimal min={0} step={1} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} />
                     </Form.Item>
                   </Col>
                 </Row>

@@ -128,4 +128,75 @@ class DikeRevetmentControllerTest {
         assertThat(resp.getBody().getData()).isEmpty();
         verify(service, times(1)).getHistory(eq(TEST_ID), eq(0), eq(10), eq("keyword"), eq("2026-01-01"), eq("2026-01-31"));
     }
+
+    @Test
+    void testResolveSort_Default() {
+        org.springframework.data.domain.Sort sortNull = DikeRevetmentController.resolveSort(null, null);
+        assertThat(sortNull.getOrderFor("d.updatedAt")).isNotNull();
+        assertThat(sortNull.getOrderFor("d.updatedAt").getDirection()).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+
+        org.springframework.data.domain.Sort sortEmpty = DikeRevetmentController.resolveSort("", "ASC");
+        assertThat(sortEmpty.getOrderFor("d.updatedAt")).isNotNull();
+    }
+
+    @Test
+    void testResolveSort_CodeAndName() {
+        org.springframework.data.domain.Sort sort = DikeRevetmentController.resolveSort("codeAndName", "ASC");
+        var orders = sort.toList();
+        assertThat(orders.get(0).getProperty()).isEqualTo("LOWER(d.dikeRevetmentName)");
+        assertThat(orders.get(0).getDirection()).isEqualTo(org.springframework.data.domain.Sort.Direction.ASC);
+
+        org.springframework.data.domain.Sort sortDesc = DikeRevetmentController.resolveSort("codeAndName", "DESC");
+        var ordersDesc = sortDesc.toList();
+        assertThat(ordersDesc.get(0).getProperty()).isEqualTo("LOWER(d.dikeRevetmentName)");
+        assertThat(ordersDesc.get(0).getDirection()).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+    }
+
+    @Test
+    void testResolveSort_DikeRevetmentNameAndCode() {
+        org.springframework.data.domain.Sort sortName = DikeRevetmentController.resolveSort("dikeRevetmentName", "ASC");
+        assertThat(sortName.toList().get(0).getProperty()).isEqualTo("LOWER(d.dikeRevetmentName)");
+
+        org.springframework.data.domain.Sort sortCode = DikeRevetmentController.resolveSort("code", "ASC");
+        assertThat(sortCode.toList().get(0).getProperty()).isEqualTo("LOWER(d.code)");
+    }
+
+    @Test
+    void testResolveSort_OrgUnitAndSeaport() {
+        org.springframework.data.domain.Sort sortOrg = DikeRevetmentController.resolveSort("orgUnitName", "ASC");
+        assertThat(sortOrg.toList().get(0).getProperty()).isEqualTo("LOWER(o.name)");
+
+        org.springframework.data.domain.Sort sortPort = DikeRevetmentController.resolveSort("seaportName", "DESC");
+        assertThat(sortPort.toList().get(0).getProperty()).isEqualTo("LOWER(p.portName)");
+        assertThat(sortPort.toList().get(0).getDirection()).isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+    }
+
+    @Test
+    void testResolveSort_AuditFields() {
+        assertThat(DikeRevetmentController.resolveSort("updatedByName", "ASC").toList().get(0).getProperty()).isEqualTo("d.updatedAt");
+        assertThat(DikeRevetmentController.resolveSort("submittedByName", "DESC").toList().get(0).getProperty()).isEqualTo("d.submittedAt");
+        assertThat(DikeRevetmentController.resolveSort("approvedByNameLevel1", "ASC").toList().get(0).getProperty()).isEqualTo("d.approvedDateLevel1");
+        assertThat(DikeRevetmentController.resolveSort("approvedByNameLevel2", "ASC").toList().get(0).getProperty()).isEqualTo("d.approvedDateLevel2");
+    }
+
+    @Test
+    void testSearchPaged_DelegatesToServiceWithSort() {
+        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testResp)));
+
+        var resp = controller.searchPaged(
+                null, null, null, null, null, null, null, false, null, null, null, null, null, null,
+                0, 20, "codeAndName", "ASC"
+        );
+
+        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(resp.getBody().isSuccess()).isTrue();
+        verify(service).searchPaged(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                argThat(pageable -> {
+                    var orders = pageable.getSort().toList();
+                    return orders.size() >= 1 && "LOWER(d.dikeRevetmentName)".equals(orders.get(0).getProperty());
+                })
+        );
+    }
 }

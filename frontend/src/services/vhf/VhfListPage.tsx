@@ -81,7 +81,7 @@ DataTable,
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
+import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from "../../components/org-unit";
 import AppDrawer from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
@@ -96,12 +96,14 @@ import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
-import { isGisHistoryField } from "../../utils/historyGisFormat";
+import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import api from "../api";
 import { organizationService } from "../organizationService";
 import { symbolService, type Symbol as MapSymbolType } from "../symbolService";
 import { userService } from "../userService";
+import { useStandardApprovalStatusTabs } from "../../components/shared/approvalStatusTabs";
+import { ApprovalStatus } from "../../types/vtsSystem";
 import {
     approveVhfC1,
     approveVhfC2,
@@ -453,7 +455,12 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
         LINE: 'Đối tượng đường',
         POLYGON: 'Đối tượng vùng',
       };
-      return m[val] || val;
+      return m[val] || gisGeometryTypeLabel(val) || val;
+    }
+    const lowerKey = fieldKey.toLowerCase();
+    if (lowerKey.includes('toa do') || lowerKey.includes('tọa độ') || lowerKey.includes('coordinates')) {
+      const formattedCoords = gisCoordinatesToLines(val);
+      if (formattedCoords) return formattedCoords;
     }
     if (isYearField(fieldKey)) {
       return formatYearValue(val);
@@ -691,8 +698,17 @@ const VhfListPage = () => {
   const [orgUnitReady, setOrgUnitReady] = useState(false);
 
   // Tab counts
-  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
-  const [totalAll, setTotalAll] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const statusCountFilterKey = useRef<string | null>(null);
+
+  const { statusTabs, handleTabChange } = useStandardApprovalStatusTabs(
+    statusCounts,
+    filterValues.approvalStatus as ApprovalStatus | undefined,
+    (status) => {
+      setFilterValues((prev) => ({ ...prev, approvalStatus: status || '' }));
+      setPage(0);
+    }
+  );
 
   // Quản lý Modal & Drawer
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
@@ -1063,43 +1079,33 @@ const VhfListPage = () => {
     });
   }, []);
 
-  // Lấy dữ liệu danh sách
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setIsError(null);
-    try {
-      const safePage = Math.max(page, 0);
-      const safeSize = Math.max(1, Math.min(pageSize, 100));
-      const result = await fetchVhfList({
-        page: safePage,
-        size: safeSize,
-        orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
-        search: filterValues.deviceCode || filterValues.deviceName || undefined,
-        deviceCode: filterValues.deviceCode || undefined,
-        deviceName: filterValues.deviceName || undefined,
-        seaportId: filterValues.seaportId || undefined,
-        operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
-        approvalStatus: filterValues.approvalStatus || undefined,
-        province: filterValues.province || undefined,
-        attachedInfraType: filterValues.attachedInfraType,
-        attachedInfraId: filterValues.attachedInfraId || undefined,
-        yearOfUse: filterValues.yearOfUse,
-        updatedFrom: filterValues.updatedFrom || undefined,
-        updatedTo: filterValues.updatedTo || undefined,
-        sortBy: sortField,
-        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
-      });
-      setData(result.content || []);
-      setTotal(result.totalElements || 0);
-      setPage(result.number || 0);
-    } catch (error: any) {
-      setIsError(error?.response?.data?.message || "Lỗi khi tải danh sách hệ thống VHF");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, pageSize, filterValues, sortField, sortOrder]);
+  const currentStatusCountFilterKey = useMemo(() => JSON.stringify([
+    filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined,
+    filterValues.deviceCode || undefined,
+    filterValues.deviceName || undefined,
+    filterValues.seaportId || undefined,
+    filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
+    filterValues.province || undefined,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId || undefined,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom || undefined,
+    filterValues.updatedTo || undefined,
+  ]), [
+    filterValues.orgUnitId,
+    filterValues.deviceCode,
+    filterValues.deviceName,
+    filterValues.seaportId,
+    filterValues.operationalStatus,
+    filterValues.province,
+    filterValues.attachedInfraType,
+    filterValues.attachedInfraId,
+    filterValues.yearOfUse,
+    filterValues.updatedFrom,
+    filterValues.updatedTo,
+  ]);
 
-  const fetchTabCounts = useCallback(async () => {
+  const loadStatusCounts = useCallback(async () => {
     const statuses = [
       { key: "DRAFT", status: "DRAFT" },
       { key: "PENDING_APPROVAL", status: "PENDING_APPROVAL" },
@@ -1138,48 +1144,72 @@ const VhfListPage = () => {
       results.forEach((r, i) => {
         counts[statuses[i].key] = r.status === "fulfilled" ? (r.value?.totalElements || 0) : 0;
       });
-      // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
       counts.DELETED = counts.ARCHIVED || 0;
-      setTabCounts(counts);
-
-      // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
-      setTotalAll(
-        (counts.DRAFT || 0) +
-          (counts.PENDING_APPROVAL || 0) +
-          (counts.APPROVED_LEVEL1 || 0) +
-          (counts.APPROVED || 0) +
-          (counts.REJECTED_LEVEL1 || 0) +
-          (counts.REJECTED_LEVEL2 || 0) +
-          (counts.ARCHIVED || counts.DELETED || 0)
-      );
+      setStatusCounts(counts);
+      statusCountFilterKey.current = currentStatusCountFilterKey;
     } catch {
       // ignore
     }
-  }, [
-    filterValues.orgUnitId,
-    filterValues.deviceCode,
-    filterValues.deviceName,
-    filterValues.seaportId,
-    filterValues.operationalStatus,
-    filterValues.province,
-    filterValues.attachedInfraType,
-    filterValues.attachedInfraId,
-    filterValues.yearOfUse,
-    filterValues.updatedFrom,
-    filterValues.updatedTo,
-  ]);
+  }, [currentStatusCountFilterKey, filterValues]);
+
+  // Lấy dữ liệu danh sách
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setIsError(null);
+    try {
+      const safePage = Math.max(page, 0);
+      const safeSize = Math.max(1, Math.min(pageSize, 100));
+      const result = await fetchVhfList({
+        page: safePage,
+        size: safeSize,
+        orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
+        search: filterValues.deviceCode || filterValues.deviceName || undefined,
+        deviceCode: filterValues.deviceCode || undefined,
+        deviceName: filterValues.deviceName || undefined,
+        seaportId: filterValues.seaportId || undefined,
+        operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
+        approvalStatus: filterValues.approvalStatus || undefined,
+        province: filterValues.province || undefined,
+        attachedInfraType: filterValues.attachedInfraType,
+        attachedInfraId: filterValues.attachedInfraId || undefined,
+        yearOfUse: filterValues.yearOfUse,
+        updatedFrom: filterValues.updatedFrom || undefined,
+        updatedTo: filterValues.updatedTo || undefined,
+        sortBy: sortField,
+        sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
+      });
+      setData(result.content || []);
+      setTotal(result.totalElements || 0);
+      setPage(result.number || 0);
+
+      if (result.statusCounts) {
+        setStatusCounts(result.statusCounts);
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      } else if (statusCountFilterKey.current !== currentStatusCountFilterKey) {
+        void loadStatusCounts();
+      }
+    } catch (error: any) {
+      setIsError(error?.response?.data?.message || "Lỗi khi tải danh sách hệ thống VHF");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [page, pageSize, filterValues, sortField, sortOrder, currentStatusCountFilterKey, loadStatusCounts]);
+
+  const refreshList = useCallback(() => {
+    statusCountFilterKey.current = null;
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => {
     if (!orgUnitReady) return;
     fetchData();
-    fetchTabCounts();
-  }, [orgUnitReady, fetchData, fetchTabCounts]);
+  }, [orgUnitReady, fetchData]);
 
   const handleFilterApply = useCallback(() => {
     setPage(0);
+    statusCountFilterKey.current = null;
     fetchData();
-    fetchTabCounts();
-  }, [fetchData, fetchTabCounts]);
+  }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
@@ -1200,6 +1230,7 @@ const VhfListPage = () => {
     setSortField('updatedByName');
     setSortOrder('desc');
     setPage(0);
+    statusCountFilterKey.current = null;
   }, []);
 
   const openViewDetail = useCallback((record: VhfResponse) => {
@@ -1279,15 +1310,14 @@ const VhfListPage = () => {
       toast.success('Đã xóa hệ thống thông tin liên lạc VHF');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      fetchData();
-      fetchTabCounts();
+      refreshList();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error?.response?.data?.message || (err instanceof Error ? err.message : 'Xóa thất bại'));
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingRecord, fetchData, fetchTabCounts]);
+  }, [deletingRecord, refreshList]);
 
   // ── Approval handlers (chuẩn /berth) ────────────────────────────
   const handleApprove = useCallback(async (record: VhfResponse, content?: string) => {
@@ -1303,15 +1333,14 @@ const VhfListPage = () => {
       setApproveModalOpen(false);
       setApprovingRecord(null);
       setPage(1);
-      fetchData();
-      fetchTabCounts();
+      refreshList();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error?.response?.data?.message || (err instanceof Error ? err.message : 'Phê duyệt thất bại'));
     } finally {
       setApproveLoading(false);
     }
-  }, [fetchData, fetchTabCounts]);
+  }, [refreshList]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -1322,15 +1351,14 @@ const VhfListPage = () => {
       setSubmitModalOpen(false);
       setSubmittingRecord(null);
       setPage(1);
-      fetchData();
-      fetchTabCounts();
+      refreshList();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error?.response?.data?.message || (err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'));
     } finally {
       setSubmitLoading(false);
     }
-  }, [submittingRecord, fetchData, fetchTabCounts]);
+  }, [submittingRecord, refreshList]);
 
   const openRejectModal = useCallback((record: VhfResponse) => {
     setRejectingRecord(record);
@@ -1354,15 +1382,14 @@ const VhfListPage = () => {
       setRejectingRecord(null);
       setRejectReason('');
       setPage(1);
-      fetchData();
-      fetchTabCounts();
+      refreshList();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error?.response?.data?.message || (err instanceof Error ? err.message : 'Từ chối thất bại'));
     } finally {
       setRejectLoading(false);
     }
-  }, [rejectingRecord, rejectReason, fetchData, fetchTabCounts]);
+  }, [rejectingRecord, rejectReason, refreshList]);
 
 const validHistoryGroups = useMemo(() => {
     if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
@@ -1410,9 +1437,23 @@ const validHistoryGroups = useMemo(() => {
           .flatMap((item: any) => {
             const fn = historyField(item);
             if (!fn) return [];
-            const ov = historyOldValue(item);
-            const nv = historyNewValue(item);
+            let ov = historyOldValue(item);
+            let nv = historyNewValue(item);
             if (!isMeaningfulChange(fn, ov, nv)) return [];
+            if (attachmentItems.length > 1) {
+              const currentFiles = attachmentItems.map((a) => a.fileName).filter(Boolean);
+              const isOvEmpty = !ov || ov === '—' || ov === 'Chưa có' || ov === '(null)';
+              if (isOvEmpty && currentFiles.length > 1) {
+                const singleNewFile = (nv && nv !== 'Chưa có' && !nv.includes(',')) ? nv.trim() : '';
+                if (singleNewFile) {
+                  const priorFiles = currentFiles.filter((f) => f.toLowerCase() !== singleNewFile.toLowerCase());
+                  if (priorFiles.length > 0) {
+                    ov = priorFiles.join(', ');
+                    nv = currentFiles.join(', ');
+                  }
+                }
+              }
+            }
             return [{ field: fn, oldValue: ov, newValue: nv }];
           })
       );
@@ -1448,7 +1489,7 @@ const validHistoryGroups = useMemo(() => {
       orderedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }>;
       reasons: string[];
     }>;
-  }, [historyRecords, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap]);
+  }, [historyRecords, attachmentItems, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap]);
 
   const historyUpdateCount = validHistoryGroups.length;
 
@@ -1523,8 +1564,23 @@ const validHistoryGroups = useMemo(() => {
                   <div>
                     {orderedChanges.map((change, ri) => {
                       const fn = change.field;
-                      const ov = historyFieldValue(fn, change.oldValue, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
-                      const nv = historyFieldValue(fn, change.newValue, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+                      let ov = historyFieldValue(fn, change.oldValue, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+                      let nv = historyFieldValue(fn, change.newValue, orgMap, symbolMap, seaportMap, operatingUnitMap, vtsCenterMap, radarStationMap);
+
+                      if (isAttachmentField(fn) && attachmentItems.length > 1) {
+                        const currentFiles = attachmentItems.map((a) => a.fileName).filter(Boolean);
+                        const isOvEmpty = !ov || ov === '—' || ov === 'Chưa có' || ov === '(null)';
+                        if (isOvEmpty && currentFiles.length > 1) {
+                          const singleNewFile = (nv && nv !== 'Chưa có' && !nv.includes(',')) ? nv.trim() : '';
+                          if (singleNewFile) {
+                            const priorFiles = currentFiles.filter((f) => f.toLowerCase() !== singleNewFile.toLowerCase());
+                            if (priorFiles.length > 0) {
+                              ov = priorFiles.join(', ');
+                              nv = currentFiles.join(', ');
+                            }
+                          }
+                        }
+                      }
 
                       const renderCell = (rawVal: string | null) => {
                         if (fn === 'mapSymbolId' && rawVal && rawVal !== '(null)') {
@@ -1549,26 +1605,31 @@ const validHistoryGroups = useMemo(() => {
                       const gisCellStyle = isGisHistoryField(fn)
                         ? { whiteSpace: 'pre-line' as const, lineHeight: 1.5 }
                         : {};
+                      const renderAttachmentList = (val: string | null) => {
+                        if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
+                          return 'Chưa có';
+                        }
+                        const files = val.split(/,\s*(?=[^,]+)/).map((s) => s.trim()).filter(Boolean);
+                        if (files.length === 0) return 'Chưa có';
+                        if (files.length === 1) return files[0];
+                        return (
+                          <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 4, lineHeight: '20px' }}>
+                            {files.map((file, idx) => (
+                              <span key={idx} style={{ wordBreak: 'break-all' }}>{file}</span>
+                            ))}
+                          </span>
+                        );
+                      };
                       const renderValueNode = (rawVal: string | null, val: string | null) => {
-                        const custom = renderCell(rawVal);
-                        if (custom) return custom;
-                        const textVal = val ?? '';
-                        if (isGisHistoryField(fn)) {
-                          return <span style={gisCellStyle}>{textVal}</span>;
+                        if (isAttachmentField(fn)) {
+                          return renderAttachmentList(val || rawVal);
                         }
-                        if (isAttachmentField(fn) && typeof textVal === 'string' && textVal.includes(',')) {
-                          const files = textVal.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
-                          if (files.length > 1) {
-                            return (
-                              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2, lineHeight: '20px' }}>
-                                {files.map((file, idx) => (
-                                  <span key={idx} style={{ wordBreak: 'break-all' }}>{file}</span>
-                                ))}
-                              </span>
-                            );
-                          }
-                        }
-                        return textVal;
+                        const node = renderCell(rawVal) ?? (val ?? null);
+                        return isGisHistoryField(fn) ? (
+                          <span style={gisCellStyle}>{node}</span>
+                        ) : (
+                          node
+                        );
                       };
                       if (isCreate) {
                         return (
@@ -1581,7 +1642,11 @@ const validHistoryGroups = useMemo(() => {
                             </div>
                             <span
                               title={typeof nv === 'string' ? nv : undefined}
-                              style={{ ...historyNewValueStyle, ...gisCellStyle }}
+                              style={{
+                                ...historyNewValueStyle,
+                                ...gisCellStyle,
+                                ...(isAttachmentField(fn) ? { whiteSpace: 'normal', height: 'auto', display: 'inline-flex' } : {}),
+                              }}
                             >
                               {renderValueNode(change.newValue, nv)}
                             </span>
@@ -1606,14 +1671,22 @@ const validHistoryGroups = useMemo(() => {
                           </div>
                           <span
                             title={typeof ov === 'string' ? ov : undefined}
-                            style={{ ...historyOldValueStyle, ...gisCellStyle }}
+                            style={{
+                              ...historyOldValueStyle,
+                              ...gisCellStyle,
+                              ...(isAttachmentField(fn) ? { whiteSpace: 'normal', height: 'auto', display: 'inline-flex' } : {}),
+                            }}
                           >
                             {renderValueNode(change.oldValue, ov)}
                           </span>
                           <span style={historyArrowStyle}>→</span>
                           <span
                             title={typeof nv === 'string' ? nv : undefined}
-                            style={{ ...historyNewValueStyle, ...gisCellStyle }}
+                            style={{
+                              ...historyNewValueStyle,
+                              ...gisCellStyle,
+                              ...(isAttachmentField(fn) ? { whiteSpace: 'normal', height: 'auto', display: 'inline-flex' } : {}),
+                            }}
                           >
                             {renderValueNode(change.newValue, nv)}
                           </span>
@@ -1903,6 +1976,9 @@ const validHistoryGroups = useMemo(() => {
     setHistoryDateFrom('');
     setHistoryDateTo('');
     setHistoryPage(0);
+    void fetchVhfAttachments(record.id)
+      .then((list: RawAttachmentItem[]) => setAttachmentItems(toAttachmentItemList(list)))
+      .catch(() => { /* ignore */ });
   }, [hasPerm]);
 
   const rowActions = useCallback((record: VhfResponse) => {
@@ -2399,6 +2475,9 @@ const validHistoryGroups = useMemo(() => {
                       allowClear
                       showSearch
                       optionFilterProp="label"
+                      filterOption={(input, option) =>
+                        normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                      }
                       value={filterValues.attachedInfraId || undefined}
                       onChange={(val) =>
                         setFilterValues((prev) => ({
@@ -2473,79 +2552,14 @@ const validHistoryGroups = useMemo(() => {
               )}
             </>
           }
-          statusTabs={[
-            {
-              key: "all",
-              label: "Tất cả",
-              count: totalAll || 0,
-              color: actionPrimary,
-              active: !filterValues.approvalStatus,
-            },
-            {
-              key: "DRAFT",
-              label: "Lưu tạm",
-              count: filterValues.approvalStatus === "DRAFT" ? total : (tabCounts["DRAFT"] ?? 0),
-              color: statusDraft,
-              active: filterValues.approvalStatus === "DRAFT",
-            },
-            {
-              key: "PENDING_APPROVAL",
-              label: "Chờ phê duyệt cấp Cảng vụ/Chi cục",
-              count: filterValues.approvalStatus === "PENDING_APPROVAL" ? total : (tabCounts["PENDING_APPROVAL"] ?? 0),
-              color: statusAttention,
-              active: filterValues.approvalStatus === "PENDING_APPROVAL",
-            },
-            {
-              key: "APPROVED_LEVEL1",
-              label: "Chờ phê duyệt cấp Cục",
-              count: filterValues.approvalStatus === "APPROVED_LEVEL1" ? total : (tabCounts["APPROVED_LEVEL1"] ?? 0),
-              color: statusInfo,
-              active: filterValues.approvalStatus === "APPROVED_LEVEL1",
-            },
-            {
-              key: "APPROVED",
-              label: "Đã phê duyệt",
-              count: filterValues.approvalStatus === "APPROVED" ? total : (tabCounts["APPROVED"] ?? 0),
-              color: statusOperational,
-              active: filterValues.approvalStatus === "APPROVED",
-            },
-            {
-              key: "REJECTED_LEVEL1",
-              label: "Từ chối cấp Cảng vụ/Chi cục",
-              count: filterValues.approvalStatus === "REJECTED_LEVEL1" ? total : (tabCounts["REJECTED_LEVEL1"] ?? 0),
-              color: statusCritical,
-              active: filterValues.approvalStatus === "REJECTED_LEVEL1",
-            },
-            {
-              key: "REJECTED_LEVEL2",
-              label: "Từ chối cấp Cục",
-              count: (filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED")
-                ? total
-                : (tabCounts["REJECTED_LEVEL2"] ?? 0),
-              color: statusCritical,
-              active: filterValues.approvalStatus === "REJECTED_LEVEL2" || filterValues.approvalStatus === "REJECTED",
-            },
-            {
-              key: "ARCHIVED",
-              label: "Đã xóa",
-              count: (filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED")
-                ? total
-                : (tabCounts["ARCHIVED"] ?? tabCounts["DELETED"] ?? 0),
-              color: statusCritical,
-              active: filterValues.approvalStatus === "ARCHIVED" || filterValues.approvalStatus === "DELETED",
-            },
-          ]}
-          onStatusTabChange={(key) => {
-            const approvalStatus = key === "all" ? "" : key;
-            setFilterValues((prev) => ({ ...prev, approvalStatus }));
-            setPage(0);
-          }}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleTabChange}
         >
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
             <DataTable
               fill
               columns={columns}
-              dataSource={!filterValues.approvalStatus ? data.filter((r) => !isVhfDeleted(r)) : data}
+              dataSource={data}
               rowKey="id"
               loading={isLoading}
               scroll={{ x: 'max-content' }}
@@ -2646,8 +2660,7 @@ const validHistoryGroups = useMemo(() => {
                 onFinish={() => {
                   setCreateModalOpen(false);
                   createForm.resetFields();
-                  fetchData();
-                  fetchTabCounts();
+                  refreshList();
                 }}
                 onSubmittingChange={setSubmitting}
               />
@@ -2745,8 +2758,7 @@ const validHistoryGroups = useMemo(() => {
                   onFinish={() => {
                     setUpdateModalOpen(false);
                     setUpdateTarget(null);
-                    fetchData();
-                    fetchTabCounts();
+                    refreshList();
                   }}
                   onSubmittingChange={setSubmitting}
                 />

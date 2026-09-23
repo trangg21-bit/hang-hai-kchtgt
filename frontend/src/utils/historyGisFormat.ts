@@ -1,3 +1,5 @@
+import { ddToDms, parseWktToCoordinates } from './gisGeometry';
+
 /**
  * Hiển thị giá trị GIS trong Drawer Lịch sử — mirror /vts-operation-center
  * (VtsOperationCenterList: parseCoordinatesPoints / renderCoordinatesDisplay / toDmsString).
@@ -88,10 +90,30 @@ const formatPointDms = (x: string, y: string): string => {
   return xStr;
 };
 
-/** WKT → chuỗi nhiều dòng: header 'Vùng (6 điểm)' + mỗi điểm '#i: … N, … E' (giống vts). */
+/** WKT → chuỗi nhiều dòng format DMS chuẩn Detail View (#1: ... N, ... E). */
 export const gisCoordinatesToLines = (raw: string | null | undefined): string | null => {
   const val = String(raw ?? '').trim();
   if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') return null;
+
+  // Ưu tiên parseWktToCoordinates và ddToDms để đồng bộ 100% định dạng với Drawer Xem chi tiết
+  const coords = parseWktToCoordinates(val);
+  if (coords && coords.length > 0) {
+    const lines: string[] = [];
+    coords.forEach((pt, idx) => {
+      const latDms = ddToDms(pt.latitude);
+      const lngDms = ddToDms(pt.longitude);
+      const latStr = latDms.d != null ? `${latDms.d}° ${latDms.m}' ${latDms.s}" N` : '';
+      const lngStr = lngDms.d != null ? `${lngDms.d}° ${lngDms.m}' ${lngDms.s}" E` : '';
+      const coordStr = [latStr, lngStr].filter(Boolean).join(', ');
+      if (coords.length > 1) {
+        lines.push(`#${idx + 1}: ${coordStr}`);
+      } else {
+        lines.push(coordStr);
+      }
+    });
+    return lines.join('\n');
+  }
+
   const parsed = parseWktPoints(val);
   if (!parsed || parsed.points.length === 0) {
     return parsed?.typeName || val || null;
@@ -103,8 +125,7 @@ export const gisCoordinatesToLines = (raw: string | null | undefined): string | 
   }
   points.forEach((pt) => {
     const dms = formatPointDms(pt.x, pt.y);
-    // Giống vts: chỉ tiền tố #i khi nhiều điểm (điểm đơn hiển thị DMS trực tiếp).
-    lines.push(points.length > 1 ? `#${pt.index}:${dms}` : dms);
+    lines.push(points.length > 1 ? `#${pt.index}: ${dms}` : dms);
   });
   return lines.join('\n');
 };

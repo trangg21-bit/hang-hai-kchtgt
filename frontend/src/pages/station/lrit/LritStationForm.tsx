@@ -9,9 +9,9 @@ import {
   Row,
   Col,
   Spin,
-  InputNumber,
   Modal,
 } from 'antd';
+import InputNumber from '../../../components/shared/LocalizedInputNumber';
 import {
   EnvironmentOutlined,
   PlusOutlined,

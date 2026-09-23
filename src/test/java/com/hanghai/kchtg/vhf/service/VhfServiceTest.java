@@ -400,7 +400,7 @@ class VhfServiceTest {
         service.findAll(0, 10, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         verify(vhfRepository).searchVhf(
-                eq(Boolean.FALSE),
+                isNull(),
                 anyBoolean(), any(), anyBoolean(), any(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
@@ -451,7 +451,7 @@ class VhfServiceTest {
         service.findAll(0, 10, null, null, null, null, null, null, "ALL", null, null, null, null, null, null, null, null, null);
 
         verify(vhfRepository).searchVhf(
-                eq(Boolean.FALSE),
+                isNull(),
                 anyBoolean(), any(), anyBoolean(), any(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
@@ -468,9 +468,75 @@ class VhfServiceTest {
         service.findAll(0, 10, null, null, "  VHF-001  ", "  Trạm VHF Bạch Long Vĩ  ", null, null, null, null, null, null, null, null, null, "  keyword  ", null, null);
 
         verify(vhfRepository).searchVhf(
-                eq(Boolean.FALSE),
+                isNull(),
                 anyBoolean(), any(), anyBoolean(), any(),
                 isNull(), eq("VHF-001"), eq("Trạm VHF Bạch Long Vĩ"), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq("keyword"), any());
+    }
+
+    @Test
+    void update_whenDetailedLocationCleared_setsDetailedLocationToNull() {
+        entity.setDetailedLocation("Hải Phòng");
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống VHF Hòn Dấu");
+        req.setDetailedLocation(null);
+
+        VhfResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(entity.getDetailedLocation());
+    }
+
+    @Test
+    void update_whenMultipleFieldsCleared_setsFieldsToNull() {
+        entity.setDetailedLocation("Hòn Dấu");
+        entity.setManufacturer("Motorola");
+        entity.setModel("MTR3000");
+        entity.setSpecifications("Specs info");
+        entity.setMaintenanceInformation("Maintenance info");
+        entity.setNote("Ghi chú cũ");
+        entity.setUnitOfMeasure(1);
+        entity.setYearOfUse(2022);
+        entity.setAttachedInfrastructureType(1);
+        entity.setAttachedInfrastructureId(UUID.randomUUID());
+        entity.setProvinceName("Hải Phòng");
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVhfRequest req = new UpdateVhfRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống VHF Hòn Dấu");
+        req.setDetailedLocation(null);
+        req.setManufacturer(null);
+        req.setModel(null);
+        req.setSpecifications(null);
+        req.setMaintenanceInformation(null);
+        req.setNote(null);
+        req.setUnitOfMeasure(null);
+        req.setYearOfUse(null);
+        req.setAttachedInfrastructureType(null);
+        req.setAttachedInfrastructureId(null);
+        req.setProvinceName(null);
+
+        VhfResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(entity.getDetailedLocation());
+        assertNull(entity.getManufacturer());
+        assertNull(entity.getModel());
+        assertNull(entity.getSpecifications());
+        assertNull(entity.getMaintenanceInformation());
+        assertNull(entity.getNote());
+        assertNull(entity.getUnitOfMeasure());
+        assertNull(entity.getYearOfUse());
+        assertNull(entity.getAttachedInfrastructureType());
+        assertNull(entity.getAttachedInfrastructureId());
+        assertNull(entity.getProvinceName());
     }
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
+  Row, Col, Form, Input, Select, Tabs,
   Button, Space, DatePicker, Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
@@ -209,7 +210,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -217,10 +220,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -263,7 +266,9 @@ export default forwardRef(function BeaconStationForm(
     if (!selectedUnitId) return new Set<string>();
     const rawSet = resolveOrgSubtreeIds(organizations, String(selectedUnitId));
     const normalizedSet = new Set<string>();
-    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    rawSet.forEach((oId) => {
+      normalizedSet.add(String(oId).toLowerCase());
+    });
     return normalizedSet;
   }, [organizations, selectedUnitId]);
 
@@ -648,45 +653,60 @@ export default forwardRef(function BeaconStationForm(
     onSubmittingChange?.(true);
 
     try {
-      const toDate = (v: any) => (v ? (dayjs.isDayjs(v) ? v.toISOString() : String(v)) : undefined);
+      const toDate = (v: any) => (v ? (dayjs.isDayjs(v) ? v.toISOString() : String(v)) : (isEdit ? null : undefined));
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const stationCode = values.code ? String(values.code).trim() : (isEdit ? undefined : await beaconStationCRUD.generateCode());
       const payload: any = {
         action,
         code: stationCode || undefined,
-        name: values.name ? String(values.name).trim() : undefined,
-        type: values.type,
-        lightRange: safeDecimal(values.lightRange),
-        towerColor: values.towerColor,
-        location: values.location,
-        shape: values.shape,
-        structure: values.structure,
-        towerHeight: safeDecimal(values.towerHeight),
-        lightHeight: safeDecimal(values.lightHeight),
-        geographicRange: values.geographicRange,
-        backupLightModel: values.backupLightModel,
-        powerSupply: values.powerSupply,
-        staffCount: values.staffCount != null ? Number(values.staffCount) : undefined,
-        stationArea: safeDecimal(values.stationArea),
-        primaryLightModel: values.primaryLightModel,
-        area: safeDecimal(values.area),
+        name: cleanString(values.name),
+        type: cleanString(values.type),
+        lightRange: cleanDecimal(values.lightRange),
+        towerColor: cleanString(values.towerColor),
+        location: cleanString(values.location),
+        shape: cleanString(values.shape),
+        structure: cleanString(values.structure),
+        towerHeight: cleanDecimal(values.towerHeight),
+        lightHeight: cleanDecimal(values.lightHeight),
+        geographicRange: cleanString(values.geographicRange),
+        backupLightModel: cleanString(values.backupLightModel),
+        powerSupply: cleanString(values.powerSupply),
+        staffCount: cleanNumber(values.staffCount),
+        stationArea: cleanDecimal(values.stationArea),
+        primaryLightModel: cleanString(values.primaryLightModel),
+        area: cleanDecimal(values.area),
         lastRepairDate: toDate(values.lastRepairDate),
         commissionedDate: toDate(values.commissionedDate),
-        unitId: values.unitId,
-        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
-        seaportId: values.seaportId,
-        operator: values.operator,
-        detailedLocation: values.detailedLocation,
-        operationalStatus: values.operationalStatus != null ? Number(values.operationalStatus) : undefined,
-        region: values.region,
-        identifyingFeature: values.identifyingFeature,
-        note: values.note,
-        geometryType: hasGeom ? currentGeometryType : null,
-        mapSymbolId: hasGeom && currentMapSymbolId ? currentMapSymbolId : null,
-        coordinateSystem: hasGeom && (values.coordinateSystem != null || form.getFieldValue('coordinateSystem') != null) ? Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) : null,
-        displayRule: hasGeom ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
-        coordinates: hasGeom && coordinatesWkt ? coordinatesWkt : null,
-        latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
-        longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
+        unitId: values.unitId || (isEdit ? null : undefined),
+        provinceId: cleanNumber(values.provinceId),
+        seaportId: values.seaportId || (isEdit ? null : undefined),
+        operator: cleanString(values.operator),
+        detailedLocation: cleanString(values.detailedLocation),
+        operationalStatus: cleanNumber(values.operationalStatus),
+        region: cleanString(values.region),
+        identifyingFeature: cleanString(values.identifyingFeature),
+        note: cleanString(values.note),
+        geometryType: hasGeom ? (currentGeometryType || null) : (isEdit ? null : undefined),
+        mapSymbolId: hasGeom && currentMapSymbolId ? currentMapSymbolId : (isEdit ? null : undefined),
+        coordinateSystem: hasGeom && (values.coordinateSystem != null || form.getFieldValue('coordinateSystem') != null) ? Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) : (isEdit ? null : undefined),
+        displayRule: hasGeom ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : (isEdit ? null : undefined),
+        coordinates: hasGeom && coordinatesWkt ? coordinatesWkt : (isEdit ? null : undefined),
+        latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : undefined),
+        longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : undefined),
       };
 
       Object.keys(payload).forEach((k) => {
@@ -772,7 +792,9 @@ export default forwardRef(function BeaconStationForm(
                       } else if (currentSeaportId) {
                         const rawSet = resolveOrgSubtreeIds(organizations, String(val));
                         const normalizedSet = new Set<string>();
-                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                        rawSet.forEach((oId) => {
+                          normalizedSet.add(String(oId).toLowerCase());
+                        });
                         const isValid = seaports.some(
                           (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
                         );
@@ -897,7 +919,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[{ required: true, message: 'Vui lòng nhập tầm hiệu lực' }, decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -934,7 +956,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -945,7 +967,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1011,7 +1033,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -1022,7 +1044,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1206,23 +1228,26 @@ export default forwardRef(function BeaconStationForm(
                       title: 'STT',
                       width: 50,
                       align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, _r: any, idx: number) => idx + 1,
                     },
                     {
                       title: 'Vĩ độ (Latitude - N)',
                       key: 'lat',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                     },
                     {
                       title: 'Kinh độ (Longitude - E)',
                       key: 'lng',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                     },
                     {
                       title: '',
                       width: 50,
                       align: 'center' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, record: any) => (
                         <Button
                           type="text"

@@ -104,7 +104,7 @@ class VtsOperationCenterRepositoryTest {
     }
 
     @Test
-    void testFindOptions_IncludesAllApprovedRegardlessOfConditionStatus() {
+    void testFindOptions_IncludesApprovedRecordsRegardlessOfConditionStatus() {
         VtsOperationCenter op1 = createCenter("VTSOC-OP1", "TT Đang vận hành");
         op1.setApprovalStatus(ApprovalStatus.APPROVED);
         op1.setConditionStatus(ConditionStatus.OPERATIONAL);
@@ -137,9 +137,7 @@ class VtsOperationCenterRepositoryTest {
         List<String> names = options.stream().map(com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse::getName).toList();
 
         assertEquals(3, options.size(), "findOptions phải lấy cả 3 bản ghi đã duyệt (kể cả dừng vận hành, bảo trì)");
-        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Đang vận hành"));
-        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Dừng vận hành"));
-        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Bảo trì cấp 2"));
+        assertEquals(List.of("TT Bảo trì cấp 2", "TT Dừng vận hành", "TT Đang vận hành"), names);
     }
 
     @Test

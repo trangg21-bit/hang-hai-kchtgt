@@ -33,7 +33,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from "../../components/org-unit";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
@@ -2363,6 +2363,10 @@ const ScadaListPage = () => {
                           : "Chọn loại hạ tầng trước"
                   } allowClear
                     showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({

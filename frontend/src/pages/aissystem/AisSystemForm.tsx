@@ -3,7 +3,6 @@ import {
   Form,
   Button,
   Input,
-  InputNumber,
   Select,
   Spin,
   Space,
@@ -13,6 +12,7 @@ import {
   Modal,
   DatePicker,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import AppDrawer from '../../components/shared/AppDrawer';
 import {
   PlusOutlined,

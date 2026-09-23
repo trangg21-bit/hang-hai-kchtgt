@@ -5,6 +5,8 @@ import com.hanghai.kchtg.navigationchannel.dto.ApprovalRequest;
 import com.hanghai.kchtg.navigationchannel.dto.ApprovalResponse;
 import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelCreateRequest;
 import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelResponse;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.navigationchannel.service.NavigationChannelHistoryService;
 import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,8 @@ class NavigationChannelControllerTest {
     @BeforeEach
     void setUp() {
         service = mock(NavigationChannelService.class);
-        controller = new NavigationChannelController(service);
+        controller = new NavigationChannelController(service, mock(NavigationChannelHistoryService.class),
+                mock(NavigationChannelRepository.class));
         authentication = mock(Authentication.class);
         when(authentication.getName()).thenReturn("testuser");
 

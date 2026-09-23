@@ -5,9 +5,9 @@ import {
   Modal,
   Form,
   Input,
-  InputNumber,
   Space
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import {
   EditOutlined,
   DeleteOutlined,

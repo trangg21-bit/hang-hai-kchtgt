@@ -265,6 +265,43 @@ class VtsSystemRepositoryTest {
         assertEquals(2, result.getTotalElements());
     }
 
+    @Test
+    void testFindOptions_IncludesApprovedRecordsRegardlessOfConditionStatus() {
+        VtsSystem operational = createVtsSystemWithCodeAndName("VTS-OPT-1", "VTS Đang vận hành");
+        operational.setApprovalStatus(ApprovalStatus.APPROVED);
+        operational.setConditionStatus(ConditionStatus.OPERATIONAL);
+        repository.save(operational);
+
+        VtsSystem stopped = createVtsSystemWithCodeAndName("VTS-OPT-2", "VTS Dừng vận hành");
+        stopped.setApprovalStatus(ApprovalStatus.APPROVED);
+        stopped.setConditionStatus(ConditionStatus.STOPPED);
+        repository.save(stopped);
+
+        VtsSystem maintenance = createVtsSystemWithCodeAndName("VTS-OPT-3", "VTS Bảo trì cấp 2");
+        maintenance.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
+        maintenance.setConditionStatus(ConditionStatus.MAINTENANCE);
+        repository.save(maintenance);
+
+        VtsSystem draft = createVtsSystemWithCodeAndName("VTS-OPT-4", "VTS Chưa duyệt");
+        draft.setApprovalStatus(ApprovalStatus.DRAFT);
+        repository.save(draft);
+
+        VtsSystem deleted = createVtsSystemWithCodeAndName("VTS-OPT-5", "VTS Đã xóa");
+        deleted.setApprovalStatus(ApprovalStatus.APPROVED);
+        deleted.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(deleted);
+
+        entityManager.flush();
+
+        var options = repository.findOptions(false, List.of(), false, List.of());
+        List<String> names = options.stream()
+                .map(com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse::getName)
+                .toList();
+
+        assertEquals(3, options.size());
+        assertEquals(List.of("VTS Bảo trì cấp 2", "VTS Dừng vận hành", "VTS Đang vận hành"), names);
+    }
+
     /**
      * Mọi cột trong danh sách cho phép sắp xếp của
      * {@code VtsSystemService.SORTABLE_LIST_FIELDS} phải chạy được trên

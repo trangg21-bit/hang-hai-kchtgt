@@ -262,4 +262,53 @@ class ShipRepairYardServiceTest {
         assertTrue(hasWktCleared, "Must record history for clearing GIS coordinates");
         assertTrue(hasGeomCleared, "Must record history for clearing GIS geometry type");
     }
+
+    @Test
+    @DisplayName("update: when fields are cleared, sets entity fields to null")
+    void testUpdate_WhenFieldsCleared_SetsFieldsToNull() {
+        UUID yardId = UUID.randomUUID();
+        ShipRepairYard existing = ShipRepairYard.builder()
+                .shipRepairYardCode("CB-000004-SCDT-001")
+                .shipRepairYardName("Cơ sở cũ")
+                .detailedLocation("Vị trí cũ")
+                .usageFunction("Công năng cũ")
+                .vesselType("Loại tàu cũ")
+                .vesselDwt("DWT cũ")
+                .businessType("Ngành nghề cũ")
+                .activity("Hoạt động cũ")
+                .remarks("Ghi chú cũ")
+                .portId(portId)
+                .approvalStatus(ApprovalStatus.DRAFT)
+                .build();
+        existing.setId(yardId);
+
+        when(shipRepairYardRepository.findById(yardId)).thenReturn(Optional.of(existing));
+        when(portRepository.findById(portId)).thenReturn(Optional.of(port));
+        when(shipRepairYardRepository.saveAndFlush(any(ShipRepairYard.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UpdateShipRepairYardRequest req = UpdateShipRepairYardRequest.builder()
+                .id(yardId)
+                .portId(portId)
+                .shipRepairYardName("Tên mới")
+                .detailedLocation("   ")
+                .usageFunction("")
+                .vesselType("")
+                .vesselDwt("   ")
+                .businessType("")
+                .activity("   ")
+                .remarks("")
+                .build();
+
+        ShipRepairYardResponse response = service.update(req);
+
+        assertNotNull(response);
+        assertEquals("Tên mới", response.getShipRepairYardName());
+        assertNull(response.getDetailedLocation());
+        assertNull(response.getUsageFunction());
+        assertNull(response.getVesselType());
+        assertNull(response.getVesselDwt());
+        assertNull(response.getBusinessType());
+        assertNull(response.getActivity());
+        assertNull(response.getRemarks());
+    }
 }

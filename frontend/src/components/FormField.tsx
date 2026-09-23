@@ -1,4 +1,5 @@
-import { Form, Input, Select, InputNumber, DatePicker, Switch, Tooltip } from 'antd';
+import { Form, Input, Select, DatePicker, Switch, Tooltip } from 'antd';
+import InputNumber from './shared/LocalizedInputNumber';
 import { InfoCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import type { FormItemProps, SelectProps } from 'antd';
 import dayjs from 'dayjs';

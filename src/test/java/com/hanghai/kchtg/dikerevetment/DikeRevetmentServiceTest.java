@@ -167,6 +167,63 @@ class DikeRevetmentServiceTest {
     }
 
     @Test
+    @DisplayName("update when field is cleared to null - should set field to null on entity")
+    void update_whenFieldsCleared_shouldSetFieldsToNull() {
+        testEntity.setLocationDetail("Dia diem cu");
+        testEntity.setHeight(new BigDecimal("12.5"));
+        testEntity.setCrestElevation(new BigDecimal("3.2"));
+        testEntity.setNote("Ghi chu cu");
+        testEntity.setSurfaceMaterial("Be tong");
+
+        DikeRevetmentUpdateRequest updateReq = DikeRevetmentUpdateRequest.builder()
+                .locationDetail(null)
+                .height(null)
+                .crestElevation(null)
+                .note(null)
+                .surfaceMaterial("")
+                .build();
+
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenReturn(testEntity);
+
+        DikeRevetmentResponse r = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertThat(r).isNotNull();
+        assertThat(testEntity.getLocationDetail()).isNull();
+        assertThat(testEntity.getHeight()).isNull();
+        assertThat(testEntity.getCrestElevation()).isNull();
+        assertThat(testEntity.getNote()).isNull();
+        assertThat(testEntity.getSurfaceMaterial()).isNull();
+        verify(repo, times(1)).save(any());
+    }
+
+    @Test
+    @DisplayName("update on approved entity when locationDetail cleared - should record history")
+    void update_onApprovedEntity_whenLocationDetailCleared_shouldRecordHistory() {
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        testEntity.setLocationDetail("Khu vuc cang Hai Phong");
+
+        DikeRevetmentUpdateRequest updateReq = DikeRevetmentUpdateRequest.builder()
+                .locationDetail(null)
+                .build();
+
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenReturn(testEntity);
+
+        service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertThat(testEntity.getLocationDetail()).isNull();
+        ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(approvalHistoryRepo, atLeastOnce()).save(historyCaptor.capture());
+        InfrastructureHistory h = historyCaptor.getAllValues().stream()
+                .filter(x -> "Địa điểm chi tiết".equals(x.getChangedField()))
+                .findFirst()
+                .orElse(null);
+        assertThat(h).isNotNull();
+        assertThat(h.getPreviousValue()).isEqualTo("Khu vuc cang Hai Phong");
+        assertThat(h.getNewValue()).isEqualTo("Chưa có");
+    }
+
+    @Test
     @DisplayName("update when geometryType is cleared - should clear all location fields and delete spatial object")
     void update_whenGeometryTypeCleared_shouldClearAllLocationFieldsAndSpatialObject() {
         UUID spatialId = UUID.randomUUID();

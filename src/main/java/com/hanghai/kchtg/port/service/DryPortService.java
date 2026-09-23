@@ -422,11 +422,11 @@ public class DryPortService {
         log.info("DryPort update: snapshot captured for id={}, name={}", entity.getId(), entity.getDryPortName());
 
         // Update mutable fields — code is immutable
-        if (request.getDryPortName() != null)
-            entity.setDryPortName(request.getDryPortName());
-        if (request.getProvinceId() != null)
+        if (request.isFieldPresent("dryPortName") || request.getDryPortName() != null)
+            entity.setDryPortName(trimToNull(request.getDryPortName()));
+        if (request.isFieldPresent("provinceId") || request.getProvinceId() != null)
             entity.setProvinceId(request.getProvinceId());
-        if (request.getOrgUnitId() != null)
+        if (request.isFieldPresent("orgUnitId") || request.getOrgUnitId() != null)
             entity.setOrgUnitId(request.getOrgUnitId());
         // General info
         UUID opOrgId = request.getOperatingOrgId();
@@ -442,52 +442,49 @@ public class DryPortService {
                 // opUnit is plain text
             }
         }
-        if (opOrgId != null)
+        if (request.isFieldPresent("operatingOrgId") || opOrgId != null)
             entity.setOperatingOrgId(opOrgId);
-        if (opUnit != null)
-            entity.setOperatingUnit(opUnit);
-        if (request.getRegion() != null)
-            entity.setRegion(request.getRegion());
-        if (request.getDetailedLocation() != null)
-            entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getTransportCorridor() != null)
-            entity.setTransportCorridor(request.getTransportCorridor());
-        if (request.getArea() != null)
+        if (request.isFieldPresent("operatingUnit") || opUnit != null)
+            entity.setOperatingUnit(trimToNull(opUnit));
+        if (request.isFieldPresent("region") || request.getRegion() != null)
+            entity.setRegion(trimToNull(request.getRegion()));
+        if (request.isFieldPresent("detailedLocation") || request.getDetailedLocation() != null)
+            entity.setDetailedLocation(trimToNull(request.getDetailedLocation()));
+        if (request.isFieldPresent("transportCorridor") || request.getTransportCorridor() != null)
+            entity.setTransportCorridor(trimToNull(request.getTransportCorridor()));
+        if (request.isFieldPresent("area") || request.getArea() != null)
             entity.setArea(request.getArea());
-        if (request.getWarehouseArea() != null)
-            entity.setWarehouseArea(request.getWarehouseArea());
-        if (request.getYardArea() != null)
-            entity.setYardArea(request.getYardArea());
-        if (request.getTeuCapacity() != null)
+        if (request.isFieldPresent("teuCapacity") || request.getTeuCapacity() != null)
             entity.setTeuCapacity(request.getTeuCapacity());
-        if (request.getConnectionMode() != null)
-            entity.setConnectionMode(request.getConnectionMode());
-        if (request.getPortStatus() != null)
+        if (request.isFieldPresent("warehouseArea") || request.getWarehouseArea() != null)
+            entity.setWarehouseArea(request.getWarehouseArea());
+        if (request.isFieldPresent("yardArea") || request.getYardArea() != null)
+            entity.setYardArea(request.getYardArea());
+        if (request.isFieldPresent("connectionMode") || request.getConnectionMode() != null)
+            entity.setConnectionMode(trimToNull(request.getConnectionMode()));
+        if (request.isFieldPresent("portStatus") || request.getPortStatus() != null)
             entity.setPortStatus(request.getPortStatus());
-        if (request.getOperationalStatus() != null)
+        if (request.isFieldPresent("operationalStatus") || request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
-        if (request.getRemarks() != null)
-            entity.setRemarks(request.getRemarks());
-        // Announcement
-        if (request.getAnnouncementTime() != null)
+        if (request.isFieldPresent("remarks") || request.getRemarks() != null)
+            entity.setRemarks(trimToNull(request.getRemarks()));
+        if (request.isFieldPresent("announcementTime") || request.getAnnouncementTime() != null)
             entity.setAnnouncementTime(request.getAnnouncementTime());
-        if (request.getAnnouncementDecisionNumber() != null)
-            entity.setAnnouncementDecisionNumber(request.getAnnouncementDecisionNumber());
-        if (request.getAnnouncementDecisionDate() != null)
+        if (request.isFieldPresent("announcementDecisionNumber") || request.getAnnouncementDecisionNumber() != null)
+            entity.setAnnouncementDecisionNumber(trimToNull(request.getAnnouncementDecisionNumber()));
+        if (request.isFieldPresent("announcementDecisionDate") || request.getAnnouncementDecisionDate() != null)
             entity.setAnnouncementDecisionDate(request.getAnnouncementDecisionDate());
-        if (request.getAnnouncementOrg() != null)
-            entity.setAnnouncementOrg(request.getAnnouncementOrg());
+        if (request.isFieldPresent("announcementOrg") || request.getAnnouncementOrg() != null)
+            entity.setAnnouncementOrg(trimToNull(request.getAnnouncementOrg()));
         // Opening Announcement (đồng bộ chuẩn Cầu cảng - Pier)
-        if (request.getOpeningAnnouncementDate() != null)
+        if (request.isFieldPresent("openingAnnouncementDate") || request.getOpeningAnnouncementDate() != null)
             entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
         else if (request.getAnnouncementDecisionDate() != null)
             entity.setOpeningAnnouncementDate(request.getAnnouncementDecisionDate());
-        if (request.getOpeningDecision() != null)
-            entity.setOpeningDecision(request.getOpeningDecision());
-        else if (request.getAnnouncementDecisionNumber() != null)
-            entity.setOpeningDecision(request.getAnnouncementDecisionNumber());
-        if (request.getInvestmentAgreementDoc() != null)
-            entity.setInvestmentAgreementDoc(request.getInvestmentAgreementDoc());
+        if (request.isFieldPresent("openingDecision") || request.getOpeningDecision() != null)
+            entity.setOpeningDecision(trimToNull(request.getOpeningDecision()));
+        if (request.isFieldPresent("investmentAgreementDoc") || request.getInvestmentAgreementDoc() != null)
+            entity.setInvestmentAgreementDoc(trimToNull(request.getInvestmentAgreementDoc()));
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -497,16 +494,25 @@ public class DryPortService {
 
         boolean hasGeometryType = request.getGeometryType() != null;
         boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
+        boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
+                && (!hasGeometryType || !hasCoordinates);
 
         // GIS
-        if (hasGeometryType && hasCoordinates) {
+        if (shouldClearLocation) {
+            entity.setMapSymbolId(null);
+            entity.setCoordinateSystem(null);
+            entity.setDisplayRule(null);
+        } else if (hasGeometryType && hasCoordinates) {
             entity.setMapSymbolId(request.getMapSymbolId());
             entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
             entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
         } else {
-            entity.setMapSymbolId(null);
-            entity.setCoordinateSystem(null);
-            entity.setDisplayRule(null);
+            if (request.isFieldPresent("mapSymbolId"))
+                entity.setMapSymbolId(request.getMapSymbolId());
+            if (request.isFieldPresent("coordinateSystem"))
+                entity.setCoordinateSystem(request.getCoordinateSystem());
+            if (request.isFieldPresent("displayRule"))
+                entity.setDisplayRule(request.getDisplayRule());
         }
 
         // Set approval status
@@ -581,7 +587,7 @@ public class DryPortService {
                             geometryTypeLabel(geomType), actorId);
                 }
             }
-        } else {
+        } else if (shouldClearLocation) {
             if (saved.getSpatialId() != null) {
                 gisSpatialObjectService.delete(saved.getSpatialId());
                 saved.setSpatialId(null);
@@ -1056,5 +1062,9 @@ public class DryPortService {
         if (geomType == GisGeometryType.LINE)
             return GisSpatialObjectType.LINE_OTHER;
         return GisSpatialObjectType.POLYGON_OTHER;
+    }
+
+    private static String trimToNull(String value) {
+        return (value != null && !value.trim().isEmpty()) ? value.trim() : null;
     }
 }

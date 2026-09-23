@@ -3,7 +3,6 @@ import {
   Button,
   Modal,
   Input,
-  InputNumber,
   Select,
   Space,
   Typography,
@@ -14,6 +13,7 @@ import {
   Tabs,
   Tooltip,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import toast from '../../components/ToastNotification';
 import {
   PlusOutlined,
@@ -59,7 +59,7 @@ import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, reso
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
-import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceLabel } from '../../types/common';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
@@ -142,6 +142,7 @@ import {
   getValueFromEvent20,
   decimalNumberRule,
   safeDecimal,
+  isApprovedRadarStatus,
 } from './radarStationRules';
 
 // Cỡ chữ chuẩn 13.5px cho toàn màn /radar-station (thay token fontSizeMd=13 của themetokenchk) —
@@ -275,7 +276,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasError = started && inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasError ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -283,10 +286,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -388,14 +391,6 @@ const radarChildrenList: Array<{ id?: string; type?: string; typeLabel?: string;
 const operationPlanList: OperationRow[] = [];
 const maintenancePlanList: OperationRow[] = [];
 const incidentList: OperationRow[] = [];
-
-const getProvinceLabel = (provinceId?: string | number): string => {
-  if (provinceId === undefined || provinceId === null || provinceId === '') return '';
-  const str = String(provinceId);
-  const found = VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === str);
-  if (found) return found.label;
-  return getProvinceNameById(provinceId) || '';
-};
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return '';
@@ -505,11 +500,23 @@ function normalizeHistoryKey(value: string): string {
 }
 
 function isProvinceHistoryField(field: string): boolean {
-  const normalized = normalizeHistoryKey(field);
-  return normalized === 'provinceid'
-    || normalized === 'province'
-    || normalized === 'tinh/thanh pho'
-    || normalized === 'dia diem (tinh/tp)';
+  if (!field) return false;
+  const raw = normalizeHistoryKey(field);
+  const compact = raw.replace(/[\s\-_/().,]/g, '');
+  return (
+    compact === 'provinceid'
+    || compact === 'province'
+    || compact === 'tinh'
+    || compact === 'tinhtp'
+    || compact === 'tinhthanhpho'
+    || compact === 'diadiemtinh'
+    || compact === 'diadiemtinhtp'
+    || compact === 'diadiemtinhthanhpho'
+    || compact.includes('province')
+    || compact.includes('tinhtp')
+    || compact.includes('tinhthanhpho')
+    || (compact.includes('diadiem') && compact.includes('tinh'))
+  );
 }
 
 function isConditionHistoryField(field: string): boolean {
@@ -634,6 +641,11 @@ function isMeaningfulChange(field: string, rawOld: any, rawNew: any): boolean {
   const nv = normalize(rawNew);
   if (ov === '' && nv === '') return false;
   if (ov !== '' && nv !== '' && ov === nv) return false;
+  if (isProvinceHistoryField(f)) {
+    const pOld = getProvinceLabel(rawOld);
+    const pNew = getProvinceLabel(rawNew);
+    if (pOld && pNew && pOld === pNew) return false;
+  }
   // Bỏ qua nếu cả hai đều là số và bằng nhau về mặt giá trị số học (VD: 25.0000 vs 25 hoặc 5,555 vs 5555)
   const cleanOv = ov.replace(/,/g, '');
   const cleanNv = nv.replace(/,/g, '');
@@ -968,8 +980,8 @@ export default function RadarStationList() {
   // ── Dropdown data (đơn vị / cảng biển / VTS / cán bộ) ────────────
   const [orgOptions, setOrgOptions] = useState<OrgUnitTreeOption[]>([]);
   const [seaportOptions, setSeaportOptions] = useState<{ id: string; portCode?: string; portName?: string; orgUnitId?: string }[]>([]);
-  const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string }[]>([]);
-  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string }[]>([]);
+  const [vtsOptions, setVtsOptions] = useState<{ id: string; code?: string; systemName?: string; orgUnitId?: string }[]>([]);
+  const [vtsOperationCenterOptions, setVtsOperationCenterOptions] = useState<{ id: string; code?: string; name?: string; orgUnitId?: string; vtsSystemId?: string }[]>([]);
   const [formSeaportOptions, setFormSeaportOptions] = useState<typeof seaportOptions>([]);
   const [formVtsOptions, setFormVtsOptions] = useState<typeof vtsOptions>([]);
   const [formVtsOperationCenterOptions, setFormVtsOperationCenterOptions] = useState<Array<{ id: string; code?: string; name?: string; vtsSystemId?: string }>>([]);
@@ -982,6 +994,26 @@ export default function RadarStationList() {
     rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
     return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
   }, [seaportOptions, orgOptions, filterOrgUnitId]);
+  const filteredVtsOptions = useMemo(() => {
+    if (!filterOrgUnitId || filterOrgUnitId === '__all__') return vtsOptions;
+    const rawSet = resolveOrgSubtreeIds(orgOptions, String(filterOrgUnitId));
+    const normalizedSet = new Set(Array.from(rawSet, (orgId) => String(orgId).toLowerCase()));
+    return vtsOptions.filter((option) => option.orgUnitId
+      && normalizedSet.has(String(option.orgUnitId).toLowerCase()));
+  }, [filterOrgUnitId, orgOptions, vtsOptions]);
+  const filteredVtsOperationCenterOptions = useMemo(() => {
+    let options = vtsOperationCenterOptions;
+    if (filterOrgUnitId && filterOrgUnitId !== '__all__') {
+      const rawSet = resolveOrgSubtreeIds(orgOptions, String(filterOrgUnitId));
+      const normalizedSet = new Set(Array.from(rawSet, (orgId) => String(orgId).toLowerCase()));
+      options = options.filter((option) => option.orgUnitId
+        && normalizedSet.has(String(option.orgUnitId).toLowerCase()));
+    }
+    if (filterVtsSystemId) {
+      options = options.filter((option) => option.vtsSystemId === filterVtsSystemId);
+    }
+    return options;
+  }, [filterOrgUnitId, filterVtsSystemId, orgOptions, vtsOperationCenterOptions]);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
@@ -1260,7 +1292,10 @@ export default function RadarStationList() {
   // Trạng thái cho phép gửi duyệt lại / gửi tiếp sau lưu (áp cho nút phụ trong drawer Cập nhật)
   const editingCanResubmit = !!editingRecord && !isDetailMode
     && ['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2']
-      .includes((editingRecord.status || editingRecord.approvalStatus || ''));
+      .includes((editingRecord.approvalStatus || editingRecord.status || ''));
+  const editingIsApproved = isApprovedRadarStatus(
+    editingRecord?.approvalStatus || editingRecord?.status,
+  );
 
   useEffect(() => {
     symbolService.list({ pageSize: 200 })
@@ -1345,21 +1380,15 @@ export default function RadarStationList() {
             id: item.id,
             code: item.code,
             systemName: item.name,
+            orgUnitId: item.orgUnitId,
           })),
         );
       } catch (err) {
         console.error('Không tải được danh sách hệ thống VTS', err);
       }
       try {
-        const opRes = await api.get('/common/options/vts-operation-centers');
-        const opCenters = opRes.data?.data || opRes.data || [];
-        setVtsOperationCenterOptions(
-          (Array.isArray(opCenters) ? opCenters : []).map((item: any) => ({
-            id: item.id,
-            code: item.code,
-            name: item.name,
-          })),
-        );
+        const opCenters = await vtsOperationCenterService.getOptions();
+        setVtsOperationCenterOptions(opCenters || []);
       } catch (err) {
         console.error('Không tải được danh sách trung tâm điều hành VTS', err);
       }
@@ -1961,26 +1990,42 @@ export default function RadarStationList() {
         }
       }
 
+      const isEdit = !!editingRecord;
+      const cleanString = (val: unknown) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: unknown) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: unknown) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const payload: CreateRadarStationRequest = {
-        stationName: values.stationName?.trim(),
-        location: values.location?.trim(),
-        orgUnitId: values.orgUnitId || undefined,
-        seaportId: values.seaportId || undefined,
-        vtsSystemId: values.vtsSystemId || undefined,
-        vtsOperationCenterId: values.vtsOperationCenterId || undefined,
-        operatingUnitId: values.operatingUnitId || undefined,
-        provinceId: values.provinceId ? String(values.provinceId) : undefined,
-        unitOfMeasure: values.unitOfMeasure || undefined,
-        quantity: values.quantity,
-        conditionStatus: values.conditionStatus || '1',
-        towerHeight: safeDecimal(values.towerHeight),
-        radarRange: safeDecimal(values.radarRange),
-        note: values.note?.trim() || undefined,
-        longitude: hasGeom ? longitude : null,
-        latitude: hasGeom ? latitude : null,
-        geometryType: hasGeom ? (geom as 'POINT' | 'LINE' | 'POLYGON') : null,
-        coordinates: hasGeom ? coordinates : null,
-        mapIcon: hasGeom && currentMapIcon ? currentMapIcon : null,
+        stationName: cleanString(values.stationName) ?? '',
+        location: cleanString(values.location) ?? '',
+        orgUnitId: values.orgUnitId || (isEdit ? null : undefined),
+        seaportId: values.seaportId || (isEdit ? null : undefined),
+        vtsSystemId: values.vtsSystemId || (isEdit ? null : undefined),
+        vtsOperationCenterId: values.vtsOperationCenterId || (isEdit ? null : undefined),
+        operatingUnitId: values.operatingUnitId || (isEdit ? null : undefined),
+        provinceId: values.provinceId ? String(values.provinceId) : (isEdit ? null : undefined),
+        unitOfMeasure: cleanString(values.unitOfMeasure),
+        quantity: cleanNumber(values.quantity) as number,
+        conditionStatus: cleanString(values.conditionStatus) || (isEdit ? null : '1'),
+        towerHeight: cleanDecimal(values.towerHeight),
+        radarRange: cleanDecimal(values.radarRange),
+        note: cleanString(values.note),
+        longitude: hasGeom ? longitude : (isEdit ? null : null),
+        latitude: hasGeom ? latitude : (isEdit ? null : null),
+        geometryType: hasGeom ? (geom as 'POINT' | 'LINE' | 'POLYGON') : (isEdit ? null : null),
+        coordinates: hasGeom ? coordinates : (isEdit ? null : null),
+        mapIcon: hasGeom && currentMapIcon ? currentMapIcon : (isEdit ? null : null),
         action: mode === 'approve' ? 'approve' : mode === 'submit' ? 'submit' : 'draft',
         approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
       };
@@ -2356,7 +2401,13 @@ export default function RadarStationList() {
           treeDefaultExpandAll={false}
           showSearch
           value={filterOrgUnitId}
-          onChange={(v) => { setFilterOrgUnitId(v || undefined); setFilterSeaportId(undefined); setPage(1); }}
+          onChange={(v) => {
+            setFilterOrgUnitId(v || undefined);
+            setFilterSeaportId(undefined);
+            setFilterVtsSystemId(undefined);
+            setFilterVtsOperationCenterId(undefined);
+            setPage(1);
+          }}
           style={{ ...selectStyle, width: '100%' }}
         />
       </div>
@@ -2389,9 +2440,9 @@ export default function RadarStationList() {
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Hệ thống VTS</div>
             <Select placeholder="Tất cả" allowClear value={filterVtsSystemId}
-              onChange={(v) => { setFilterVtsSystemId(v); setPage(1); }}
+              onChange={(v) => { setFilterVtsSystemId(v); setFilterVtsOperationCenterId(undefined); setPage(1); }}
               showSearch optionFilterProp="label"
-              options={vtsOptions.map((vts) => ({ value: vts.id, label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id }))}
+              options={filteredVtsOptions.map((vts) => ({ value: vts.id, label: vts.code ? `${vts.code} - ${vts.systemName || ''}` : vts.systemName || vts.id }))}
               style={{ ...selectStyle, width: '100%' }} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -2399,7 +2450,7 @@ export default function RadarStationList() {
             <Select placeholder="Tất cả" allowClear value={filterVtsOperationCenterId}
               onChange={(v) => { setFilterVtsOperationCenterId(v); setPage(1); }}
               showSearch optionFilterProp="label"
-              options={vtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
+              options={filteredVtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
               style={{ ...selectStyle, width: '100%' }} />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
@@ -2502,7 +2553,7 @@ export default function RadarStationList() {
         { label: 'Địa điểm (Tỉnh/TP)', value: safeText(getProvinceLabel(detailRecord.provinceId)) },
         { label: 'Địa điểm chi tiết', value: detailRecord.location || null },
         { label: 'Đơn vị tính', value: detailRecord.unitOfMeasure || null },
-        { label: 'Số lượng', value: detailRecord.quantity != null ? Number(detailRecord.quantity).toLocaleString('en-US') : null },
+        { label: 'Số lượng', value: detailRecord.quantity != null ? Number(detailRecord.quantity).toLocaleString('vi-VN') : null },
         {
           label: 'Tình trạng',
           value: (() => {
@@ -2746,8 +2797,8 @@ export default function RadarStationList() {
                   })()}
                 </span>
               </div>
-              <div className="chk-detail-row"><span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span><span className="chk-detail-value">{(() => { const cs = (detailRecord as { coordinateSystem?: number | string | null } | undefined)?.coordinateSystem; if (cs === 1 || cs === '1') return 'WGS-84'; if (cs === 2 || cs === '2') return 'VN-2000'; return cs ? String(cs) : ''; })()}</span></div>
-              <div className="chk-detail-row"><span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span><span className="chk-detail-value">{detailRecord?.geometryType || detailRecord?.coordinates ? 'Độ, phút, giây (DMS)' : ''}</span></div>
+              <div className="chk-detail-row"><span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span><span className="chk-detail-value">{(() => { const cs = detailRecord?.coordinateSystem ?? (detailRecord?.geometryType ? 1 : undefined); if (cs === 1) return 'WGS-84'; if (cs === 2) return 'VN-2000'; return cs ? String(cs) : ''; })()}</span></div>
+              <div className="chk-detail-row"><span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span><span className="chk-detail-value">{detailRecord?.displayRule ?? (detailRecord?.geometryType || detailRecord?.coordinates ? 'Độ, phút, giây (DMS)' : '')}</span></div>
             </div>
           </div>
           <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
@@ -3298,6 +3349,11 @@ export default function RadarStationList() {
             const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
             return `${parts.length} mục`;
           }
+          // Các trường ngữ nghĩa đặc thù (tỉnh/thành phố, tình trạng, biểu tượng, phê duyệt)
+          // phải phân giải qua historyFieldValue TRƯỚC, tránh bị regex số nuốt mất ID tỉnh (1, 31...)
+          if (isProvinceHistoryField(fn) || isConditionHistoryField(fn) || isMapIconHistoryField(fn) || isApprovalHistoryField(fn)) {
+            return historyFieldValue(fn, raw);
+          }
           if (/^-?\d+(\.\d+)?$/.test(t)) {
             return fmtNum(t);
           }
@@ -3724,7 +3780,7 @@ export default function RadarStationList() {
         footer={
           isDetailMode ? null : editingRecord ? (
             // Ca sử dụng 8 (approval-2-level-spec.md 3.9) — bộ nút chân form theo trạng thái hồ sơ:
-            editingRecord.approvalStatus === 'APPROVED' ? (
+            editingIsApproved ? (
               canSaveAndApprove ? (
                 <div style={drawerFooterStyle}>
                   <Button
@@ -4071,6 +4127,7 @@ export default function RadarStationList() {
                               rules={[decimalNumberRule]}
                             >
                               <NumberInputWithCount
+                                allowDecimal
                                 min={0}
                                 step={0.01}
                                 placeholder="0"
@@ -4092,6 +4149,7 @@ export default function RadarStationList() {
                               rules={[decimalNumberRule]}
                             >
                               <NumberInputWithCount
+                                allowDecimal
                                 min={0}
                                 step={0.01}
                                 placeholder="0"
@@ -4332,23 +4390,26 @@ export default function RadarStationList() {
                                   title: 'STT',
                                   width: 50,
                                   align: 'center' as const,
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
                                 },
                                 {
                                   title: 'Vĩ độ (Latitude - N)',
                                   key: 'lat',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                                 },
                                 {
                                   title: 'Kinh độ (Longitude - E)',
                                   key: 'lng',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                                 },
                                 {
                                   title: '',
                                   width: 60,
                                   align: 'center' as const,
-                                  onCell: () => ({ style: { verticalAlign: 'top' } }),
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) => (
                                     <Button
                                       type="text"

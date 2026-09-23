@@ -10,7 +10,6 @@ import {
     Col,
     Form,
     Input,
-    InputNumber,
     Modal,
     Row,
     Select,
@@ -18,6 +17,7 @@ import {
     Spin,
     Tabs,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import KchtFormFooter from '../../components/kcht/KchtFormFooter';

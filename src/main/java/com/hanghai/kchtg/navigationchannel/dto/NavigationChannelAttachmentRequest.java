@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,7 +20,24 @@ import lombok.experimental.FieldNameConstants;
 public class NavigationChannelAttachmentRequest {
 
     private String fileName;
+
+    @JsonAlias({"fileUrl", "url", "path"})
     private String filePath;
+
     private Long fileSize;
+
+    @JsonAlias({"contentType", "type"})
     private AttachmentFileType fileType;
+
+    public void setFileUrl(String fileUrl) {
+        if (this.filePath == null || this.filePath.isBlank()) {
+            this.filePath = fileUrl;
+        }
+    }
+
+    public void setContentType(Object contentType) {
+        if (this.fileType == null && contentType != null) {
+            this.fileType = AttachmentFileType.fromValue(contentType);
+        }
+    }
 }

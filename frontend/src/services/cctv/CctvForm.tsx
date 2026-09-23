@@ -1,9 +1,10 @@
 import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
+  Row, Col, Form, Input, Select, Tabs,
   Button, Space, DatePicker, Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { FormInstance, UploadFile } from 'antd';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
@@ -28,7 +29,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -228,7 +229,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -236,10 +239,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -891,6 +894,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     allowClear
                     showSearch
                     optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -1238,17 +1244,20 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                       title: 'STT',
                       width: 60,
                       align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
                     },
                     {
                       title: 'Vĩ độ (Latitude - N)',
                       key: 'lat',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) =>
                         renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                     },
                     {
                       title: 'Kinh độ (Longitude - E)',
                       key: 'lng',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) =>
                         renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                     },
@@ -1256,7 +1265,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                       title: '',
                       width: 50,
                       align: 'center' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) => (
                         <Button
                           type="text"

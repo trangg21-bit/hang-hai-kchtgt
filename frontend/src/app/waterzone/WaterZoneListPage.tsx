@@ -12,10 +12,10 @@ import {
   Popconfirm,
   Modal,
   Form,
-  InputNumber,
   Typography,
   Descriptions,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { TableProps } from 'antd';
 import {
   PlusOutlined,

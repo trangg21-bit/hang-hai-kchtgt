@@ -18,7 +18,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgLevel2Name, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -436,11 +436,14 @@ export default function StormShelterListPage() {
     return m;
   }, [allPorts]);
   const portOptions = useMemo(() => {
-    const filtered = (!orgUnit || orgUnit === '__all__')
-      ? allPorts
-      : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
+    const allowedOrgIds = orgUnit && orgUnit !== '__all__'
+      ? resolveOrgSubtreeIds(organizations, orgUnit)
+      : undefined;
+    const filtered = allowedOrgIds
+      ? allPorts.filter((p) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)))
+      : allPorts;
     return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || '' }));
-  }, [allPorts, orgUnit]);
+  }, [allPorts, organizations, orgUnit]);
 
   const [allBuoyBerths, setAllBuoyBerths] = useState<Array<{ id: string; buoyBerthName?: string; buoyBerthCode?: string; orgUnitId?: string; portId?: string }>>([]);
   const buoyStationMap = useMemo(() => {
@@ -590,15 +593,26 @@ export default function StormShelterListPage() {
 
   const fetchCounts = useCallback(async (oid: string | undefined) => {
     try {
+      const provinceId = filterProvince ? VIETNAM_PROVINCES.indexOf(filterProvince) + 1 : undefined;
+      const baseFilterParams = {
+        orgUnitId: (oid && oid !== '__all__') ? oid : undefined,
+        stormShelterName: nameInput.trim() || undefined,
+        stormShelterCode: codeInput.trim() || undefined,
+        portId: filterPortId,
+        navigationChannelId: filterNavigationChannelId,
+        buoyStationId: filterBuoyStationId,
+        classification: filterClassification,
+        provinceId: provinceId && provinceId > 0 ? provinceId : undefined,
+        operationalStatus: filterOperationalStatus,
+        updatedFrom: filterUpdatedFrom,
+        updatedTo: filterUpdatedTo,
+      };
       const rs = await Promise.allSettled(
         TAB_STATUS_LIST.map(t => {
           if (t.key === 'all') {
-            return stormShelterCRUD.search({ orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+            return stormShelterCRUD.search({ ...baseFilterParams, page: 1, pageSize: 1 });
           }
-          if (t.key === 'DELETED') {
-            return stormShelterCRUD.search({ approvalStatus: 'DELETED', orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
-          }
-          return stormShelterCRUD.search({ approvalStatus: TAB_QUERY_MAP[t.key], orgUnitId: (oid && oid !== '__all__') ? oid : undefined, page: 1, pageSize: 1 });
+          return stormShelterCRUD.search({ ...baseFilterParams, approvalStatus: TAB_QUERY_MAP[t.key], page: 1, pageSize: 1 });
         })
       );
       const c: Record<string, number> = {};
@@ -611,8 +625,13 @@ export default function StormShelterListPage() {
       });
       c['all'] = childSum;
       setTabCounts(c);
-    } catch {}
-  }, []);
+    } catch {
+      // Giữ nguyên số đếm hiện tại nếu một trong các API thống kê bị lỗi.
+    }
+  }, [
+    nameInput, codeInput, filterPortId, filterNavigationChannelId, filterBuoyStationId,
+    filterClassification, filterProvince, filterOperationalStatus, filterUpdatedFrom, filterUpdatedTo,
+  ]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true); setIsError(false);

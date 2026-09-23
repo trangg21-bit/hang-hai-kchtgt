@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, Select, InputNumber, Tabs,
+  Row, Col, Form, Input, Select, Tabs,
   Button, Space, DatePicker, Modal, type InputNumberProps,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadFile } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
@@ -25,7 +26,6 @@ import type { SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
-import { normalizeDecimal20_4 } from '../../utils/numberRuleHelper';
 import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
@@ -90,13 +90,6 @@ function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWi
     />
   );
 }
-
-const formatDecimalCommaInput = (
-  value: string | number | null | undefined,
-  info?: { userTyping?: boolean },
-): string => fmtInputNumber(value, info).replace('.', ',');
-
-const parseDecimalCommaInput = (value: string | undefined): string => normalizeDecimal20_4(value);
 
 const LOCATION_TAB_FIELD_NAMES = new Set([
   'geometryType',
@@ -222,10 +215,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) → khi cột Vĩ độ hiện message
-  // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
-  // input thẳng hàng; chỉ chèn text "X bắt buộc" khi cần.
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -233,10 +225,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -892,24 +884,24 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="maxVesselDWT" {...labelProps('Cỡ tàu khai thác theo công bố (DWT)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item name="plannedVesselDWT" {...labelProps('Cỡ tàu khai thác theo quy hoạch')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} decimalSeparator="," formatter={formatDecimalCommaInput} parser={parseDecimalCommaInput} />
+                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1192,23 +1184,26 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
                 title: 'STT',
                 width: 60,
                 align: 'center' as const,
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
                 render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
               },
               {
                 title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                 key: 'lat',
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
                 render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
               },
               {
                 title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                 key: 'lng',
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
                 render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
               },
               {
                 title: '',
                 width: 50,
                 align: 'center' as const,
-                onCell: () => ({ style: { verticalAlign: 'top' } }),
+                onCell: () => ({ style: { verticalAlign: 'middle' } }),
                 render: (_v: any, record: any) => (
                   <Button
                     type="text"

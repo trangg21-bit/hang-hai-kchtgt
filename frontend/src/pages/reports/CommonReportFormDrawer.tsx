@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Form, Table, Input, InputNumber, Button } from 'antd';
+import { Form, Table, Input, Button } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { BankOutlined, AppstoreOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';

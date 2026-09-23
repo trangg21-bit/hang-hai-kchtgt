@@ -139,30 +139,48 @@ class TransferAreaServiceTest {
     }
 
     @Test
-    void buildMooringWaterAreaSummary_shouldIncludeMapParametersAndAnchorPointDetails() {
-        UUID waterAreaId = UUID.randomUUID();
-        TransferAreaMooringWaterArea waterArea = TransferAreaMooringWaterArea.builder()
-                .id(waterAreaId)
-                .transferAreaId(ID)
-                .description("Khu nước số 1")
-                .geometryType("POINT")
-                .coordinateSystem(1)
-                .displayRule("Độ, phút, giây (DMS)")
-                .build();
-        TransferAreaMooringWaterAreaAnchorPoint point = TransferAreaMooringWaterAreaAnchorPoint.builder()
-                .transferAreaMooringWaterAreaId(waterAreaId)
-                .name("Điểm neo A")
-                .latitude(new java.math.BigDecimal("20.123"))
-                .longitude(new java.math.BigDecimal("106.456"))
-                .build();
-        when(transferAreaMooringWaterAreaAnchorPointRepository
-                .findByTransferAreaMooringWaterAreaId(waterAreaId)).thenReturn(List.of(point));
+    void update_whenFieldsCleared_shouldSetFieldsToNull() {
+        entity.setDetailedLocation("Vị trí cũ");
+        entity.setOperationalFunctions("Công năng cũ");
+        entity.setShapeDescription("Hình dạng cũ");
+        entity.setDesignWaterDepth("Độ sâu TK cũ");
+        entity.setCurrentWaterDepth("Độ sâu HT cũ");
+        entity.setBottomElevationDesign("Cao trình cũ");
+        entity.setMaxVesselDWT("Trọng tải cũ");
+        entity.setRemarks("Ghi chú cũ");
+        entity.setPublicDecision("Quyết định cũ");
+        entity.setInvestmentAgreement("Thỏa thuận cũ");
 
-        String summary = service.buildMooringWaterAreaSummary(List.of(waterArea));
+        when(transferAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(transferAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        assertTrue(summary.contains("Khu nước số 1"));
-        assertTrue(summary.contains("Loại: Đối tượng điểm"));
-        assertTrue(summary.contains("Hệ quy chiếu: WGS-84"));
-        assertTrue(summary.contains("Điểm neo A [20.123, 106.456]"));
+        UpdateTransferAreaRequest req = UpdateTransferAreaRequest.builder()
+                .id(ID)
+                .transferAreaName("Khu chuyển tải Hải Phòng")
+                .detailedLocation("   ")
+                .operationalFunctions("")
+                .shapeDescription("   ")
+                .designWaterDepth("")
+                .currentWaterDepth("   ")
+                .bottomElevationDesign("")
+                .maxVesselDWT("   ")
+                .remarks("")
+                .publicDecision("   ")
+                .investmentAgreement("")
+                .build();
+
+        TransferAreaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(result.getDetailedLocation());
+        assertNull(result.getOperationalFunctions());
+        assertNull(result.getShapeDescription());
+        assertNull(result.getDesignWaterDepth());
+        assertNull(result.getCurrentWaterDepth());
+        assertNull(result.getBottomElevationDesign());
+        assertNull(result.getMaxVesselDWT());
+        assertNull(result.getRemarks());
+        assertNull(result.getPublicDecision());
+        assertNull(result.getInvestmentAgreement());
     }
 }

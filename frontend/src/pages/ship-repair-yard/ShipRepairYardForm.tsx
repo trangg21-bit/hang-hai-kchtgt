@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import dayjs from 'dayjs';
 import {
-  Row, Col, Form, Input, InputNumber, Select, Tabs,
+  Row, Col, Form, Input, Select, Tabs,
   Button, Space, Modal,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import type { UploadFile } from 'antd';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined } from '@ant-design/icons';
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
@@ -222,10 +223,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  // Hàng message LUÔN có mặt với chiều cao cố định (height 14px) → khi cột Vĩ độ hiện message
-  // còn cột Kinh độ không (hoặc ngược lại), tổng chiều cao 2 ô của nhóm vẫn bằng nhau và 2
-  // input thẳng hàng; chỉ chèn text "X bắt buộc" khi cần.
-  const messageRow = (
+  const hasError = started && inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasError ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -233,10 +233,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -635,28 +635,43 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const payload: Record<string, unknown> = {
         orgUnitId: vals.orgUnitId, portId: vals.portId,
         shipRepairYardCode: String(vals.shipRepairYardCode || '').trim() || undefined, shipRepairYardName: String(vals.shipRepairYardName || '').trim(),
-        pierId: vals.pierId || undefined,
-        provinceId: vals.provinceId ? (typeof vals.provinceId === 'number' ? vals.provinceId : VIETNAM_PROVINCES.indexOf(vals.provinceId) + 1) : undefined,
-        detailedLocation: vals.detailedLocation || undefined,
-        operationalStatus: vals.operationalStatus || undefined,
-        usageFunction: vals.usageFunction || undefined,
-        workshopArea: safeDecimal(vals.workshopArea),
-        vesselType: vals.vesselType || undefined,
-        vesselDwt: vals.vesselDwt || undefined,
-        businessType: vals.businessType || undefined,
-        activity: vals.activity || undefined,
-        slipwayCount: vals.slipwayCount != null && vals.slipwayCount !== '' ? Number(vals.slipwayCount) : undefined,
-        remarks: vals.remarks || undefined,
-        latitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].latitude : null,
-        longitude: currentGeometryType && validCoords.length > 0 ? validCoords[0].longitude : null,
-        coordinates: currentGeometryType ? (wktCoordinates || null) : null,
-        geometryType: currentGeometryType || null,
-        mapSymbolId: currentGeometryType ? (symbolIdVal || null) : null,
-        coordinateSystem: currentGeometryType && currentCoordSys != null ? Number(currentCoordSys) : null,
-        displayRule: currentGeometryType ? (currentDisplayRule === 'Độ, phút, giây (DMS)' || currentDisplayRule === 1 ? 1 : (Number(currentDisplayRule) || null)) : null,
+        pierId: vals.pierId || (isEdit ? null : undefined),
+        provinceId: vals.provinceId ? (typeof vals.provinceId === 'number' ? vals.provinceId : VIETNAM_PROVINCES.indexOf(vals.provinceId) + 1) : (isEdit ? null : undefined),
+        detailedLocation: cleanString(vals.detailedLocation),
+        operationalStatus: vals.operationalStatus || (isEdit ? null : undefined),
+        usageFunction: cleanString(vals.usageFunction),
+        workshopArea: cleanDecimal(vals.workshopArea),
+        vesselType: cleanString(vals.vesselType),
+        vesselDwt: cleanString(vals.vesselDwt),
+        businessType: cleanString(vals.businessType),
+        activity: cleanString(vals.activity),
+        slipwayCount: cleanNumber(vals.slipwayCount),
+        remarks: cleanString(vals.remarks),
+        latitude: currentGeometryType && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : null),
+        longitude: currentGeometryType && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : null),
+        coordinates: currentGeometryType ? (wktCoordinates || null) : (isEdit ? null : null),
+        geometryType: currentGeometryType || (isEdit ? null : null),
+        mapSymbolId: currentGeometryType ? (symbolIdVal || null) : (isEdit ? null : null),
+        coordinateSystem: currentGeometryType && currentCoordSys != null ? Number(currentCoordSys) : (isEdit ? null : null),
+        displayRule: currentGeometryType ? (currentDisplayRule === 'Độ, phút, giây (DMS)' || currentDisplayRule === 1 ? 1 : (Number(currentDisplayRule) || null)) : (isEdit ? null : null),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -791,15 +806,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
               rules={[decimalNumberRule]}
               getValueFromEvent={getValueFromEvent20}
             >
-              <NumberInputWithCount
-                min={0}
-                step={0.01}
-                placeholder="0"
-                maxLength={20}
-                style={numberInputStyle}
-                parser={parseNumber20}
-                formatter={fmtInputNumber}
-              />
+              <NumberInputWithCount allowDecimal min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
             </Form.Item>
           </Col>
         </Row>
@@ -1034,24 +1041,26 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
                       title: 'STT',
                       width: 60,
                       align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
                     },
                     {
                       title: 'Vĩ độ (Latitude - N)',
                       key: 'lat',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                     },
                     {
                       title: 'Kinh độ (Longitude - E)',
                       key: 'lng',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                     },
                     {
                       title: '',
                       width: 50,
                       align: 'center' as const,
-                      // Align with the inputs, excluding the reserved validation message row.
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: any, record: any) => (
                         <Button
                           type="text"

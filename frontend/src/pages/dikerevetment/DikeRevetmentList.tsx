@@ -19,7 +19,6 @@ import {
   DatePicker,
   Form,
   Input,
-  InputNumber,
   Modal,
   Row,
   Select,
@@ -28,6 +27,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -134,9 +134,13 @@ import { fmtInputNumber, fmtNum, normalizeSafeNumber } from '../../utils/numFmt'
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 import {
   decimalNumberRule,
+  decimalNumberRuleSigned,
   getValueFromEvent20,
+  getValueFromEvent20Signed,
   parseNumber20,
+  parseNumber20Signed,
   safeDecimal,
+  safeDecimalSigned,
 } from '../../utils/numberRuleHelper';
 
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
@@ -333,8 +337,8 @@ function renderCoordinatesDisplay(val: string | null) {
 const STATUS_TAB_LIST = [
   { key: '', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: DIKE_REVETMENT_STATUS_LABELS.DRAFT, color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: DIKE_REVETMENT_STATUS_LABELS.PENDING_APPROVAL, color: statusAttention },
-  { key: 'APPROVED_LEVEL1', label: DIKE_REVETMENT_STATUS_LABELS.APPROVED_LEVEL1, color: '#0284C7' },
+  { key: 'PENDING_APPROVAL', label: DIKE_REVETMENT_STATUS_LABELS.PENDING_APPROVAL, color: actionPrimary },
+  { key: 'APPROVED_LEVEL1', label: DIKE_REVETMENT_STATUS_LABELS.APPROVED_LEVEL1, color: statusAttention },
   { key: 'APPROVED', label: DIKE_REVETMENT_STATUS_LABELS.APPROVED, color: statusOperational },
   { key: 'REJECTED_LEVEL1', label: DIKE_REVETMENT_STATUS_LABELS.REJECTED_LEVEL1, color: statusCritical },
   { key: 'REJECTED_LEVEL2', label: DIKE_REVETMENT_STATUS_LABELS.REJECTED_LEVEL2, color: statusCritical },
@@ -520,11 +524,7 @@ const renderDmsGroup = (
       key: 's', base: 'Giây', value: sVal, max: 59.99,
       radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
       step: 0.01,
-      formatter: (val?: number | string) => {
-        if (val === undefined || val === null || val === '') return '';
-        const num = typeof val === 'number' ? val : parseFloat(val);
-        return isNaN(num) ? '' : num.toFixed(2);
-      },
+      formatter: fmtInputNumber,
       msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
@@ -553,7 +553,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasError = started && inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasError ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -561,10 +563,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -598,13 +600,13 @@ export default function DikeRevetmentList() {
   const [activeTab, setActiveTab] = useState('');
 
   // ── Sorting state (mặc định: Ngày cập nhật giảm dần) ───────────────
-  const [sortField, setSortField] = useState<string | undefined>('updatedByName');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
   const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
     if (!order) {
-      setSortField('updatedByName');
-      setSortOrder('desc');
+      setSortField(undefined);
+      setSortOrder(null);
     } else {
       setSortField(field);
       setSortOrder(order);
@@ -900,7 +902,8 @@ export default function DikeRevetmentList() {
   const operatingUnitOptions = useMemo(() => operatingUnits.map((o) => ({ value: o.id, label: o.name })), [operatingUnits]);
   const operatingUnitNameById = useCallback((id?: string): string | null => {
     if (!id) return null;
-    return operatingUnits.find((o) => o.id === id)?.name || id;
+    // Không tìm thấy đơn vị trong danh mục → null (trống), KHÔNG trả UUID thô
+    return operatingUnits.find((o) => o.id === id)?.name ?? null;
   }, [operatingUnits]);
 
   // ── Init: organizations (DataScope + auto mặc định theo user) — chuẩn màn /berth ──
@@ -1096,8 +1099,8 @@ export default function DikeRevetmentList() {
     setFilterUnitId(defaultOrg === '__all__' ? undefined : defaultOrg);
     setFilterCommissioningYear(undefined);
     setFilterUpdatedRange(null);
-    setSortField('updatedByName');
-    setSortOrder('desc');
+    setSortField(undefined);
+    setSortOrder(null);
     setActiveTab('');
     setPage(1);
   };
@@ -1320,42 +1323,52 @@ export default function DikeRevetmentList() {
       const coordinates = hasGeom && validCoords.length > 0
         ? serializeCoordinatesToWkt(validCoords, values.geometryType || 'LINE')
         : null;
-      setSubmitting(true);
+      const trimOrNull = (v: unknown): string | null => {
+        if (v == null) return null;
+        const s = String(v).trim();
+        return s === '' ? null : s;
+      };
+      const dateOrNull = (v: unknown): string | null => {
+        if (!v) return null;
+        return dayjs.isDayjs(v) ? v.format('YYYY-MM-DD') : String(v);
+      };
+      const yearOrNull = (v: unknown): number | null => {
+        if (!v) return null;
+        if (dayjs.isDayjs(v)) return Number(v.format('YYYY'));
+        const n = Number(v);
+        return Number.isNaN(n) ? null : n;
+      };
+      const decimalOrNull = (v: unknown): number | string | null => {
+        const dec = safeDecimal(v);
+        return dec !== undefined ? dec : null;
+      };
+      // Cao trình đỉnh cho phép giá trị âm — dùng bản GIỮ dấu '-' khi dựng payload
+      const decimalOrNullSigned = (v: unknown): number | string | null => {
+        const dec = safeDecimalSigned(v);
+        return dec !== undefined ? dec : null;
+      };
+
       const payload: CreateDikeRevetmentRequest = {
         dikeRevetmentType: values.dikeRevetmentType,
-        location: values.location,
-        locationDetail: values.locationDetail,
-        dikeRevetmentName: values.dikeRevetmentName,
-        seaportId: values.seaportId,
-        operatingUnitId: values.operatingUnitId,
-        constructionDate: values.constructionDate
-          ? (dayjs.isDayjs(values.constructionDate)
-              ? values.constructionDate.format('YYYY-MM-DD')
-              : String(values.constructionDate))
-          : undefined,
-        lastMaintenanceYear: values.lastMaintenanceYear
-          ? (dayjs.isDayjs(values.lastMaintenanceYear)
-              ? Number(values.lastMaintenanceYear.format('YYYY'))
-              : Number(values.lastMaintenanceYear))
-          : undefined,
-        length: safeDecimal(values.length),
-        crestElevation: safeDecimal(values.crestElevation),
-        commissioningDate: values.commissioningDate
-          ? (dayjs.isDayjs(values.commissioningDate)
-              ? values.commissioningDate.format('YYYY-MM-DD')
-              : String(values.commissioningDate))
-          : undefined,
-        height: safeDecimal(values.height),
-        status: values.status,
-        orgUnitId: values.orgUnitId,
-        code: values.code,
+        location: trimOrNull(values.location) ?? '',
+        locationDetail: trimOrNull(values.locationDetail),
+        dikeRevetmentName: trimOrNull(values.dikeRevetmentName) ?? '',
+        seaportId: values.seaportId || null,
+        operatingUnitId: values.operatingUnitId || null,
+        constructionDate: dateOrNull(values.constructionDate),
+        lastMaintenanceYear: yearOrNull(values.lastMaintenanceYear),
+        length: decimalOrNull(values.length),
+        crestElevation: decimalOrNullSigned(values.crestElevation),
+        commissioningDate: dateOrNull(values.commissioningDate),
+        height: decimalOrNull(values.height),
+        status: trimOrNull(values.status),
+        orgUnitId: values.orgUnitId || null,
+        code: trimOrNull(values.code),
         geometryType: hasGeom ? values.geometryType : null,
         coordinates: hasGeom ? coordinates : null,
         symbolId: hasGeom && values.symbolId ? values.symbolId : null,
+        note: trimOrNull(values.note),
       };
-      if (values.note !== undefined) {
-        (payload as any).note = values.note;
-      }
 
       // Chuẩn phê duyệt 2 cấp (approval-2-level-spec.md 3.2/3.9 + infrastructure-screen-template §3.6):
       // - draft  : Lưu tạm — tạo / giữ DRAFT.
@@ -2144,7 +2157,7 @@ export default function DikeRevetmentList() {
       ),
     },
     {
-      key: 'codeAndName',
+      key: 'dikeRevetmentName',
       label: <span>Tên/Mã đê kè</span>,
       dataIndex: 'dikeRevetmentName',
       width: 260,
@@ -2261,7 +2274,7 @@ export default function DikeRevetmentList() {
       },
     },
     {
-      key: 'updatedBy',
+      key: 'updatedByName',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedByName',
       width: 210,
@@ -3449,7 +3462,6 @@ export default function DikeRevetmentList() {
                                 style={formFieldStyle}
                                 validateStatus={atMax.locationDetail ? 'error' : undefined}
                                 help={atMax.locationDetail ? 'Đã đạt tối đa 500 ký tự' : undefined}
-                                rules={[{ required: true, message: 'Vui lòng nhập địa điểm chi tiết' }]}
                               >
                                 <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
                               </Form.Item>
@@ -3492,6 +3504,7 @@ export default function DikeRevetmentList() {
                                 ]}
                               >
                                 <NumberInputWithCount
+                                  allowDecimal
                                   min={0}
                                   step={0.01}
                                   placeholder="0"
@@ -3511,6 +3524,7 @@ export default function DikeRevetmentList() {
                                 rules={[decimalNumberRule]}
                               >
                                 <NumberInputWithCount
+                                  allowDecimal
                                   min={0}
                                   step={0.01}
                                   placeholder="0"
@@ -3528,15 +3542,17 @@ export default function DikeRevetmentList() {
                                 name="crestElevation"
                                 {...labelProps('Cao trình đỉnh (m)')}
                                 style={formFieldStyle}
-                                getValueFromEvent={getValueFromEvent20}
-                                rules={[decimalNumberRule]}
+                                getValueFromEvent={getValueFromEvent20Signed}
+                                rules={[decimalNumberRuleSigned]}
                               >
                                 <NumberInputWithCount
+                                  allowDecimal
+                                  allowNegative
                                   step={0.01}
                                   placeholder="0"
                                   style={numberInputStyle}
                                   maxLength={20}
-                                  parser={parseNumber20}
+                                  parser={parseNumber20Signed}
                                   formatter={fmtInputNumber}
                                 />
                               </Form.Item>
@@ -3773,6 +3789,7 @@ export default function DikeRevetmentList() {
                                   key: 'stt',
                                   width: 60,
                                   align: 'center',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, __: any, i: number) => (
                                     <span style={{ fontSize: 13.5, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
                                   ),
@@ -3780,11 +3797,13 @@ export default function DikeRevetmentList() {
                                 {
                                   title: 'Vĩ độ (Latitude - N)',
                                   key: 'lat',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, r: any) => renderDmsGroup(r.latD, r.latM, r.latS, 90, (d, m, s) => updateGpsPoint(r._idx, 'lat', d, m, s)),
                                 },
                                 {
                                   title: 'Kinh độ (Longitude - E)',
                                   key: 'lng',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, r: any) => renderDmsGroup(r.lngD, r.lngM, r.lngS, 180, (d, m, s) => updateGpsPoint(r._idx, 'lng', d, m, s)),
                                 },
                                 {
@@ -3792,7 +3811,7 @@ export default function DikeRevetmentList() {
                                   key: 'actions',
                                   width: 50,
                                   align: 'center' as const,
-                                  onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 10 } }),
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, r: any) => (
                                     <Button
                                       type="text"

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
-  Tabs, Row, Col, Input, Select, InputNumber, DatePicker, Form, Space, Button, Modal, Drawer,
+  Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, Drawer,
   type InputNumberProps,
 } from 'antd';
+import InputNumber from '../../components/shared/LocalizedInputNumber';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -25,13 +26,17 @@ import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { userService } from '../../services/userService';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
-import { OrgUnitTreeSelect } from '../../components/org-unit';
+import { OrgUnitTreeSelect, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
+import {
+  buildStormShelterBuoyBerthQuery,
+  toStormShelterBuoyBerthOptions,
+} from './stormShelterBuoyBerthOptions';
 import {
   textSecondary, textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
@@ -356,6 +361,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   const [waterwayOptions, setWaterwayOptions] = useState<{ value: string; label: string }[]>([]);
   const [loadingWaterways, setLoadingWaterways] = useState(false);
   const [buoyStationOptions, setBuoyStationOptions] = useState<{ value: string; label: string }[]>([]);
+  const [loadingBuoyStations, setLoadingBuoyStations] = useState(false);
   const [symbols, setSymbols] = useState<IconSymbol[]>([]);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
   const [stormShelterCodeLoading, setStormShelterCodeLoading] = useState(false);
@@ -523,31 +529,82 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     }
   }, [form]);
 
-  // Load buoy stations
+  // Load approved buoy stations belonging to the selected management unit.
   useEffect(() => {
-    buoyBerthCRUD.getOptions()
-      .then(items => setBuoyStationOptions(items.map(b => ({ value: b.id, label: b.buoyBerthName || b.buoyBerthCode || '' }))))
-      .catch(() => {});
-  }, []);
+    let cancelled = false;
+    const loadBuoyStations = async () => {
+      await Promise.resolve();
+      if (cancelled) return;
 
-  // Filter ports when orgUnit changes
+      if (!watchedOrgUnitId) {
+        setBuoyStationOptions([]);
+        setLoadingBuoyStations(false);
+        return;
+      }
+
+      setBuoyStationOptions([]);
+      setLoadingBuoyStations(true);
+      try {
+        const response = await buoyBerthCRUD.search(
+          buildStormShelterBuoyBerthQuery(String(watchedOrgUnitId)),
+        );
+        if (cancelled) return;
+        const options = toStormShelterBuoyBerthOptions(response.data || []);
+        setBuoyStationOptions(options);
+        const currentId = form.getFieldValue('buoyStationId');
+        if (currentId && !options.some((option) => option.value === currentId)) {
+          form.setFieldValue('buoyStationId', undefined);
+        }
+      } catch {
+        if (!cancelled) setBuoyStationOptions([]);
+      } finally {
+        if (!cancelled) setLoadingBuoyStations(false);
+      }
+    };
+
+    void loadBuoyStations();
+
+    return () => { cancelled = true; };
+  }, [form, watchedOrgUnitId]);
+
+  // Chỉ hiển thị cảng biển đã phê duyệt thuộc đúng đơn vị quản lý đã chọn
+  // (bao gồm các đơn vị con). Không cho qua bản ghi thiếu orgUnitId vì sẽ làm
+  // dropdown hiển thị cảng ngoài phạm vi quản lý.
   useEffect(() => {
+    let cancelled = false;
     if (!watchedOrgUnitId) {
       setPortOptions([]);
       setWaterwayOptions([]);
-      return;
+      return () => { cancelled = true; };
     }
     loadWaterwayOptions(watchedOrgUnitId);
     (async () => {
       setLoadingPorts(true);
       try {
-        const allPorts = await portCRUD.getOptions();
-        const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === watchedOrgUnitId);
-        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
-      } catch { /* silent */ }
-      finally { setLoadingPorts(false); }
+        const allPorts = await portCRUD.getOptions({
+          approvalStatus: 'APPROVED',
+          orgUnitId: String(watchedOrgUnitId),
+        });
+        if (cancelled) return;
+        const allowedOrgIds = resolveOrgSubtreeIds(orgUnits, String(watchedOrgUnitId));
+        const filtered = allPorts.filter((p) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)));
+        const options = filtered.map((p) => ({
+          value: p.id,
+          label: p.portCode && p.portName ? `${p.portCode} - ${p.portName}` : (p.portName || p.portCode || p.id),
+        }));
+        setPortOptions(options);
+        const currentPortId = form.getFieldValue('portId');
+        if (currentPortId && !options.some((option) => option.value === currentPortId)) {
+          form.setFieldsValue({ portId: undefined, stormShelterCode: undefined });
+        }
+      } catch {
+        if (!cancelled) setPortOptions([]);
+      } finally {
+        if (!cancelled) setLoadingPorts(false);
+      }
     })();
-  }, [watchedOrgUnitId, loadWaterwayOptions]);
+    return () => { cancelled = true; };
+  }, [watchedOrgUnitId, loadWaterwayOptions, orgUnits, form]);
 
   // Auto-generate code when portId selected (for create mode)
   useEffect(() => {
@@ -707,7 +764,11 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   }, [isEdit, id, form]);
 
   const handleOrgUnitChange = () => {
-    form.setFieldsValue({ portId: undefined, stormShelterCode: undefined });
+    form.setFieldsValue({
+      portId: undefined,
+      buoyStationId: undefined,
+      stormShelterCode: undefined,
+    });
   };
 
   const handlePortChange = () => {
@@ -1265,7 +1326,17 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
               </Col>
               <Col span={12}>
                 <Form.Item name="buoyStationId" {...labelProps('Thuộc bến phao')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn bến phao..." options={buoyStationOptions} showSearch allowClear optionFilterProp="label" style={selectStyle} />
+                  <Select
+                    placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn bến phao...'}
+                    options={buoyStationOptions}
+                    loading={loadingBuoyStations}
+                    disabled={!watchedOrgUnitId}
+                    showSearch
+                    allowClear
+                    optionFilterProp="label"
+                    notFoundContent={loadingBuoyStations ? 'Đang tải...' : 'Không có bến phao đã phê duyệt thuộc đơn vị quản lý'}
+                    style={selectStyle}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -1717,7 +1788,6 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
               <DetailTable
                 size="small"
                 scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                scroll={{ x: 590 }}
                 dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
                 rowKey={(r: GpsCoordinateItem) => String(r._idx)}
                 emptyText="Chưa có tọa độ GPS nào"
@@ -1726,45 +1796,35 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                     title: 'STT',
                     width: 60,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'center' } }),
-                    render: (_v: unknown, _r: unknown, idx: number) => (
-                      <div style={{ textAlign: 'center', width: '100%', lineHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {idx + 1}
-                      </div>
-                    ),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                    render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
                   },
                   {
-                    title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                    title: 'Vĩ độ (Latitude - N)',
                     key: 'lat',
-                    width: 240,
-                    align: 'left' as const,
-                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lat', d, m, s)),
                   },
                   {
-                    title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
+                    title: 'Kinh độ (Longitude - E)',
                     key: 'lng',
-                    width: 240,
-                    align: 'left' as const,
-                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'left' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lng', d, m, s)),
                   },
                   {
                     title: '',
                     width: 50,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'middle', textAlign: 'center' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Button
-                          type="text"
-                          danger
-                          icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                          onClick={() => removeCoordinate(record._idx ?? 0)}
-                          style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Xóa tọa độ"
-                        />
-                      </div>
+                      <Button
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                        onClick={() => removeCoordinate(record._idx ?? 0)}
+                        style={{ width: 32, height: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Xóa tọa độ"
+                      />
                     ),
                   },
                 ]}
@@ -2401,38 +2461,40 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
             inline={true}
             defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
+            value={{
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+                  .map((c) => ({
+                    latitude: dmToDd(c.latD, c.latM, c.latS),
+                    longitude: dmToDd(c.lngD, c.lngM, c.lngS),
+                  })),
+                watchedGeometryType || 'POINT',
+              ),
+              symbolId: form.getFieldValue('mapSymbolId'),
+            }}
             onChange={(val) => {
               if (val?.coordinates) {
                 const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
                 if (points.length > 0) {
-                  setCoordinateList((prev) => {
-                    const current = Array.isArray(prev) ? prev : [];
-                    const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
-                      c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(current
-                      .filter(isFilled)
-                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                    const fresh = points.filter(p => !existingKeys.has(key(p)));
-                    const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>) => ps.map(p => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    let fi = 0;
-                    const merged = current.map((row) => {
-                      if (isFilled(row)) return row;
-                      if (fi >= fresh.length) return row;
-                      const p = fresh[fi];
-                      fi += 1;
-                      const rows = toDmsRows([p]);
-                      return rows[0];
-                    });
-                    merged.push(...toDmsRows(fresh.slice(fi)));
-                    return merged;
+                  const rows = points.map((point) => {
+                    const latDms = ddToDms(point.latitude);
+                    const lngDms = ddToDms(point.longitude);
+                    return {
+                      latD: latDms.d,
+                      latM: latDms.m,
+                      latS: latDms.s,
+                      lngD: lngDms.d,
+                      lngM: lngDms.m,
+                      lngS: lngDms.s,
+                    };
                   });
+                  setCoordinateList((val.geometryType || watchedGeometryType) === 'POINT' ? [rows[0]] : rows);
                 }
               }
+              if (val?.geometryType) form.setFieldValue('geometryType', val.geometryType);
+              if (val?.symbolId) form.setFieldValue('mapSymbolId', val.symbolId);
             }}
           />
         </div>

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Button,
+  DatePicker,
   Form,
   Input,
   Select,
@@ -14,7 +15,7 @@ import type { SpatialObjectCategory } from '../../services/spatialObjectCategory
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as MapSymbolItem } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, FilterTableLayout, DataTable, type ScreenHeaderAction } from '../../components/list-view';
+import { ScreenHeader, FilterTableLayout, DataTable, type ScreenHeaderAction, type DataTableColumn } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -25,9 +26,8 @@ import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/s
 import PolygonObjectForm, { type PolygonObjectFormRef } from './PolygonObjectForm';
 import PolygonObjectDetailContent from './PolygonObjectDetailContent';
 import { userService } from '../../services/userService';
-import toast from '../../components/ToastNotification';
+import { toast } from '../../components/ToastNotification';
 import {
-  actionPrimary,
   statusOperational,
   statusCritical,
   textSecondary,
@@ -50,26 +50,32 @@ import {
   colors,
   formatUserDisplayName,
   isUuidString,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 const fontSizeMd = 13.5;
 
-const STATUS_OPTIONS = [
-  { value: 1, label: 'Sử dụng' },
-  { value: 0, label: 'Khóa' },
-];
-
 export default function PolygonObjectList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   // ── Filter states ────────────────────────────────────────────────
-  const [keyword, setKeyword] = useState('');
+  const [filterCode, setFilterCode] = useState('');
+  const [filterName, setFilterName] = useState('');
   const [filterIconId, setFilterIconId] = useState<string | undefined>();
-  const [filterStatus, setFilterStatus] = useState<number | undefined>();
+  const [updatedDateRange, setUpdatedDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [activeStatusTab, setActiveStatusTab] = useState<string>('all');
-  const [tabCounts, setTabCounts] = useState<{ all: number; active: number; locked: number }>({ all: 0, active: 0, locked: 0 });
+  const [tabCounts, setTabCounts] = useState<{ all: number; active: number; locked: number; deleted: number }>({
+    all: 0,
+    active: 0,
+    locked: 0,
+    deleted: 0,
+  });
+
+  // ── Sort states ──────────────────────────────────────────────────
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>();
 
   // ── Pagination states ────────────────────────────────────────────
   const [page, setPage] = useState(1);
@@ -113,11 +119,12 @@ export default function PolygonObjectList() {
     symbolService.list({ pageSize: 1000 }).then((res) => setSymbols(res.data || [])).catch(() => {});
   }, []);
 
-  // Load Users for displaying creator/updater names without UUID fallback
+  // Load Users for displaying creator/updater names without UUID fallback (Bug 6 fix)
   useEffect(() => {
     userService.list({ pageSize: 1000 }).then(res => {
+      const users = res.data || (res as any).content || [];
       const map = new Map<string, string>();
-      (res?.items || []).forEach(u => {
+      users.forEach((u: any) => {
         const humanName = u.fullName || u.username;
         if (humanName && !isUuidString(humanName)) {
           map.set(u.id, humanName);
@@ -132,38 +139,60 @@ export default function PolygonObjectList() {
     setIsLoading(true);
     setIsError(false);
     try {
+      let isDeleted: boolean | undefined = undefined;
+      let status: number | undefined = undefined;
+      if (activeStatusTab === 'active') {
+        status = 1;
+        isDeleted = false;
+      } else if (activeStatusTab === 'locked') {
+        status = 0;
+        isDeleted = false;
+      } else if (activeStatusTab === 'deleted') {
+        isDeleted = true;
+      }
+
       const res = await spatialObjectCategoryService.list({
         page,
         pageSize,
-        search: keyword.trim() || undefined,
-        status: filterStatus,
+        code: filterCode.trim() || undefined,
+        name: filterName.trim() || undefined,
+        iconId: filterIconId,
+        status,
+        isDeleted,
         geometryType: 3, // Polygon
+        fromUpdatedDate: updatedDateRange?.[0] ? updatedDateRange[0].startOf('day').toISOString() : undefined,
+        toUpdatedDate: updatedDateRange?.[1] ? updatedDateRange[1].endOf('day').toISOString() : undefined,
+        sortField,
+        sortOrder,
       });
-      setDataSource(res.content || []);
-      setTotal(res.totalElements || 0);
+      setDataSource(res?.content || []);
+      setTotal(res?.totalElements || 0);
     } catch (err: unknown) {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách danh mục đối tượng vùng'));
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, keyword, filterStatus]);
+  }, [page, pageSize, filterCode, filterName, filterIconId, activeStatusTab, updatedDateRange, sortField, sortOrder]);
 
   // ── Fetch counts for status tabs ────────────────────────────────
   const fetchCounts = useCallback(async () => {
     try {
-      const [resAll, resActive, resLocked] = await Promise.all([
+      const [resAll, resActive, resLocked, resDeleted] = await Promise.all([
         spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 3 }),
-        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 3, status: 1 }),
-        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 3, status: 0 }),
+        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 3, status: 1, isDeleted: false }),
+        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 3, status: 0, isDeleted: false }),
+        spatialObjectCategoryService.list({ page: 1, pageSize: 1, geometryType: 3, isDeleted: true }),
       ]);
       const activeCount = resActive?.totalElements || 0;
       const lockedCount = resLocked?.totalElements || 0;
-      const allCount = resAll?.totalElements || activeCount + lockedCount;
+      const deletedCount = resDeleted?.totalElements || 0;
+      const allCount = resAll?.totalElements || (activeCount + lockedCount + deletedCount);
       setTabCounts({
         all: allCount,
         active: activeCount,
         locked: lockedCount,
+        deleted: deletedCount,
       });
     } catch {
       // ignore
@@ -189,22 +218,15 @@ export default function PolygonObjectList() {
   }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
-    setKeyword('');
+    setFilterCode('');
+    setFilterName('');
     setFilterIconId(undefined);
-    setFilterStatus(undefined);
-    setActiveStatusTab('all');
+    setUpdatedDateRange(null);
     setPage(1);
   }, []);
 
   const handleStatusTabChange = useCallback((key: string) => {
     setActiveStatusTab(key);
-    if (key === 'all') {
-      setFilterStatus(undefined);
-    } else if (key === 'active') {
-      setFilterStatus(1);
-    } else if (key === 'locked') {
-      setFilterStatus(0);
-    }
     setPage(1);
   }, []);
 
@@ -248,7 +270,7 @@ export default function PolygonObjectList() {
           id: `create-${record.id}`,
           action: 'CREATE',
           status: 'Tạo mới',
-          actor: record.createdBy ? String(record.createdBy) : 'Quản trị viên',
+          actor: formatUserDisplayName(record.createdBy, (record as any).createdByName, userMap) || 'Quản trị viên',
           timestamp: record.createdAt,
           description: `Khởi tạo danh mục đối tượng vùng "${record.name}"`,
           changes: [
@@ -267,7 +289,7 @@ export default function PolygonObjectList() {
           id: `update-${record.id}`,
           action: 'UPDATE',
           status: 'Cập nhật',
-          actor: record.updatedBy ? String(record.updatedBy) : record.createdBy ? String(record.createdBy) : 'Quản trị viên',
+          actor: formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName) || 'Quản trị viên',
           timestamp: record.updatedAt,
           description: `Cập nhật thông tin danh mục đối tượng vùng "${record.name}"`,
           changes: [
@@ -281,7 +303,7 @@ export default function PolygonObjectList() {
     } finally {
       setHistoryLoading(false);
     }
-  }, [symbols]);
+  }, [symbols, userMap]);
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: SpatialObjectCategory) => {
@@ -307,7 +329,7 @@ export default function PolygonObjectList() {
   }, [deleteTarget, fetchData, fetchCounts]);
 
   // ── DataTable Columns ───────────────────────────────────────────
-  const columns = useMemo(() => [
+  const columns: DataTableColumn[] = useMemo(() => [
     {
       key: 'stt',
       label: 'STT',
@@ -315,8 +337,8 @@ export default function PolygonObjectList() {
       fixed: 'left' as const,
       align: 'center' as const,
       type: 'mono' as const,
-      render: (_: unknown, __: SpatialObjectCategory, idx: number) => (
-        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span>
+      render: (_: unknown, __: SpatialObjectCategory, idx?: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
       ),
     },
     {
@@ -324,7 +346,8 @@ export default function PolygonObjectList() {
       label: 'Tên đối tượng vùng',
       dataIndex: 'name',
       width: 280,
-      fixed: 'left' as const,
+      sortable: true,
+      sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : sortOrder === 'desc' ? 'descend' : null) : null,
       ellipsis: false,
       render: (name: string, record: SpatialObjectCategory) => (
         <div style={{ lineHeight: '1.4' }}>
@@ -363,7 +386,7 @@ export default function PolygonObjectList() {
       key: 'icon',
       label: 'Biểu tượng',
       dataIndex: 'iconId',
-      width: 120,
+      width: 160,
       align: 'center' as const,
       render: (_: unknown, record: SpatialObjectCategory) => {
         const sym = symbols.find((s) => s.id === record.iconId);
@@ -405,6 +428,8 @@ export default function PolygonObjectList() {
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedBy',
       width: 220,
+      sortable: true,
+      sortOrder: sortField === 'updatedBy' || sortField === 'updatedAt' ? (sortOrder === 'asc' ? 'ascend' : sortOrder === 'desc' ? 'descend' : null) : null,
       ellipsis: false,
       render: (v: string | null, record: SpatialObjectCategory) => {
         const name = formatUserDisplayName(v, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName);
@@ -438,10 +463,11 @@ export default function PolygonObjectList() {
       width: 140,
       align: 'center' as const,
       ellipsis: false,
-      render: (status: number) => {
+      render: (status: number, record: SpatialObjectCategory) => {
+        const isDeleted = Boolean(record.deletedAt);
         const isOperational = status === 1;
-        const color = isOperational ? statusOperational : statusCritical;
-        const label = isOperational ? 'Sử dụng' : 'Khóa';
+        const color = isDeleted ? statusCritical : (isOperational ? statusOperational : statusCritical);
+        const label = isDeleted ? 'Đã xóa' : (isOperational ? 'Sử dụng' : 'Khóa');
         return (
           <span
             style={{
@@ -463,36 +489,47 @@ export default function PolygonObjectList() {
         );
       },
     },
-  ], [page, pageSize, symbols, userMap, openDetailDrawer]);
+  ], [page, pageSize, symbols, userMap, openDetailDrawer, sortField, sortOrder]);
 
   // ── Row Actions ──────────────────────────────────────────────────
-  const rowActions = useCallback((record: SpatialObjectCategory) => [
-    {
-      key: 'view',
-      label: 'Xem chi tiết',
-      icon: icons.view,
-      onClick: () => openDetailDrawer(record),
-    },
-    {
-      key: 'edit',
-      label: 'Chỉnh sửa',
-      icon: icons.edit,
-      onClick: () => openEditDrawer(record),
-    },
-    ...(hasPerm('polygonobject:history') || hasPerm('gispolygon:history') || hasPerm('data:history') ? [{
-      key: 'history',
-      label: 'Lịch sử',
-      icon: icons.history,
-      onClick: () => void openHistoryDrawer(record),
-    }] : []),
-    {
-      key: 'delete',
-      label: 'Xóa',
-      icon: icons.delete,
-      danger: true,
-      onClick: () => openDeleteModal(record),
-    },
-  ], [openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
+  const rowActions = useCallback((record: SpatialObjectCategory) => {
+    const isDeleted = Boolean(record.deletedAt);
+    const actions: any[] = [];
+    if (hasPerm('data:read')) {
+      actions.push({
+        key: 'view',
+        label: 'Xem chi tiết',
+        icon: icons.view,
+        onClick: () => openDetailDrawer(record),
+      });
+    }
+    if (!isDeleted && (hasPerm('data:update') || hasPerm('data:write'))) {
+      actions.push({
+        key: 'edit',
+        label: 'Chỉnh sửa',
+        icon: icons.edit,
+        onClick: () => openEditDrawer(record),
+      });
+    }
+    if (hasPerm('polygonobject:history') || hasPerm('gispolygon:history') || hasPerm('data:history')) {
+      actions.push({
+        key: 'history',
+        label: 'Lịch sử',
+        icon: icons.history,
+        onClick: () => void openHistoryDrawer(record),
+      });
+    }
+    if (!isDeleted && hasPerm('data:delete')) {
+      actions.push({
+        key: 'delete',
+        label: 'Xóa',
+        icon: icons.delete,
+        danger: true,
+        onClick: () => openDeleteModal(record),
+      });
+    }
+    return actions;
+  }, [hasPerm, openDetailDrawer, openEditDrawer, openHistoryDrawer, openDeleteModal]);
 
   // ── Header Actions ───────────────────────────────────────────────
   const headerActions = useMemo(() => {
@@ -514,13 +551,27 @@ export default function PolygonObjectList() {
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: spaceSm }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Từ khóa tìm kiếm
+          Mã đối tượng
         </div>
         <Input
-          placeholder="Tìm theo mã, tên đối tượng..."
+          placeholder="Nhập mã đối tượng..."
           allowClear
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          value={filterCode}
+          onChange={(e) => setFilterCode(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+        />
+      </div>
+
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Tên đối tượng
+        </div>
+        <Input
+          placeholder="Nhập tên đối tượng..."
+          allowClear
+          value={filterName}
+          onChange={(e) => setFilterName(e.target.value)}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
         />
@@ -547,24 +598,24 @@ export default function PolygonObjectList() {
 
       <div style={{ marginBottom: spaceFormField }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Trạng thái
+          Ngày cập nhật
         </div>
-        <Select
-          placeholder="Tất cả trạng thái"
-          allowClear
-          value={filterStatus}
-          onChange={(val) => setFilterStatus(val)}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          options={STATUS_OPTIONS}
+        <DatePicker.RangePicker
+          {...getRangePickerProps({
+            value: updatedDateRange,
+            onChange: (dates: any) => setUpdatedDateRange(dates as any),
+            style: { width: '100%', borderRadius: radiusPill, height: 40 },
+          })}
         />
       </div>
     </>
   );
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: tabCounts.all, color: actionPrimary, active: activeStatusTab === 'all' },
+    { key: 'all', label: 'Tất cả', count: tabCounts.all, color: '#0E6FD6', active: activeStatusTab === 'all' },
     { key: 'active', label: 'Sử dụng', count: tabCounts.active, color: statusOperational, active: activeStatusTab === 'active' },
     { key: 'locked', label: 'Khóa', count: tabCounts.locked, color: statusCritical, active: activeStatusTab === 'locked' },
+    { key: 'deleted', label: 'Đã xóa', count: tabCounts.deleted, color: statusCritical, active: activeStatusTab === 'deleted' },
   ];
 
   const renderContent = () => {
@@ -587,13 +638,18 @@ export default function PolygonObjectList() {
           dataSource={dataSource}
           rowKey="id"
           rowActions={rowActions}
+          onSort={(field, order) => {
+            setSortField(order ? field : undefined);
+            setSortOrder(order || undefined);
+            setPage(1);
+          }}
           scroll={{ x: 'max-content' }}
         />
         <Pagination
           total={total}
           current={page}
           pageSize={pageSize}
-          pageSizeOptions={[10, 20, 50]}
+          pageSizeOptions={[20, 50, 100]}
           onChange={(p, sz) => {
             setPage(p);
             if (sz) setPageSize(sz);
@@ -772,6 +828,7 @@ export default function PolygonObjectList() {
           entityName={historyTarget?.name || 'đối tượng vùng'}
           records={historyRecords}
           loading={historyLoading}
+          userMap={userMap}
         />
 
         {/* ── Delete Confirmation Modal ────────────────────────────── */}

@@ -1,5 +1,6 @@
 import React from "react";
-import { InputNumber, Space, Table, Button } from "antd";
+import { Space, Table, Button } from "antd";
+import InputNumber from '../shared/LocalizedInputNumber';
 import { DeleteOutlined } from "@ant-design/icons";
 import {
   colors,

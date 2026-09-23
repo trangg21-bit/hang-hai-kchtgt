@@ -141,4 +141,47 @@ class AnchorageServiceTest {
         assertNull(result.getGeometryType());
         assertNull(result.getMapSymbolId());
     }
+
+    @Test
+    void update_whenFieldsCleared_shouldSetFieldsToNull() {
+        entity.setDetailedLocation("Vị trí cũ");
+        entity.setShapeDescription("Hình dạng cũ");
+        entity.setDesignWaterDepth("Độ sâu TK cũ");
+        entity.setCurrentWaterDepth("Độ sâu HT cũ");
+        entity.setBottomElevationDesign("Cao trình cũ");
+        entity.setMaxVesselDWT("Trọng tải cũ");
+        entity.setRemarks("Ghi chú cũ");
+        entity.setPublicDecision("Quyết định cũ");
+        entity.setInvestmentAgreement("Thỏa thuận cũ");
+
+        when(anchorageRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(anchorageRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateAnchorageRequest req = UpdateAnchorageRequest.builder()
+                .id(ID)
+                .anchorageName("Khu neo Hải Phòng")
+                .detailedLocation("   ")
+                .shapeDescription("")
+                .designWaterDepth("   ")
+                .currentWaterDepth("")
+                .bottomElevationDesign("   ")
+                .maxVesselDWT("")
+                .remarks("   ")
+                .publicDecision("")
+                .investmentAgreement("   ")
+                .build();
+
+        AnchorageResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertNull(result.getDetailedLocation());
+        assertNull(result.getShapeDescription());
+        assertNull(result.getDesignWaterDepth());
+        assertNull(result.getCurrentWaterDepth());
+        assertNull(result.getBottomElevationDesign());
+        assertNull(result.getMaxVesselDWT());
+        assertNull(result.getRemarks());
+        assertNull(result.getPublicDecision());
+        assertNull(result.getInvestmentAgreement());
+    }
 }

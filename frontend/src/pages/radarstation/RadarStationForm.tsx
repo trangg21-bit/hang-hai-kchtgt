@@ -36,7 +36,7 @@ import {
   RADAR_STATION_STATUS_MAP,
   UNIT_OF_MEASURE_OPTIONS,
 } from '../../types/radarStation';
-import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceLabel } from '../../types/common';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
@@ -65,10 +65,12 @@ import {
 const fontSizeMd = 13.5;
 const radarFormTokens = { ...themeTokenChk, fontSizeMd: 13.5 };
 
-const parseNumber5 = (value: unknown): any => {
-  if (!value) return '' as any;
+type WindowWithCache = Window & { kchtDetailCache?: Record<string, unknown> };
+
+const parseNumber5 = (value: unknown): string => {
+  if (!value) return '';
   const digits = String(value).replace(/\D/g, '');
-  return (digits.length > 5 ? digits.slice(0, 5) : digits) as any;
+  return digits.length > 5 ? digits.slice(0, 5) : digits;
 };
 
 const getValueFromEvent5 = (val: unknown): number | null => {
@@ -107,11 +109,6 @@ export interface RadarStationFormProps {
   onCancel?: () => void;
   onSuccess?: () => void;
 }
-
-const getProvinceLabel = (provinceId?: string): string =>
-  provinceId
-    ? VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || provinceId
-    : '—';
 
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu), label từ RADAR_STATION_STATUS_MAP
 const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -159,10 +156,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [formActiveTabKey, setFormActiveTabKey] = useState('1');
 
-  const handleBeforeUpload = useCallback((file: any): false => {
+  const handleBeforeUpload = useCallback((file: File): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file đính kèm'); return false; }
-    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as any }]);
+    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as unknown as File }]);
     return false;
   }, [uploadedFiles]);
 
@@ -181,11 +178,15 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const watchedSeaportId = Form.useWatch('seaportId', form);
   const editSeaportIdRef = useRef<string | undefined>(undefined);
   const [codeLoading, setCodeLoading] = useState(false);
-  const filteredSeaportOptions = seaportOptions;
-  const filteredVtsOperationCenterOptions = useMemo(
-    () => vtsOperationCenterOptions.filter((center) => !selectedVtsSystemId || center.vtsSystemId === selectedVtsSystemId),
-    [selectedVtsSystemId, vtsOperationCenterOptions],
-  );
+  const filteredSeaportOptions = useMemo(() => {
+    if (!selectedOrgUnitId) return [];
+    const rawSet = resolveOrgSubtreeIds(orgOptions, String(selectedOrgUnitId));
+    const normalizedSet = new Set<string>();
+    rawSet.forEach((oId) => {
+      normalizedSet.add(String(oId).toLowerCase());
+    });
+    return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
+  }, [orgOptions, seaportOptions, selectedOrgUnitId]);
 
   useEffect(() => {
     (async () => {
@@ -200,7 +201,32 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         const operatingUnits = operatingRes.data?.data || operatingRes.data || [];
         setOperatingUnitOptions(Array.isArray(operatingUnits) ? operatingUnits : []);
       } catch (err) {
-        console.error('Không tải được danh sách đơn vị khai thác', err);
+        console.error('Không tải được danh sách cảng biển', err);
+      }
+      try {
+        const vts = await vtsSystemCRUD.getOptions();
+        setVtsOptions(
+          (vts || []).map((item) => ({
+            id: item.id,
+            code: item.code,
+            systemName: item.name,
+          })),
+        );
+      } catch (err) {
+        console.error('Không tải được danh sách hệ thống VTS', err);
+      }
+      try {
+        const opRes = await api.get('/common/options/vts-operation-centers');
+        const opCenters = opRes.data?.data || opRes.data || [];
+        setVtsOperationCenterOptions(
+          (Array.isArray(opCenters) ? opCenters : []).map((item: { id: string; code?: string; name?: string }) => ({
+            id: item.id,
+            code: item.code,
+            name: item.name,
+          })),
+        );
+      } catch (err) {
+        console.error('Không tải được danh sách trung tâm điều hành VTS', err);
       }
     })();
   }, []);
@@ -263,7 +289,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       const loadData = async () => {
         setIsLoading(true);
         try {
-          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const cached = (window.parent as WindowWithCache)?.kchtDetailCache?.[id];
           const data = (cached || await radarStationCRUD.getById(id)) as RadarStationResponse;
           setRecord(data);
           editSeaportIdRef.current = data.seaportId ?? undefined;
@@ -305,8 +331,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       // Tạo mới: reset form
       form.resetFields();
       editSeaportIdRef.current = undefined;
-      setRecord(null);
-      setHistory([]);
+      queueMicrotask(() => {
+        setRecord(null);
+        setHistory([]);
+      });
       const currentOrgUnitId = resolveDefaultOrgUnitId(currentUser, orgOptions)
         || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
 
@@ -340,14 +368,14 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       return;
     }
     if (isEditMode) return;
-    setCodeLoading(true);
+    queueMicrotask(() => setCodeLoading(true));
     radarStationCRUD.generateCode()
       .then((r) => {
         if (r?.code) form.setFieldsValue({ code: r.code });
       })
       .catch(() => {})
       .finally(() => setCodeLoading(false));
-  }, [watchedSeaportId, isEditMode, form]);
+  }, [watchedSeaportId, form, isEditMode]);
 
   const handleSubmit = useCallback(async (submitMode: 'save' | 'submit' | 'approve' = 'save') => {
     try {
@@ -365,32 +393,52 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         }
       }
 
-      const payload: CreateRadarStationRequest = {
-        stationName: values.stationName?.trim(),
-        location: values.location?.trim(),
-        orgUnitId: values.orgUnitId || undefined,
-        seaportId: values.seaportId || undefined,
-        vtsSystemId: values.vtsSystemId || undefined,
-        vtsOperationCenterId: values.vtsOperationCenterId || undefined,
-        operatingUnitId: values.operatingUnitId || undefined,
-        provinceId: values.provinceId ? String(values.provinceId) : undefined,
-        unitOfMeasure: values.unitOfMeasure || undefined,
-        quantity: values.quantity,
-        conditionStatus: values.conditionStatus || '1',
-        towerHeight: safeDecimal(values.towerHeight),
-        radarRange: safeDecimal(values.radarRange),
-        note: values.note?.trim() || undefined,
-        longitude: hasGeom ? longitude : null,
-        latitude: hasGeom ? latitude : null,
-        geometryType: hasGeom ? (gis?.geometryType || 'POINT') : null,
-        coordinates: hasGeom ? (gis?.coordinates || null) : null,
-        mapIcon: hasGeom && gis?.symbolId ? gis.symbolId : null,
+      const cleanString = (val: unknown) => {
+        if (val === null || val === undefined) return isEditMode ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEditMode ? null : undefined) : s;
+      };
+      const cleanNumber = (val: unknown) => {
+        if (val === null || val === undefined || val === '') return isEditMode ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEditMode ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: unknown) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEditMode ? null : undefined);
+      };
+
+      const payload: UpdateRadarStationRequest = {
+        stationName: (cleanString(values.stationName) ?? '') as string,
+        location: (cleanString(values.location) ?? '') as string,
+        orgUnitId: values.orgUnitId || (isEditMode ? null : undefined),
+        seaportId: values.seaportId || (isEditMode ? null : undefined),
+        vtsSystemId: values.vtsSystemId || (isEditMode ? null : undefined),
+        vtsOperationCenterId: values.vtsOperationCenterId || (isEditMode ? null : undefined),
+        operatingUnitId: values.operatingUnitId || (isEditMode ? null : undefined),
+        provinceId: cleanNumber(values.provinceId) != null ? String(cleanNumber(values.provinceId)) : (isEditMode ? null : undefined),
+        unitOfMeasure: cleanString(values.unitOfMeasure),
+        quantity: cleanNumber(values.quantity) as number,
+        conditionStatus: cleanString(values.conditionStatus) || (isEditMode ? null : '1'),
+        towerHeight: cleanDecimal(values.towerHeight),
+        radarRange: cleanDecimal(values.radarRange),
+        emissionArea: cleanDecimal(values.emissionArea),
+        coverage: cleanString(values.coverage),
+        source: cleanString(values.source),
+        note: cleanString(values.note),
+        longitude: hasGeom ? longitude : (isEditMode ? null : null),
+        latitude: hasGeom ? latitude : (isEditMode ? null : null),
+        geometryType: hasGeom ? (gis?.geometryType || 'POINT') : (isEditMode ? null : null),
+        coordinates: hasGeom ? (gis?.coordinates || null) : (isEditMode ? null : null),
+        mapIcon: hasGeom && gis?.symbolId ? gis.symbolId : (isEditMode ? null : null),
       };
 
       setIsSubmitting(true);
       if (isCreateMode) {
         const createPayload: CreateRadarStationRequest = {
           ...payload,
+          stationName: (payload.stationName ?? '') as string,
+          location: (payload.location ?? '') as string,
           action: submitMode === 'approve' ? 'approve' : submitMode === 'submit' ? 'submit' : 'draft',
           approvalStatus: submitMode === 'approve' ? 'APPROVED' : submitMode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
         };
@@ -404,8 +452,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             console.error('Không tải lên được tài liệu đính kèm', err);
           }
         }
-        if (savedId && window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[savedId] = created;
+        if (savedId && window.parent && (window.parent as WindowWithCache).kchtDetailCache) {
+          (window.parent as WindowWithCache).kchtDetailCache![savedId] = created;
         }
         if (submitMode === 'submit' && savedId) {
           toast.success('Đã tạo mới và gửi phê duyệt trạm radar');
@@ -415,10 +463,10 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           toast.success('Đã tạo mới trạm radar');
         }
       } else if (id && isEditMode) {
-        const updated = await radarStationCRUD.update(id, payload as UpdateRadarStationRequest);
+        const updated = await radarStationCRUD.update(id, payload);
         const savedId = updated.id || id;
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updated;
+        if (window.parent && (window.parent as WindowWithCache).kchtDetailCache) {
+          (window.parent as WindowWithCache).kchtDetailCache![id] = updated;
         }
         if (submitMode !== 'save' && savedId) {
           const submitted = await radarStationApproval.submitForApproval(savedId);
@@ -443,16 +491,17 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       } else {
         navigate('/radar-station');
       }
-    } catch (err: any) {
-      if (err?.errorFields && err.errorFields.length > 0) {
-        const firstField = err.errorFields[0]?.name?.[0];
+    } catch (err: unknown) {
+      const formErr = err as { errorFields?: Array<{ name?: (string | number)[]; errors?: string[] }> };
+      if (formErr?.errorFields && formErr.errorFields.length > 0) {
+        const firstField = String(formErr.errorFields[0]?.name?.[0] ?? '');
         const gisFields = ['location', 'note', 'gisLocation'];
         if (gisFields.includes(firstField)) {
           setFormActiveTabKey('2');
         } else {
           setFormActiveTabKey('1');
         }
-        toast.error(err.errorFields[0]?.errors?.[0] || 'Vui lòng kiểm tra lại các trường thông tin bắt buộc');
+        toast.error(formErr.errorFields[0]?.errors?.[0] || 'Vui lòng kiểm tra lại các trường thông tin bắt buộc');
       } else if (err instanceof Error && err.message) {
         toast.error(err.message);
       }
@@ -500,8 +549,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         approveLevel === 'c2'
           ? await radarStationApproval.approveLevel2(id)
           : await radarStationApproval.approveLevel1(id);
-      if (window.parent && (window.parent as any).kchtDetailCache) {
-        (window.parent as any).kchtDetailCache[id] = updated;
+      if (window.parent && (window.parent as WindowWithCache).kchtDetailCache) {
+        (window.parent as WindowWithCache).kchtDetailCache![id] = updated;
       }
       toast.success(approveLevel === 'c2' ? 'Đã phê duyệt cấp Cục' : 'Đã phê duyệt cấp Cảng vụ/Chi cục');
       setApproveModalOpen(false);
@@ -534,8 +583,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           rejectLevel === 'c2'
             ? await radarStationApproval.rejectLevel2(id, trimmedReason)
             : await radarStationApproval.rejectLevel1(id, trimmedReason);
-        if (window.parent && (window.parent as any).kchtDetailCache) {
-          (window.parent as any).kchtDetailCache[id] = updated;
+        if (window.parent && (window.parent as WindowWithCache).kchtDetailCache) {
+          (window.parent as WindowWithCache).kchtDetailCache![id] = updated;
         }
         toast.success(rejectLevel === 'c2' ? 'Đã từ chối cấp Cục' : 'Đã từ chối cấp Cảng vụ/Chi cục');
         setRejectModalVisible(false);
@@ -557,8 +606,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     try {
       await radarStationApproval.submitForApproval(id);
       const updated = await radarStationCRUD.getById(id);
-      if (window.parent && (window.parent as any).kchtDetailCache) {
-        (window.parent as any).kchtDetailCache[id] = updated;
+      if (window.parent && (window.parent as WindowWithCache).kchtDetailCache) {
+        (window.parent as WindowWithCache).kchtDetailCache![id] = updated;
       }
       toast.success('Đã gửi duyệt trạm radar');
       setRecord(updated);
@@ -641,7 +690,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             {record.vtsOperationCenterName || vtsOpCenterLabelById(record.vtsOperationCenterId)}
           </Descriptions.Item>
           <Descriptions.Item label="Đơn vị khai thác">{operatingUnitNameById(record.operatingUnitId)}</Descriptions.Item>
-          <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
+          <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId) || '—'}</Descriptions.Item>
           <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
           <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
           <Descriptions.Item label="Tình trạng">
@@ -809,11 +858,27 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
               onChange={(orgUnitId) => {
                 form.setFieldValue('orgUnitId', orgUnitId);
-                form.setFieldValue('seaportId', undefined);
-                form.setFieldValue('vtsSystemId', undefined);
-                form.setFieldValue('vtsOperationCenterId', undefined);
-                if (!isEditMode) {
-                  form.setFieldValue('code', undefined);
+                const seaportId = form.getFieldValue('seaportId');
+                if (!orgUnitId) {
+                  form.setFieldValue('seaportId', undefined);
+                  if (!isEdit) {
+                    form.setFieldValue('code', undefined);
+                  }
+                } else if (seaportId) {
+                  const rawSet = resolveOrgSubtreeIds(orgOptions, String(orgUnitId));
+                  const normalizedSet = new Set<string>();
+                  rawSet.forEach((oId) => {
+                    normalizedSet.add(String(oId).toLowerCase());
+                  });
+                  const isValidSeaport = seaportOptions.some((port) =>
+                    port.id === seaportId && !!port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()),
+                  );
+                  if (!isValidSeaport) {
+                    form.setFieldValue('seaportId', undefined);
+                    if (!isEdit) {
+                      form.setFieldValue('code', undefined);
+                    }
+                  }
                 }
               }}
             />
@@ -992,6 +1057,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             rules={[decimalNumberRule]}
           >
             <NumberInputWithCount
+              allowDecimal
               min={0}
               step={0.01}
               placeholder="0"
@@ -1010,6 +1076,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             rules={[decimalNumberRule]}
           >
             <NumberInputWithCount
+              allowDecimal
               min={0}
               step={0.01}
               placeholder="0"

@@ -49,6 +49,8 @@ export interface BuoySearchParams {
   approvalStatus?: string;
   updatedFrom?: string;
   updatedTo?: string;
+  sortBy?: string;
+  sortDir?: 'ascend' | 'descend';
 }
 
 export async function searchBuoys(params?: BuoySearchParams): Promise<Buoy[]> {
@@ -63,6 +65,8 @@ export async function searchBuoys(params?: BuoySearchParams): Promise<Buoy[]> {
     approvalStatus: params?.approvalStatus,
     updatedFrom: params?.updatedFrom,
     updatedTo: params?.updatedTo,
+    sortBy: params?.sortBy,
+    sortDir: params?.sortDir,
   });
   const res = await api.get(`${BASE}/search?${sp}`);
   return res.data.data || [];

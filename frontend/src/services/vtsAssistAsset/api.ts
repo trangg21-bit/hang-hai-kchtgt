@@ -40,9 +40,19 @@ export async function deleteVtsAssistAsset(id: string): Promise<void> {
 }
 
 export async function fetchVtsAssistAssetHistory(
-  id: string
+  id: string,
+  page?: number,
+  pageSize?: number,
+  filters?: { keyword?: string; fromDate?: string; toDate?: string },
 ): Promise<{ changeHistory?: Record<string, unknown>[] } | Record<string, unknown>[]> {
-  const res = await api.get(`${BASE_URL}/${id}/history`);
+  const sp = new URLSearchParams();
+  if (page !== undefined && page !== null) sp.set('page', String(page));
+  if (pageSize !== undefined && pageSize !== null) sp.set('pageSize', String(pageSize));
+  if (filters?.keyword?.trim()) sp.set('keyword', filters.keyword.trim());
+  if (filters?.fromDate) sp.set('fromDate', filters.fromDate);
+  if (filters?.toDate) sp.set('toDate', filters.toDate);
+  const qs = sp.toString();
+  const res = await api.get(`${BASE_URL}/${id}/history${qs ? `?${qs}` : ''}`);
   return res.data?.data;
 }
 
