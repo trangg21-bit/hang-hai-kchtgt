@@ -195,7 +195,7 @@ class BuoyServiceTest {
         void search() {
             UUID id = UUID.randomUUID();
             Buoy entity = makeEntity(id, "DRAFT");
-            when(buoyRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any()))
+            when(buoyRepo.searchFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BuoyResponse> result = service.search(
@@ -203,8 +203,8 @@ class BuoyServiceTest {
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Phao tiêu test");
-            verify(buoyRepo).searchFiltered("Phao", "PHAO",
-                    "CARDINAL", "DRAFT", null, null, null, null);
+            verify(buoyRepo).searchFiltered(eq("Phao"), eq("PHAO"),
+                    eq("CARDINAL"), eq("DRAFT"), isNull(), isNull(), isNull(), isNull(), any());
         }
     }
 

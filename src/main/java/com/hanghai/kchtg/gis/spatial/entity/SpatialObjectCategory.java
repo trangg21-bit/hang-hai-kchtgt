@@ -7,10 +7,13 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import org.hibernate.annotations.SQLRestriction;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "spatial_object_categories")
+@SQLRestriction("1=1")
 @Getter
 @Setter
 public class SpatialObjectCategory extends BaseEntity {

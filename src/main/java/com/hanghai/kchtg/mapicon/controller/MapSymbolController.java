@@ -33,14 +33,25 @@ public class MapSymbolController {
     public ResponseEntity<ApiResponse<Page<MapSymbolResponse>>> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String code,
+            @RequestParam(required = false) String name,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean isDeleted,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime fromUpdatedDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime toUpdatedDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String sortField,
+            @RequestParam(required = false) String sortOrder) {
+        Sort sort = Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT);
+        if (sortField != null && !sortField.trim().isEmpty()) {
+            Sort.Direction direction = "asc".equalsIgnoreCase(sortOrder) || "ascend".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
+            sort = Sort.by(direction, sortField);
+        }
+        Pageable pageable = PageRequest.of(page, size, sort);
         MapSymbolStatus symbolStatus = (status != null && !status.trim().isEmpty())
                 ? MapSymbolStatus.fromString(status)
                 : null;
-        return ResponseEntity.ok(ApiResponse.success(service.search(search, code, symbolStatus, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(service.search(search, code, name, symbolStatus, isDeleted, fromUpdatedDate, toUpdatedDate, pageable)));
     }
 
     @GetMapping("/options")

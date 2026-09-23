@@ -78,6 +78,8 @@ public class RadarStationResponse {
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
+    private Integer coordinateSystem;
+    private String displayRule;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal towerHeight;

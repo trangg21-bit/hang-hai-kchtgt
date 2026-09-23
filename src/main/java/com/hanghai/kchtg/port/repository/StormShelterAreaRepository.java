@@ -52,7 +52,6 @@ public interface StormShelterAreaRepository extends JpaRepository<StormShelterAr
             " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (a.deletedAt IS NOT NULL OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             " OR (a.deletedAt IS NULL AND a.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
             "     a.approvalStatus = :approvalStatus " +
-            "     OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR a.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
             " ))) " +
             "AND (:includeAll = true OR a.orgUnitId IN :orgUnitIds) " +
             "AND (CAST(:search AS string) IS NULL OR " +

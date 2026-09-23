@@ -212,34 +212,44 @@ const renderDmsGroup = (
     },
   ] as const;
 
+  const inputRow = (
+    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ display: 'inline-flex', alignItems: 'center', flex: inp.basis, minWidth: 0, width: inp.width }}>
+          <InputNumber
+            value={inp.value ?? null}
+            min={0}
+            max={inp.max}
+            step={inp.step}
+            precision={inp.key === 's' ? 2 : 0}
+            formatter={inp.formatter}
+            placeholder={inp.base}
+            onChange={(v) => inp.onEdit(v == null ? null : Number(v))}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            controls={false}
+          />
+          <span style={inp.unitStyle}>{inp.unit}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
+    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+      {inputs.map((inp) => (
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+        </div>
+      ))}
+    </div>
+  ) : null;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
-        {inputs.map((inp) => (
-          <div key={inp.key} style={{ display: 'inline-flex', alignItems: 'center', flex: inp.basis, minWidth: 0, width: inp.width }}>
-            <InputNumber
-              value={inp.value ?? null}
-              min={0}
-              max={inp.max}
-              step={inp.step}
-              precision={inp.key === 's' ? 2 : 0}
-              formatter={inp.formatter}
-              placeholder={inp.base}
-              onChange={(v) => inp.onEdit(v == null ? null : Number(v))}
-              style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
-              controls={false}
-            />
-            <span style={inp.unitStyle}>{inp.unit}</span>
-          </div>
-        ))}
-      </div>
-      <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
-        {inputs.map((inp) => (
-          <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
-            {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
-          </div>
-        ))}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
+      {inputRow}
+      {messageRow}
     </div>
   );
 };
@@ -1456,17 +1466,20 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                             title: 'STT',
                             width: 60,
                             align: 'center' as const,
+                            onCell: () => ({ style: { verticalAlign: 'middle' } }),
                             render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
                           },
                           {
                             title: 'Vĩ độ (Latitude - N)',
                             key: 'lat',
+                            onCell: () => ({ style: { verticalAlign: 'middle' } }),
                             render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) =>
                               renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                           },
                           {
                             title: 'Kinh độ (Longitude - E)',
                             key: 'lng',
+                            onCell: () => ({ style: { verticalAlign: 'middle' } }),
                             render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) =>
                               renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                           },
@@ -1474,7 +1487,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                             title: '',
                             width: 50,
                             align: 'center' as const,
-                            onCell: () => ({ style: { verticalAlign: 'top' } }),
+                            onCell: () => ({ style: { verticalAlign: 'middle' } }),
                             render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) => (
                               <Button
                                 type="text"

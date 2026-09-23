@@ -553,7 +553,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasError = started && inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasError ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -561,10 +563,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -3787,6 +3789,7 @@ export default function DikeRevetmentList() {
                                   key: 'stt',
                                   width: 60,
                                   align: 'center',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, __: any, i: number) => (
                                     <span style={{ fontSize: 13.5, color: textSecondary, fontWeight: fontWeightMedium }}>{i + 1}</span>
                                   ),
@@ -3794,11 +3797,13 @@ export default function DikeRevetmentList() {
                                 {
                                   title: 'Vĩ độ (Latitude - N)',
                                   key: 'lat',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, r: any) => renderDmsGroup(r.latD, r.latM, r.latS, 90, (d, m, s) => updateGpsPoint(r._idx, 'lat', d, m, s)),
                                 },
                                 {
                                   title: 'Kinh độ (Longitude - E)',
                                   key: 'lng',
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, r: any) => renderDmsGroup(r.lngD, r.lngM, r.lngS, 180, (d, m, s) => updateGpsPoint(r._idx, 'lng', d, m, s)),
                                 },
                                 {
@@ -3806,7 +3811,7 @@ export default function DikeRevetmentList() {
                                   key: 'actions',
                                   width: 50,
                                   align: 'center' as const,
-                                  onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 10 } }),
+                                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
                                   render: (_: any, r: any) => (
                                     <Button
                                       type="text"

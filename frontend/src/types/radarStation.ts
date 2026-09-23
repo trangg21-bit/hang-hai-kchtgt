@@ -95,6 +95,7 @@ export interface RadarStationResponse {
   geometryType?: 'POINT' | 'LINE' | 'POLYGON';
   coordinates?: string;
   coordinateSystem?: number;
+  displayRule?: string;
   mapIcon?: string;
   deletedBy?: string;
   deletedByName?: string;

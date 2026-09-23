@@ -25,6 +25,7 @@ import { symbolService } from '../../services/symbolService';
 import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
+import type { NavigationChannelResponse } from '../../types/navigationChannel';
 import {
   fetchBuoyById, searchBuoys, createBuoy, updateBuoy, deleteBuoy,
   submitBuoyForApproval, approveBuoyL1, approveBuoyL2, rejectBuoy, fetchBuoyHistory,
@@ -225,6 +226,19 @@ function parseGisCoordinateList(gisLocation: { geometryType?: string; coordinate
   return [];
 }
 
+function buildCoordinatesWkt(
+  coordinates: Array<{ latitude: number; longitude: number }>,
+  geometryType?: string,
+): string | undefined {
+  if (coordinates.length === 0) return undefined;
+  const pairs = coordinates.map((coordinate) => `${coordinate.longitude} ${coordinate.latitude}`);
+  if (geometryType === 'POLYGON') return `POLYGON((${[...pairs, pairs[0]].join(',')}))`;
+  if (geometryType === 'LINE') return `LINESTRING(${pairs.join(',')})`;
+  return coordinates.length === 1
+    ? `POINT(${pairs[0]})`
+    : `MULTIPOINT(${pairs.map((pair) => `(${pair})`).join(',')})`;
+}
+
 // Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
 const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
 
@@ -306,6 +320,7 @@ export default function BuoyListPage() {
 
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [approvedWaterways, setApprovedWaterways] = useState<NavigationChannelResponse[]>([]);
 
   const [activeTab, setActiveTab] = useState('all');
   const [sortField, setSortField] = useState<string | null>('updatedAt');
@@ -381,6 +396,7 @@ export default function BuoyListPage() {
         });
         setWaterwayMap(m);
         setWaterwayOptions(opts);
+        setApprovedWaterways(r.items || []);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -408,7 +424,7 @@ export default function BuoyListPage() {
     let cancelled = false;
     if (createUnitId) {
       if (!editingRecord) {
-        createForm.setFieldsValue({ buoyStationId: undefined, code: undefined });
+        createForm.setFieldsValue({ buoyStationId: undefined, navigationChannelId: undefined, code: undefined });
       }
       setLoadingCreateStations(true);
       fetchBuoyStationList({ unitId: createUnitId, status: 'PUBLISHED' })
@@ -429,6 +445,18 @@ export default function BuoyListPage() {
     }
     return () => { cancelled = true; };
   }, [createUnitId, editingRecord, buoyStations, createForm]);
+
+  const createWaterwayOptions = useMemo(() => {
+    if (!createUnitId) return [];
+    const allowedOrgIds = collectOrgSubtreeIds(organizations, createUnitId);
+    return approvedWaterways
+      .filter((channel) => channel.orgUnitId && allowedOrgIds.has(channel.orgUnitId))
+      .filter((channel) => String(channel.approvalStatus).toUpperCase() === 'APPROVED')
+      .map((channel) => ({
+        value: channel.id,
+        label: channel.channelName || channel.channelCode || '',
+      }));
+  }, [approvedWaterways, createUnitId, organizations]);
 
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
@@ -562,6 +590,8 @@ export default function BuoyListPage() {
         provinceId: filterProvince ? (Number(VIETNAM_PROVINCE_OPTIONS.find((o) => o.label === filterProvince)?.value) || undefined) : undefined,
         updatedFrom: filterUpdatedFrom,
         updatedTo: filterUpdatedTo,
+        sortBy: sortField || undefined,
+        sortDir: sortOrder || undefined,
       });
       // Lọc theo đơn vị quản lý (subtree — đơn vị cha thấy cả đơn vị con, chuẩn Cảng biển)
       const orgList = organizationsRef.current.length > 0 ? organizationsRef.current : organizations;
@@ -587,14 +617,40 @@ export default function BuoyListPage() {
         : classFiltered;
       setTotal(tabFiltered.length);
 
+      // API phao, tiêu trả danh sách chưa phân trang, vì vậy phải sắp xếp toàn bộ
+      // tập kết quả trước khi cắt trang. Riêng địa điểm sắp theo tên tỉnh/thành
+      // hiển thị (không theo mã số) để A→Z/Z→A đúng với điều người dùng nhìn thấy.
+      const sorted = !sortField || !sortOrder
+        ? tabFiltered
+        : sortField === 'sequenceNo'
+          ? (sortOrder === 'descend' ? [...tabFiltered].reverse() : tabFiltered)
+          : [...tabFiltered].sort((a, b) => {
+              const resolve = (record: Buoy) => {
+                if (sortField === 'unitId') return orgLevel2Map.get(record.unitId) ?? record.unitId ?? '';
+                if (sortField === 'buoyStationId') return record.buoyStationName || (record.buoyStationId ? (buoyStations.find((station) => station.id === record.buoyStationId)?.name || '') : '');
+                if (sortField === 'navigationChannelId') return waterwayMap.get(record.navigationChannelId) ?? record.navigationChannelId ?? '';
+                if (sortField === 'provinceId') return record.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((option) => option.value === String(record.provinceId))?.label || String(record.provinceId)) : '';
+                if (sortField === 'condition') return CONDITION_STYLE[record.condition || '']?.label ?? record.condition ?? '';
+                if (sortField === 'status') return buoyStatusBadge(record.status).label;
+                const value = record[sortField as keyof Buoy];
+                if (sortField.endsWith('At') || sortField.endsWith('Date')) return value ? new Date(value).getTime() : 0;
+                return value ?? '';
+              };
+              const left = resolve(a);
+              const right = resolve(b);
+              const comparison = typeof left === 'number' && typeof right === 'number'
+                ? left - right
+                : String(left).localeCompare(String(right), 'vi');
+              return sortOrder === 'ascend' ? comparison : -comparison;
+            });
       const start = (page - 1) * pageSize;
-      setDataSource(tabFiltered.slice(start, start + pageSize));
+      setDataSource(sorted.slice(start, start + pageSize));
     } catch {
       setIsError(true);
     } finally {
       setIsLoading(false);
     }
-  }, [filterName, filterCode, filterCondition, filterProvince, managingUnitId, filterStationId, filterWaterwayId, filterClassification, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, organizations]);
+  }, [filterName, filterCode, filterCondition, filterProvince, managingUnitId, filterStationId, filterWaterwayId, filterClassification, filterUpdatedFrom, filterUpdatedTo, activeTab, page, pageSize, organizations, sortField, sortOrder, orgLevel2Map, buoyStations, waterwayMap]);
 
   useEffect(() => {
     if (initialLoadDone && !isEmbeddedAction) {
@@ -931,9 +987,7 @@ export default function BuoyListPage() {
       if (manualCoords.length > 0) {
         payload.latitude = manualCoords[0].latitude;
         payload.longitude = manualCoords[0].longitude;
-        payload.coordinates = manualCoords.length > 1
-          ? `MULTIPOINT(${manualCoords.map((c) => `(${c.longitude} ${c.latitude})`).join(',')})`
-          : `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})`;
+        payload.coordinates = buildCoordinatesWkt(manualCoords, values.geometryType);
       }
       payload.geometryType = values.geometryType || undefined;
       payload.mapSymbolId = values.mapSymbolId || undefined;
@@ -976,6 +1030,12 @@ export default function BuoyListPage() {
     const manualCoords = createCoords
       .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
       .map((c) => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
+    // Form.Item ở tab GIS có thể chưa mount khi người dùng chỉ thêm file đính kèm.
+    // Giữ nguyên dữ liệu GIS hiện tại thay vì hiểu nhầm là người dùng đã xóa chúng.
+    const resolvedGeometryType = values.geometryType || editingRecord.geometryType;
+    const resolvedMapSymbolId = values.mapSymbolId || editingRecord.mapSymbolId;
+    const resolvedCoordinateSystem = values.coordinateSystem ?? editingRecord.coordinateSystem;
+    const resolvedDisplayRule = values.displayRule || editingRecord.displayRule;
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -985,20 +1045,20 @@ export default function BuoyListPage() {
       }
     }
 
-    if (values.geometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
+    if (resolvedGeometryType) {
+      const minCount = GEOMETRY_POINT_COUNT[resolvedGeometryType] ?? 1;
       if (manualCoords.length < minCount) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+        toast.error(resolvedGeometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : resolvedGeometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
         setCreateTabKey('gis');
         return;
       }
     }
-    if ((values.geometryType || manualCoords.length > 0) && !values.mapSymbolId) {
+    if ((resolvedGeometryType || manualCoords.length > 0) && !resolvedMapSymbolId) {
       toast.error('Vui lòng chọn biểu tượng bản đồ');
       setCreateTabKey('gis');
       return;
     }
-    if (manualCoords.length > 0 && !values.geometryType) {
+    if (manualCoords.length > 0 && !resolvedGeometryType) {
       toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setCreateTabKey('gis');
       return;
@@ -1064,14 +1124,12 @@ export default function BuoyListPage() {
       if (manualCoords.length > 0) {
         payload.latitude = manualCoords[0].latitude;
         payload.longitude = manualCoords[0].longitude;
-        payload.coordinates = manualCoords.length > 1
-          ? `MULTIPOINT(${manualCoords.map((c) => `(${c.longitude} ${c.latitude})`).join(',')})`
-          : `POINT(${manualCoords[0].longitude} ${manualCoords[0].latitude})`;
+        payload.coordinates = buildCoordinatesWkt(manualCoords, resolvedGeometryType);
       }
-      payload.geometryType = values.geometryType || undefined;
-      payload.mapSymbolId = values.mapSymbolId || undefined;
-      payload.coordinateSystem = values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined;
-      payload.displayRule = values.displayRule || undefined;
+      payload.geometryType = resolvedGeometryType || undefined;
+      payload.mapSymbolId = resolvedMapSymbolId || undefined;
+      payload.coordinateSystem = resolvedCoordinateSystem != null ? Number(resolvedCoordinateSystem) : undefined;
+      payload.displayRule = resolvedDisplayRule || undefined;
       Object.keys(payload).forEach((key) => { if ((payload as any)[key] === undefined) delete (payload as any)[key]; });
 
       if (actionTypeRef.current) {
@@ -1169,7 +1227,14 @@ export default function BuoyListPage() {
   // ── Timeline (design §5.3 — history*Style tokens, Pier standard) ──
 
   const filteredHistory = useMemo(() => {
-    const safeRecords = Array.isArray(historyData) ? historyData : [];
+    const safeRecords = (Array.isArray(historyData) ? historyData : []).filter((record) => {
+      const changedField = String(record.changedField || '');
+      const previousValue = String(record.previousValue || '').trim();
+      const newValue = String(record.newValue || '').trim();
+      // Dữ liệu cũ từng ghi thêm một dòng tổng hợp gồm danh sách field và hai
+      // JSON object khổng lồ. Dòng này trùng với các bản ghi thay đổi từng trường.
+      return !(changedField.includes(',') && (previousValue.startsWith('{') || newValue.startsWith('{')));
+    });
     const q = historySearch.toLowerCase().trim();
     return safeRecords.filter((r) => {
       if (historyFrom || historyTo) {
@@ -1471,6 +1536,7 @@ export default function BuoyListPage() {
       dataIndex: 'provinceId',
       width: 250,
       ellipsis: false,
+      sortable: true,
       render: (v: number) => (v != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(v))?.label || String(v)) : ''),
     },
     {
@@ -1899,35 +1965,7 @@ export default function BuoyListPage() {
       >
         <DataTable
           columns={columns}
-          dataSource={(() => {
-            if (!sortField || !sortOrder) return dataSource;
-            if (sortField === 'sequenceNo') {
-              const arr = [...dataSource];
-              return sortOrder === 'descend' ? arr.reverse() : arr;
-            }
-            return [...dataSource].sort((a: any, b: any) => {
-              const resolve = (r: any) => {
-                if (sortField === 'unitId') return orgLevel2Map.get(r.unitId) ?? r.unitId ?? '';
-                if (sortField === 'buoyStationId') return r.buoyStationName || (r.buoyStationId ? (buoyStations.find((s) => s.id === r.buoyStationId)?.name || '') : '') || '';
-                if (sortField === 'navigationChannelId') return waterwayMap.get(r.navigationChannelId) ?? r.navigationChannelId ?? '';
-                if (sortField === 'provinceId') return (r.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(r.provinceId))?.label || String(r.provinceId)) : '') || '';
-                if (sortField === 'condition') return CONDITION_STYLE[r.condition || '']?.label ?? r.condition ?? '';
-                if (sortField === 'status') return buoyStatusBadge(r.status).label;
-                if (sortField === 'updatedAt' || sortField === 'updatedBy' || sortField === 'updatedByName') {
-                  const t = r.updatedAt || r.createdAt;
-                  return t ? new Date(t).getTime() : 0;
-                }
-                if (sortField === 'sentApprovedDate') return r.sentApprovedDate ? new Date(r.sentApprovedDate).getTime() : 0;
-                if (sortField === 'level1ApprovedDate') return r.level1ApprovedDate ? new Date(r.level1ApprovedDate).getTime() : 0;
-                if (sortField === 'level2ApprovedDate') return r.level2ApprovedDate ? new Date(r.level2ApprovedDate).getTime() : 0;
-                return r[sortField] ?? '';
-              };
-              const aVal = resolve(a);
-              const bVal = resolve(b);
-              const cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
-              return sortOrder === 'ascend' ? cmp : -cmp;
-            });
-          })()}
+          dataSource={dataSource}
           rowKey="id"
           rowActions={rowActions}
           loading={false}
@@ -2094,7 +2132,7 @@ export default function BuoyListPage() {
             buoyStations={createStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}
             loadingStations={loadingCreateStations}
             onStationChange={handleStationChange}
-            waterwayOptions={waterwayOptions}
+            waterwayOptions={createWaterwayOptions}
             uploadFileList={uploadFileList}
             setUploadFileList={setUploadFileList}
             symbols={symbols}
@@ -2105,6 +2143,7 @@ export default function BuoyListPage() {
             addGpsPoint={addCreateGps}
             removeGpsPoint={removeCreateGps}
             updateGpsPoint={updateCreateGps}
+            replaceGpsPoints={setCreateCoords}
             ddToDms={ddToDms}
             onDeleteAttachment={handleDeleteAttachment}
           />

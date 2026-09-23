@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MapSymbolService {
-    Page<MapSymbolResponse> search(String search, String code, MapSymbolStatus status, Pageable pageable);
+    Page<MapSymbolResponse> search(String search, String code, String name, MapSymbolStatus status, Boolean isDeleted, java.time.LocalDateTime fromUpdatedDate, java.time.LocalDateTime toUpdatedDate, Pageable pageable);
     List<MapSymbolOptionResponse> getOptions();
     MapSymbolResponse findById(UUID id);
     MapSymbolResponse create(CreateMapSymbolRequest request, java.util.UUID createdBy);

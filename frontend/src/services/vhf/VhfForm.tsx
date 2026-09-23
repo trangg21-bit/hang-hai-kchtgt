@@ -227,7 +227,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -235,10 +237,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -1380,17 +1382,20 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                       title: 'STT',
                       width: 60,
                       align: 'center' as const,
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
                     },
                     {
                       title: 'Vĩ độ (Latitude - N)',
                       key: 'lat',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) =>
                         renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                     },
                     {
                       title: 'Kinh độ (Longitude - E)',
                       key: 'lng',
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) =>
                         renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                     },
@@ -1398,7 +1403,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                       title: '',
                       width: 50,
                       align: 'center' as const,
-                      onCell: () => ({ style: { verticalAlign: 'top' } }),
+                      onCell: () => ({ style: { verticalAlign: 'middle' } }),
                       render: (_v: unknown, record: DmsCoordinateItem & { _idx: number }) => (
                         <Button
                           type="text"

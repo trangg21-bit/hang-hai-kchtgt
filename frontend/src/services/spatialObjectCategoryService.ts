@@ -12,6 +12,8 @@ export interface SpatialObjectCategory {
   createdBy: string;
   updatedAt: string;
   updatedBy: string;
+  deletedAt?: string;
+  deletedBy?: string;
 }
 
 export interface CreateSpatialObjectCategoryPayload {
@@ -31,12 +33,32 @@ export interface UpdateSpatialObjectCategoryPayload {
 }
 
 export const spatialObjectCategoryService = {
-  list: async (params?: { page?: number; pageSize?: number; search?: string; geometryType?: number; status?: number }) => {
+  list: async (params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    code?: string;
+    name?: string;
+    iconId?: string;
+    geometryType?: number;
+    status?: number;
+    isDeleted?: boolean;
+    fromUpdatedDate?: string;
+    toUpdatedDate?: string;
+    sort?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+  }) => {
     const backendPage = params?.page ? params.page - 1 : 0;
+    const { page, pageSize, sortField, sortOrder, sort, ...rest } = params || {};
+    const effectiveSortField = sortField === 'updatedBy' ? 'updatedAt' : sortField;
+    const sortParam = sort || (effectiveSortField && sortOrder ? `${effectiveSortField},${sortOrder}` : undefined);
     const res = await api.get('/v1/gis/spatial-categories', { 
         params: { 
-            ...params, 
-            page: backendPage 
+            ...rest, 
+            sort: sortParam,
+            page: backendPage,
+            size: pageSize,
         } 
     });
     return res.data.data; // { content, totalElements }

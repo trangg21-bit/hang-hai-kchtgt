@@ -26,7 +26,6 @@ public interface VtsOperationCenterRepository extends JpaRepository<VtsOperation
         FROM VtsOperationCenter t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL
           AND (:scopeEnabled = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(t.name) ASC
