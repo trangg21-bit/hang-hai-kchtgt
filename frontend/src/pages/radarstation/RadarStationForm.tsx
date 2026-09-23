@@ -36,7 +36,7 @@ import {
   RADAR_STATION_STATUS_MAP,
   UNIT_OF_MEASURE_OPTIONS,
 } from '../../types/radarStation';
-import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceLabel } from '../../types/common';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
@@ -109,11 +109,6 @@ export interface RadarStationFormProps {
   onCancel?: () => void;
   onSuccess?: () => void;
 }
-
-const getProvinceLabel = (provinceId?: string): string =>
-  provinceId
-    ? VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || provinceId
-    : '—';
 
 // Status badge — semantic tokens (AGENTS.md: không hardcode màu), label từ RADAR_STATION_STATUS_MAP
 const RADAR_STATION_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
@@ -695,7 +690,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             {record.vtsOperationCenterName || vtsOpCenterLabelById(record.vtsOperationCenterId)}
           </Descriptions.Item>
           <Descriptions.Item label="Đơn vị khai thác">{operatingUnitNameById(record.operatingUnitId)}</Descriptions.Item>
-          <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId)}</Descriptions.Item>
+          <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{getProvinceLabel(record.provinceId) || '—'}</Descriptions.Item>
           <Descriptions.Item label="Đơn vị tính">{record.unitOfMeasure || '—'}</Descriptions.Item>
           <Descriptions.Item label="Số lượng">{record.quantity != null ? record.quantity : '—'}</Descriptions.Item>
           <Descriptions.Item label="Tình trạng">

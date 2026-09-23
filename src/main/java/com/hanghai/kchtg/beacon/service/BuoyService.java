@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
@@ -26,6 +25,7 @@ import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +72,15 @@ public class BuoyService {
     public List<BuoyResponse> search(
             String name, String code, String type, String status,
             String condition, Integer provinceId, String locationDetail, String approvalStatus) {
+        return search(name, code, type, status, condition, provinceId, locationDetail, approvalStatus,
+                null, null);
+    }
+
+    public List<BuoyResponse> search(
+            String name, String code, String type, String status,
+            String condition, Integer provinceId, String locationDetail, String approvalStatus,
+            String sortBy, String sortDir) {
+        Sort sort = buildSort(sortBy, sortDir);
         return buoyRepo.searchFiltered(
                 name != null && !name.trim().isEmpty() ? name.trim() : null,
                 code != null && !code.trim().isEmpty() ? code.trim() : null,
@@ -80,9 +89,38 @@ public class BuoyService {
                 condition != null && !condition.trim().isEmpty() ? condition.trim() : null,
                 provinceId,
                 locationDetail != null && !locationDetail.trim().isEmpty() ? locationDetail.trim() : null,
-                approvalStatus != null && !approvalStatus.trim().isEmpty() ? approvalStatus.trim() : null).stream()
+                approvalStatus != null && !approvalStatus.trim().isEmpty() ? approvalStatus.trim() : null,
+                sort).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    private Sort buildSort(String sortBy, String sortDir) {
+        Map<String, String> allowedFields = Map.ofEntries(
+                Map.entry("name", "name"),
+                Map.entry("unitId", "unitId"),
+                Map.entry("buoyStationId", "buoyStationId"),
+                Map.entry("navigationChannelId", "navigationChannelId"),
+                Map.entry("provinceId", "provinceId"),
+                Map.entry("condition", "condition"),
+                Map.entry("status", "status"),
+                Map.entry("updatedAt", "updatedAt"),
+                Map.entry("submittedForApprovalAt", "submittedForApprovalAt"),
+                Map.entry("level1ApprovedDate", "level1ApprovedDate"),
+                Map.entry("level2ApprovedDate", "level2ApprovedDate"));
+        String field = sortBy == null ? null : allowedFields.get(sortBy);
+        Sort fallback = Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt"), Sort.Order.asc("id"));
+        if (field == null) {
+            return fallback;
+        }
+        Sort.Direction direction = "ascend".equalsIgnoreCase(sortDir) || "asc".equalsIgnoreCase(sortDir)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Sort requested = Sort.by(new Sort.Order(direction, field));
+        if ("updatedAt".equals(field)) {
+            return requested.and(Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
+        }
+        return requested.and(fallback);
     }
 
     public List<BuoyResponse> search(String name, String code, String type, String status) {
@@ -295,8 +333,6 @@ public class BuoyService {
         if ("DELETED".equals(entity.getStatus())) {
             throw new EntityNotFoundException("Phao tiêu đã bị xóa");
         }
-
-        String oldJson = toJson(entity);
 
         // Create snapshot for ChangeLog before modifications
         Buoy snapshot = Buoy.builder()
@@ -519,11 +555,10 @@ public class BuoyService {
             }
         }
 
-        // Only record history when the record is already approved
-        String newJson = toJson(entity);
-        if (wasApproved && !compareJsonNodes(oldJson, newJson)) {
-            logHistory(entity, InfrastructureHistoryStatus.UPDATED, ApprovalLevel.LEVEL_0,
-                    getChangedFields(oldJson, newJson), oldJson, newJson, null);
+        // Approved records use the centralized per-field audit trail only. Writing an
+        // additional aggregate JSON row makes the history drawer unreadable and duplicates
+        // every actual field change.
+        if (wasApproved) {
             changeHistoryService.recordChanges("Buoy", entity.getId().toString(),
                     actorId, snapshot, entity);
         }
@@ -868,8 +903,6 @@ public class BuoyService {
         return null;
     }
 
-    // -- BUG FIX #1: Shared ObjectMapper + JsonNode comparison --
-
     private String toJson(Buoy entity) {
         try {
             return objectMapper.writeValueAsString(toResponse(entity));
@@ -878,39 +911,4 @@ public class BuoyService {
         }
     }
 
-    /**
-     * Compare two JSON strings by converting to JsonNode and using equals().
-     * This avoids string comparison issues where the same data serializes
-     * to different string representations.
-     */
-    private boolean compareJsonNodes(String json1, String json2) {
-        try {
-            JsonNode node1 = objectMapper.readTree(json1);
-            JsonNode node2 = objectMapper.readTree(json2);
-            return node1.equals(node2);
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    // -- BUG FIX #3: Actual field diff instead of static string --
-
-    @SuppressWarnings("unchecked")
-    private String getChangedFields(String oldJson, String newJson) {
-        try {
-            Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);
-            Map<String, Object> newMap = objectMapper.readValue(newJson, Map.class);
-            List<String> changed = new ArrayList<>();
-            for (String key : newMap.keySet()) {
-                Object oldVal = oldMap.get(key);
-                Object newVal = newMap.get(key);
-                if (!Objects.equals(oldVal, newVal)) {
-                    changed.add(key);
-                }
-            }
-            return changed.isEmpty() ? "fields_updated" : String.join(", ", changed);
-        } catch (Exception e) {
-            return "fields_updated";
-        }
-    }
 }

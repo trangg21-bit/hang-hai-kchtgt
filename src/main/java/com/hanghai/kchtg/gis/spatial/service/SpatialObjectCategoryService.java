@@ -4,6 +4,7 @@ import com.hanghai.kchtg.gis.spatial.dto.SpatialObjectCategoryDto;
 import com.hanghai.kchtg.gis.spatial.entity.SpatialObjectCategory;
 import com.hanghai.kchtg.gis.spatial.repository.SpatialObjectCategoryRepository;
 import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -21,8 +23,31 @@ public class SpatialObjectCategoryService {
     private final MapSymbolRepository symbolRepository;
 
     @Transactional(readOnly = true)
-    public Page<SpatialObjectCategoryDto> findAll(Integer geometryType, Integer status, String search, Pageable pageable) {
-        return repository.findAllWithFilters(geometryType, status, search, pageable).map(this::mapToDto);
+    public Page<SpatialObjectCategoryDto> findAll(
+            Integer geometryType,
+            Integer status,
+            Boolean isDeleted,
+            UUID iconId,
+            String code,
+            String name,
+            String search,
+            LocalDateTime fromUpdatedDate,
+            LocalDateTime toUpdatedDate,
+            Pageable pageable) {
+        String trimmedCode = code != null && !code.trim().isEmpty() ? code.trim() : null;
+        String trimmedName = name != null && !name.trim().isEmpty() ? name.trim() : null;
+        String trimmedSearch = search != null && !search.trim().isEmpty() ? search.trim() : null;
+        return repository.findAllWithFilters(
+                geometryType,
+                status,
+                isDeleted,
+                iconId,
+                trimmedCode,
+                trimmedName,
+                trimmedSearch,
+                fromUpdatedDate,
+                toUpdatedDate,
+                pageable).map(this::mapToDto);
     }
 
     @Transactional(readOnly = true)
@@ -76,7 +101,8 @@ public class SpatialObjectCategoryService {
     public void delete(UUID id) {
         SpatialObjectCategory entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy danh mục có ID: " + id));
-        repository.delete(entity);
+        entity.softDelete(SecurityUtils.getCurrentUserId());
+        repository.save(entity);
     }
 
     private SpatialObjectCategoryDto mapToDto(SpatialObjectCategory entity) {
@@ -94,6 +120,8 @@ public class SpatialObjectCategoryService {
         dto.setCreatedBy(entity.getCreatedBy());
         dto.setUpdatedAt(entity.getUpdatedAt());
         dto.setUpdatedBy(entity.getUpdatedBy());
+        dto.setDeletedAt(entity.getDeletedAt());
+        dto.setDeletedBy(entity.getDeletedBy());
         return dto;
     }
 }

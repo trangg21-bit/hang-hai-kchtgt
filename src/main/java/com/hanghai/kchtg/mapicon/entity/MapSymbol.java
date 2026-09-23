@@ -8,6 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
+import org.hibernate.annotations.SQLRestriction;
+
 import java.util.UUID;
 
 /**
@@ -15,6 +17,7 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "map_symbols")
+@SQLRestriction("1=1")
 @Getter
 @Setter
 @NoArgsConstructor

@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Button,
+  DatePicker,
   Form,
   Input,
-  Select,
 } from 'antd';
 import {
   PlusOutlined,
@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
-import { ScreenHeader, FilterTableLayout, DataTable, type ScreenHeaderAction } from '../../components/list-view';
+import { ScreenHeader, FilterTableLayout, DataTable, type ScreenHeaderAction, type DataTableColumn } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -24,11 +24,11 @@ import { CommonHistoryDrawer, type CommonHistoryEntry } from '../../components/s
 import SymbolForm, { type SymbolFormRef } from './SymbolForm';
 import SymbolDetailContent from './SymbolDetailContent';
 import { userService } from '../../services/userService';
-import toast from '../../components/ToastNotification';
+import { toast } from '../../components/ToastNotification';
 import {
-  actionPrimary,
   statusOperational,
   statusDraft,
+  statusCritical,
   textSecondary,
   textTertiary,
   borderDefault,
@@ -49,31 +49,37 @@ import {
   colors,
   formatUserDisplayName,
   isUuidString,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 
 const fontSizeMd = 13.5;
 
-const STATUS_OPTIONS = [
-  { value: 'active', label: 'Sử dụng' },
-  { value: 'inactive', label: 'Không sử dụng' },
-];
-
 export default function SymbolList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   // ── Filter states ────────────────────────────────────────────────
-  const [keyword, setKeyword] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterCode, setFilterCode] = useState('');
+  const [filterName, setFilterName] = useState('');
+  const [updatedDateRange, setUpdatedDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [activeStatusTab, setActiveStatusTab] = useState<string>('all');
+  const [tabCounts, setTabCounts] = useState<{ all: number; active: number; inactive: number; deleted: number }>({
+    all: 0,
+    active: 0,
+    inactive: 0,
+    deleted: 0,
+  });
+
+  // ── Sort states ──────────────────────────────────────────────────
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | undefined>();
 
   // ── Pagination states ────────────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [dataSource, setDataSource] = useState<Symbol[]>([]);
-  const [allSymbols, setAllSymbols] = useState<Symbol[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -108,30 +114,63 @@ export default function SymbolList() {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await symbolService.list({ page: 1, pageSize: 1000 });
-      const rawList = res.data || [];
-      setAllSymbols(rawList);
+      let isDeleted: boolean | undefined = undefined;
+      let status: string | undefined = undefined;
+      if (activeStatusTab === 'active') {
+        status = 'ACTIVE';
+        isDeleted = false;
+      } else if (activeStatusTab === 'inactive') {
+        status = 'INACTIVE';
+        isDeleted = false;
+      } else if (activeStatusTab === 'deleted') {
+        isDeleted = true;
+      }
 
-      const filtered = rawList.filter((s) => {
-        if (keyword) {
-          const matchName = s.name?.toLowerCase().includes(keyword.toLowerCase());
-          const matchCode = s.code?.toLowerCase().includes(keyword.toLowerCase());
-          if (!matchName && !matchCode) return false;
-        }
-        if (filterStatus && s.status !== filterStatus) return false;
-        return true;
+      const res = await symbolService.list({
+        page,
+        pageSize,
+        code: filterCode.trim() || undefined,
+        name: filterName.trim() || undefined,
+        status,
+        isDeleted,
+        fromUpdatedDate: updatedDateRange?.[0] ? updatedDateRange[0].startOf('day').toISOString() : undefined,
+        toUpdatedDate: updatedDateRange?.[1] ? updatedDateRange[1].endOf('day').toISOString() : undefined,
+        sortField,
+        sortOrder,
       });
-
-      const start = (page - 1) * pageSize;
-      setDataSource(filtered.slice(start, start + pageSize));
-      setTotal(filtered.length);
+      setDataSource(res.data || []);
+      setTotal(res.total || 0);
     } catch (err: unknown) {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách biểu tượng'));
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, keyword, filterStatus]);
+  }, [page, pageSize, filterCode, filterName, activeStatusTab, updatedDateRange, sortField, sortOrder]);
+
+  // ── Fetch counts for status tabs ────────────────────────────────
+  const fetchCounts = useCallback(async () => {
+    try {
+      const [resAll, resActive, resInactive, resDeleted] = await Promise.all([
+        symbolService.list({ page: 1, pageSize: 1 }),
+        symbolService.list({ page: 1, pageSize: 1, status: 'ACTIVE', isDeleted: false }),
+        symbolService.list({ page: 1, pageSize: 1, status: 'INACTIVE', isDeleted: false }),
+        symbolService.list({ page: 1, pageSize: 1, isDeleted: true }),
+      ]);
+      const activeCount = resActive?.total || 0;
+      const inactiveCount = resInactive?.total || 0;
+      const deletedCount = resDeleted?.total || 0;
+      const allCount = resAll?.total || (activeCount + inactiveCount + deletedCount);
+      setTabCounts({
+        all: allCount,
+        active: activeCount,
+        inactive: inactiveCount,
+        deleted: deletedCount,
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -139,11 +178,18 @@ export default function SymbolList() {
     });
   }, [fetchData]);
 
-  // Load Users for displaying creator/updater names without UUID fallback
+  useEffect(() => {
+    queueMicrotask(() => {
+      void fetchCounts();
+    });
+  }, [fetchCounts]);
+
+  // Load Users for displaying creator/updater names without UUID fallback (Bug 2 & 6 fix)
   useEffect(() => {
     userService.list({ pageSize: 1000 }).then(res => {
+      const users = res.data || (res as any).content || [];
       const map = new Map<string, string>();
-      (res?.items || []).forEach(u => {
+      users.forEach((u: any) => {
         const humanName = u.fullName || u.username;
         if (humanName && !isUuidString(humanName)) {
           map.set(u.id, humanName);
@@ -153,17 +199,6 @@ export default function SymbolList() {
     }).catch(() => {});
   }, []);
 
-  // Tab counts
-  const tabCounts = useMemo(() => {
-    const active = allSymbols.filter((s) => s.status === 'active').length;
-    const inactive = allSymbols.filter((s) => s.status === 'inactive').length;
-    return {
-      all: allSymbols.length,
-      active,
-      inactive,
-    };
-  }, [allSymbols]);
-
   // ── Filter handlers ─────────────────────────────────────────────
   const handleFilterApply = useCallback(() => {
     setPage(1);
@@ -171,21 +206,14 @@ export default function SymbolList() {
   }, [fetchData]);
 
   const handleFilterReset = useCallback(() => {
-    setKeyword('');
-    setFilterStatus(undefined);
-    setActiveStatusTab('all');
+    setFilterCode('');
+    setFilterName('');
+    setUpdatedDateRange(null);
     setPage(1);
   }, []);
 
   const handleStatusTabChange = useCallback((key: string) => {
     setActiveStatusTab(key);
-    if (key === 'all') {
-      setFilterStatus(undefined);
-    } else if (key === 'active') {
-      setFilterStatus('active');
-    } else if (key === 'inactive') {
-      setFilterStatus('inactive');
-    }
     setPage(1);
   }, []);
 
@@ -229,7 +257,7 @@ export default function SymbolList() {
           id: `create-${record.id}`,
           action: 'CREATE',
           status: 'Tạo mới',
-          actor: record.createdByName || record.createdBy || 'Quản trị viên',
+          actor: formatUserDisplayName(record.createdBy, record.createdByName, userMap) || 'Quản trị viên',
           timestamp: record.createdAt,
           description: `Khởi tạo biểu tượng bản đồ "${record.name}"`,
           changes: [
@@ -246,7 +274,7 @@ export default function SymbolList() {
           id: `update-${record.id}`,
           action: 'UPDATE',
           status: 'Cập nhật',
-          actor: record.updatedByName || record.updatedBy || record.createdByName || 'Quản trị viên',
+          actor: formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, record.createdByName) || 'Quản trị viên',
           timestamp: record.updatedAt,
           description: `Cập nhật thông tin biểu tượng bản đồ "${record.name}"`,
           changes: [
@@ -256,11 +284,26 @@ export default function SymbolList() {
         });
       }
 
+      // Mốc xóa
+      if (record.deletedAt) {
+        entries.push({
+          id: `delete-${record.id}`,
+          action: 'DELETE',
+          status: 'Đã xóa',
+          actor: formatUserDisplayName(record.deletedBy, record.deletedByName, userMap, record.updatedBy, record.updatedByName) || 'Quản trị viên',
+          timestamp: record.deletedAt,
+          description: `Xóa biểu tượng bản đồ "${record.name}"`,
+          changes: [
+            { field: 'Trạng thái', oldValue: record.status === 'active' ? 'Sử dụng' : 'Không sử dụng', newValue: 'Đã xóa' },
+          ],
+        });
+      }
+
       setHistoryRecords(entries);
     } finally {
       setHistoryLoading(false);
     }
-  }, []);
+  }, [userMap]);
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: Symbol) => {
@@ -277,15 +320,16 @@ export default function SymbolList() {
       setDeleteModalOpen(false);
       setDeleteTarget(null);
       void fetchData();
+      void fetchCounts();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
       setDeleting(false);
     }
-  }, [deleteTarget, fetchData]);
+  }, [deleteTarget, fetchData, fetchCounts]);
 
   // ── DataTable Columns ───────────────────────────────────────────
-  const columns = useMemo(() => [
+  const columns: DataTableColumn[] = useMemo(() => [
     {
       key: 'stt',
       label: 'STT',
@@ -293,15 +337,15 @@ export default function SymbolList() {
       fixed: 'left' as const,
       align: 'center' as const,
       type: 'mono' as const,
-      render: (_: unknown, __: Symbol, idx: number) => (
-        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span>
+      render: (_: unknown, __: Symbol, idx?: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>
       ),
     },
     {
       key: 'image',
-      label: 'Hình ảnh',
+      label: 'Biểu tượng',
       dataIndex: 'image',
-      width: 100,
+      width: 140,
       align: 'center' as const,
       render: (imgSrc: string, record: Symbol) =>
         imgSrc ? (
@@ -329,7 +373,8 @@ export default function SymbolList() {
       label: 'Tên biểu tượng',
       dataIndex: 'name',
       width: 280,
-      fixed: 'left' as const,
+      sortable: true,
+      sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : sortOrder === 'desc' ? 'descend' : null) : null,
       ellipsis: false,
       render: (name: string, record: Symbol) => (
         <div style={{ lineHeight: '1.4' }}>
@@ -381,6 +426,8 @@ export default function SymbolList() {
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedBy',
       width: 220,
+      sortable: true,
+      sortOrder: sortField === 'updatedBy' || sortField === 'updatedAt' ? (sortOrder === 'asc' ? 'ascend' : sortOrder === 'desc' ? 'descend' : null) : null,
       ellipsis: false,
       render: (_: unknown, record: Symbol) => {
         const name = formatUserDisplayName(record.updatedBy, record.updatedByName, userMap, record.createdBy, record.createdByName);
@@ -414,10 +461,11 @@ export default function SymbolList() {
       width: 150,
       align: 'center' as const,
       ellipsis: false,
-      render: (status: string) => {
+      render: (status: string, record: Symbol) => {
+        const isDeleted = Boolean(record.deletedAt);
         const isOperational = status === 'active';
-        const color = isOperational ? statusOperational : statusDraft;
-        const label = isOperational ? 'Sử dụng' : 'Không sử dụng';
+        const color = isDeleted ? statusCritical : (isOperational ? statusOperational : statusDraft);
+        const label = isDeleted ? 'Đã xóa' : (isOperational ? 'Sử dụng' : 'Khóa');
         return (
           <span
             style={{
@@ -439,10 +487,11 @@ export default function SymbolList() {
         );
       },
     },
-  ], [page, pageSize, userMap, openDetailDrawer]);
+  ], [page, pageSize, userMap, openDetailDrawer, sortField, sortOrder]);
 
   // ── Row Actions ──────────────────────────────────────────────────
   const rowActions = useCallback((record: Symbol) => {
+    const isDeleted = Boolean(record.deletedAt);
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
     if (hasPerm('symbol:read') || hasPerm('map:read') || hasPerm('data:read')) {
       actions.push({
@@ -452,7 +501,7 @@ export default function SymbolList() {
         onClick: () => openDetailDrawer(record),
       });
     }
-    if (hasPerm('symbol:update') || hasPerm('map:update') || hasPerm('data:update')) {
+    if (!isDeleted && (hasPerm('symbol:update') || hasPerm('map:update') || hasPerm('data:update'))) {
       actions.push({
         key: 'edit',
         label: 'Chỉnh sửa',
@@ -468,7 +517,7 @@ export default function SymbolList() {
         onClick: () => void openHistoryDrawer(record),
       });
     }
-    if (hasPerm('symbol:delete') || hasPerm('map:delete') || hasPerm('data:delete')) {
+    if (!isDeleted && (hasPerm('symbol:delete') || hasPerm('map:delete') || hasPerm('data:delete'))) {
       actions.push({
         key: 'delete',
         label: 'Xóa',
@@ -500,13 +549,13 @@ export default function SymbolList() {
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: spaceSm }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Từ khóa tìm kiếm
+          Mã biểu tượng
         </div>
         <Input
-          placeholder="Tìm theo mã, tên biểu tượng..."
+          placeholder="Nhập mã biểu tượng..."
           allowClear
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
+          value={filterCode}
+          onChange={(e) => setFilterCode(e.target.value)}
           onPressEnter={handleFilterApply}
           style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
         />
@@ -514,24 +563,38 @@ export default function SymbolList() {
 
       <div style={{ marginBottom: spaceFormField }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-          Trạng thái sử dụng
+          Tên biểu tượng
         </div>
-        <Select
-          placeholder="Tất cả trạng thái"
+        <Input
+          placeholder="Nhập tên biểu tượng..."
           allowClear
-          value={filterStatus}
-          onChange={(val) => setFilterStatus(val)}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-          options={STATUS_OPTIONS}
+          value={filterName}
+          onChange={(e) => setFilterName(e.target.value)}
+          onPressEnter={handleFilterApply}
+          style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
+        />
+      </div>
+
+      <div style={{ marginBottom: spaceFormField }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
+          Ngày cập nhật
+        </div>
+        <DatePicker.RangePicker
+          {...getRangePickerProps({
+            value: updatedDateRange,
+            onChange: (dates: any) => setUpdatedDateRange(dates as any),
+            style: { width: '100%', borderRadius: radiusPill, height: 40 },
+          })}
         />
       </div>
     </>
   );
 
   const statusTabs = [
-    { key: 'all', label: 'Tất cả', count: tabCounts.all, color: actionPrimary, active: activeStatusTab === 'all' },
+    { key: 'all', label: 'Tất cả', count: tabCounts.all, color: '#0E6FD6', active: activeStatusTab === 'all' },
     { key: 'active', label: 'Sử dụng', count: tabCounts.active, color: statusOperational, active: activeStatusTab === 'active' },
-    { key: 'inactive', label: 'Không sử dụng', count: tabCounts.inactive, color: statusDraft, active: activeStatusTab === 'inactive' },
+    { key: 'inactive', label: 'Khóa', count: tabCounts.inactive, color: statusDraft, active: activeStatusTab === 'inactive' },
+    { key: 'deleted', label: 'Đã xóa', count: tabCounts.deleted, color: statusCritical, active: activeStatusTab === 'deleted' },
   ];
 
   const renderContent = () => {
@@ -555,12 +618,17 @@ export default function SymbolList() {
           rowKey="id"
           rowActions={rowActions}
           scroll={{ x: 'max-content' }}
+          onSort={(field, order) => {
+            setSortField(order ? (field as string) : undefined);
+            setSortOrder(order || undefined);
+            setPage(1);
+          }}
         />
         <Pagination
           total={total}
           current={page}
           pageSize={pageSize}
-          pageSizeOptions={[10, 20, 50]}
+          pageSizeOptions={[20, 50, 100]}
           onChange={(p, sz) => {
             setPage(p);
             if (sz) setPageSize(sz);
@@ -733,6 +801,7 @@ export default function SymbolList() {
           entityName={historyTarget?.name || 'biểu tượng'}
           records={historyRecords}
           loading={historyLoading}
+          userMap={userMap}
         />
 
         {/* ── Delete Confirmation Modal ────────────────────────────── */}

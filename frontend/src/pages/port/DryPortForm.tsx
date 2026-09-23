@@ -254,7 +254,7 @@ const renderDmsGroup = (
   ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -1243,20 +1243,20 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                     title: 'STT',
                     width: 60,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 14 } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, _r: any, idx?: number) => (idx ?? 0) + 1,
                   },
                   {
                     title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lat',
-                    onCell: () => ({ style: { verticalAlign: 'top' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) =>
                       renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                   },
                   {
                     title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lng',
-                    onCell: () => ({ style: { verticalAlign: 'top' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) =>
                       renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                   },
@@ -1264,7 +1264,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                     title: '',
                     width: 50,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top', paddingTop: 10 } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) => (
                       <Button
                         type="text"

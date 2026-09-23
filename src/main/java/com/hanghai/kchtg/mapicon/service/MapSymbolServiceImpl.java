@@ -30,13 +30,18 @@ public class MapSymbolServiceImpl implements MapSymbolService {
     }
 
     @Override
-    public Page<MapSymbolResponse> search(String search, String code, MapSymbolStatus status, Pageable pageable) {
-        String trimmedSearch = search != null ? search.trim() : null;
-        String trimmedCode = code != null ? code.trim() : null;
+    public Page<MapSymbolResponse> search(String search, String code, String name, MapSymbolStatus status, Boolean isDeleted, java.time.LocalDateTime fromUpdatedDate, java.time.LocalDateTime toUpdatedDate, Pageable pageable) {
+        String trimmedSearch = search != null && !search.trim().isEmpty() ? search.trim() : null;
+        String trimmedCode = code != null && !code.trim().isEmpty() ? code.trim() : null;
+        String trimmedName = name != null && !name.trim().isEmpty() ? name.trim() : null;
         return repository.search(
-                trimmedSearch != null && trimmedSearch.isEmpty() ? null : trimmedSearch,
-                trimmedCode != null && trimmedCode.isEmpty() ? null : trimmedCode,
+                trimmedSearch,
+                trimmedCode,
+                trimmedName,
                 status,
+                isDeleted,
+                fromUpdatedDate,
+                toUpdatedDate,
                 pageable
         ).map(this::toResponse);
     }

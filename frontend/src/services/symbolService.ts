@@ -17,6 +17,9 @@ export interface Symbol {
   updatedBy?: string;
   createdByName?: string;
   updatedByName?: string;
+  deletedAt?: string;
+  deletedBy?: string;
+  deletedByName?: string;
 }
 
 export interface CreateSymbolPayload {
@@ -44,7 +47,12 @@ export interface SymbolOption {
 
 export interface SymbolFilters {
   search?: string;
+  name?: string;
+  code?: string;
   status?: string;
+  isDeleted?: boolean;
+  fromUpdatedDate?: string;
+  toUpdatedDate?: string;
 }
 
 // ============================================================
@@ -68,18 +76,38 @@ function mapSymbol(item: any): Symbol {
     createdByName: item.createdByName ?? '',
     updatedBy: item.updatedBy ?? '',
     updatedByName: item.updatedByName ?? '',
+    deletedAt: item.deletedAt ? new Date(item.deletedAt).toISOString() : undefined,
+    deletedBy: item.deletedBy ?? undefined,
   };
 }
 
 export const symbolService = {
-  async list(params?: { page?: number; pageSize?: number; search?: string; status?: string; code?: string }): Promise<PaginatedResponse<Symbol>> {
+  async list(params?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    name?: string;
+    code?: string;
+    status?: string;
+    isDeleted?: boolean;
+    fromUpdatedDate?: string;
+    toUpdatedDate?: string;
+    sortField?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<PaginatedResponse<Symbol>> {
     const backendPage = params?.page ? params.page - 1 : 0;
 
     const resp = await api.get('/symbols', {
       params: {
         search: params?.search,
+        name: params?.name,
         code: params?.code,
         status: params?.status ? params.status.toUpperCase() : undefined,
+        isDeleted: params?.isDeleted,
+        fromUpdatedDate: params?.fromUpdatedDate,
+        toUpdatedDate: params?.toUpdatedDate,
+        sortField: params?.sortField,
+        sortOrder: params?.sortOrder,
         page: backendPage,
         size: params?.pageSize || 10,
       }

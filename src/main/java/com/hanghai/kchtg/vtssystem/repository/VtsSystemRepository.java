@@ -25,7 +25,6 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         FROM VtsSystem v
         WHERE v.deletedAt IS NULL
           AND (v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND v.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL
           AND (:scopeEnabled = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(v.systemName) ASC

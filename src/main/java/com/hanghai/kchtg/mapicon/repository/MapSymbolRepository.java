@@ -27,11 +27,18 @@ public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
            "CAST(function('immutable_unaccent', LOWER(s.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string) " +
            "OR CAST(function('immutable_unaccent', LOWER(s.description)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string)) " +
            "AND (:code IS NULL OR LOWER(s.code) LIKE LOWER(CONCAT('%', CAST(:code AS string), '%'))) " +
+           "AND (CAST(:name AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(s.name)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:name AS string), '%'))) AS string)) " +
            "AND (:status IS NULL OR s.status = :status) " +
-           "AND s.deletedAt IS NULL")
+           "AND (:isDeleted IS NULL OR (:isDeleted = true AND s.deletedAt IS NOT NULL) OR (:isDeleted = false AND s.deletedAt IS NULL)) " +
+           "AND (CAST(:fromUpdatedDate AS timestamp) IS NULL OR s.updatedAt >= :fromUpdatedDate) " +
+           "AND (CAST(:toUpdatedDate AS timestamp) IS NULL OR s.updatedAt <= :toUpdatedDate)")
     Page<MapSymbol> search(@Param("search") String search,
                            @Param("code") String code,
+                           @Param("name") String name,
                            @Param("status") MapSymbolStatus status,
+                           @Param("isDeleted") Boolean isDeleted,
+                           @Param("fromUpdatedDate") java.time.LocalDateTime fromUpdatedDate,
+                           @Param("toUpdatedDate") java.time.LocalDateTime toUpdatedDate,
                            Pageable pageable);
 
     @Query("SELECT MAX(CAST(SUBSTRING(s.code, 4) AS integer)) FROM MapSymbol s")

@@ -62,10 +62,12 @@ public class BuoyController {
                         @RequestParam(required = false) String condition,
                         @RequestParam(required = false) Integer provinceId,
                         @RequestParam(required = false) String locationDetail,
-                        @RequestParam(required = false) String approvalStatus) {
+                        @RequestParam(required = false) String approvalStatus,
+                        @RequestParam(required = false) String sortBy,
+                        @RequestParam(required = false) String sortDir) {
                 return ResponseEntity.ok(ApiResponse.success(
                                 buoyService.search(name, code, type, status, condition, provinceId, locationDetail,
-                                                approvalStatus)));
+                                                approvalStatus, sortBy, sortDir)));
         }
 
         @GetMapping("/generate-code")

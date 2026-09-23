@@ -170,6 +170,25 @@ class RadarStationServiceTest {
     }
 
     @Test
+    void testGetById_WithSpatialData_ReturnsCoordinateSystemAndDisplayRule() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+
+        GisSpatialObject spatial = new GisSpatialObject();
+        spatial.setId(spatialId);
+        spatial.setGeometryType(GisGeometryType.POINT);
+        spatial.setCoordinates("POINT (106.7 20.8)");
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(spatial));
+
+        RadarStationResponse response = service.getById(TEST_ID);
+
+        assertEquals(1, response.getCoordinateSystem());
+        assertEquals("Độ, phút, giây (DMS)", response.getDisplayRule());
+    }
+
+    @Test
     void testGetById_NotFound() {
         when(repository.findById(TEST_ID_2)).thenReturn(Optional.empty());
         assertThrows(RuntimeException.class, () -> service.getById(TEST_ID_2));
@@ -561,6 +580,8 @@ class RadarStationServiceTest {
             when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                    .stationName(entity.getStationName())
+                    .location(entity.getLocation())
                     .towerHeight(new BigDecimal("25"))
                     .radarRange(new BigDecimal("10"))
                     .emissionArea(new BigDecimal("50"))
@@ -581,6 +602,7 @@ class RadarStationServiceTest {
 
             RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
                     .stationName("Trạm Hiện Tại")
+                    .location(entity.getLocation())
                     .build();
 
             service.update(TEST_ID, updateReq, USER_ID);

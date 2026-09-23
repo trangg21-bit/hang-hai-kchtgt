@@ -212,7 +212,9 @@ const renderDmsGroup = (
     </div>
   );
 
-  const messageRow = (
+  const hasMsg = inputs.some((inp) => !!inp.msg);
+
+  const messageRow = hasMsg ? (
     <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
@@ -220,10 +222,10 @@ const renderDmsGroup = (
         </div>
       ))}
     </div>
-  );
+  ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -1017,23 +1019,26 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
                     title: 'STT',
                     width: 60,
                     align: 'center' as const,
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
                   },
                   {
                     title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lat',
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
                   },
                   {
                     title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
                     key: 'lng',
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
                   },
                   {
                     title: '',
                     width: 50,
                     align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'top' } }),
+                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: any, record: any) => (
                       <Button
                         type="text"

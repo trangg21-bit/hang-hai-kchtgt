@@ -122,3 +122,42 @@ export const getProvinceNameById = (id?: number | string): string | undefined =>
     ? VIETNAM_PROVINCES[numId - 1]
     : undefined;
 };
+
+/**
+ * Chuyển đổi mã tỉnh/thành phố hoặc chuỗi tên sang nhãn hiển thị chuẩn tiếng Việt.
+ * Hỗ trợ: ID số (1, 31...), nhãn chuẩn ("Hà Nội"), tên kèm tiền tố ("Thành phố Hà Nội", "Tỉnh Hải Dương"),
+ * hoặc fallback về chính chuỗi ban đầu nếu không tìm thấy (tránh rỗng làm mất dữ liệu lịch sử).
+ */
+export const getProvinceLabel = (provinceId?: string | number): string => {
+  if (provinceId === undefined || provinceId === null) return '';
+  const str = String(provinceId).trim();
+  if (str === '' || str === '—' || str === '(null)' || str === 'null') return '';
+  if (str === 'Chưa có' || str === '(trống)') return 'Chưa có';
+
+  // 1. Khớp chính xác theo ID số dạng chuỗi (value: "1", "31", ...)
+  const foundByVal = VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === str);
+  if (foundByVal) return foundByVal.label;
+
+  // 2. Tra cứu bằng ID qua getProvinceNameById
+  const nameById = getProvinceNameById(provinceId);
+  if (nameById) return nameById;
+
+  // 3. Khớp chính xác theo nhãn
+  const foundByLabel = VIETNAM_PROVINCE_OPTIONS.find(
+    (o) => o.label.toLowerCase() === str.toLowerCase()
+  );
+  if (foundByLabel) return foundByLabel.label;
+
+  // 4. Bỏ tiền tố "Thành phố ", "Tỉnh ", "TP. ", "TP " rồi so khớp
+  const normStr = str.toLowerCase().replace(/^(thành phố|tỉnh|tp\.?)\s+/i, '').trim();
+  if (normStr) {
+    const foundByNorm = VIETNAM_PROVINCE_OPTIONS.find((o) => {
+      const normOpt = o.label.toLowerCase().replace(/^(thành phố|tỉnh|tp\.?)\s+/i, '').trim();
+      return normOpt === normStr;
+    });
+    if (foundByNorm) return foundByNorm.label;
+  }
+
+  // 5. Fallback giữ nguyên chuỗi
+  return str;
+};

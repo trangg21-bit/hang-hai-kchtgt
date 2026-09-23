@@ -146,7 +146,7 @@ class BuoyControllerTest {
     @DisplayName("GET /api/buoys/search — returns 200 with filtered list")
     void testSearch() throws Exception {
         UUID id = UUID.randomUUID();
-        when(buoyService.search(eq("Phao"), any(), any(), any(), any(), any(), any(), any()))
+        when(buoyService.search(eq("Phao"), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(makeResponse(id)));
 
         mockMvc.perform(get("/api/buoys/search")
@@ -155,13 +155,13 @@ class BuoyControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray());
 
-        verify(buoyService).search(eq("Phao"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
+        verify(buoyService).search(eq("Phao"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     @Test
     @DisplayName("GET /api/buoys/search — with all params")
     void testSearchWithAllParams() throws Exception {
-        when(buoyService.search(any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
+        when(buoyService.search(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/buoys/search")
                         .param("name", "Phao")
@@ -171,7 +171,7 @@ class BuoyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(buoyService).search(eq("Phao"), eq("PHAO"), eq("CARDINAL"), eq("DRAFT"), isNull(), isNull(), isNull(), isNull());
+        verify(buoyService).search(eq("Phao"), eq("PHAO"), eq("CARDINAL"), eq("DRAFT"), isNull(), isNull(), isNull(), isNull(), isNull(), isNull());
     }
 
     // ── CREATE ───────────────────────────────────────────────────
