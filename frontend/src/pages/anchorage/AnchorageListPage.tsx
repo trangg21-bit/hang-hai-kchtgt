@@ -20,7 +20,7 @@ import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -1105,7 +1105,7 @@ export default function AnchorageListPage() {
               }}
               options={portOptions}
               showSearch
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1118,7 +1118,7 @@ export default function AnchorageListPage() {
               value={filterNavigationChannelId}
               onChange={v => setFilterNavigationChannelId(v)}
               options={waterwayOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1131,7 +1131,7 @@ export default function AnchorageListPage() {
               value={filterBuoyStationId}
               onChange={v => setFilterBuoyStationId(v)}
               options={buoyStationOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1156,7 +1156,7 @@ export default function AnchorageListPage() {
               showSearch
               value={filterProvince}
               onChange={v => setFilterProvince(v)}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
               options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
             />
           </div>
@@ -1593,8 +1593,7 @@ export default function AnchorageListPage() {
           {...drawerProps}
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
-          size={1000}
-          size="min(1000px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editAnchorageId ? 'Chỉnh sửa thông tin Khu neo đậu' : 'Thêm mới Khu neo đậu'}</span>}
           open={createDrawerVisible}
           destroyOnHidden
@@ -1660,8 +1659,7 @@ export default function AnchorageListPage() {
           {...drawerProps}
           rootClassName="anchorage-drawer-scope"
           className="anchorage-drawer-scope"
-          size={1000}
-          size="min(1000px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu neo đậu{detailRecord ? ` - ${detailRecord.anchorageName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); notifyEmbeddedActionClosed(); }}

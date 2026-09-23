@@ -174,7 +174,6 @@ public class KchtGis155Service {
         .replace(":ApprovalStatus", s4);
   }
 
-  @SuppressWarnings("unused")
   private String formatValueForSql(Object val) {
     if (val == null) {
       return "NULL";

@@ -19,7 +19,7 @@ import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../componen
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
 import AppDrawer from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -1060,7 +1060,7 @@ export default function ShipRepairYardList() {
               placeholder="Chọn tỉnh/thành phố"
               allowClear
               showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               value={filterProvince || undefined}
               onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
               options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
@@ -1074,7 +1074,6 @@ export default function ShipRepairYardList() {
               format="DD/MM/YYYY"
               placeholder={['Từ ngày', 'Đến ngày']}
               allowClear
-              classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
               classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
               value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
               onChange={(dates) => {
@@ -1816,7 +1815,7 @@ export default function ShipRepairYardList() {
             />
             {historyMode === 'all' && <Select placeholder="Chọn cơ sở sửa chữa, đóng tàu" allowClear showSearch value={historyEntityFilter || undefined}
               onChange={v => setHistoryEntityFilter(v || '')}
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               options={Object.entries(historyEntityNames).map(([id, name]) => ({ value: id, label: name }))} />}
             <DatePicker.RangePicker
               {...getRangePickerProps({

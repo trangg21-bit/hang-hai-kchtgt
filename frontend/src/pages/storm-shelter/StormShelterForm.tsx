@@ -199,6 +199,22 @@ const dmsInputCss = `
 }
 `;
 
+interface DmsInputConfig {
+  key: string;
+  base: string;
+  value: number | null | undefined;
+  max: number;
+  radius: string;
+  unit: string;
+  unitStyle: React.CSSProperties;
+  basis: string;
+  width: number;
+  step: number;
+  formatter?: (value: number | string | undefined) => string;
+  msg?: string;
+  onEdit: (v: number | null) => void;
+}
+
 const renderDmsGroup = (
   dVal: number | null | undefined,
   mVal: number | null | undefined,
@@ -207,7 +223,7 @@ const renderDmsGroup = (
   onChange: (d: number | null, m: number | null, s: number | null) => void,
 ) => {
   const started = dVal != null || mVal != null || sVal != null;
-  const inputs = [
+  const inputs: DmsInputConfig[] = [
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
       radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 66px', width: 66,
@@ -229,7 +245,7 @@ const renderDmsGroup = (
       msg: started && sVal == null ? 'Bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
-  ] as const;
+  ];
 
   const inputRow = (
     <div className="dms-input-row" style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-start', maxWidth: '100%', minWidth: 0 }}>
@@ -352,6 +368,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
 
   // GPS Coordinates (Tab 2)
   const [coordinateList, setCoordinateList] = useState<GpsCoordinateItem[]>([]);
+  const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // Attachments (Tab 3)
@@ -546,23 +563,22 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   }, [watchedPortId, isEdit, form]);
 
   // Sync geometryType to coordinateList
-  useEffect(() => {
-    if (isEdit && !isInitialLoadDoneRef.current) {
-      return;
-    }
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
+      setGpsError(null);
       return;
     }
     form.setFieldsValue({
       displayRule: 'Độ, phút, giây (DMS)',
       coordinateSystem: form.getFieldValue('coordinateSystem') ?? 1,
     });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -571,7 +587,8 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       }
       return prev;
     });
-  }, [watchedGeometryType, isEdit, form]);
+    setGpsError(null);
+  };
 
   // Load initial data for Edit mode
   useEffect(() => {
@@ -982,8 +999,13 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       return false;
     }
 
-    if (vals.geometryType) {
-      if (!vals.mapSymbolId) {
+    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
+    const currentMapSymbolId = vals.mapSymbolId ?? form.getFieldValue('mapSymbolId');
+    const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+    const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
+
+    if (currentGeometryType) {
+      if (!currentMapSymbolId) {
         setActiveTabKey('location');
         form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
         toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
@@ -1100,10 +1122,10 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
         publicDecision: vals.publicDecision?.trim() || undefined,
         investmentAgreement: vals.investmentAgreement?.trim() || undefined,
-        geometryType: vals.geometryType || undefined,
-        mapSymbolId: vals.mapSymbolId || undefined,
-        coordinateSystem: vals.coordinateSystem != null ? Number(vals.coordinateSystem) : undefined,
-        displayRule: vals.geometryType ? 1 : undefined,
+        geometryType: currentGeometryType || undefined,
+        mapSymbolId: currentMapSymbolId || undefined,
+        coordinateSystem: currentCoordSys != null ? Number(currentCoordSys) : undefined,
+        displayRule: currentGeometryType ? 1 : undefined,
         latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
         longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
         coordinates: wktCoordinates || undefined,
@@ -1181,6 +1203,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           <style>{`
@@ -1756,6 +1779,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <InfrastructureAttachmentTab
           attachments={uploadedFiles.map((f: any) => ({
@@ -1778,15 +1802,14 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* Drawer thêm/sửa Khu nước neo buộc tàu */}
       <Drawer
         {...drawerProps}
         rootClassName="storm-shelter-drawer-scope"
         className="storm-shelter-drawer-scope"
-        size={1000}
-        size="min(1000px, 96vw)"
+        width="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
         open={waterAreaDrawerOpen}
         onClose={closeWaterAreaDrawer}
@@ -2067,8 +2090,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         {...drawerProps}
         rootClassName="storm-shelter-drawer-scope"
         className="storm-shelter-drawer-scope"
-        size={1000}
-        size="min(1000px, 96vw)"
+        width="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
         open={!!viewingWaterArea}
         onClose={() => setViewingWaterArea(null)}

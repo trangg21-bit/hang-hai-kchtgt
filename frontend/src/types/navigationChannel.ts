@@ -216,6 +216,7 @@ export interface UpdateNavigationChannelRequest extends CreateNavigationChannelR
 // ── Approval ──────────────────────────────────────────────────────────────
 export interface ApprovalRequest {
   status: 'APPROVED' | 'REJECTED';
+  reason?: string;
 }
 
 export interface ApprovalResponse {

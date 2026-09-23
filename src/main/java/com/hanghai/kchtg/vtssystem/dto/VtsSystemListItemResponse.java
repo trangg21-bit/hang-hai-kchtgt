@@ -31,6 +31,17 @@ public class VtsSystemListItemResponse {
     private String rejectionReason;
 
     private UUID approverLevel1;
+    private String approverLevel1Name;
+    private LocalDateTime approvedDateLevel1;
+    private UUID approverLevel2;
+    private String approverLevel2Name;
+    private LocalDateTime approvedDateLevel2;
+
+    private UUID submittedBy;
+    private String submittedByName;
+    private LocalDateTime submittedAt;
+    private LocalDateTime submittedDate;
+
     private UUID createdBy;
     private String createdByName;
 

@@ -1,44 +1,54 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Modal, Input, DatePicker, Select } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
-import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
-import { hanoiStationService, type HanoiStationListParams } from '../../../services/hanoiStationService';
-import { organizationService } from '../../../services/organizationService';
-import type { HanoiStationItem } from '../../../types/hanoiStation';
-import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../../types/vtsSystem';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
-import { useAuthStore, type AuthState } from '../../../store/authStore';
-import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
-import { ScreenHeader, DataTable } from '../../../components/list-view';
+import { DatePicker, Input, Modal, Select } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { DataTable, ScreenHeader } from '../../../components/list-view';
 import FilterTableLayout from '../../../components/list-view/FilterTableLayout';
 import Pagination from '../../../components/list-view/Pagination';
-import HanoiStationForm from './HanoiStationForm';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import ApprovalModal from '../../../components/shared/ApprovalModal';
-import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../../components/shared/CommonHistoryDrawer';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
+import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../../components/shared/CommonHistoryDrawer';
+import DeleteConfirmModal from '../../../components/shared/DeleteConfirmModal';
 import toast from '../../../components/ToastNotification';
-import {
-  actionPrimary, textSecondary,
-  textPrimary, fontWeightBold,
-  spaceSm, spaceMd,
-  statusOperational, statusCritical, statusAttention, statusDraft,
-  statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  textAreaStyle, colors, radiusPill,
-  getRangePickerProps,
-  getConditionStatusColor,
-  getConditionStatusLabel,
-  getVtsConditionStatusLabel,
-} from '../../../themetokenchk';
-import * as themeTokenChk from '../../../themetokenchk';
-import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
-import dayjs, { type Dayjs } from 'dayjs';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
-import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
-import { useSearchParams } from 'react-router-dom';
-import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
 import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
+import { ThemeTokenProvider } from '../../../context/ThemeTokenContext';
+import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { hanoiStationService, type HanoiStationListParams } from '../../../services/hanoiStationService';
+import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../../services/operatingOrganizationsData';
+import { organizationService } from '../../../services/organizationService';
+import { useAuthStore, type AuthState } from '../../../store/authStore';
+import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
+import * as themeTokenChk from '../../../themetokenchk';
+import {
+    actionPrimary,
+    cellSubtitleStyle,
+    cellTitleStyle,
+    colors,
+    fontWeightBold,
+    getConditionStatusColor,
+    getConditionStatusLabel,
+    getRangePickerProps,
+    getVtsConditionStatusLabel,
+    icons,
+    radiusPill,
+    spaceMd,
+    spaceSm,
+    statusAttention,
+    statusBadgeStyle,
+    statusCritical,
+    statusOperational,
+    textAreaStyle,
+    textPrimary,
+    textSecondary
+} from '../../../themetokenchk';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
+import type { HanoiStationItem } from '../../../types/hanoiStation';
+import { ApprovalStatus, CONDITION_STATUS_MAP, CONDITION_STATUS_OPTIONS, ConditionStatus } from '../../../types/vtsSystem';
+import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
+import HanoiStationForm from './HanoiStationForm';
 
 const fontSizeMd = 13.5;
 
@@ -897,6 +907,20 @@ export default function HanoiStationList() {
       ),
     }] : []),
     {
+      key: 'updatedInfo',
+      label: 'Cán bộ cập nhật',
+      width: 220,
+      align: 'left' as const,
+      ellipsis: false,
+      sortable: true,
+      sorter: serverSideSorter,
+      sortOrder: sortOrderFor('updatedInfo'),
+      render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
+        record.updatedByName || record.createdByName,
+        record.updatedAt || record.updatedDate || record.createdAt,
+      ),
+    },
+    {
       key: 'submittedInfo',
       label: 'Cán bộ gửi phê duyệt',
       width: 220,
@@ -936,20 +960,6 @@ export default function HanoiStationList() {
       render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
         record.approverLevel2Name,
         record.approvedDateLevel2,
-      ),
-    },
-    {
-      key: 'updatedInfo',
-      label: 'Cán bộ cập nhật',
-      width: 220,
-      align: 'left' as const,
-      ellipsis: false,
-      sortable: true,
-      sorter: serverSideSorter,
-      sortOrder: sortOrderFor('updatedInfo'),
-      render: (_: unknown, record: HanoiStationItem) => renderOfficerInfo(
-        record.updatedByName || record.createdByName,
-        record.updatedAt || record.updatedDate || record.createdAt,
       ),
     },
   ], [page, pageSize, isRejectionTabActive, sortOrderFor, resolveOrgUnitName, resolveOperatingOrgName]);

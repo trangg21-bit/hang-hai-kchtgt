@@ -232,6 +232,7 @@ function historyFieldName(fn: string): string { return historyFieldLabels[fn] ||
 /** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
 function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
   const item = group.items?.[0] || {};
+  const level = Number(item?.approvalLevel || 0);
   const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
   const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
 
@@ -691,16 +692,20 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   }, [id, isCreateMode]);
 
   // ── Đổi loại đối tượng: GIỮ tọa độ cũ, chỉ thêm dòng trống đủ số lượng ──
-  useEffect(() => {
-    if (!watchedGeometryType) return;
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
+      setGpsError(null);
+      return;
+    }
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length >= count) return prev;
       const added = Array.from({ length: count - prev.length }, () => emptyDmsPoint());
       return [...prev, ...added];
     });
     setGpsError(null);
-  }, [watchedGeometryType]);
+  };
 
   // ── Route detail (#22-#38) handlers ────────────────────────────────
   const updateRouteRow = useCallback((index: number, field: keyof ChannelRouteDetailRequest, value: any) => {
@@ -949,8 +954,15 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
           longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
         }));
-      if (values.geometryType && manualCoords.length < (GEOMETRY_POINT_COUNT[values.geometryType] ?? 1)) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
+      const currentMapIconId = values.mapIconId !== undefined
+        ? values.mapIconId
+        : (form.getFieldValue('mapIconId') ?? record?.mapIconId);
+      const currentCrs = values.coordinateReferenceSystem ?? form.getFieldValue('coordinateReferenceSystem') ?? record?.coordinateReferenceSystem;
+      const currentDisplayRule = values.displayRule ?? form.getFieldValue('displayRule') ?? record?.displayRule;
+
+      if (currentGeometryType && manualCoords.length < (GEOMETRY_POINT_COUNT[currentGeometryType] ?? 1)) {
+        toast.error(currentGeometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : currentGeometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
         setActiveTabKey('location');
         return;
       }
@@ -977,10 +989,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         announcementDecisionIssuer: trimString(values.announcementDecisionIssuer),
         protectionScopeMeters: values.protectionScopeMeters,
         protectionNotes: trimString(values.protectionNotes),
-        geometryType: values.geometryType,
-        mapIconId: values.mapIconId,
-        coordinateReferenceSystem: trimString(values.coordinateReferenceSystem),
-        displayRule: trimString(values.displayRule),
+        geometryType: currentGeometryType,
+        mapIconId: currentMapIconId,
+        coordinateReferenceSystem: trimString(currentCrs),
+        displayRule: trimString(currentDisplayRule),
         routeDetails: routeRows.length > 0 ? routeRows.map((row, i) => ({
           ...row,
           sequenceNo: i + 1,
@@ -1769,6 +1781,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           {
             key: 'location',
             label: `Thông tin vị trí (${coordinateList.length})`,
+            forceRender: true,
             children: (
               <div style={drawerFormScrollStyle}>
                 <div style={{ marginBottom: spaceMd }}>
@@ -1776,7 +1789,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                   <Row gutter={[24, 0]}>
                     <Col span={12}>
                       <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={formFieldStyle}>
-                        <Select placeholder="Chọn loại đối tượng" options={GIS_GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                        <Select placeholder="Chọn loại đối tượng" options={GIS_GEOMETRY_TYPE_OPTIONS} style={selectStyle} onChange={handleGeometryTypeChange} />
                       </Form.Item>
                     </Col>
                     <Col span={12}>

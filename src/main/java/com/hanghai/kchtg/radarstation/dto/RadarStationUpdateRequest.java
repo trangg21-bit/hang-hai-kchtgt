@@ -2,7 +2,6 @@ package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.common.validator.Decimal20_4;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

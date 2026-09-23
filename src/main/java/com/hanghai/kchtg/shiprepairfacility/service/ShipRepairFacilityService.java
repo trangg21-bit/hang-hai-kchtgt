@@ -1,25 +1,5 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
 
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
-import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,6 +10,33 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.shiprepairfacility.dto.ApprovalRequest;
+import com.hanghai.kchtg.shiprepairfacility.dto.HistoryEntry;
+import com.hanghai.kchtg.shiprepairfacility.dto.ShipRepairFacilityAttachmentResponse;
+import com.hanghai.kchtg.shiprepairfacility.dto.ShipRepairFacilityCreateRequest;
+import com.hanghai.kchtg.shiprepairfacility.dto.ShipRepairFacilityResponse;
+import com.hanghai.kchtg.shiprepairfacility.dto.ShipRepairFacilityUpdateRequest;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -116,7 +123,8 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        if (entity.getApprovalStatus() == ApprovalStatus.APPROVED) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED;
+        if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         }
 
@@ -218,7 +226,7 @@ public class ShipRepairFacilityService {
 
         ShipRepairFacility saved = repository.save(entity);
 
-        if (!previousValues.isEmpty()) {
+        if (wasApproved && !previousValues.isEmpty()) {
             LocalDateTime now = LocalDateTime.now();
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {
                 String field = entry.getKey();
@@ -259,14 +267,6 @@ public class ShipRepairFacilityService {
         entity.softDelete(deletedBy);
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
-
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(entity.getId())
-                .refType(InfrastructureType.SHIP_REPAIR_FACILITY)
-                .status(InfrastructureHistoryStatus.DELETED)
-                .approvedBy(deletedBy)
-                .approvedDate(LocalDateTime.now())
-                .build());
 
         attachmentRepository.deleteByRefIdAndRefType(id, InfrastructureType.SHIP_REPAIR_FACILITY);
     }

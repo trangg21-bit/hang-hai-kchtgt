@@ -2543,8 +2543,7 @@ const CctvListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        size={undefined}
-        size={DRAWER_WIDTH}
+        width={DRAWER_WIDTH}
       rootClassName={THEME_SCOPE_CLASS}
       className="cctv-drawer-scope"
       title={<span style={drawerTitleStyle}>Chi tiết hệ thống CCTV{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -3506,8 +3505,7 @@ const CctvListPage = () => {
         {...drawerProps}
       rootClassName={THEME_SCOPE_CLASS}
       className="cctv-drawer-scope"
-        size={undefined}
-        size={isIframeModal ? '100%' : DRAWER_WIDTH}
+        width={isIframeModal ? '100%' : DRAWER_WIDTH}
         mask={!isIframeModal}
         title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>

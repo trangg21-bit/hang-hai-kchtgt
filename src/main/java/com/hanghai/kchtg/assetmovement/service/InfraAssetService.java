@@ -40,9 +40,9 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.security.SecurityUtils;
@@ -61,6 +61,7 @@ public class InfraAssetService {
     private final AttachmentRepository attachmentRepository;
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
+    @SuppressWarnings("unused")
     private final ChangeHistoryService changeHistoryService;
     private final OrgUnitCacheService orgUnitCacheService;
 
@@ -372,19 +373,6 @@ public class InfraAssetService {
         String oldStatus = entity.getApprovalStatus() != null ? entity.getApprovalStatus().getLabel() : "Lưu tạm";
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
-
-        InfrastructureType refType = mapAssetTypeToInfrastructureType(entity.getAssetType());
-        historyRepository.save(InfrastructureHistory.builder()
-                .refId(entity.getId())
-                .refType(refType)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.DELETED)
-                .approvedBy(currentUserId)
-                .approvedDate(LocalDateTime.now())
-                .changedField("approvalStatus")
-                .previousValue(oldStatus)
-                .newValue("Đã xóa")
-                .build());
     }
 
     @Transactional

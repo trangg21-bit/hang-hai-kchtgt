@@ -55,6 +55,7 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         LEFT JOIN OrgUnit oorg ON oorg.id = t.operatingOrgId
         LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User uu ON uu.id = t.updatedBy
+        LEFT JOIN User uc ON uc.id = t.createdBy
         LEFT JOIN User us ON us.id = t.submittedBy
         LEFT JOIN User ua1 ON ua1.id = t.approverLevel1
         LEFT JOIN User ua2 ON ua2.id = t.approverLevel2
@@ -178,7 +179,6 @@ public interface CoastalStationLRITRepository extends JpaRepository<CoastalStati
         SELECT t FROM CoastalStationLRIT t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
           AND (:scopeEnabled = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
         ORDER BY LOWER(t.name) ASC

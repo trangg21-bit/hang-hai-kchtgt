@@ -420,8 +420,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   }, [isEdit, currentUser, orgUnits, form]);
 
   // Khi chọn Loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và số dòng tọa độ tương ứng
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
       form.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setCoordinateList([]);
@@ -429,12 +430,12 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT') {
+      if (val === 'POINT' && prev.length > 1) {
         return prev.slice(0, 1);
       }
       if (prev.length < count) {
@@ -443,7 +444,8 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       }
       return prev;
     });
-  }, [watchedGeometryType, form]);
+    setGpsError(null);
+  };
 
   // Edit mode: load dữ liệu bản ghi hiện tại
   useEffect(() => {
@@ -632,23 +634,24 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       return;
     }
 
-    const geomType = values.geometryType || undefined;
+    const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? undefined;
+    const currentMapSymbolId = values.mapSymbolId !== undefined ? values.mapSymbolId : (form.getFieldValue('mapSymbolId') ?? undefined);
     const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
 
     // Kiểm tra chéo giữa Loại đối tượng và Biểu tượng / Tọa độ (chuẩn VTS CHK /berth)
-    if (hasCoordinates && !geomType) {
+    if (hasCoordinates && !currentGeometryType) {
       toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setActiveTabKey('location');
       return;
     }
-    if (geomType && !values.mapSymbolId) {
+    if (currentGeometryType && !currentMapSymbolId) {
       toast.error('Biểu tượng bản đồ là bắt buộc');
       setActiveTabKey('location');
       return;
     }
 
     // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-    const coordResult = validateDmsCoordinates(coordinateList, geomType);
+    const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
     if (!coordResult.valid) {
       const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
       toast.error(errMsg);
@@ -658,7 +661,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     }
     setGpsError(null);
     const validCoords = coordResult.validCoords;
-    const wktCoordinates = geomType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+    const wktCoordinates = currentGeometryType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, currentGeometryType) : undefined;
 
     setSubmitting(true);
     onSubmittingChange?.(true);
@@ -675,6 +678,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         const n = Number(v);
         return Number.isNaN(n) ? null : n;
       };
+
+      const currentCoordSystem = values.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+      const currentDisplayRule = values.displayRule ?? form.getFieldValue('displayRule');
 
       const payload: Record<string, unknown> = {
         deviceCode: String(values.deviceCode || '').trim() || (isEdit ? undefined : await generateCctvCode()),
@@ -694,11 +700,11 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         specifications: trimOrNull(values.specifications),
         maintenanceInformation: trimOrNull(values.maintenanceInformation),
         note: trimOrNull(values.note),
-        geometryType: geomType || null,
-        coordinates: geomType ? (wktCoordinates || null) : null,
-        mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
-        coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-        displayRule: geomType && values.displayRule != null ? Number(values.displayRule) || null : null,
+        geometryType: currentGeometryType || null,
+        coordinates: currentGeometryType ? (wktCoordinates || null) : null,
+        mapSymbolId: currentGeometryType ? (currentMapSymbolId || null) : null,
+        coordinateSystem: currentGeometryType && currentCoordSystem != null ? Number(currentCoordSystem) : null,
+        displayRule: currentGeometryType && currentDisplayRule != null ? Number(currentDisplayRule) || null : null,
       };
 
       let targetId: string;
@@ -752,6 +758,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -1065,6 +1072,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* Nhóm Thông số đối tượng bản đồ */}
@@ -1083,13 +1091,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
                     options={GEOMETRY_TYPE_OPTIONS}
                     allowClear
                     style={selectStyle}
-                    onChange={(val) => {
-                      if (!val) {
-                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
-                        setCoordinateList([]);
-                        setGpsError(null);
-                      }
-                    }}
+                    onChange={handleGeometryTypeChange}
                   />
                 </Form.Item>
               </Col>
@@ -1286,6 +1288,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <InfrastructureAttachmentTab
           attachments={uploadedFiles.map((f: UploadFile) => ({
@@ -1344,7 +1347,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* Modal Chọn vị trí trên bản đồ */}
       <Modal

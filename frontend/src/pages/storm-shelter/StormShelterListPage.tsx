@@ -18,7 +18,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -1038,7 +1038,7 @@ export default function StormShelterListPage() {
                 setFilterBuoyStationId(undefined);
               }}
               options={portOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1051,7 +1051,7 @@ export default function StormShelterListPage() {
               value={filterNavigationChannelId}
               onChange={v => setFilterNavigationChannelId(v)}
               options={waterwayOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1064,7 +1064,7 @@ export default function StormShelterListPage() {
               value={filterBuoyStationId}
               onChange={v => setFilterBuoyStationId(v)}
               options={buoyStationOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1090,7 +1090,7 @@ export default function StormShelterListPage() {
               value={filterClassification}
               onChange={v => setFilterClassification(v)}
               options={STORM_SHELTER_CLASSIFICATION_OPTIONS}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1102,8 +1102,8 @@ export default function StormShelterListPage() {
               showSearch
               value={filterProvince}
               onChange={v => setFilterProvince(v)}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
               options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1455,8 +1455,7 @@ export default function StormShelterListPage() {
           {...drawerProps}
           rootClassName="storm-shelter-drawer-scope"
           className="storm-shelter-drawer-scope"
-          size={1000}
-          size="min(1000px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editStormShelterId ? 'Chỉnh sửa thông tin Khu tránh, trú bão' : 'Thêm mới Khu tránh, trú bão'}</span>}
           open={createDrawerVisible}
           destroyOnHidden
@@ -1520,8 +1519,7 @@ export default function StormShelterListPage() {
           {...drawerProps}
           rootClassName="storm-shelter-drawer-scope"
           className="storm-shelter-drawer-scope"
-          size={1000}
-          size="min(1000px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu tránh, trú bão{detailRecord ? ` - ${detailRecord.stormShelterName}` : ''}</span>}
           open={detailDrawerVisible}
           destroyOnHidden

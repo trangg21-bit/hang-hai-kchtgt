@@ -1,15 +1,15 @@
 import {
-    HistoryOutlined,
-    SearchOutlined,
+  HistoryOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import {
-    Button,
-    DatePicker,
-    Form,
-    Input,
-    Modal,
-    Select,
-    Space,
+  Button,
+  DatePicker,
+  Form,
+  Input,
+  Modal,
+  Select,
+  Space,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,13 +18,14 @@ import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { normalizeSearchText, OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { formatOperationalFunction, OPERATIONAL_FUNCTION_OPTIONS } from '../../constants/operationalFunction';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import api from '../../services/api';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import type { Organization } from '../../services/organizationService';
@@ -34,36 +35,35 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
-    actionPrimary,
-    borderDefault,
-    cellSubtitleStyle,
-    cellTitleStyle,
-    colors,
-    DRAWER_WIDTH,
-    drawerFooterStyle,
-    drawerTitleStyle,
-    fontSizeLg,
-    fontWeightBold,
-    icons,
-    outlineButtonStyle,
-    primaryButtonStyle,
-    radiusPill,
-    requiredMarkStyle,
-    spaceFormField,
-    spaceMd,
-    spaceSm,
-    spaceXl,
-    statusAttention,
-    statusBadgeStyle,
-    statusCritical,
-    statusDraft,
-    statusOperational,
-    textPrimary,
-    textSecondary,
-    textTertiary,
+  actionPrimary,
+  borderDefault,
+  cellSubtitleStyle,
+  cellTitleStyle,
+  colors,
+  DRAWER_WIDTH,
+  drawerFooterStyle,
+  drawerTitleStyle,
+  fontSizeLg,
+  fontWeightBold,
+  icons,
+  outlineButtonStyle,
+  primaryButtonStyle,
+  radiusPill,
+  requiredMarkStyle,
+  spaceFormField,
+  spaceMd,
+  spaceSm,
+  spaceXl,
+  statusAttention,
+  statusBadgeStyle,
+  statusCritical,
+  statusDraft,
+  statusOperational,
+  textPrimary,
+  textSecondary,
+  textTertiary,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { Pier } from '../../types/port';
@@ -947,20 +947,20 @@ export default function PierListPage() {
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
             value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); }}
-            options={portOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+            options={portOptions} showSearch filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc bến cảng</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn bến cảng" allowClear
             value={filterBerthId} onChange={v => setFilterBerthId(v)}
-            options={berthOptions} showSearch filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+            options={berthOptions} showSearch filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn luồng hàng hải" allowClear showSearch
             value={filterWaterwayId} onChange={v => setFilterWaterwayId(v)}
             options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} />
+            filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã cầu cảng</div>
@@ -984,14 +984,15 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" placeholder="Chọn công năng khai thác"
+          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} allowClear showSearch placeholder="Chọn công năng khai thác"
+            filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction} onChange={v => setFilterOperationalFunction(v)} />
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn tỉnh/thành phố" allowClear showSearch
             value={filterProvince} onChange={v => setFilterProvince(v)}
-            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+            filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))} />
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -1000,7 +1001,6 @@ export default function PierListPage() {
             format="DD/MM/YYYY"
             placeholder={['Từ ngày', 'Đến ngày']}
             allowClear
-            classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
             classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
             value={[filterUpdatedFrom ? dayjs(filterUpdatedFrom) : null, filterUpdatedTo ? dayjs(filterUpdatedTo) : null]}
             onChange={(dates) => {

@@ -2751,7 +2751,6 @@ export default function BeaconStationList() {
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
         }}
-        destroyOnHidden
       >
         <style>{requiredMarkStyle}</style>
         {createDrawerVisible && (

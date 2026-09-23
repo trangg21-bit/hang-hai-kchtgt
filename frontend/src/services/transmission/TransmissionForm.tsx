@@ -432,8 +432,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   }, [isEdit, currentUser, orgUnits, form]);
 
   // Đồng bộ số dòng tọa độ theo loại hình hình học
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
       form.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setCoordinateList([]);
@@ -441,12 +442,12 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return prev.slice(0, 1);
       }
       if (prev.length < count) {
@@ -455,7 +456,8 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       }
       return prev;
     });
-  }, [watchedGeometryType, form]);
+    setGpsError(null);
+  };
 
   // Nạp dữ liệu trong chế độ Chỉnh sửa
   useEffect(() => {
@@ -703,22 +705,23 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         return;
       }
 
-      const geomType = values.geometryType || undefined;
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? undefined;
+      const currentMapSymbolId = values.mapSymbolId !== undefined ? values.mapSymbolId : (form.getFieldValue('mapSymbolId') ?? undefined);
       const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) || (c.lngD != null || c.lngM != null || c.lngS != null));
 
-      if (hasCoordinates && !geomType) {
+      if (hasCoordinates && !currentGeometryType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
         setActiveTabKey('location');
         return;
       }
-      if (geomType && !values.mapSymbolId) {
+      if (currentGeometryType && !currentMapSymbolId) {
         toast.error('Vui lòng chọn biểu tượng bản đồ');
         setActiveTabKey('location');
         return;
       }
 
       // Validate GPS Coordinates nếu có chọn geometryType
-      const coordResult = validateDmsCoordinates(coordinateList, geomType);
+      const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
         toast.error(errMsg);
@@ -727,9 +730,12 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         return;
       }
       setGpsError(null);
-      const coordinatesWkt = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType) : undefined;
+      const coordinatesWkt = currentGeometryType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, currentGeometryType) : undefined;
 
       onSubmittingChange?.(true);
+
+      const currentCoordSystem = values.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+      const currentDisplayRule = values.displayRule ?? form.getFieldValue('displayRule');
 
       try {
         const payload: Record<string, unknown> = {
@@ -750,11 +756,11 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           specifications: values.specifications ? String(values.specifications).trim() : undefined,
           maintenanceInformation: values.maintenanceInformation ? String(values.maintenanceInformation).trim() : undefined,
           note: values.note ? String(values.note).trim() : undefined,
-          geometryType: geomType || null,
-          mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
-          coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-          coordinates: geomType ? (coordinatesWkt || null) : null,
-          displayRule: geomType && values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null,
+          geometryType: currentGeometryType || null,
+          mapSymbolId: currentGeometryType ? (currentMapSymbolId || null) : null,
+          coordinateSystem: currentGeometryType && currentCoordSystem != null ? Number(currentCoordSystem) : null,
+          coordinates: currentGeometryType ? (coordinatesWkt || null) : null,
+          displayRule: currentGeometryType && currentDisplayRule != null ? (typeof currentDisplayRule === 'number' ? currentDisplayRule : 1) : null,
         };
 
         let targetId = id;
@@ -836,6 +842,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -1143,6 +1150,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={{ ...drawerFormScrollStyle, paddingTop: spaceMd }}>
           {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1165,13 +1173,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     allowClear
                     options={GEOMETRY_TYPE_OPTIONS}
                     style={selectStyle}
-                    onChange={(val) => {
-                      if (!val) {
-                        form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
-                        setCoordinateList([]);
-                        setGpsError(null);
-                      }
-                    }}
+                    onChange={handleGeometryTypeChange}
                   />
                 </Form.Item>
               </Col>
@@ -1392,6 +1394,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <div style={{ ...drawerFormScrollStyle, paddingTop: spaceMd }}>
           <InfrastructureAttachmentTab
@@ -1455,7 +1458,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* GIS Location Selector Modal */}
       <Modal

@@ -480,8 +480,7 @@ export default function PortForm({
   const tabItems = [
     // ── Tab 1: Thông tin chung ──
     {
-      key: 'general', label: 'Thông tin chung',
-      children: (<div style={drawerFormScrollStyle}>
+      key: 'general', label: 'Thông tin chung', forceRender: true, children: (<div style={drawerFormScrollStyle}>
         <div style={sectionBoxStyle}>
           <div style={sectionHeaderStyle}>
             <div style={sectionTitleStyle}><BankOutlined style={{ color: actionPrimary }} /><span>Thông tin cơ bản & Quản lý vận hành</span></div>
@@ -784,8 +783,7 @@ export default function PortForm({
     },
     // ── Tab 2: Thông tin vị trí ──
     {
-      key: 'gis', label: `Thông tin vị trí (${gpsCoordList.length})`,
-      children: (<div style={drawerFormScrollStyle}>
+      key: 'gis', label: `Thông tin vị trí (${gpsCoordList.length})`, forceRender: true, children: (<div style={drawerFormScrollStyle}>
         <div style={sectionBoxStyle}>
           <div style={sectionHeaderStyle}>
             <div style={sectionTitleStyle}><EnvironmentOutlined style={{ color: actionPrimary }} /><span>Thông số đối tượng bản đồ</span></div>
@@ -1343,6 +1341,7 @@ export default function PortForm({
           activeKey={activeTabKey}
           onChange={onTabChange}
           tabBarStyle={drawerTabBarStyle}
+          destroyInactiveTabPane={false}
           items={tabItems}
         />
       </Form>

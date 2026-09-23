@@ -19,7 +19,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import AppDrawer from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -1325,7 +1325,7 @@ export default function DryPortListPage() {
               placeholder="Chọn tỉnh/thành phố"
               allowClear
               showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               value={filterProvince}
               onChange={(val) => { setFilterProvince(val); setPage(1); }}
               options={VIETNAM_PROVINCES.map((p, i) => ({ value: i + 1, label: p }))}

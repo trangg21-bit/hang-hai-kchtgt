@@ -465,9 +465,9 @@ export default forwardRef(function BeaconStationForm(
     })();
   }, [isEdit, id, initialData, form, userMap]);
 
-  // Adjust coordinate list when geometry type changes
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
       form.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setCoordinateList([]);
@@ -475,14 +475,14 @@ export default forwardRef(function BeaconStationForm(
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({
           latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null,
         }));
       }
-      if (watchedGeometryType === 'POINT') {
+      if (val === 'POINT') {
         return prev.slice(0, 1);
       }
       if (prev.length < count) {
@@ -493,7 +493,8 @@ export default forwardRef(function BeaconStationForm(
       }
       return prev;
     });
-  }, [watchedGeometryType, form]);
+    setGpsError(null);
+  };
 
   const handleBeforeUpload = (file: File): false => {
     if (file.size > 20 * 1024 * 1024) {
@@ -623,8 +624,13 @@ export default forwardRef(function BeaconStationForm(
       return;
     }
 
+    const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? initialData?.geometryType;
+    const currentMapSymbolId = (values.mapSymbolId !== undefined)
+      ? values.mapSymbolId
+      : (form.getFieldValue('mapSymbolId') ?? initialData?.mapSymbolId);
+
     // Validate GPS Coordinates
-    const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+    const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
     if (!coordResult.valid) {
       const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
       toast.error(errMsg);
@@ -633,9 +639,9 @@ export default forwardRef(function BeaconStationForm(
       return;
     }
     const validCoords = coordResult.validCoords;
-    const hasGeom = !!values.geometryType;
+    const hasGeom = !!currentGeometryType;
     const coordinatesWkt = hasGeom && validCoords.length > 0
-      ? serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT')
+      ? serializeCoordinatesToWkt(validCoords, currentGeometryType || 'POINT')
       : null;
 
     setSubmitting(true);
@@ -674,10 +680,10 @@ export default forwardRef(function BeaconStationForm(
         region: values.region,
         identifyingFeature: values.identifyingFeature,
         note: values.note,
-        geometryType: hasGeom ? values.geometryType : null,
-        mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
-        coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-        displayRule: hasGeom && values.displayRule ? values.displayRule : null,
+        geometryType: hasGeom ? currentGeometryType : null,
+        mapSymbolId: hasGeom && currentMapSymbolId ? currentMapSymbolId : null,
+        coordinateSystem: hasGeom && (values.coordinateSystem != null || form.getFieldValue('coordinateSystem') != null) ? Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) : null,
+        displayRule: hasGeom ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
         coordinates: hasGeom && coordinatesWkt ? coordinatesWkt : null,
         latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
         longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
@@ -738,6 +744,7 @@ export default forwardRef(function BeaconStationForm(
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -1048,6 +1055,7 @@ export default forwardRef(function BeaconStationForm(
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1061,7 +1069,7 @@ export default forwardRef(function BeaconStationForm(
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="geometryType" {...labelProps('Loại đối tượng')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                  <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} onChange={handleGeometryTypeChange} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -1246,6 +1254,7 @@ export default forwardRef(function BeaconStationForm(
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <InfrastructureAttachmentTab
           attachments={uploadedFiles.map((f: any) => ({
@@ -1302,7 +1311,7 @@ export default forwardRef(function BeaconStationForm(
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} destroyInactiveTabPane={false} tabBarStyle={drawerTabBarStyle} items={tabItems} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
       <Modal

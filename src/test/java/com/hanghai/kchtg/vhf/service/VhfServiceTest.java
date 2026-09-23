@@ -2,11 +2,11 @@ package com.hanghai.kchtg.vhf.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
@@ -30,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,23 +38,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.data.domain.PageImpl;
 
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -246,6 +234,10 @@ class VhfServiceTest {
 
         UpdateVhfRequest req = new UpdateVhfRequest();
         req.setId(ID);
+        req.setDeviceName(entity.getDeviceName());
+        req.setQuantity(entity.getQuantity());
+        req.setOrgUnitId(entity.getOrgUnitId());
+        req.setOperationalStatus(entity.getOperationalStatus());
         req.setApprovalStatus(ApprovalStatus.APPROVED);
 
         VhfResponse result = service.update(req);
@@ -322,13 +314,13 @@ class VhfServiceTest {
     }
 
     @Test
-    void softDeleteRecordsHistory() {
+    void softDeleteDoesNotRecordHistory() {
         when(vhfRepository.findById(ID)).thenReturn(Optional.of(entity));
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.softDelete(ID);
 
-        verify(historyRepository).save(any());
+        verify(historyRepository, never()).save(any());
     }
 
     @Test

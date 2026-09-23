@@ -1,29 +1,10 @@
 package com.hanghai.kchtg.coastalstationasset.service;
 
-import com.hanghai.kchtg.coastalstationasset.dto.*;
-import com.hanghai.kchtg.coastalstationasset.entity.CoastalStationAsset;
-import com.hanghai.kchtg.coastalstationasset.entity.CoastalStationAssetAdjustment;
-import com.hanghai.kchtg.coastalstationasset.entity.CoastalStationAssetExploitation;
-import com.hanghai.kchtg.coastalstationasset.repository.CoastalStationAssetAdjustmentRepository;
-import com.hanghai.kchtg.coastalstationasset.repository.CoastalStationAssetExploitationRepository;
-import com.hanghai.kchtg.coastalstationasset.repository.CoastalStationAssetRepository;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.port.repository.DaiTtdhRepository;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.station.repository.CoastalStationInmarsatRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.criteria.Predicate;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -32,24 +13,46 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
+import com.hanghai.kchtg.coastalstationasset.dto.CoastalStationAdjustmentRequest;
+import com.hanghai.kchtg.coastalstationasset.dto.CoastalStationAssetRequest;
+import com.hanghai.kchtg.coastalstationasset.dto.CoastalStationAssetResponse;
+import com.hanghai.kchtg.coastalstationasset.dto.CoastalStationExploitationRequest;
+import com.hanghai.kchtg.coastalstationasset.entity.CoastalStationAsset;
+import com.hanghai.kchtg.coastalstationasset.entity.CoastalStationAssetAdjustment;
+import com.hanghai.kchtg.coastalstationasset.entity.CoastalStationAssetExploitation;
+import com.hanghai.kchtg.coastalstationasset.repository.CoastalStationAssetAdjustmentRepository;
+import com.hanghai.kchtg.coastalstationasset.repository.CoastalStationAssetExploitationRepository;
+import com.hanghai.kchtg.coastalstationasset.repository.CoastalStationAssetRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.repository.DaiTtdhRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.repository.CoastalStationInmarsatRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.multipart.MultipartFile;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.stream.Collectors;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -223,8 +226,6 @@ public class CoastalStationAssetService {
         entity.softDelete(currentUserId);
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
-
-        InfrastructureHistoryUtils.recordSoftDelete(historyRepository, id, InfrastructureType.COASTAL_STATION_ASSET, currentUserId, "Xóa tài sản đài");
     }
 
     @Transactional(readOnly = true)

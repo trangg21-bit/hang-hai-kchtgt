@@ -1,37 +1,44 @@
 package com.hanghai.kchtg.beacon.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
 import com.hanghai.kchtg.beacon.entity.Buoy;
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.beacon.repository.BuoyRepository;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.entity.BuoyStation;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
 
 /**
  * Service for Buoy CRUD + approval workflow (F-074 to F-077).
@@ -41,7 +48,6 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@SuppressWarnings("null")
 public class BuoyService {
 
     private final BuoyRepository buoyRepo;
@@ -254,7 +260,6 @@ public class BuoyService {
             entity = buoyRepo.save(entity);
         }
 
-        logHistory(entity, InfrastructureHistoryStatus.CREATED, ApprovalLevel.LEVEL_0, null, null, toJson(entity), null);
         notificationService.sendApprovalNotificationBuoy(entity);
 
         return toResponse(entity);
@@ -554,15 +559,6 @@ public class BuoyService {
         entity.setStatus("DELETED");
         entity.softDelete(SecurityUtils.getCurrentUserId());
         buoyRepo.save(entity);
-
-        // Actor thật từ SecurityContext — truyền "system" làm approvedBy null (drawer "—").
-        java.util.UUID operatorId = SecurityUtils.getCurrentUserId();
-        String actorId = operatorId != null ? operatorId.toString() : "system";
-
-        logHistory(entity, InfrastructureHistoryStatus.DELETED, ApprovalLevel.LEVEL_0, null, null, toJson(entity), null);
-        if (wasApproved) {
-            changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Trạng thái", null, "Đã xóa", actorId);
-        }
 
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());

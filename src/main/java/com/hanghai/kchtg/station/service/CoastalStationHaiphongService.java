@@ -1,7 +1,26 @@
 package com.hanghai.kchtg.station.service;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -9,32 +28,23 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.station.dto.haiphong.*;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongAttachmentResponse;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongHistoryResponse;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongRequest;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongResponse;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
-import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.repository.CoastalStationHaiphongRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
-import com.hanghai.kchtg.common.entity.OperatingOrganization;
 
 @Service
 @RequiredArgsConstructor
@@ -309,14 +319,6 @@ public class CoastalStationHaiphongService {
             saved = repository.save(saved);
         }
 
-        historyService.recordHistory(
-                InfrastructureType.HANOI_STATION,
-                saved.getId(),
-                StationHistoryActionType.CREATE,
-                null,
-                "Tạo mới Đài TTXLTT: " + saved.getName(),
-                SecurityUtils.getCurrentUserId());
-
         return saved;
     }
 
@@ -410,7 +412,8 @@ public class CoastalStationHaiphongService {
 
         CoastalStationHaiphong updated = repository.save(entity);
 
-        if (!oldValues.isEmpty()) {
+        boolean wasApproved = entity.getApprovalStatus() == ApprovalStatus.APPROVED;
+        if (wasApproved && !oldValues.isEmpty()) {
             UUID currentUserId = SecurityUtils.getCurrentUserId();
             historyService.recordDeltaChanges(
                     InfrastructureType.HANOI_STATION,
@@ -493,14 +496,6 @@ public class CoastalStationHaiphongService {
         approvalService.deleteDraft(entity, InfrastructureType.HANOI_STATION, currentUserId);
         // Xóa hồ sơ chỉ chuyển trạng thái ARCHIVED để tab "Đã xóa" và lịch sử vẫn truy vấn được.
         repository.save(entity);
-
-        historyService.recordHistory(
-                InfrastructureType.HANOI_STATION,
-                entity.getId(),
-                StationHistoryActionType.DELETE,
-                null,
-                "Xóa Đài TTXLTT: " + entity.getName(),
-                currentUserId);
     }
 
     public CoastalStationHaiphong submit(UUID id) {

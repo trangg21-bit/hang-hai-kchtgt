@@ -395,15 +395,14 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
   }, [isEdit, form]);
 
   // Tự động set số dòng GPS khi thay đổi loại đối tượng
-  useEffect(() => {
-    if (isEdit && !isInitialLoadDoneRef.current) {
-      return;
-    }
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
+      setGpsError(null);
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
@@ -414,7 +413,8 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
       }
       return prev;
     });
-  }, [watchedGeometryType, isEdit, form]);
+    setGpsError(null);
+  };
 
   // Load dữ liệu khi chỉnh sửa
   useEffect(() => {
@@ -582,7 +582,11 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           }
         }
 
-        const hasGeom = !!values.geometryType;
+        const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType');
+        const currentMapSymbolId = values.mapSymbolId ?? form.getFieldValue('mapSymbolId');
+        const currentCoordSys = values.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+        const currentDisplayRule = values.displayRule ?? form.getFieldValue('displayRule');
+        const hasGeom = !!currentGeometryType;
         const manualCoords = hasGeom
           ? coordinateList
               .filter((c) => (c.latD ?? c.latM ?? c.latS) != null && (c.lngD ?? c.lngM ?? c.lngS) != null)
@@ -638,10 +642,10 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           dryPortCode: String(values.dryPortCode || '').trim() || undefined,
           dryPortName,
           orgUnitId,
-          geometryType: hasGeom ? values.geometryType : null,
+          geometryType: hasGeom ? currentGeometryType : null,
           latitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].latitude : null,
           longitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].longitude : null,
-          coordinates: hasGeom ? buildCoordinatesWkt(values.geometryType, manualCoords) : null,
+          coordinates: hasGeom ? buildCoordinatesWkt(currentGeometryType, manualCoords) : null,
           operatingOrgId: opOrgId,
           operatingUnit: opUnit,
           region: values.region || undefined,
@@ -655,14 +659,14 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           connectionMode: values.connectionMode || undefined,
           portStatus: values.portStatus !== undefined && values.portStatus !== null ? Number(values.portStatus) : undefined,
           remarks: values.remarks || undefined,
-          mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
+          mapSymbolId: hasGeom ? (currentMapSymbolId || null) : null,
           coordinateSystem:
-            hasGeom && values.coordinateSystem !== undefined && values.coordinateSystem !== null
-              ? Number(values.coordinateSystem)
+            hasGeom && currentCoordSys !== undefined && currentCoordSys !== null
+              ? Number(currentCoordSys)
               : null,
           displayRule:
-            hasGeom && values.displayRule != null && !Number.isNaN(Number(values.displayRule))
-              ? Number(values.displayRule)
+            hasGeom && currentDisplayRule != null && !Number.isNaN(Number(currentDisplayRule))
+              ? Number(currentDisplayRule)
               : (hasGeom ? 1 : null),
           announcementTime: values.announcementTime
             ? typeof values.announcementTime === 'string'
@@ -762,6 +766,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* Section 1: Thông tin cơ bản & Quản lý vận hành */}
@@ -1344,7 +1349,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={formTabs} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} destroyInactiveTabPane={false} items={formTabs} />
 
       {/* GIS Location Selector Modal */}
       <Modal

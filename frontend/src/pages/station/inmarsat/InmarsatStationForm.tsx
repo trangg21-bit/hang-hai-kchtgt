@@ -120,6 +120,12 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
 
+const GEOMETRY_POINT_COUNT: Record<string, number> = {
+  POINT: 1,
+  LINE: 2,
+  POLYGON: 3,
+};
+
 interface DmsPoint {
   latD: number | null;
   latM: number | null;
@@ -243,17 +249,31 @@ export default function InmarsatStationForm({
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
 
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
-    } else {
-      form.setFieldsValue({
-        coordinateSystem: 1,
-        displayRule: 'Độ, phút, giây (DMS)',
-      });
+      setGpsError(null);
+      return;
     }
-  }, [watchedGeometryType, form]);
+    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
+    setCoordinateList((prev) => {
+      if (!prev || prev.length === 0) {
+        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      }
+      if (val === 'POINT' && prev.length > 1) {
+        return [prev[0]];
+      }
+      if (prev.length < count) {
+        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+        return [...prev, ...added];
+      }
+      return prev;
+    });
+    setGpsError(null);
+  };
 
   const hasCoordinates = coordinateList.some((c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null);
   const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
@@ -635,14 +655,19 @@ export default function InmarsatStationForm({
     const act = actionTypeRef.current;
     setGpsError(null);
 
+    const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
+    const currentSymbolId = (values.symbolId !== undefined)
+      ? values.symbolId
+      : (form.getFieldValue('symbolId') ?? record?.symbolId ?? (record as any)?.symbol);
+
     // Validate GPS Coordinates
-    const geomType = values.geometryType || undefined;
+    const geomType = currentGeometryType || undefined;
     const ddPoints: Array<{ latitude: number; longitude: number }> = [];
     let wktString: string | null = null;
     let mainLat: number | null = null;
     let mainLng: number | null = null;
 
-    if (values.geometryType || coordinateList.length > 0) {
+    if (currentGeometryType || coordinateList.length > 0) {
       const dmsVal = validateDmsCoordinates(coordinateList, geomType);
       if (!dmsVal.valid) {
         setGpsError(dmsVal.errorMessage || dmsVal.error || 'Tọa độ không hợp lệ');
@@ -679,9 +704,9 @@ export default function InmarsatStationForm({
       frequency: values.frequency?.trim() ?? null,
       notes: values.notes?.trim() ?? null,
       geometryType: geomType ?? null,
-      symbolId: values.symbolId ?? null,
-      coordinateSystem: geomType ? (values.coordinateSystem || 'WGS-84') : null,
-      displayRule: geomType ? (values.displayRule || 'Độ, phút, giây (DMS)') : null,
+      symbolId: currentSymbolId ?? null,
+      coordinateSystem: geomType ? (values.coordinateSystem || form.getFieldValue('coordinateSystem') || 'WGS-84') : null,
+      displayRule: geomType ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
       coordinates: wktString,
       latitude: mainLat,
       longitude: mainLng,
@@ -909,12 +934,14 @@ export default function InmarsatStationForm({
             <Tabs
               activeKey={tabKey}
               onChange={setTabKey}
+              destroyInactiveTabPane={false}
               tabBarStyle={drawerTabBarStyle}
               animated={false}
               items={[
                 {
                   key: 'general',
                   label: 'Thông tin chung',
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -1079,6 +1106,7 @@ export default function InmarsatStationForm({
                 {
                   key: 'gis',
                   label: `Thông tin vị trí (${coordinateList.length})`,
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1102,6 +1130,7 @@ export default function InmarsatStationForm({
                                 allowClear
                                 options={GEOMETRY_TYPE_OPTIONS}
                                 style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                                onChange={handleGeometryTypeChange}
                               />
                             </Form.Item>
                           </Col>
@@ -1328,6 +1357,7 @@ export default function InmarsatStationForm({
                 {
                   key: 'files',
                   label: `File đính kèm (${attachments.length})`,
+                  forceRender: true,
                   children: (
                     <InfrastructureAttachmentTab
                       attachments={attachments}

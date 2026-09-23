@@ -325,14 +325,9 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
     setGpsError(null);
   };
 
-  useEffect(() => {
-    const geometryType = watchedGeometryType || undefined;
-    if (lastGeometryTypeRef.current === geometryType) {
-      return;
-    }
-    lastGeometryTypeRef.current = geometryType;
-
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
       setGpsError(null);
@@ -342,12 +337,12 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       coordinateSystem: 1,
       displayRule: 'Độ, phút, giây (DMS)',
     });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -357,7 +352,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       return prev;
     });
     setGpsError(null);
-  }, [watchedGeometryType, form]);
+  };
 
   useEffect(() => {
     const symId = recordData?.symbolId || (initialData as any)?.symbolId;
@@ -608,7 +603,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       operatingOrgId: rec.operatingOrgId,
       provinceId: resolveFormProvinceId(rec.provinceId),
       locationAddress: rec.locationAddress,
-      conditionStatus: rec.conditionStatus || 'OPERATIONAL',
+      conditionStatus: rec.conditionStatus || 'NOT_YET_OPERATIONAL',
       coverageArea: rec.coverageArea,
       services: rec.services,
       frequency: rec.frequency,
@@ -735,8 +730,13 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       let firstLat: number | undefined = undefined;
       let firstLng: number | undefined = undefined;
 
-      if (values.geometryType || coordinateList.length > 0) {
-        const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? recordData?.geometryType;
+      const currentSymbolId = values.symbolId !== undefined
+        ? values.symbolId
+        : (form.getFieldValue('symbolId') ?? recordData?.symbolId);
+
+      if (currentGeometryType || coordinateList.length > 0) {
+        const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
         if (!coordResult.valid) {
           const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
           toast.error(errMsg);
@@ -744,7 +744,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
           setActiveTab('gis');
           return;
         }
-        wkt = serializeCoordinatesToWkt(coordResult.validCoords, values.geometryType || 'POINT');
+        wkt = serializeCoordinatesToWkt(coordResult.validCoords, currentGeometryType || 'POINT');
         if (coordResult.validCoords.length > 0) {
           firstLat = coordResult.validCoords[0].latitude;
           firstLng = coordResult.validCoords[0].longitude;
@@ -762,8 +762,8 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
         coverageArea: values.coverageArea?.trim(),
         frequency: values.frequency?.trim(),
         description: values.description?.trim(),
-        geometryType: values.geometryType ?? null,
-        symbolId: values.symbolId ?? null,
+        geometryType: currentGeometryType ?? null,
+        symbolId: currentSymbolId ?? null,
         coordinateSystem: values.coordinateSystem === 2 ? 'VN-2000' : 'WGS-84',
         displayRule: values.displayRule || 'Độ, phút, giây (DMS)',
         latitude: firstLat,
@@ -1003,12 +1003,14 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
+            destroyInactiveTabPane={false}
             tabBarStyle={drawerTabBarStyle}
             animated={false}
             items={[
               {
                 key: 'info',
                 label: 'Thông tin chung',
+                forceRender: true,
                 children: (
                   <div style={drawerFormScrollStyle}>
                     {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -1220,6 +1222,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
               {
                 key: 'gis',
                 label: `Thông tin vị trí (${coordinateList.length})`,
+                forceRender: true,
                 children: (
                   <div style={drawerFormScrollStyle}>
                     {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1244,6 +1247,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                               allowClear
                               options={GEOMETRY_TYPE_OPTIONS}
                               style={selectStyle}
+                              onChange={handleGeometryTypeChange}
                             />
                           </Form.Item>
                         </Col>
@@ -1511,6 +1515,7 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
               {
                 key: 'files',
                 label: `File đính kèm (${attachments.length})`,
+                forceRender: true,
                 children: (
                   <InfrastructureAttachmentTab
                     attachments={attachments}

@@ -2,9 +2,6 @@ package com.hanghai.kchtg.radarstation.repository;
 
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.Province;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -166,7 +163,6 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, UUID
         SELECT t FROM RadarStation t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (t.conditionStatus = '1' OR UPPER(t.conditionStatus) = 'OPERATIONAL' OR t.conditionStatus = 'Đang khai thác/vận hành')
           AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(t.stationName) ASC
     """)

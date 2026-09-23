@@ -1,5 +1,25 @@
 package com.hanghai.kchtg.beacon.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.BeaconHistoryEntry;
 import com.hanghai.kchtg.beacon.dto.beacon_station.BeaconStationResponse;
@@ -7,13 +27,15 @@ import com.hanghai.kchtg.beacon.dto.beacon_station.CreateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_station.UpdateBeaconStationRequest;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconStation;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconStationRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -24,27 +46,14 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 import com.hanghai.kchtg.port.service.PortCacheService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.access.AccessDeniedException;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service for BeaconStation CRUD + approval workflow (F-068 to F-072).
@@ -53,7 +62,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@SuppressWarnings("null")
 public class BeaconStationService {
 
     private final BeaconStationRepository beaconStationRepo;
@@ -783,13 +791,6 @@ public class BeaconStationService {
         entity.softDelete(SecurityUtils.getCurrentUserId());
         beaconStationRepo.save(entity);
 
-        InfrastructureHistoryUtils.recordSoftDelete(
-                infraHistoryRepo,
-                id,
-                InfrastructureType.LIGHTHOUSE,
-                SecurityUtils.getCurrentUserId(),
-                "Xóa đèn biển: " + entity.getName());
-
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -1466,7 +1467,7 @@ public class BeaconStationService {
      * Lấy file đính kèm của đèn biển (dùng cho endpoint tải xuống — chuẩn /vts-operation-center).
      */
     public Attachment getAttachment(UUID entityId, UUID attachmentId) {
-      BeaconStation parent = beaconStationRepo.findById(entityId)
+      beaconStationRepo.findById(entityId)
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đèn biển: " + entityId));
       Attachment attachment = attachmentRepository.findById(attachmentId)
         .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));

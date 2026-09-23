@@ -44,7 +44,7 @@ export interface ApprovalStatusCounts {
 export const STANDARD_APPROVAL_STATUS_CONFIG = [
   { key: 'ALL', label: 'Tất cả', color: actionPrimary },
   { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', color: statusDraft },
-  { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
+  { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: '#204E9C' },
   { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', color: statusOperational },
   { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
@@ -73,7 +73,7 @@ export function buildStandardApprovalTabs(
   return [
     { key: 'ALL', label: 'Tất cả', count: countAll, color: actionPrimary, active: !currentStatus || currentStatus === 'ALL' || currentStatus === 'all' },
     { key: ApprovalStatus.DRAFT, label: 'Lưu tạm', count: d, color: statusDraft, active: currentStatus === ApprovalStatus.DRAFT },
-    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: p, color: actionPrimary, active: currentStatus === ApprovalStatus.PENDING_APPROVAL || currentStatus === 'PENDING_APPROVAL' },
+    { key: ApprovalStatus.PENDING_APPROVAL, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: p, color: '#204E9C', active: currentStatus === ApprovalStatus.PENDING_APPROVAL || currentStatus === 'PENDING_APPROVAL' },
     { key: ApprovalStatus.APPROVED_LEVEL1, label: 'Chờ phê duyệt cấp Cục', count: a1, color: statusAttention, active: currentStatus === ApprovalStatus.APPROVED_LEVEL1 || currentStatus === 'APPROVED_LEVEL1' },
     { key: ApprovalStatus.APPROVED, label: 'Đã phê duyệt', count: a, color: statusOperational, active: currentStatus === ApprovalStatus.APPROVED || currentStatus === 'APPROVED' },
     { key: ApprovalStatus.REJECTED_LEVEL1, label: 'Từ chối cấp Cảng vụ/Chi cục', count: r1, color: statusCritical, active: currentStatus === ApprovalStatus.REJECTED_LEVEL1 || currentStatus === 'REJECTED_LEVEL1' },

@@ -20,7 +20,7 @@ import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../componen
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -861,13 +861,13 @@ export default function BuoyBerthList() {
       setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
-      void fetchCounts(managingUnitId);
+      void fetchCounts();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
       setDeleteLoading(false);
     }
-  }, [deletingRecord, fetchData, fetchCounts, managingUnitId]);
+  }, [deletingRecord, fetchData, fetchCounts]);
 
   // ── Approval handlers ───────────────────────────────────────────
   const handleApprove = useCallback(async (record: BuoyBerth, content?: string) => {
@@ -885,9 +885,9 @@ export default function BuoyBerthList() {
       setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
-      void fetchCounts(managingUnitId);
+      void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-  }, [fetchData, fetchCounts, managingUnitId]);
+  }, [fetchData, fetchCounts]);
 
   const handleConfirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
@@ -899,9 +899,9 @@ export default function BuoyBerthList() {
       setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
-      void fetchCounts(managingUnitId);
+      void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
-  }, [submittingRecord, fetchData, fetchCounts, managingUnitId]);
+  }, [submittingRecord, fetchData, fetchCounts]);
 
   const openRejectModal = useCallback((record: BuoyBerth) => {
     setRejectingRecord(record); setRejectReason(''); setRejectError(''); setRejectModalOpen(true);
@@ -923,9 +923,9 @@ export default function BuoyBerthList() {
       setSortBy(undefined); setSortDir(undefined);
       setPage(1);
       void fetchData();
-      void fetchCounts(managingUnitId);
+      void fetchCounts();
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
-  }, [rejectingRecord, rejectReason, fetchData, fetchCounts, managingUnitId]);
+  }, [rejectingRecord, rejectReason, fetchData, fetchCounts]);
 
   // ── Header actions ──────────────────────────────────────────────
   const headerActions = useMemo(() => {
@@ -1032,7 +1032,7 @@ export default function BuoyBerthList() {
             value={filterWaterwayId}
             onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
             options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
-            filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+            filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
           />
         </div>
@@ -1057,7 +1057,7 @@ export default function BuoyBerthList() {
             placeholder="Chọn tỉnh/thành phố"
             allowClear
             showSearch
-            filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+            filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
             value={filterProvince || undefined}
             onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
             options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
@@ -1643,7 +1643,7 @@ export default function BuoyBerthList() {
               setSortBy(undefined); setSortDir(undefined);
               setPage(1);
               void fetchData();
-              void fetchCounts(managingUnitId);
+              void fetchCounts();
             }}
             onSubmittingChange={setSubmitting}
           />

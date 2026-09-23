@@ -32,7 +32,6 @@ export interface KchtRecordLike {
   userId?: string | null;
   approverLevel1?: string | null;
   approverLevel1Name?: string | null;
-  [key: string]: unknown;
 }
 
 export function isCucLevelUser(currentUser: any): boolean {

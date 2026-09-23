@@ -1,57 +1,5 @@
 package com.hanghai.kchtg.transmission.service;
 
-import com.hanghai.kchtg.transmission.dto.TransmissionResponse;
-import com.hanghai.kchtg.transmission.dto.TransmissionOptionResponse;
-import com.hanghai.kchtg.transmission.dto.CreateTransmissionRequest;
-import com.hanghai.kchtg.transmission.dto.UpdateTransmissionRequest;
-import com.hanghai.kchtg.transmission.entity.Transmission;
-import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
-import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.OperatingOrganization;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
-import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.util.WktCoordinateUtils;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
-import org.springframework.web.multipart.MultipartFile;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.security.access.AccessDeniedException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.JpaSort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,6 +11,59 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.port.service.shared.UserResolverService;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.transmission.dto.CreateTransmissionRequest;
+import com.hanghai.kchtg.transmission.dto.TransmissionOptionResponse;
+import com.hanghai.kchtg.transmission.dto.TransmissionResponse;
+import com.hanghai.kchtg.transmission.dto.UpdateTransmissionRequest;
+import com.hanghai.kchtg.transmission.entity.Transmission;
+import com.hanghai.kchtg.transmission.repository.TransmissionRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for transmission CRUD operations.
@@ -504,7 +505,6 @@ public class TransmissionService {
     approvalService.deleteDraft(entity, InfrastructureType.TRANSMISSION, currentUserId);
     entity.softDelete(currentUserId);
     transmissionRepository.save(entity);
-    InfrastructureHistoryUtils.recordSoftDelete(historyRepository, entity.getId(), InfrastructureType.TRANSMISSION, currentUserId, "Xóa hệ thống truyền dẫn");
     log.info("Soft-deleted transmission: id={}", id);
   }
 

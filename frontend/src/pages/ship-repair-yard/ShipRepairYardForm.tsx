@@ -408,24 +408,19 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   }, [watchedPortId]);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
-  useEffect(() => {
-    if (isEdit && !isInitialLoadDoneRef.current) {
-      return;
-    }
-    if (!watchedGeometryType) {
-      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
-      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
-      setCoordinateList([]);
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       setGpsError(null);
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -434,7 +429,8 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       }
       return prev;
     });
-  }, [watchedGeometryType, isEdit, form]);
+    setGpsError(null);
+  };
 
   // Edit mode: load existing
   useEffect(() => {
@@ -607,8 +603,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       return false;
     }
 
+    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
     const symbolIdVal = vals.mapSymbolId || (vals as any).symbolId || form.getFieldValue('mapSymbolId');
-    if (vals.geometryType && !symbolIdVal) {
+    const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+    const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
+
+    if (currentGeometryType && !symbolIdVal) {
       setActiveTabKey('location');
       form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
       toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
@@ -651,12 +651,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         slipwayCount: vals.slipwayCount != null && vals.slipwayCount !== '' ? Number(vals.slipwayCount) : undefined,
         remarks: vals.remarks || undefined,
         latitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].latitude : null,
-        longitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].longitude : null,
-        coordinates: vals.geometryType ? (wktCoordinates || null) : null,
-        geometryType: vals.geometryType || null,
-        mapSymbolId: vals.geometryType ? (symbolIdVal || null) : null,
-        coordinateSystem: vals.geometryType && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null,
-        displayRule: vals.geometryType ? (vals.displayRule === 'Độ, phút, giây (DMS)' || vals.displayRule === 1 ? 1 : (Number(vals.displayRule) || null)) : null,
+        longitude: currentGeometryType && validCoords.length > 0 ? validCoords[0].longitude : null,
+        coordinates: currentGeometryType ? (wktCoordinates || null) : null,
+        geometryType: currentGeometryType || null,
+        mapSymbolId: currentGeometryType ? (symbolIdVal || null) : null,
+        coordinateSystem: currentGeometryType && currentCoordSys != null ? Number(currentCoordSys) : null,
+        displayRule: currentGeometryType ? (currentDisplayRule === 'Độ, phút, giây (DMS)' || currentDisplayRule === 1 ? 1 : (Number(currentDisplayRule) || null)) : null,
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -701,7 +701,10 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
+    { key: 'general',
+      label: 'Thông tin chung',
+      forceRender: true,
+      children: (<div style={drawerFormScrollStyle}>
       {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
       <div style={sectionBoxStyle}>
         <div style={sectionHeaderStyle}>
@@ -857,6 +860,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1078,6 +1082,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <InfrastructureAttachmentTab
           attachments={uploadedFiles.map((f: any) => ({
@@ -1113,7 +1118,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   return (
     <>
       <style>{`.ship-repair-yard-filter .ant-select-selector { border-radius: 999px !important; } .ship-repair-yard-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .ship-repair-yard-filter .ant-select-content-item { max-width: 45% !important; } .ship-repair-yard-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
       <Modal

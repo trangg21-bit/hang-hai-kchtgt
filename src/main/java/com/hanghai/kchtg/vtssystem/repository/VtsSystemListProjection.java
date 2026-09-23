@@ -29,6 +29,16 @@ public interface VtsSystemListProjection {
 
     UUID getApproverLevel1();
 
+    LocalDateTime getApprovedDateLevel1();
+
+    UUID getApproverLevel2();
+
+    LocalDateTime getApprovedDateLevel2();
+
+    UUID getSubmittedBy();
+
+    LocalDateTime getSubmittedAt();
+
     UUID getCreatedBy();
 
     LocalDateTime getUpdatedDate();

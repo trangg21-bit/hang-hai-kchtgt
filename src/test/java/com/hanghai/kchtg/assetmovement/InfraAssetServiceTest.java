@@ -123,7 +123,7 @@ class InfraAssetServiceTest {
         assertEquals(dryPortId, response.getDryPortId());
         assertEquals(orgUnitId, response.getOrgUnitId());
         assertNotNull(response.getAssetCode());
-        assertTrue(response.getAssetCode().startsWith("TS-CC-"));
+        assertTrue(response.getAssetCode().startsWith("TSKCHT_CC-"));
         assertEquals(new BigDecimal("400000000"), response.getRemainingValue());
         assertEquals(new BigDecimal("10000000.00"), response.getMonthlyDepreciation());
     }
@@ -151,7 +151,7 @@ class InfraAssetServiceTest {
         assertNotNull(response.getId());
         assertEquals(InfraAssetType.ANCHORAGE.name(), response.getAssetType());
         assertEquals(anchorageId, response.getAnchorageId());
-        assertTrue(response.getAssetCode().startsWith("TS-ND-"));
+        assertTrue(response.getAssetCode().startsWith("TSKCHT_ND-"));
         assertEquals(new BigDecimal("500000"), response.getRemainingValue());
     }
 
@@ -177,7 +177,7 @@ class InfraAssetServiceTest {
 
         assertEquals(InfraAssetType.LIGHTHOUSE.name(), response.getAssetType());
         assertEquals(beaconStationId, response.getBeaconStationId());
-        assertTrue(response.getAssetCode().startsWith("TS-DB-"));
+        assertTrue(response.getAssetCode().startsWith("TSKCHT_DB-"));
         assertEquals(new BigDecimal("750000"), response.getRemainingValue());
     }
 
@@ -203,7 +203,7 @@ class InfraAssetServiceTest {
 
         assertEquals(InfraAssetType.DIKE_REVETMENT.name(), response.getAssetType());
         assertEquals(dikeRevetmentId, response.getDikeRevetmentId());
-        assertTrue(response.getAssetCode().startsWith("TS-DK-"));
+        assertTrue(response.getAssetCode().startsWith("TSKCHT_DK-"));
         assertEquals(new BigDecimal("900000"), response.getRemainingValue());
     }
 

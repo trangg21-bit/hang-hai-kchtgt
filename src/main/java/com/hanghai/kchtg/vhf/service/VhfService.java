@@ -1,46 +1,17 @@
 package com.hanghai.kchtg.vhf.service;
 
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
-import com.hanghai.kchtg.vhf.dto.VhfResponse;
-import com.hanghai.kchtg.vhf.dto.VhfOptionResponse;
-import com.hanghai.kchtg.vhf.dto.CreateVhfRequest;
-import com.hanghai.kchtg.vhf.dto.UpdateVhfRequest;
-import com.hanghai.kchtg.vhf.entity.Vhf;
-import com.hanghai.kchtg.vhf.repository.VhfRepository;
-import com.hanghai.kchtg.radarstation.entity.RadarStation;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.OperatingOrganization;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
-import com.hanghai.kchtg.port.entity.Attachment;
-import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.port.repository.AttachmentRepository;
-import com.hanghai.kchtg.port.repository.PortRepository;
-import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
-import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.security.access.AccessDeniedException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -49,16 +20,51 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
-import com.hanghai.kchtg.common.util.EntityUpdateUtils;
 
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.common.util.EntityUpdateUtils;
+import com.hanghai.kchtg.common.util.WktCoordinateUtils;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
+import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.vhf.dto.CreateVhfRequest;
+import com.hanghai.kchtg.vhf.dto.UpdateVhfRequest;
+import com.hanghai.kchtg.vhf.dto.VhfOptionResponse;
+import com.hanghai.kchtg.vhf.dto.VhfResponse;
+import com.hanghai.kchtg.vhf.entity.Vhf;
+import com.hanghai.kchtg.vhf.repository.VhfRepository;
+import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
+
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for VHF communication system CRUD operations.
@@ -76,6 +82,7 @@ public class VhfService {
   private final AttachmentRepository attachmentRepository;
   private final InfrastructureApprovalService approvalService;
   private final InfrastructureHistoryRepository historyRepository;
+  @SuppressWarnings("unused")
   private final ChangeHistoryService changeHistoryService;
   private final UserRepository userRepository;
   private final VtsOperationCenterRepository vtsOperationCenterRepository;
@@ -451,7 +458,6 @@ public class VhfService {
     approvalService.deleteDraft(entity, InfrastructureType.VHF, currentUserId);
     entity.softDelete(currentUserId);
     vhfRepository.save(entity);
-    InfrastructureHistoryUtils.recordSoftDelete(historyRepository, entity.getId(), InfrastructureType.VHF, currentUserId, "Xóa hệ thống thông tin liên lạc VHF");
     log.info("Soft-deleted VHF: id={}", id);
   }
 

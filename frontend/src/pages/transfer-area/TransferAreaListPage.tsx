@@ -20,7 +20,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -1454,7 +1454,7 @@ export default function TransferAreaListPage() {
               value={filterPortId}
               onChange={(v) => setFilterPortId(v)}
               options={portOptions}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             />
           </div>
           <div style={{ marginBottom: 12 }}>
@@ -1481,9 +1481,9 @@ export default function TransferAreaListPage() {
               style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
               allowClear
               showSearch
-              optionFilterProp="label"
               placeholder="Chọn công năng khai thác"
               options={OPERATIONAL_FUNCTIONS_OPTIONS}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
               value={filterOperationalFunctions}
               onChange={(v) => setFilterOperationalFunctions(v)}
             />
@@ -1499,7 +1499,7 @@ export default function TransferAreaListPage() {
               showSearch
               value={filterProvince}
               onChange={(v) => setFilterProvince(v)}
-              filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())}
+              filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
               options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
             />
           </div>
@@ -1671,8 +1671,7 @@ export default function TransferAreaListPage() {
           {...drawerProps}
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
-          size={1000}
-          size="min(1000px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editTransferAreaId ? 'Chỉnh sửa thông tin Khu chuyển tải' : 'Thêm mới Khu chuyển tải'}</span>}
           open={createDrawerVisible}
           destroyOnHidden
@@ -1777,8 +1776,7 @@ export default function TransferAreaListPage() {
           {...drawerProps}
           rootClassName="transfer-area-drawer-scope"
           className="transfer-area-drawer-scope"
-          size={1000}
-          size="min(1000px, 96vw)"
+          width="min(1000px, 96vw)"
           title={<span style={drawerTitleStyle}>Chi tiết khu chuyển tải{detailRecord ? ` - ${detailRecord.transferAreaName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}

@@ -1,8 +1,11 @@
 package com.hanghai.kchtg.vtsoperationcenter.repository;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
-import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.util.List;
+import java.util.UUID;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -12,11 +15,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.util.List;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.vtsoperationcenter.controller.VtsOperationCenterController;
+import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 
 /**
  * Kiểm thử truy vấn danh sách trung tâm điều hành VTS.
@@ -49,7 +51,7 @@ class VtsOperationCenterRepositoryTest {
                 "o.name", "t.orgUnitId",
                 "p.portName", "t.portId",
                 "vs.systemName", "t.vtsSystemId",
-                "u.fullName", "t.updatedAt", "t.createdAt",
+                "u.fullName", "uCreated.fullName", "t.updatedAt", "t.createdAt",
                 "uSub.fullName", "t.submittedAt",
                 "uApp1.fullName", "t.approvedDateLevel1",
                 "uApp2.fullName", "t.approvedDateLevel2");
@@ -102,7 +104,7 @@ class VtsOperationCenterRepositoryTest {
     }
 
     @Test
-    void testFindOptions_OnlyIncludesOperationalAndApproved() {
+    void testFindOptions_IncludesAllApprovedRegardlessOfConditionStatus() {
         VtsOperationCenter op1 = createCenter("VTSOC-OP1", "TT Đang vận hành");
         op1.setApprovalStatus(ApprovalStatus.APPROVED);
         op1.setConditionStatus(ConditionStatus.OPERATIONAL);
@@ -134,8 +136,26 @@ class VtsOperationCenterRepositoryTest {
         var options = repository.findOptions(false, List.of(), false, List.of());
         List<String> names = options.stream().map(com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterOptionResponse::getName).toList();
 
-        assertEquals(1, options.size());
-        assertEquals(List.of("TT Đang vận hành"), names);
+        assertEquals(3, options.size(), "findOptions phải lấy cả 3 bản ghi đã duyệt (kể cả dừng vận hành, bảo trì)");
+        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Đang vận hành"));
+        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Dừng vận hành"));
+        org.junit.jupiter.api.Assertions.assertTrue(names.contains("TT Bảo trì cấp 2"));
+    }
+
+    @Test
+    void testSearch_SortByVtsSystemName_ResolvesWithoutError() {
+        repository.save(createCenter("VTSOC-SYS1", "TT Thuộc Hệ thống VTS"));
+        entityManager.flush();
+
+        var pageableDesc = PageRequest.of(0, 20, VtsOperationCenterController.resolveListSort("vtsSystemName", "DESC"));
+        assertDoesNotThrow(
+                () -> repository.search(false, List.of(), null, null, null, null, null, null, null, null, null, pageableDesc).getContent(),
+                "Sắp xếp theo vtsSystemName DESC không được ném ngoại lệ cú pháp");
+
+        var pageableAsc = PageRequest.of(0, 20, VtsOperationCenterController.resolveListSort("vtsSystemName", "ASC"));
+        assertDoesNotThrow(
+                () -> repository.search(false, List.of(), null, null, null, null, null, null, null, null, null, pageableAsc).getContent(),
+                "Sắp xếp theo vtsSystemName ASC không được ném ngoại lệ cú pháp");
     }
 
     @Test

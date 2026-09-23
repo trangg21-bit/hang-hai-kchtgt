@@ -337,15 +337,19 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   // (GIỮ tọa độ đã nhập/chọn, chỉ thêm dòng trống cho đủ số lượng — không xóa dữ liệu cũ)
-  useEffect(() => {
-    if (!watchedGeometryType) return;
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
+      setGpsError(null);
+      return;
+    }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -354,7 +358,8 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       }
       return prev;
     });
-  }, [watchedGeometryType]);
+    setGpsError(null);
+  };
 
   // Edit mode: load existing
   useEffect(() => {
@@ -485,13 +490,17 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       return;
     }
 
+    const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType');
     const symbolIdVal = values.mapSymbolId || values.symbolId || form.getFieldValue('mapSymbolId') || form.getFieldValue('symbolId') || undefined;
+    const currentCoordSys = values.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+    const currentDisplayRule = values.displayRule ?? form.getFieldValue('displayRule');
+
     if (hasLocation && !symbolIdVal) {
       toast.error('Vui lòng chọn biểu tượng bản đồ');
       setActiveTabKey('location');
       return;
     }
-    if (hasCoordinates && !values.geometryType) {
+    if (hasCoordinates && !currentGeometryType) {
       toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setActiveTabKey('location');
       return;
@@ -528,7 +537,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         orgUnitId: values.orgUnitId,
         waterwayId: values.waterwayId || undefined,
         waterway: waterwayOptions.find((o) => o.value === values.waterwayId)?.label || undefined,
-        geometryType: values.geometryType || undefined,
+        geometryType: currentGeometryType || undefined,
         latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
         longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
         coordinates: wktCoordinates || undefined,
@@ -545,8 +554,8 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         openingAnnouncementDate: values.openingAnnouncementDate ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         openingDecision: values.openingDecision || undefined, investmentAgreement: values.investmentAgreement || undefined,
         mapSymbolId: symbolIdVal || undefined,
-        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null ? Number(values.displayRule) : undefined,
+        coordinateSystem: currentCoordSys != null ? Number(currentCoordSys) : undefined,
+        displayRule: currentDisplayRule != null ? Number(currentDisplayRule) : undefined,
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -585,6 +594,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -764,6 +774,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -783,7 +794,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                   rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
-                  <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                  <Select placeholder="Chọn loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} onChange={handleGeometryTypeChange} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -1006,7 +1017,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyOnHidden={false} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
       <Modal

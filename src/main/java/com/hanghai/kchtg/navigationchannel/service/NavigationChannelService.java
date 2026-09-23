@@ -1,5 +1,29 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.entity.EntityFields;
@@ -11,14 +35,26 @@ import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.navigationchannel.dto.*;
+import com.hanghai.kchtg.navigationchannel.dto.ApprovalRequest;
+import com.hanghai.kchtg.navigationchannel.dto.ApprovalResponse;
+import com.hanghai.kchtg.navigationchannel.dto.ChannelRouteDetailRequest;
+import com.hanghai.kchtg.navigationchannel.dto.ChannelRouteDetailResponse;
+import com.hanghai.kchtg.navigationchannel.dto.HistoryEntry;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelAttachmentRequest;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelAttachmentResponse;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelCoordinateRequest;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelCoordinateResponse;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelCreateRequest;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelResponse;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelUpdateRequest;
+import com.hanghai.kchtg.navigationchannel.dto.SearchResultResponse;
 import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelCoordinate;
@@ -28,22 +64,9 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.lang.reflect.Field;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service for NavigationChannel (F-038 to F-043).
@@ -426,8 +449,9 @@ public class NavigationChannelService {
         nc.setUpdatedBy(updatedBy);
         NavigationChannel saved = repo.save(nc);
 
-        // F-039 D3: ghi history UPDATED sau save (cùng transaction) - lưu từng trường riêng biệt
-        if (!previousValues.isEmpty()) {
+        // F-039 D3: chỉ ghi history UPDATED khi sửa hồ sơ đã phê duyệt
+        boolean wasApproved = currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2;
+        if (wasApproved && !previousValues.isEmpty()) {
             LocalDateTime now = LocalDateTime.now();
             for (Map.Entry<String, String> entry : previousValues.entrySet()) {
                 String field = entry.getKey();
@@ -471,10 +495,6 @@ public class NavigationChannelService {
             gisSpatialObjectService.delete(nc.getSpatialId());
         }
         repo.save(nc);
-
-        // F-040 D2: ghi history DELETED (caller đầu tiên của InfrastructureHistoryUtils.recordSoftDelete)
-        InfrastructureHistoryUtils.recordSoftDelete(approvalHistoryRepo, id,
-                InfrastructureType.NAVIGATION_CHANNEL, operatorId, "Xóa luồng hàng hải");
         log.info("Soft deleted navigation channel id={} by {}", id, operatorId);
     }
 

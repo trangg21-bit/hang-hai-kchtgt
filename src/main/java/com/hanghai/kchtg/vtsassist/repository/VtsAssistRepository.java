@@ -6,7 +6,6 @@ import com.hanghai.kchtg.vtsassist.entity.VtsAssist;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.vtsassist.dto.VtsAssistOptionResponse;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

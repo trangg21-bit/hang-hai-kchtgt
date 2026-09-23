@@ -764,15 +764,18 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const renderDetail = () => (
     <Tabs
       defaultActiveKey="1"
+      destroyInactiveTabPane={false}
       items={[
         {
           key: '1',
           label: 'Thông tin chung',
+          forceRender: true,
           children: renderDetailGeneralTab(),
         },
         {
           key: '2',
           label: 'Thông tin vị trí GIS',
+          forceRender: true,
           children: renderDetailGisTab(),
         },
       ]}
@@ -1085,15 +1088,18 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     <Tabs
       activeKey={formActiveTabKey}
       onChange={setFormActiveTabKey}
+      destroyInactiveTabPane={false}
       items={[
         {
           key: '1',
           label: 'Thông tin chung',
+          forceRender: true,
           children: renderFormGeneralTab(),
         },
         {
           key: '2',
           label: 'Thông tin vị trí GIS',
+          forceRender: true,
           children: renderFormGisTab(),
         },
       ]}

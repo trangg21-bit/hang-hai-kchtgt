@@ -925,7 +925,7 @@ const VtsAssistListPage = () => {
   }, []);
 
   const sortOrderFor = useCallback(
-    (key: string) =>
+    (key: string): 'ascend' | 'descend' | null =>
       sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
     [sortField, sortOrder]
   );
@@ -3644,8 +3644,7 @@ const VtsAssistListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        size={undefined}
-        size={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
         style={{ maxWidth: '96vw' }}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"

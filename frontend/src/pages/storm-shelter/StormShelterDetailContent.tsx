@@ -35,7 +35,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
   actionPrimary, textTertiary, textPrimary, surfaceCard, borderDefault,
   statusOperational, statusAttention, statusCritical, statusDraft,
-  fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
+  fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
   drawerTitleStyle, drawerProps, drawerCloseBtnStyle,
@@ -994,8 +994,7 @@ export default function StormShelterDetailContent({
       {...drawerProps}
       rootClassName="storm-shelter-drawer-scope"
       className="storm-shelter-drawer-scope"
-      size={1000}
-      size="min(1000px, 96vw)"
+      width="min(1000px, 96vw)"
       title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
       open={!!viewingWaterArea}
       onClose={() => setViewingWaterArea(null)}
