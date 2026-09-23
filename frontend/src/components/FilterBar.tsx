@@ -44,7 +44,7 @@ const INFRA_TYPE_OPTIONS = [
   { value: 'vts_system', label: 'Hệ thống VTS' },
   { value: 'vts_operation_center', label: 'Trung tâm điều hành VTS' },
   { value: 'radar_station', label: 'Trạm radar' },
-  { value: 'ais_system', label: 'Hệ thống trạm bờ AIS' },
+  { value: 'ais_system', label: 'Hệ thống AIS' },
   { value: 'cctv', label: 'Hệ thống camera giám sát CCTV' },
   { value: 'scada', label: 'Hệ thống điều khiển SCADA' },
   { value: 'transmission', label: 'Hệ thống truyền dẫn' },
@@ -53,9 +53,9 @@ const INFRA_TYPE_OPTIONS = [
   // Thông tin duyên hải & viễn thông
   { value: 'dai_ttdh', label: 'Đài Thông tin duyên hải' },
   { value: 'vhf', label: 'Hệ thống VHF' },
-  { value: 'coastal_station_inmarsat', label: 'Đài Thông tin vệ tinh Inmarsat' },
-  { value: 'coastal_station_lrit', label: 'Đài Nhận dạng và truy theo tầm xa (LRIT)' },
-  { value: 'coastal_station_cospas_sarsat', label: 'Đài Thông tin vệ tinh Cospas-Sarsat' },
+  { value: 'coastal_station_inmarsat', label: 'Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
+  { value: 'coastal_station_lrit', label: 'Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+  { value: 'coastal_station_cospas_sarsat', label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam' },
   { value: 'coastal_station_haiphong', label: 'Đài TTXL thông tin hàng hải Hà Nội / Hải Phòng' },
 ];
 

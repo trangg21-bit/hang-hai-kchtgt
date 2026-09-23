@@ -128,7 +128,7 @@ export const RESOURCE_DESCENDANTS_MAP: Record<string, string[]> = {
   vtssystem: [],
   vtsasset: [],
 
-  // Đài viễn thông hàng hải (Cha/Ông) -> TTDH, Inmarsat, Cospas-Sarsat, LRIT, TTXLTT
+  // Hệ thống thông tin duyên hải Việt Nam (Cha/Ông) -> TTDH, Inmarsat, Cospas-Sarsat, LRIT, TTXLTT
   coastalstation: [
     'daittdh', 'inmarsat', 'cospassarsat', 'lrit', 'ttxltt',
     'daittdhasset', 'inmarsatasset', 'cospassarsatasset', 'lritasset', 'ttxlttasset'

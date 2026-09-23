@@ -836,7 +836,7 @@ export default function LritStationList() {
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
-            { label: 'Đài thông tin LRIT' },
+            { label: 'Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
           ]}
           actions={
             canCreate

@@ -642,25 +642,25 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "vtsoperationcenter", "history", "Lịch sử phê duyệt trung tâm điều hành VTS",
                                 "Xem lịch sử thay đổi trung tâm điều hành VTS");
 
-                // 9.7 Hệ thống trạm bờ AIS (AIS System)
-                seedPermission(definitions, "aissystem", "read", "Xem hệ thống trạm bờ AIS",
-                                "Tra cứu thông tin hệ thống trạm bờ AIS");
+                // 9.7 Hệ thống AIS (AIS System)
+                seedPermission(definitions, "aissystem", "read", "Xem hệ thống AIS",
+                                "Tra cứu thông tin hệ thống AIS");
                 seedPermission(definitions, "aissystem", "read:restricted", "Xem bản ghi hạn chế AIS",
-                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống trạm bờ AIS");
+                                "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống AIS");
                 seedPermission(definitions, "aissystem", "read:confidential", "Xem bản ghi mật AIS",
-                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống trạm bờ AIS");
-                seedPermission(definitions, "aissystem", "create", "Thêm hệ thống trạm bờ AIS",
-                                "Tạo mới hệ thống trạm bờ AIS");
-                seedPermission(definitions, "aissystem", "update", "Cập nhật hệ thống trạm bờ AIS",
-                                "Chỉnh sửa thông tin hệ thống trạm bờ AIS");
-                seedPermission(definitions, "aissystem", "delete", "Xóa hệ thống trạm bờ AIS",
-                                "Xóa hệ thống trạm bờ AIS");
-                seedPermission(definitions, "aissystem", "approvec1", "Phê duyệt C1 hệ thống trạm bờ AIS",
-                                "Phê duyệt cấp 1 hệ thống trạm bờ AIS");
-                seedPermission(definitions, "aissystem", "approvec2", "Phê duyệt C2 hệ thống trạm bờ AIS",
-                                "Phê duyệt cấp 2 hệ thống trạm bờ AIS");
-                seedPermission(definitions, "aissystem", "history", "Lịch sử phê duyệt hệ thống trạm bờ AIS",
-                                "Xem lịch sử thay đổi hệ thống trạm bờ AIS");
+                                "Xem các bản ghi dữ liệu mức độ Mật của hệ thống AIS");
+                seedPermission(definitions, "aissystem", "create", "Thêm hệ thống AIS",
+                                "Tạo mới hệ thống AIS");
+                seedPermission(definitions, "aissystem", "update", "Cập nhật hệ thống AIS",
+                                "Chỉnh sửa thông tin hệ thống AIS");
+                seedPermission(definitions, "aissystem", "delete", "Xóa hệ thống AIS",
+                                "Xóa hệ thống AIS");
+                seedPermission(definitions, "aissystem", "approvec1", "Phê duyệt C1 hệ thống AIS",
+                                "Phê duyệt cấp 1 hệ thống AIS");
+                seedPermission(definitions, "aissystem", "approvec2", "Phê duyệt C2 hệ thống AIS",
+                                "Phê duyệt cấp 2 hệ thống AIS");
+                seedPermission(definitions, "aissystem", "history", "Lịch sử phê duyệt hệ thống AIS",
+                                "Xem lịch sử thay đổi hệ thống AIS");
 
                 // 10. Trạm hải đăng, Báo hiệu, Phao tiêu & Nhà trạm ven biển (Stations & Aids
                 // to Navigation)
@@ -773,39 +773,39 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "specialstation", "approvec1", "Phê duyệt C1 trạm chuyên dùng", "Phê duyệt cấp 1 trạm chuyên dùng");
                 seedPermission(definitions, "specialstation", "approvec2", "Phê duyệt C2 trạm chuyên dùng", "Phê duyệt cấp 2 trạm chuyên dùng");
 
-                // 10.3 Đài thông tin vệ tinh Inmarsat (M-004)
-                seedPermission(definitions, "coastalstationinmarsat", "read", "Xem đài Inmarsat", "Xem danh sách và chi tiết đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm đài Inmarsat", "Tạo mới đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật đài Inmarsat", "Chỉnh sửa đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa đài Inmarsat", "Xóa đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 đài Inmarsat", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 đài Inmarsat", "Phê duyệt cấp 2 (Cục Hàng hải) đài Inmarsat");
-                seedPermission(definitions, "coastalstationinmarsat", "history", "Lịch sử phê duyệt đài Inmarsat", "Xem lịch sử thay đổi và phê duyệt đài Inmarsat");
+                // 10.3 Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng (M-004)
+                seedPermission(definitions, "coastalstationinmarsat", "read", "Xem Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Xem danh sách và chi tiết Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedPermission(definitions, "coastalstationinmarsat", "create", "Thêm Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Tạo mới Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedPermission(definitions, "coastalstationinmarsat", "update", "Cập nhật Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Chỉnh sửa Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedPermission(definitions, "coastalstationinmarsat", "delete", "Xóa Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Xóa Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec1", "Phê duyệt C1 Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Phê duyệt cấp 1 (Cảng vụ/Chi cục) Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedPermission(definitions, "coastalstationinmarsat", "approvec2", "Phê duyệt C2 Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Phê duyệt cấp 2 (Cục Hàng hải) Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedPermission(definitions, "coastalstationinmarsat", "history", "Lịch sử phê duyệt Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng", "Xem lịch sử thay đổi và phê duyệt Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
 
-                // 10.4 Đài Cospas-Sarsat (Coastal Station Cospas-Sarsat - M-004)
-                seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem đài Cospas-Sarsat",
-                                "Xem danh sách và chi tiết đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "create", "Thêm đài Cospas-Sarsat",
-                                "Tạo mới đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "update", "Cập nhật đài Cospas-Sarsat",
-                                "Chỉnh sửa đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "delete", "Xóa đài Cospas-Sarsat",
-                                "Xóa đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "approvec1", "Phê duyệt C1 đài Cospas-Sarsat",
-                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "approvec2", "Phê duyệt C2 đài Cospas-Sarsat",
-                                "Phê duyệt cấp 2 (Cục Hàng hải) đài Cospas-Sarsat");
-                seedPermission(definitions, "coastalstationcospassarsat", "history", "Lịch sử phê duyệt đài Cospas-Sarsat",
-                                "Xem lịch sử thay đổi và phê duyệt đài Cospas-Sarsat");
+                // 10.4 Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam (Coastal Station Cospas-Sarsat - M-004)
+                seedPermission(definitions, "coastalstationcospassarsat", "read", "Xem Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Xem danh sách và chi tiết Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedPermission(definitions, "coastalstationcospassarsat", "create", "Thêm Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Tạo mới Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedPermission(definitions, "coastalstationcospassarsat", "update", "Cập nhật Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedPermission(definitions, "coastalstationcospassarsat", "delete", "Xóa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Xóa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedPermission(definitions, "coastalstationcospassarsat", "approvec1", "Phê duyệt C1 Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Phê duyệt cấp 1 (Cảng vụ/Chi cục) Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedPermission(definitions, "coastalstationcospassarsat", "approvec2", "Phê duyệt C2 Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Phê duyệt cấp 2 (Cục Hàng hải) Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedPermission(definitions, "coastalstationcospassarsat", "history", "Lịch sử phê duyệt Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam",
+                                "Xem lịch sử thay đổi và phê duyệt Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
 
-                // 10.5 Đài thông tin LRIT (Coastal Station LRIT - M-004: F-110..F-115)
-                seedPermission(definitions, "coastalstationlrit", "read", "Xem đài LRIT", "Xem danh sách và chi tiết đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "create", "Thêm đài LRIT", "Tạo mới đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "update", "Cập nhật đài LRIT", "Chỉnh sửa đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "delete", "Xóa đài LRIT", "Xóa đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "approvec1", "Phê duyệt C1 đài LRIT", "Phê duyệt cấp 1 đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "approvec2", "Phê duyệt C2 đài LRIT", "Phê duyệt cấp 2 đài LRIT");
-                seedPermission(definitions, "coastalstationlrit", "history", "Lịch sử phê duyệt đài LRIT", "Xem lịch sử thay đổi và phê duyệt đài LRIT");
+                // 10.5 Đài thông tin nhận dạng và truy theo tầm xa (LRIT) (Coastal Station LRIT - M-004: F-110..F-115)
+                seedPermission(definitions, "coastalstationlrit", "read", "Xem Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Xem danh sách và chi tiết Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
+                seedPermission(definitions, "coastalstationlrit", "create", "Thêm Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Tạo mới Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
+                seedPermission(definitions, "coastalstationlrit", "update", "Cập nhật Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Chỉnh sửa Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
+                seedPermission(definitions, "coastalstationlrit", "delete", "Xóa Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Xóa Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
+                seedPermission(definitions, "coastalstationlrit", "approvec1", "Phê duyệt C1 Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Phê duyệt cấp 1 Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
+                seedPermission(definitions, "coastalstationlrit", "approvec2", "Phê duyệt C2 Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Phê duyệt cấp 2 Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
+                seedPermission(definitions, "coastalstationlrit", "history", "Lịch sử phê duyệt Đài thông tin nhận dạng và truy theo tầm xa (LRIT)", "Xem lịch sử thay đổi và phê duyệt Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
 
                 // 10.6 Đài TTXLTT Hà Nội / Hải Phòng (Coastal Station Haiphong/Hanoi - M-004: F-116..F-121)
                 seedPermission(definitions, "coastalstationhaiphong", "read", "Xem đài TTXLTT Hà Nội", "Xem danh sách và chi tiết đài TTXLTT");
@@ -817,9 +817,9 @@ public class PermissionSeeder implements CommandLineRunner {
                 seedPermission(definitions, "coastalstationhaiphong", "history", "Lịch sử phê duyệt đài TTXLTT Hà Nội", "Xem lịch sử thay đổi và phê duyệt đài TTXLTT");
 
                 // 10.7 Chuẩn hóa mã đài thông tin vệ tinh & chuyên dùng (Inmarsat, Cospas-Sarsat, LRIT, TTXLTT)
-                seedKchtModulePermissions(definitions, "inmarsat", "đài Inmarsat");
-                seedKchtModulePermissions(definitions, "cospassarsat", "đài Cospas-Sarsat");
-                seedKchtModulePermissions(definitions, "lrit", "đài LRIT");
+                seedKchtModulePermissions(definitions, "inmarsat", "Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng");
+                seedKchtModulePermissions(definitions, "cospassarsat", "Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam");
+                seedKchtModulePermissions(definitions, "lrit", "Đài thông tin nhận dạng và truy theo tầm xa (LRIT)");
                 seedKchtModulePermissions(definitions, "ttxltt", "đài TTXLTT");
 
                 // 11. Phân hệ Quản lý tài sản KCHT hàng hải (Module cha Quản lý tài sản + 24 loại tài sản KCHT + 4 nghiệp vụ tài sản)

@@ -7,6 +7,9 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.vtsassist.dto.VtsAssistOptionResponse;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -70,7 +73,11 @@ public interface VtsAssistRepository extends JpaRepository<VtsAssist, UUID> {
     List<VtsAssist> findAllActiveForCache();
 
     @Query(value = "SELECT c FROM VtsAssist c " +
-            "LEFT JOIN OrgUnit o ON o.id = c.orgUnitId WHERE " +
+            "LEFT JOIN OrgUnit o ON o.id = c.orgUnitId " +
+            "LEFT JOIN VtsOperationCenter voc ON (c.attachedInfrastructureType = 1 AND voc.id = c.attachedInfrastructureId) " +
+            "LEFT JOIN RadarStation rs ON (c.attachedInfrastructureType = 2 AND rs.id = c.attachedInfrastructureId) " +
+            "LEFT JOIN OperatingOrganization opo ON opo.id = c.operatingUnitId " +
+            "LEFT JOIN OrgUnit opu ON opu.id = c.operatingUnitId WHERE " +
             "(:isDeleted IS NULL OR (:isDeleted = true AND (c.deletedAt IS NOT NULL OR c.deletedBy IS NOT NULL)) OR (:isDeleted = false AND c.deletedAt IS NULL AND c.deletedBy IS NULL)) " +
             "AND (:includeAll = true OR c.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR c.orgUnitId IN :filterOrgUnitIds) " +

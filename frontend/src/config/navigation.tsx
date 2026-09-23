@@ -158,34 +158,27 @@ const kchtTree: NavNode[] = [
           { key: '/pier', route: '/pier', label: 'Cầu cảng', icon: icons.build },
         ],
       },
-      { key: '/ship-repair-yard', route: '/ship-repair-yard', label: 'Cơ sở sửa chữa, đóng tàu', icon: icons.tool },
-      { key: '/anchorage', route: '/anchorage', label: 'Khu neo đậu', icon: icons.compass },
+      { key: '/buoy-berth', route: '/buoy-berth', label: 'Bến phao', icon: icons.aim },
       { key: '/transfer-area', route: '/transfer-area', label: 'Khu chuyển tải', icon: icons.export },
+      { key: '/anchorage', route: '/anchorage', label: 'Khu neo đậu', icon: icons.compass },
       { key: '/storm-shelter', route: '/storm-shelter', label: 'Khu tránh, trú bão', icon: icons.safety },
     ],
   },
+  { key: '/dry-port', route: '/dry-port', label: 'Cảng cạn', icon: icons.truck },
+  { key: '/navigation-channel', route: '/navigation-channel', label: 'Luồng hàng hải', icon: icons.container },
+  { key: '/vhf', route: '/vhf', label: 'Hệ thống thông tin liên lạc VHF', icon: icons.radio },
+  { key: '/ship-repair-yard', route: '/ship-repair-yard', label: 'Cơ sở sửa chữa, đóng tàu', icon: icons.tool },
+  { key: '/beacon-stations', route: '/beacon-stations', label: 'Đèn biển và nhà trạm gắn với Đèn biển', icon: icons.bulb },
   {
-    key: '/navigation-channel',
-    route: '/navigation-channel',
-    label: 'Luồng hàng hải',
-    icon: icons.container,
+    key: '/buoy-station',
+    route: '/buoy-station',
+    label: 'Nhà trạm vận hành Phao, tiêu',
+    icon: icons.bank,
     children: [
-      { key: '/buoy-berth', route: '/buoy-berth', label: 'Bến phao', icon: icons.aim },
-      {
-        key: '/buoy-station',
-        route: '/buoy-station',
-        label: 'Nhà trạm vận hành Phao, tiêu',
-        icon: icons.bank,
-        children: [
-          { key: '/buoys', route: '/buoys', label: 'Phao, tiêu', icon: icons.environment },
-        ],
-      },
-      { key: '/beacon-stations', route: '/beacon-stations', label: 'Đèn biển và nhà trạm gắn với Đèn biển', icon: icons.bulb },
-      { key: '/dike-revetment', route: '/dike-revetment', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.deployment },
-      { key: '/vhf', route: '/vhf', label: 'Hệ thống thông tin liên lạc VHF', icon: icons.radio },
+      { key: '/buoys', route: '/buoys', label: 'Phao, tiêu', icon: icons.environment },
     ],
   },
-  { key: '/dry-port', route: '/dry-port', label: 'Cảng cạn', icon: icons.truck },
+  { key: '/dike-revetment', route: '/dike-revetment', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ', icon: icons.deployment },
   {
     key: '/vts-system',
     route: '/vts-system',
@@ -194,22 +187,22 @@ const kchtTree: NavNode[] = [
     children: [
       { key: '/vts-operation-center', route: '/vts-operation-center', label: 'Trung tâm điều hành VTS', icon: icons.apartment },
       { key: '/radar-station', route: '/radar-station', label: 'Trạm radar', icon: icons.radar },
-      { key: '/ais-system', route: '/ais-system', label: 'Hệ thống trạm bờ AIS', icon: icons.wifi },
-      { key: '/cctv', route: '/cctv', label: 'Hệ thống CCTV', icon: icons.video },
+      { key: '/ais-system', route: '/ais-system', label: 'Hệ thống AIS', icon: icons.wifi },
       { key: '/scada', route: '/scada', label: 'Hệ thống SCADA', icon: icons.monitor },
       { key: '/transmission', route: '/transmission', label: 'Hệ thống truyền dẫn', icon: icons.apartment },
       { key: '/vts-assist', route: '/vts-assist', label: 'Hệ thống phụ trợ VTS', icon: icons.tool },
+      { key: '/cctv', route: '/cctv', label: 'Hệ thống CCTV', icon: icons.video },
     ],
   },
   {
     key: 'kcht-vienthong',
-    label: 'Đài viễn thông hàng hải',
+    label: 'Hệ thống thông tin duyên hải Việt Nam',
     icon: icons.apartment,
     children: [
       { key: '/dai-ttdh', route: '/dai-ttdh', label: 'Đài TTDH', icon: icons.sound },
-      { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài vệ tinh Inmarsat', icon: icons.global },
-      { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Cospas-Sarsat', icon: icons.safety },
-      { key: '/station/lrit', route: '/station/lrit', label: 'Đài LRIT', icon: icons.compass },
+      { key: '/station/inmarsat', route: '/station/inmarsat', label: 'Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng', icon: icons.global },
+      { key: '/station/cospas-sarsat', route: '/station/cospas-sarsat', label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam', icon: icons.safety },
+      { key: '/station/lrit', route: '/station/lrit', label: 'Đài thông tin nhận dạng và truy theo tầm xa (LRIT)', icon: icons.compass },
       { key: '/station/hanoi', route: '/station/hanoi', label: 'Đài TTXLTT Hà Nội', icon: icons.bank },
     ],
   },
@@ -377,10 +370,7 @@ export function accessibleTree(nodes: NavNode[], canAccess: (route: string) => b
     if (selfOk) {
       out.push({ ...n, children });
     } else if (children && children.length > 0) {
-      // Khi con/cháu có quyền truy cập nhưng cha không có quyền:
-      // Giữ lại node cha như 1 nhóm (group folder) nhưng XÓA route để không thể điều hướng vào màn cha bị cấm
-      const { route: _r, ...folderNode } = n;
-      out.push({ ...folderNode, children });
+      out.push({ ...n, route: undefined, children });
     }
   }
   return out;

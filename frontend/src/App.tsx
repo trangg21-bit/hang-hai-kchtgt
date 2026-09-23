@@ -301,7 +301,7 @@ export default function App() {
                 {/* Trung tâm điều hành VTS */}
                 <Route path="/vts-operation-center" element={<PermissionGuard permission={['vtsoperationcenter:read', 'vts:read', 'vtssystem:read', 'infraasset:read', 'data:read']}><VtsOperationCenterList /></PermissionGuard>} />
 
-                {/* Hệ thống trạm bờ AIS */}
+                {/* Hệ thống AIS */}
                 <Route path="/ais-system" element={<PermissionGuard permission={['aissystem:read', 'aisasset:read', 'vts:read', 'infraasset:read', 'data:read']}><AisSystemList /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}

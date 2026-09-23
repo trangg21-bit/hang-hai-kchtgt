@@ -941,10 +941,10 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       title={
         <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
           {isView
-            ? (stationDisplayName ? `Chi tiết đài Cospas-Sarsat - ${stationDisplayName}` : 'Chi tiết đài Cospas-Sarsat')
+            ? (stationDisplayName ? `Chi tiết Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam - ${stationDisplayName}` : 'Chi tiết Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam')
             : isEdit
-            ? (stationDisplayName ? `Chỉnh sửa đài Cospas-Sarsat - ${stationDisplayName}` : 'Chỉnh sửa đài Cospas-Sarsat')
-            : 'Thêm mới đài Cospas-Sarsat'}
+            ? (stationDisplayName ? `Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam - ${stationDisplayName}` : 'Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam')
+            : 'Thêm mới Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam'}
         </span>
       }
       extra={

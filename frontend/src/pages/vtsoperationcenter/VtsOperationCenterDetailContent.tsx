@@ -442,7 +442,7 @@ export default function VtsOperationCenterDetailContent({
           id: x.id,
           infraName: x.stationName || x.name || x.code || '',
           infraType: 'AIS_SYSTEM',
-          typeLabel: 'Hệ thống trạm bờ AIS',
+          typeLabel: 'Hệ thống AIS',
           raw: x,
         }));
         setLoadedInfra([...radarList, ...aisList]);
@@ -1013,7 +1013,7 @@ export default function VtsOperationCenterDetailContent({
                     onChange={(val) => setInfraTypeFilter(val || '')}
                     options={[
                       { value: 'RADAR_STATION', label: 'Trạm radar' },
-                      { value: 'AIS_SYSTEM', label: 'Hệ thống trạm bờ AIS' },
+                      { value: 'AIS_SYSTEM', label: 'Hệ thống AIS' },
                     ]}
                     style={{ width: 260, borderRadius: radiusPill, height: 32 }}
                   />
@@ -1042,7 +1042,7 @@ export default function VtsOperationCenterDetailContent({
                             color: actionPrimary,
                           }}
                         >
-                          {rec.typeLabel || (rec.infraType === 'RADAR_STATION' ? 'Trạm radar' : 'Hệ thống trạm bờ AIS')}
+                          {rec.typeLabel || (rec.infraType === 'RADAR_STATION' ? 'Trạm radar' : 'Hệ thống AIS')}
                         </span>
                       ),
                     },
