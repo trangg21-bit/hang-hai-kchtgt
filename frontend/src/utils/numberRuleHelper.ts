@@ -53,35 +53,64 @@ export const getValueFromEvent20 = (val: unknown): string | null => {
   return normalizeDecimal20_4(val) || null;
 };
 
+/** Như `normalizeDecimal20_4` nhưng GIỮ dấu '-' ở đầu — dùng cho trường có thể nhập số âm. */
+export const normalizeDecimal20_4Signed = (val: unknown): string => {
+  if (val === null || val === undefined || val === '') return '';
+  const negative = String(val).trim().startsWith('-');
+  const normalized = normalizeDecimal20_4(val);
+  if (!normalized) return negative ? '-' : '';
+  return negative ? `-${normalized}` : normalized;
+};
+
+export const parseNumber20Signed = (value: unknown): string => normalizeDecimal20_4Signed(value);
+
+export const getValueFromEvent20Signed = (val: unknown): string | null => {
+  if (val === null || val === undefined || val === '') return null;
+  return normalizeDecimal20_4Signed(val) || null;
+};
+
+/** Kiểm tra phần thân của một số thập phân (đã bỏ dấu '-') — dùng chung cho 2 rule bên dưới. */
+const checkDecimalBody = (s: string): string | null => {
+  if (!/^\d+(\.\d+)?$/.test(s) && !/^\d+\.$/.test(s) && !/^\.\d+$/.test(s)) {
+    return 'Chỉ chấp nhận chữ số và dấu "."';
+  }
+  const dotIdx = s.indexOf('.');
+  if (dotIdx !== -1) {
+    const intPart = s.slice(0, dotIdx);
+    const decPart = s.slice(dotIdx + 1);
+    if (intPart.length > 16) {
+      return 'Giới hạn chữ số khi có dấu "." là 16';
+    }
+    if (decPart.length > 4) {
+      return 'Số sau dấu "." tối đa 4 chữ số';
+    }
+    if (s.replace(/\./g, '').length > 20) {
+      return 'Giới hạn tối đa 20 chữ số';
+    }
+  } else if (s.length > 20) {
+    return 'Giới hạn tối đa 20 chữ số';
+  }
+  return null;
+};
+
 export const decimalNumberRule: Rule = {
   validator: (_: unknown, value: unknown) => {
     if (value === null || value === undefined || value === '') return Promise.resolve();
-    const raw = String(value).trim();
-    if (!/^\d+([.,]\d+)?$/.test(raw) && !/^\d+[.,]$/.test(raw) && !/^[.,]\d+$/.test(raw)) {
-      return Promise.reject(new Error('Chỉ chấp nhận chữ số, dấu "." hàng nghìn và dấu "," thập phân'));
-    }
-    const s = raw.replace(',', '.');
-    const dotIdx = s.indexOf('.');
-    if (dotIdx !== -1) {
-      const intPart = s.slice(0, dotIdx);
-      const decPart = s.slice(dotIdx + 1);
-      if (intPart.length > 16) {
-        return Promise.reject(new Error('Giới hạn phần nguyên là 16 chữ số'));
-      }
-      if (decPart.length > 4) {
-        return Promise.reject(new Error('Phần thập phân tối đa 4 chữ số'));
-      }
-      const digitsCount = s.replace(/\./g, '').length;
-      if (digitsCount > 20) {
-        return Promise.reject(new Error('Giới hạn tối đa 20 chữ số'));
-      }
-    } else {
-      const digitsCount = s.length;
-      if (digitsCount > 20) {
-        return Promise.reject(new Error('Giới hạn tối đa 20 chữ số'));
-      }
-    }
-    return Promise.resolve();
+    const error = checkDecimalBody(String(value).trim());
+    return error ? Promise.reject(new Error(error)) : Promise.resolve();
+  },
+};
+
+/**
+ * Như `decimalNumberRule` nhưng cho phép 1 dấu '-' ở ĐẦU (giá trị âm hợp lệ),
+ * dùng cho các trường có thể âm như "Cao trình đỉnh (m)" của đê kè.
+ */
+export const decimalNumberRuleSigned: Rule = {
+  validator: (_: unknown, value: unknown) => {
+    if (value === null || value === undefined || value === '') return Promise.resolve();
+    const s = String(value).trim();
+    const error = checkDecimalBody(s.startsWith('-') ? s.slice(1) : s);
+    return error ? Promise.reject(new Error(error)) : Promise.resolve();
   },
 };
 
@@ -104,6 +133,19 @@ export const safeDecimal = (v: unknown): string | undefined => {
   if (!s || s === '.') return undefined;
   const normalized = normalizeDecimal20_4(s);
   return normalized || undefined;
+};
+
+/**
+ * Như `safeDecimal` nhưng GIỮ dấu '-' ở đầu — dùng cho trường cho phép số âm
+ * (ví dụ "Cao trình đỉnh (m)" của đê kè). Backend đã chấp nhận số âm:
+ * Decimal20_4Validator bỏ qua dấu âm/dương ở đầu khi đếm chữ số.
+ */
+export const safeDecimalSigned = (v: unknown): string | undefined => {
+  if (v === null || v === undefined || v === '') return undefined;
+  const raw = String(v).trim().replace(/\.$/, '');
+  if (!raw || raw === '-' || raw === '.') return undefined;
+  const normalized = normalizeDecimal20_4Signed(raw);
+  return normalized && normalized !== '-' ? normalized : undefined;
 };
 
 /**

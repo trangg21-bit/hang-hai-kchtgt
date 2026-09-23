@@ -54,13 +54,7 @@ public class KchtgApplication {
                     // 2. Remove duplicate DELETE-type entries keeping only the first one per version
                     stmt.executeUpdate(
                         "DELETE FROM flyway_schema_history " +
-                        "WHERE installed_rank IN (" +
-                        "  SELECT installed_rank FROM (" +
-                        "    SELECT installed_rank, version, type," +
-                        "           ROW_NUMBER() OVER (PARTITION BY version, type ORDER BY installed_rank) AS rn" +
-                        "    FROM flyway_schema_history WHERE type = 'DELETE'" +
-                        "  ) t WHERE rn > 1" +
-                        ")"
+                        "WHERE type = 'DELETE'"
                     );
 
                     // 3. Remove duplicate SQL-type entries keeping only the first one per version

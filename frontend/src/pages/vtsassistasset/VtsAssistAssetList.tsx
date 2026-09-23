@@ -139,9 +139,9 @@ export default function VtsAssistAssetList() {
   );
 
   const {
-    historyOpen, historyTarget, historyRecords, historyLoading,
-    historyFilters, filteredHistory, hasActiveHistoryFilter,
-    openHistory, setHistoryOpen, setHistoryFilters,
+    historyOpen, historyTarget, historyRecords, historyLoading, historyLoadingMore,
+    historyFilters, hasActiveHistoryFilter,
+    openHistory, setHistoryOpen, setHistoryFilters, applyHistoryFilters, onHistoryScroll,
   } = useVtsAssistHistory({ orgName, transmissionMap: vtsAssistMap });
 
   const loadData = useCallback(async () => {
@@ -658,7 +658,7 @@ export default function VtsAssistAssetList() {
           width: 250,
           bold: true,
           allowSort: true,
-          valueRef: (r) => orgName.get(r.orgUnitId),
+          valueRef: (r) => orgName.get(r.orgUnitId ?? ''),
         },
         {
           title: 'ĐƠN VỊ SỬ DỤNG',
@@ -1060,13 +1060,15 @@ export default function VtsAssistAssetList() {
           target={historyTarget}
           records={historyRecords}
           loading={historyLoading}
+          loadingMore={historyLoadingMore}
           filters={historyFilters}
-          filteredRecords={filteredHistory}
           hasActiveFilter={hasActiveHistoryFilter}
           orgName={orgName}
           transmissionMap={vtsAssistMap}
           onClose={() => setHistoryOpen(false)}
           onFiltersChange={setHistoryFilters}
+          onSearch={() => applyHistoryFilters(historyFilters)}
+          onScroll={onHistoryScroll}
         />
       </div>
     </ThemeTokenProvider>

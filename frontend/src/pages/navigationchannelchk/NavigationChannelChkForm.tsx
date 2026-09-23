@@ -28,6 +28,12 @@ import { organizationService } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { symbolService } from '../../services/symbolService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import {
+  firstErrorFieldName,
+  firstErrorMessage,
+  resolveMainFormTabForField,
+  type FormFinishFailedInfo,
+} from '../../utils/navigationChannelFormTabs';
 import { OrgUnitTreeSelect, resolveOrgSubtreeIds } from '../../components/org-unit';
 import type {
   NavigationChannelResponse,
@@ -83,6 +89,22 @@ export interface NavigationChannelChkFormProps {
 
 const trimString = (v: unknown): string | undefined =>
   typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
+
+const toNullableString = (v: unknown, isEdit: boolean): string | null | undefined => {
+  if (typeof v === 'string') {
+    const trimmed = v.trim();
+    return trimmed !== '' ? trimmed : (isEdit ? null : undefined);
+  }
+  return isEdit ? null : undefined;
+};
+
+const toNullableNumber = (v: unknown, isEdit: boolean): number | null | undefined => {
+  if (v !== null && v !== undefined && v !== '') {
+    const num = Number(v);
+    if (!isNaN(num)) return num;
+  }
+  return isEdit ? null : undefined;
+};
 
 // Loại tuyến luồng — mapping có sẵn trong codebase cũ (channelRouteType 1/2)
 const ROUTE_TYPE_OPTIONS = [
@@ -480,31 +502,31 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
       const spatialData = values.spatialData || {};
       const payload: CreateNavigationChannelRequest = {
         orgUnitId: values.orgUnitId,
-        seaportId: values.seaportId,
-        operatingUnitId: values.operatingUnitId,
+        seaportId: values.seaportId || (isEditMode ? null : undefined),
+        operatingUnitId: values.operatingUnitId || (isEditMode ? null : undefined),
         channelName: trimString(values.channelName) || '',
-        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
-        detailedLocation: trimString(values.detailedLocation),
+        provinceId: values.provinceId != null ? Number(values.provinceId) : (isEditMode ? null : undefined),
+        detailedLocation: toNullableString(values.detailedLocation, isEditMode),
         conditionStatus: values.conditionStatus as ConditionStatus,
-        managementStation: trimString(values.managementStation),
-        stationCount: values.stationCount,
-        stationStaffCount: values.stationStaffCount,
-        stationAreaSquareMeters: values.stationAreaSquareMeters,
-        latestStationRepairMonth: values.latestStationRepairMonth ? values.latestStationRepairMonth.format('YYYY-MM-DD') : undefined,
-        latestMaintenanceYear: values.latestMaintenanceYear ? values.latestMaintenanceYear.year() : undefined,
-        latestDredgingVolumeCubicMeters: values.latestDredgingVolumeCubicMeters,
-        buoyCount: values.buoyCount,
-        beaconCount: values.beaconCount,
-        notes: trimString(values.notes),
-        announcementDecisionNumber: trimString(values.announcementDecisionNumber),
-        announcementDecisionDate: values.announcementDecisionDate ? values.announcementDecisionDate.format('YYYY-MM-DD') : undefined,
-        announcementDecisionIssuer: trimString(values.announcementDecisionIssuer),
-        protectionScopeMeters: values.protectionScopeMeters,
-        protectionNotes: trimString(values.protectionNotes),
-        geometryType: values.geometryType || spatialData.geometryType,
-        mapIconId: values.mapIconId || spatialData.symbolId,
-        coordinateReferenceSystem: trimString(values.coordinateReferenceSystem),
-        displayRule: trimString(values.displayRule),
+        managementStation: toNullableString(values.managementStation, isEditMode),
+        stationCount: toNullableNumber(values.stationCount, isEditMode),
+        stationStaffCount: toNullableNumber(values.stationStaffCount, isEditMode),
+        stationAreaSquareMeters: toNullableNumber(values.stationAreaSquareMeters, isEditMode),
+        latestStationRepairMonth: values.latestStationRepairMonth ? (typeof values.latestStationRepairMonth.format === 'function' ? values.latestStationRepairMonth.format('YYYY-MM-DD') : String(values.latestStationRepairMonth)) : (isEditMode ? null : undefined),
+        latestMaintenanceYear: values.latestMaintenanceYear ? (typeof values.latestMaintenanceYear.year === 'function' ? values.latestMaintenanceYear.year() : Number(values.latestMaintenanceYear)) : (isEditMode ? null : undefined),
+        latestDredgingVolumeCubicMeters: toNullableNumber(values.latestDredgingVolumeCubicMeters, isEditMode),
+        buoyCount: toNullableNumber(values.buoyCount, isEditMode),
+        beaconCount: toNullableNumber(values.beaconCount, isEditMode),
+        notes: toNullableString(values.notes, isEditMode),
+        announcementDecisionNumber: toNullableString(values.announcementDecisionNumber, isEditMode),
+        announcementDecisionDate: values.announcementDecisionDate ? (typeof values.announcementDecisionDate.format === 'function' ? values.announcementDecisionDate.format('YYYY-MM-DD') : String(values.announcementDecisionDate)) : (isEditMode ? null : undefined),
+        announcementDecisionIssuer: toNullableString(values.announcementDecisionIssuer, isEditMode),
+        protectionScopeMeters: toNullableNumber(values.protectionScopeMeters, isEditMode),
+        protectionNotes: toNullableString(values.protectionNotes, isEditMode),
+        geometryType: values.geometryType || spatialData.geometryType || (isEditMode ? null : undefined),
+        mapIconId: values.mapIconId || spatialData.symbolId || (isEditMode ? null : undefined),
+        coordinateReferenceSystem: trimString(values.coordinateReferenceSystem) || 'WGS-84',
+        displayRule: trimString(values.displayRule) || 'Độ, phút, giây (DMS)',
         routeDetails: routeRows.length > 0 ? routeRows.map((row, i) => ({
           ...row,
           sequenceNo: i + 1,
@@ -512,10 +534,10 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
           routeName: trimString(row.routeName),
           turningBasinLocation: trimString(row.turningBasinLocation),
         })) : undefined,
-        coordinates: coordRows.length > 0 ? coordRows.map((row, i) => ({
+        coordinates: coordRows.length > 0 ? (coordRows.map((row, i) => ({
           ...row,
           sequenceNo: i + 1,
-        })) : undefined,
+        })) as any) : (isEditMode ? null : undefined),
         attachments: uploadedFiles.length > 0 ? uploadedFiles.map((f) => ({
           fileName: f.name,
           fileSize: f.size,
@@ -637,7 +659,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                 <Descriptions bordered size="small" column={2} labelStyle={{ width: 180 }}>
                   <Descriptions.Item label="Đơn vị quản lý">{record.orgUnitName || record.orgUnitId || '—'}</Descriptions.Item>
                   <Descriptions.Item label="Thuộc cảng biển">{record.seaportName || record.seaportId || '—'}</Descriptions.Item>
-                  <Descriptions.Item label="Đơn vị vận hành">{record.operatingUnitId || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="Đơn vị vận hành">{organizations.find((o) => o.id === record.operatingUnitId)?.name || '—'}</Descriptions.Item>
                   <Descriptions.Item label="Mã luồng hàng hải">{record.channelCode || '—'}</Descriptions.Item>
                   <Descriptions.Item label="Tên luồng hàng hải">{record.channelName || '—'}</Descriptions.Item>
                   <Descriptions.Item label="Địa điểm (Tỉnh/TP)">{record.provinceId != null ? String(record.provinceId) : '—'}</Descriptions.Item>
@@ -816,8 +838,27 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
   }
 
   // ── Create / Edit form (#1-#46) ────────────────────────────────────
+  // ── Lưu thất bại: nhảy sang tab chứa trường bắt buộc còn trống + cuộn tới ô lỗi (chuẩn /navigation-channel, /beacon-station) ──
+  // Mọi trường bắt buộc của màn này nằm ở tab "Thông tin cơ bản" nên forceRender không cần thiết.
+  // Dùng hàm thường (KHÔNG useCallback) vì component có early-return phía trên — gọi hook sau đó sẽ vi phạm rules-of-hooks.
+  const handleSubmitFailed = (errorInfo: FormFinishFailedInfo) => {
+    const errorFields = errorInfo?.errorFields ?? [];
+    const fieldPath: Array<string | number> = errorFields[0]?.name ?? [];
+    if (fieldPath.length === 0) return;
+    setActiveTabKey(resolveMainFormTabForField(firstErrorFieldName(errorFields)));
+    toast.error(firstErrorMessage(errorFields));
+    // Tab đích chỉ được render sau khi state đổi → hoãn scroll sang nhịp render kế tiếp.
+    window.setTimeout(() => {
+      try {
+        form.scrollToField(fieldPath, { focus: true, block: 'center' });
+      } catch {
+        // Trường không còn trên DOM (tab chưa render) → bỏ qua; tab đã được chuyển đúng.
+      }
+    }, 0);
+  };
+
   const formContent = (
-    <Form form={form} layout="vertical" onFinish={handleSubmitForm} style={{ maxWidth: 1100 }}>
+    <Form form={form} layout="vertical" onFinish={handleSubmitForm} onFinishFailed={handleSubmitFailed} style={{ maxWidth: 1100 }}>
       <Tabs
         activeKey={activeTabKey}
         onChange={setActiveTabKey}

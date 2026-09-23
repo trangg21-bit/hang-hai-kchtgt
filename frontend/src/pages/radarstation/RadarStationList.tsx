@@ -1961,26 +1961,42 @@ export default function RadarStationList() {
         }
       }
 
+      const isEdit = !!editingRecord;
+      const cleanString = (val: unknown) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: unknown) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: unknown) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const payload: CreateRadarStationRequest = {
-        stationName: values.stationName?.trim(),
-        location: values.location?.trim(),
-        orgUnitId: values.orgUnitId || undefined,
-        seaportId: values.seaportId || undefined,
-        vtsSystemId: values.vtsSystemId || undefined,
-        vtsOperationCenterId: values.vtsOperationCenterId || undefined,
-        operatingUnitId: values.operatingUnitId || undefined,
-        provinceId: values.provinceId ? String(values.provinceId) : undefined,
-        unitOfMeasure: values.unitOfMeasure || undefined,
-        quantity: values.quantity,
-        conditionStatus: values.conditionStatus || '1',
-        towerHeight: safeDecimal(values.towerHeight),
-        radarRange: safeDecimal(values.radarRange),
-        note: values.note?.trim() || undefined,
-        longitude: hasGeom ? longitude : null,
-        latitude: hasGeom ? latitude : null,
-        geometryType: hasGeom ? (geom as 'POINT' | 'LINE' | 'POLYGON') : null,
-        coordinates: hasGeom ? coordinates : null,
-        mapIcon: hasGeom && currentMapIcon ? currentMapIcon : null,
+        stationName: cleanString(values.stationName) ?? '',
+        location: cleanString(values.location) ?? '',
+        orgUnitId: values.orgUnitId || (isEdit ? null : undefined),
+        seaportId: values.seaportId || (isEdit ? null : undefined),
+        vtsSystemId: values.vtsSystemId || (isEdit ? null : undefined),
+        vtsOperationCenterId: values.vtsOperationCenterId || (isEdit ? null : undefined),
+        operatingUnitId: values.operatingUnitId || (isEdit ? null : undefined),
+        provinceId: values.provinceId ? String(values.provinceId) : (isEdit ? null : undefined),
+        unitOfMeasure: cleanString(values.unitOfMeasure),
+        quantity: cleanNumber(values.quantity) as number,
+        conditionStatus: cleanString(values.conditionStatus) || (isEdit ? null : '1'),
+        towerHeight: cleanDecimal(values.towerHeight),
+        radarRange: cleanDecimal(values.radarRange),
+        note: cleanString(values.note),
+        longitude: hasGeom ? longitude : (isEdit ? null : null),
+        latitude: hasGeom ? latitude : (isEdit ? null : null),
+        geometryType: hasGeom ? (geom as 'POINT' | 'LINE' | 'POLYGON') : (isEdit ? null : null),
+        coordinates: hasGeom ? coordinates : (isEdit ? null : null),
+        mapIcon: hasGeom && currentMapIcon ? currentMapIcon : (isEdit ? null : null),
         action: mode === 'approve' ? 'approve' : mode === 'submit' ? 'submit' : 'draft',
         approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
       };
@@ -4071,6 +4087,7 @@ export default function RadarStationList() {
                               rules={[decimalNumberRule]}
                             >
                               <NumberInputWithCount
+                                allowDecimal
                                 min={0}
                                 step={0.01}
                                 placeholder="0"
@@ -4092,6 +4109,7 @@ export default function RadarStationList() {
                               rules={[decimalNumberRule]}
                             >
                               <NumberInputWithCount
+                                allowDecimal
                                 min={0}
                                 step={0.01}
                                 placeholder="0"

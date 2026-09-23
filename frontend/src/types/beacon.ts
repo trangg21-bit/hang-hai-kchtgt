@@ -35,11 +35,11 @@ export type BeaconStatus =
 
 export const BEACON_STATUS_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: 'default', label: 'Lưu tạm' },
-  PROPOSED: { color: 'orange', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING: { color: 'orange', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_L1: { color: 'blue', label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED_LEVEL1: { color: 'blue', label: 'Chờ phê duyệt cấp Cục' },
+  PROPOSED: { color: 'blue', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: 'blue', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: 'blue', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { color: 'orange', label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL1: { color: 'orange', label: 'Chờ phê duyệt cấp Cục' },
   APPROVED_L2: { color: 'green', label: 'Đã phê duyệt' },
   APPROVED_LEVEL2: { color: 'green', label: 'Đã phê duyệt' },
   PUBLISHED: { color: 'green', label: 'Đã phê duyệt' },

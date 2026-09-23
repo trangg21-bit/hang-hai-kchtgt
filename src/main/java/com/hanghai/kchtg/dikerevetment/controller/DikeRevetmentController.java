@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -105,38 +106,92 @@ public class DikeRevetmentController {
         return ResponseEntity.ok(ApiResponse.success(service.findAll(page, size)));
     }
 
-    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
-            "code", "dikeRevetmentName", "location", "dikeRevetmentType", "seaportId",
-            "operatingUnitId", "length", "crestElevation", "commissioningDate",
-            "constructionDate", "lastMaintenanceYear", "height", "surfaceMaterial",
-            "status", "orgUnitId", "provinceId", "approvalStatus", "submittedAt",
-            "approvedDateLevel1", "approvedDateLevel2", "createdAt", "updatedAt"
-    );
-
     public static Sort resolveSort(String sortBy, String sortOrder) {
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "d.updatedAt")
+                .and(JpaSort.unsafe(Sort.Direction.DESC, "d.createdAt"))
+                .and(JpaSort.unsafe(Sort.Direction.ASC, "d.id"));
         if (sortBy == null || sortBy.isBlank()) {
-            return Sort.by(Sort.Direction.DESC, "updatedAt");
+            return defaultSort;
         }
         String field = sortBy.trim();
-        if ("updatedByName".equalsIgnoreCase(field)) {
-            field = "updatedAt";
-        } else if ("orgUnitName".equalsIgnoreCase(field)) {
-            field = "orgUnitId";
-        } else if ("seaportName".equalsIgnoreCase(field)) {
-            field = "seaportId";
-        } else if ("submittedByName".equalsIgnoreCase(field)) {
-            field = "submittedAt";
-        } else if ("approvedByNameLevel1".equalsIgnoreCase(field)) {
-            field = "approvedDateLevel1";
-        } else if ("approvedByNameLevel2".equalsIgnoreCase(field)) {
-            field = "approvedDateLevel2";
+        String property;
+        switch (field) {
+            case "code":
+                property = "LOWER(d.code)";
+                break;
+            case "dikeRevetmentName":
+            case "codeAndName":
+            case "name":
+                property = "LOWER(d.dikeRevetmentName)";
+                break;
+            case "location":
+                property = "LOWER(d.location)";
+                break;
+            case "dikeRevetmentType":
+                property = "d.dikeRevetmentType";
+                break;
+            case "orgUnitName":
+            case "orgUnitId":
+                property = "LOWER(o.name)";
+                break;
+            case "seaportName":
+            case "seaportId":
+                property = "LOWER(p.portName)";
+                break;
+            case "length":
+                property = "d.length";
+                break;
+            case "crestElevation":
+                property = "d.crestElevation";
+                break;
+            case "commissioningDate":
+                property = "d.commissioningDate";
+                break;
+            case "constructionDate":
+                property = "d.constructionDate";
+                break;
+            case "lastMaintenanceYear":
+                property = "d.lastMaintenanceYear";
+                break;
+            case "height":
+                property = "d.height";
+                break;
+            case "surfaceMaterial":
+                property = "LOWER(d.surfaceMaterial)";
+                break;
+            case "status":
+            case "conditionStatus":
+                property = "d.status";
+                break;
+            case "approvalStatus":
+                property = "d.approvalStatus";
+                break;
+            case "submittedByName":
+            case "submittedAt":
+                property = "d.submittedAt";
+                break;
+            case "approvedByNameLevel1":
+            case "approverLevel1Name":
+            case "approvedDateLevel1":
+                property = "d.approvedDateLevel1";
+                break;
+            case "approvedByNameLevel2":
+            case "approverLevel2Name":
+            case "approvedDateLevel2":
+                property = "d.approvedDateLevel2";
+                break;
+            case "updatedByName":
+            case "updatedAt":
+                property = "d.updatedAt";
+                break;
+            case "createdAt":
+                property = "d.createdAt";
+                break;
+            default:
+                return defaultSort;
         }
-
-        if (!ALLOWED_SORT_FIELDS.contains(field)) {
-            return Sort.by(Sort.Direction.DESC, "updatedAt");
-        }
-        Sort.Direction direction = "ASC".equalsIgnoreCase(sortOrder) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        return Sort.by(direction, field);
+        return JpaSort.unsafe(direction, property).and(defaultSort);
     }
 
     @GetMapping("/search-paged")

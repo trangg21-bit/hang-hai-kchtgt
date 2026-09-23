@@ -636,28 +636,43 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const payload: Record<string, unknown> = {
         orgUnitId: vals.orgUnitId, portId: vals.portId,
         shipRepairYardCode: String(vals.shipRepairYardCode || '').trim() || undefined, shipRepairYardName: String(vals.shipRepairYardName || '').trim(),
-        pierId: vals.pierId || undefined,
-        provinceId: vals.provinceId ? (typeof vals.provinceId === 'number' ? vals.provinceId : VIETNAM_PROVINCES.indexOf(vals.provinceId) + 1) : undefined,
-        detailedLocation: vals.detailedLocation || undefined,
-        operationalStatus: vals.operationalStatus || undefined,
-        usageFunction: vals.usageFunction || undefined,
-        workshopArea: safeDecimal(vals.workshopArea),
-        vesselType: vals.vesselType || undefined,
-        vesselDwt: vals.vesselDwt || undefined,
-        businessType: vals.businessType || undefined,
-        activity: vals.activity || undefined,
-        slipwayCount: vals.slipwayCount != null && vals.slipwayCount !== '' ? Number(vals.slipwayCount) : undefined,
-        remarks: vals.remarks || undefined,
-        latitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].latitude : null,
-        longitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].longitude : null,
-        coordinates: vals.geometryType ? (wktCoordinates || null) : null,
-        geometryType: vals.geometryType || null,
-        mapSymbolId: vals.geometryType ? (symbolIdVal || null) : null,
-        coordinateSystem: vals.geometryType && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null,
-        displayRule: vals.geometryType ? (vals.displayRule === 'Độ, phút, giây (DMS)' || vals.displayRule === 1 ? 1 : (Number(vals.displayRule) || null)) : null,
+        pierId: vals.pierId || (isEdit ? null : undefined),
+        provinceId: vals.provinceId ? (typeof vals.provinceId === 'number' ? vals.provinceId : VIETNAM_PROVINCES.indexOf(vals.provinceId) + 1) : (isEdit ? null : undefined),
+        detailedLocation: cleanString(vals.detailedLocation),
+        operationalStatus: vals.operationalStatus || (isEdit ? null : undefined),
+        usageFunction: cleanString(vals.usageFunction),
+        workshopArea: cleanDecimal(vals.workshopArea),
+        vesselType: cleanString(vals.vesselType),
+        vesselDwt: cleanString(vals.vesselDwt),
+        businessType: cleanString(vals.businessType),
+        activity: cleanString(vals.activity),
+        slipwayCount: cleanNumber(vals.slipwayCount),
+        remarks: cleanString(vals.remarks),
+        latitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : null),
+        longitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : null),
+        coordinates: vals.geometryType ? (wktCoordinates || null) : (isEdit ? null : null),
+        geometryType: vals.geometryType || (isEdit ? null : null),
+        mapSymbolId: vals.geometryType ? (symbolIdVal || null) : (isEdit ? null : null),
+        coordinateSystem: vals.geometryType && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : (isEdit ? null : null),
+        displayRule: vals.geometryType ? (vals.displayRule === 'Độ, phút, giây (DMS)' || vals.displayRule === 1 ? 1 : (Number(vals.displayRule) || null)) : (isEdit ? null : null),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -789,15 +804,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
               rules={[decimalNumberRule]}
               getValueFromEvent={getValueFromEvent20}
             >
-              <NumberInputWithCount
-                min={0}
-                step={0.01}
-                placeholder="0"
-                maxLength={20}
-                style={numberInputStyle}
-                parser={parseNumber20}
-                formatter={fmtInputNumber}
-              />
+              <NumberInputWithCount allowDecimal min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
             </Form.Item>
           </Col>
         </Row>

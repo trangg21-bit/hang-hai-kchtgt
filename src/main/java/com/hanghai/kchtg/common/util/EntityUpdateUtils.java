@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.common.util;
 
+import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
 import java.math.BigDecimal;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -101,7 +102,11 @@ public final class EntityUpdateUtils {
             reqField.setAccessible(true);
             try {
                 Object newValue = reqField.get(request);
-                if (newValue == null) {
+                boolean isPresent = newValue != null;
+                if (!isPresent && request instanceof FieldPresenceTrackedRequest tracked) {
+                    isPresent = tracked.isFieldPresent(name);
+                }
+                if (!isPresent) {
                     continue;
                 }
 

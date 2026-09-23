@@ -211,11 +211,11 @@ const TAB_QUERY_MAP: Record<string, BeaconStatus | undefined> = {
 // 6 nhãn chuẩn trạng thái phê duyệt (status-text-map-6-nhan-2026-08-26)
 const BEACON_STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
   DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PROPOSED: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING_APPROVAL: { color: statusAttention, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_L1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED_LEVEL1: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cục' },
+  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
   APPROVED_L2: { color: statusOperational, label: 'Đã phê duyệt' },
   APPROVED_LEVEL2: { color: statusOperational, label: 'Đã phê duyệt' },
   PUBLISHED: { color: statusOperational, label: 'Đã phê duyệt' },
@@ -1035,7 +1035,7 @@ export default function BeaconStationList() {
           status === 'DELETED' ||
           record.approvalStatus === 'ARCHIVED'
         );
-        const displayStatus = isDeleted ? 'ARCHIVED' : status;
+        const displayStatus = isDeleted ? 'ARCHIVED' : (status || record.approvalStatus);
         const s = BEACON_STATUS_STYLE_MAP[displayStatus] || { color: textTertiary, label: displayStatus || null };
         return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
       },
@@ -1486,12 +1486,23 @@ export default function BeaconStationList() {
           label: 'Trạng thái',
           span: true,
           value: (() => {
-            const isDel = Boolean(detailRecord.deletedAt || detailRecord.deletedBy || detailRecord.status === 'ARCHIVED' || detailRecord.status === 'DELETED');
+            const isDel = Boolean(
+              detailRecord.deletedAt ||
+              detailRecord.deletedBy ||
+              detailRecord.status === 'ARCHIVED' ||
+              detailRecord.status === 'DELETED' ||
+              detailRecord.approvalStatus === 'ARCHIVED'
+            );
             if (isDel) {
               const s = BEACON_STATUS_STYLE_MAP.ARCHIVED || { color: statusCritical, label: 'Đã xóa' };
               return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
             }
-            return <ApprovalStatusBadge status={detailRecord.status} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />;
+            const st = detailRecord.approvalStatus || detailRecord.status;
+            const s = BEACON_STATUS_STYLE_MAP[st];
+            if (s) {
+              return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+            }
+            return <ApprovalStatusBadge status={st} labelOverrides={BEACON_APPROVAL_STATUS_LABELS} />;
           })(),
         },
         { label: 'Cán bộ cập nhật', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.updatedByName || userOptions.find((u) => u.value === detailRecord.updatedBy)?.label || null}</span> },

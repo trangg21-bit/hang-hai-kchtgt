@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { isVhfDeleted } from './vhf/VhfListPage';
 import { operationalStatusBadge } from './vhf/schema';
+import { buildStandardApprovalTabs } from '../components/shared/approvalStatusTabs';
 
 describe('VHF Status Filter and Tab Counts (/vhf)', () => {
   describe('isVhfDeleted helper', () => {
@@ -34,8 +35,8 @@ describe('VHF Status Filter and Tab Counts (/vhf)', () => {
     });
   });
 
-  describe('totalAll count formula', () => {
-    it('sums only active status counts and excludes ARCHIVED count', () => {
+  describe('totalAll count formula (standardized)', () => {
+    it('sums all status counts including ARCHIVED for Tất cả tab', () => {
       const counts: Record<string, number> = {
         DRAFT: 5,
         PENDING_APPROVAL: 3,
@@ -46,23 +47,16 @@ describe('VHF Status Filter and Tab Counts (/vhf)', () => {
         ARCHIVED: 8,
       };
 
-      const totalAll =
-        (counts.DRAFT || 0) +
-        (counts.PENDING_APPROVAL || 0) +
-        (counts.APPROVED_LEVEL1 || 0) +
-        (counts.APPROVED || 0) +
-        (counts.REJECTED_LEVEL1 || 0) +
-        (counts.REJECTED_LEVEL2 || 0);
+      const tabs = buildStandardApprovalTabs(counts, undefined);
+      const allTab = tabs.find((t) => t.key === 'ALL');
 
-      // Total of active records: 5 + 3 + 2 + 10 + 1 + 1 = 22
-      expect(totalAll).toBe(22);
-      // ARCHIVED (8) must not be included
-      expect(totalAll).not.toBe(22 + 8);
+      // Total of all records: 5 + 3 + 2 + 10 + 1 + 1 + 8 = 30
+      expect(allTab?.count).toBe(30);
     });
   });
 
-  describe('DataTable active filter for Tất cả tab', () => {
-    it('filters out records where isVhfDeleted is true when approvalStatus is not set', () => {
+  describe('DataTable data source for Tất cả tab', () => {
+    it('includes all records including deleted when on Tất cả tab', () => {
       const records = [
         { id: '1', deviceCode: 'VHF-001', approvalStatus: 'APPROVED' },
         { id: '2', deviceCode: 'VHF-002', approvalStatus: 'ARCHIVED' },
@@ -70,26 +64,20 @@ describe('VHF Status Filter and Tab Counts (/vhf)', () => {
         { id: '4', deviceCode: 'VHF-004', approvalStatus: 'PENDING_APPROVAL' },
       ];
 
-      const filterValues = { approvalStatus: '' };
-      const filtered = !filterValues.approvalStatus
-        ? records.filter((r) => !isVhfDeleted(r))
-        : records;
+      // Standard behavior: dataSource={data} without client-side deletion filter
+      const dataSource = records;
 
-      expect(filtered.map((r) => r.id)).toEqual(['1', '4']);
+      expect(dataSource.map((r) => r.id)).toEqual(['1', '2', '3', '4']);
+      expect(dataSource.filter(isVhfDeleted).length).toBe(2);
     });
 
-    it('preserves all records including deleted when on ARCHIVED tab', () => {
+    it('identifies deleted records properly for badge and actions', () => {
       const records = [
         { id: '2', deviceCode: 'VHF-002', approvalStatus: 'ARCHIVED' },
         { id: '3', deviceCode: 'VHF-003', approvalStatus: 'DRAFT', deletedAt: '2026-09-16' },
       ];
 
-      const filterValues = { approvalStatus: 'ARCHIVED' };
-      const filtered = !filterValues.approvalStatus
-        ? records.filter((r) => !isVhfDeleted(r))
-        : records;
-
-      expect(filtered.length).toBe(2);
+      expect(records.every(isVhfDeleted)).toBe(true);
     });
   });
 

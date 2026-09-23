@@ -126,6 +126,9 @@ Bảng dưới đây là source of truth cho field coverage F-038. Cột **Trư�
 | BR-038-08 | Bảng con tuyến luồng #22-#38, tọa độ #45 và file đính kèm #46 phải lưu cùng transaction với hồ sơ chính. | Create / Update |
 | BR-038-09 | Dữ liệu KCHT, vận hành, bảo trì, sự cố #58-#71 lấy từ nguồn nghiệp vụ liên quan; không tự gán placeholder hoặc giá trị mặc định khi nguồn rỗng. | Detail |
 | BR-038-10 | Mọi thao tác API phải kiểm tra permission `navigationchannel:<action>` tương ứng; user thiếu quyền nhận 403 Forbidden. | Security |
+| BR-038-11 | Khi nhấn Lưu (Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt) mà còn trường bắt buộc bị bỏ trống (`orgUnitId` #1, `channelName` #5, `conditionStatus` #8 — hoặc `geometryType`/`mapIconId` khi hồ sơ đã có tọa độ), form tự chuyển sang tab chứa trường trống đầu tiên, cuộn tới ô lỗi và hiện toast lỗi tiếng Việt; submit thất bại không được "im lặng". Áp dụng cho cả drawer "Tuyến luồng" trong form và màn `/navigation-channel-chk`. | Create / Update |
+
+> Ghi chú triển khai (2026-09-23): bản đồ "trường → tab" dùng chung tại `frontend/src/utils/navigationChannelFormTabs.ts`; form chính nối `onFinishFailed` → `setActiveTabKey` + `form.scrollToField`; 3 tab chính bật `forceRender` để rule của trường nằm trên tab chưa mở vẫn được validate. Chuẩn tham chiếu: `/beacon-station`.
 
 ### 4.2. Acceptance Criteria kế thừa
 

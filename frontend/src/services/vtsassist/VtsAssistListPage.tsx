@@ -41,7 +41,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { FormOrgUnitTreeSelect, OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
+import { FormOrgUnitTreeSelect, OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from "../../components/org-unit";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -50,6 +50,7 @@ import NumberInputWithCount from "../../components/shared/NumberInputWithCount";
 import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
+import { useKchtPermissions } from "../../hooks/useKchtPermissions";
 import * as themeTokenChk from "../../themetokenchk";
 import {
     actionPrimary,
@@ -109,8 +110,6 @@ import {
     textTertiary,
 } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
-import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
-import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import {
     ddToDms,
     dmsToDd,
@@ -148,7 +147,7 @@ import {
 import {
     OPERATIONAL_STATUS_OPTIONS,
 } from "./schema";
-import type { ApprovalRequest, CreateVtsAssistRequest, VtsAssistResponse } from "./types";
+import type { ApprovalRequest, CreateVtsAssistRequest, UpdateVtsAssistRequest, VtsAssistResponse } from "./types";
 
 // ── Accordion card style helpers cho tab 'Vận hành & bảo trì' (chuẩn /berth /cctv) ──
 const detailOpCardStyle: React.CSSProperties = {
@@ -880,6 +879,9 @@ const VtsAssistListPage = () => {
 
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
+  // Chuẩn quyền KCHT (tham chiếu /vts-system — VtsSystemList.tsx:196): một nguồn quyền
+  // duy nhất gói policy + cấp duyệt + chống tự duyệt, thay cho hasPerm rải rác.
+  const kchtPerms = useKchtPermissions('vtsassist');
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
   const [data, setData] = useState<VtsAssistResponse[]>([]);
@@ -1216,9 +1218,10 @@ const VtsAssistListPage = () => {
   const [updateActionType, setUpdateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
   const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
 
-  // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('vtsassist', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  // "Lưu và phê duyệt" (hồ sơ Đã duyệt) dùng chung một nguồn quyền với /vts-system:
+  // kchtPerms.canSaveAndApprove đã bao gồm isCucLevel && hasApproveL2Perm.
+  // Vế `:update` trước đây khai cục bộ ở đây đã thôi cần vì `canEdit` (policy dùng chung)
+  // đã cưỡng chế `:update` cho mọi trạng thái, và cờ này chỉ dùng cho nút ở trạng thái APPROVED.
 
   // Reactive watch for attached infrastructure dropdown
   const updateAttachedType = Form.useWatch('attachedInfrastructureType', updateForm);
@@ -2400,7 +2403,7 @@ const VtsAssistListPage = () => {
   };
 
   const openUpdateDrawer = useCallback((record: VtsAssistResponse) => {
-    if (!canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "vtsassist" })) {
+    if (!kchtPerms.canEdit(record)) {
       toast.warning("Bạn không có quyền chỉnh sửa hệ thống phụ trợ VTS này");
       return;
     }
@@ -2506,13 +2509,15 @@ const VtsAssistListPage = () => {
     };
   }, [isMapLinkedView, linkedAction, linkedRecordId, openUpdateDrawer, hasPerm]);
 
-  // ── rowActions callback ──────────────────────────────────────────
+  // ── rowActions callback ──
+  // Quyền lấy từ `kchtPerms` (useKchtPermissions('vtsassist')) — cùng một nguồn policy với
+  // /vts-system (VtsSystemList.tsx:196), không tự viết lại điều kiện quyền ở từng nút.
   const rowActions = useCallback(
     (record: VtsAssistResponse) => {
       const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === "DELETED" || record.approvalStatus === "ARCHIVED");
       if (isDeleted) {
         const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
-        if (hasPerm?.("vtsassist:read")) {
+        if (kchtPerms.canRead) {
           actions.push({
             key: "view",
             label: "Xem chi tiết",
@@ -2526,7 +2531,7 @@ const VtsAssistListPage = () => {
             },
           });
         }
-        if (hasPerm?.("vtsassist:history")) {
+        if (kchtPerms.canViewHistory) {
           actions.push({
             key: "history",
             label: "Lịch sử",
@@ -2539,7 +2544,7 @@ const VtsAssistListPage = () => {
 
       const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
 
-      if (hasPerm?.("vtsassist:read")) {
+      if (kchtPerms.canRead) {
         actions.push({
           key: "view",
           label: "Xem chi tiết",
@@ -2554,8 +2559,8 @@ const VtsAssistListPage = () => {
         });
       }
 
-      // Chỉnh sửa theo policy chuẩn KCHT (approvalEditPolicy)
-      if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: "vtsassist" })) {
+      // Chỉnh sửa theo policy chuẩn KCHT — canEdit cưỡng chế `vtsassist:update` cho mọi trạng thái.
+      if (kchtPerms.canEdit(record)) {
         actions.push({
           key: "edit",
           label: "Chỉnh sửa",
@@ -2565,7 +2570,7 @@ const VtsAssistListPage = () => {
       }
 
       // Lịch sử thay đổi (mở từ menu dòng, không nằm trong drawer chi tiết)
-      if (hasPerm?.("vtsassist:history")) {
+      if (kchtPerms.canViewHistory) {
         actions.push({
           key: "history",
           label: "Lịch sử",
@@ -2574,14 +2579,9 @@ const VtsAssistListPage = () => {
         });
       }
 
-      // DRAFT / REJECTED_LEVEL1 / REJECTED_LEVEL2 + vtsassist:update → Gửi phê duyệt (submitVtsAssist)
-      if (
-        (hasPerm?.("vtsassist:update") || hasPerm?.("vtsassist:create")) &&
-        (record.approvalStatus === "DRAFT" ||
-          record.approvalStatus === "REJECTED_LEVEL1" ||
-          record.approvalStatus === "REJECTED_LEVEL2" ||
-          record.approvalStatus === "REJECTED")
-      ) {
+      // DRAFT / REJECTED_* → Gửi phê duyệt; canSubmit đã gồm cả vế `vtsassist:update`,
+      // vì gửi phê duyệt là thao tác CẬP NHẬT bản ghi chứ không phải tạo mới.
+      if (kchtPerms.canSubmit(record)) {
         actions.push({
           key: "submit",
           label: "Gửi phê duyệt",
@@ -2593,28 +2593,27 @@ const VtsAssistListPage = () => {
         });
       }
 
-      // PENDING_APPROVAL + vtsassist:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
-      if (hasPerm?.("vtsassist:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCuc = isCucLevelUser(currentUser);
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
+      // PENDING_APPROVAL → Phê duyệt / Từ chối cấp Cảng vụ (C1).
+      // canApproveL1 dùng hasExplicitPermission (không suy diễn từ `*`/`admin:all`)
+      // và cưỡng chế nguyên tắc 4 mắt: người tạo không tự duyệt hồ sơ của mình.
+      if (kchtPerms.canApproveL1(record)) {
         actions.push({
           key: "approveC1",
-          label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
+          label: "Phê duyệt cấp Cảng vụ",
           icon: icons.approve,
-          disabled: isCreatorSelfApprove,
           onClick: () => {
             setApproveTarget(record);
             setApproveLevel("c1");
             setApproveModalOpen(true);
           },
         });
+      }
+      if (kchtPerms.canReject(record) && record.approvalStatus === "PENDING_APPROVAL") {
         actions.push({
           key: "rejectC1",
-          label: isCreatorSelfApprove ? "Từ chối cấp Cảng vụ (không thể tự duyệt)" : "Từ chối cấp Cảng vụ",
+          label: "Từ chối cấp Cảng vụ",
           icon: icons.reject,
           danger: true,
-          disabled: isCreatorSelfApprove,
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c1");
@@ -2624,28 +2623,26 @@ const VtsAssistListPage = () => {
         });
       }
 
-      // APPROVED_LEVEL1 + vtsassist:approvec2 → Phê duyệt / Từ chối cấp Cục (C2)
-      // Nguyên tắc 4 mắt: người đã phê duyệt C1 không được tự duyệt tiếp ở C2 (trừ tài khoản cấp Cục).
-      if (hasPerm?.("vtsassist:approvec2") && record.approvalStatus === "APPROVED_LEVEL1") {
-        const isCuc = isCucLevelUser(currentUser);
-        const isSelfApproval = Boolean(currentUser?.userId && record.approverLevel1 === currentUser.userId && !isCuc);
+      // APPROVED_LEVEL1 → Phê duyệt / Từ chối cấp Cục (C2).
+      // canApproveL2 đòi đúng cấp Cục (isCucLevel) và chặn người đã duyệt C1 tự duyệt tiếp.
+      if (kchtPerms.canApproveL2(record)) {
         actions.push({
           key: "approveC2",
-          label: isSelfApproval ? "Phê duyệt cấp Cục (không thể tự duyệt)" : "Phê duyệt cấp Cục",
+          label: "Phê duyệt cấp Cục",
           icon: icons.approve,
-          disabled: isSelfApproval,
           onClick: () => {
             setApproveTarget(record);
             setApproveLevel("c2");
             setApproveModalOpen(true);
           },
         });
+      }
+      if (kchtPerms.canReject(record) && record.approvalStatus === "APPROVED_LEVEL1") {
         actions.push({
           key: "rejectC2",
-          label: isSelfApproval ? "Từ chối cấp Cục (không thể tự duyệt)" : "Từ chối cấp Cục",
+          label: "Từ chối cấp Cục",
           icon: icons.reject,
           danger: true,
-          disabled: isSelfApproval,
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c2");
@@ -2655,8 +2652,8 @@ const VtsAssistListPage = () => {
         });
       }
 
-      // Chỉ hồ sơ "Lưu tạm" mới được xóa (phê duyệt 2 cấp — như /vts-system)
-      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: "vtsassist" })) {
+      // canDelete đã gói policy trạng thái + quyền `vtsassist:delete`
+      if (kchtPerms.canDelete(record)) {
         actions.push({
           key: "delete",
           label: "Xóa",
@@ -2670,7 +2667,7 @@ const VtsAssistListPage = () => {
 
       return actions;
     },
-    [updateForm, hasPerm, currentUser]
+    [updateForm, openUpdateDrawer, openHistory, kchtPerms]
   );
 
   const fetchData = useCallback(async () => {
@@ -2779,8 +2776,14 @@ const VtsAssistListPage = () => {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
-    setFilterDeviceName(inputDeviceName);
-    setFilterDeviceCode(inputDeviceCode);
+    // Trim 2 đầu ô nhập liệu trước khi áp dụng (chuẩn /station/cospas-sarsat):
+    // vừa giữ state filter sạch, vừa phản ánh lại giá trị đã trim lên ô input
+    const trimmedDeviceName = inputDeviceName.trim();
+    const trimmedDeviceCode = inputDeviceCode.trim();
+    setInputDeviceName(trimmedDeviceName);
+    setInputDeviceCode(trimmedDeviceCode);
+    setFilterDeviceName(trimmedDeviceName);
+    setFilterDeviceCode(trimmedDeviceCode);
     setPage(0);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
@@ -3008,13 +3011,41 @@ const VtsAssistListPage = () => {
       try {
         const updateGeomType = hasGeom ? ((geomType as 'POINT' | 'LINE' | 'POLYGON') || null) : null;
 
+        const trimOrNull = (v: unknown): string | null => {
+          if (v == null) return null;
+          const s = String(v).trim();
+          return s === '' ? null : s;
+        };
+        const numOrNull = (v: unknown): number | null => {
+          if (v == null || v === '') return null;
+          const n = Number(v);
+          return Number.isNaN(n) ? null : n;
+        };
+
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã phê duyệt — T12 backend)
         const currentAction = updateActionTypeRef.current;
-        await updateVtsAssist({
+        const updatePayload: UpdateVtsAssistRequest = {
           id: updateTarget.id,
-          ...values,
-          quantity: values.quantity != null ? Number(String(values.quantity).replace(/,/g, '')) : undefined,
+          deviceCode: trimOrNull(values.deviceCode),
+          deviceName: String(values.deviceName ?? '').trim(),
+          detailedLocation: trimOrNull(values.detailedLocation),
+          manufacturer: trimOrNull(values.manufacturer),
+          model: trimOrNull(values.model),
+          quantity: values.quantity != null && !Number.isNaN(Number(String(values.quantity).replace(/,/g, '')))
+            ? Number(String(values.quantity).replace(/,/g, ''))
+            : 1,
+          orgUnitId: values.orgUnitId || null,
+          operatingUnitId: values.operatingUnitId,
+          provinceName: trimOrNull(values.provinceName),
+          attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
+          attachedInfrastructureId: values.attachedInfrastructureId || null,
+          unitOfMeasure: numOrNull(values.unitOfMeasure),
+          yearOfUse: numOrNull(values.yearOfUse),
+          operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
+          specifications: trimOrNull(values.specifications),
+          maintenanceInformation: trimOrNull(values.maintenanceInformation),
+          note: trimOrNull(values.note),
           geometryType: updateGeomType,
           coordinates: hasGeom && wktCoordinates ? wktCoordinates : null,
           mapSymbolId: hasGeom ? (values.mapSymbolId ? String(values.mapSymbolId) : null) : null,
@@ -3024,7 +3055,8 @@ const VtsAssistListPage = () => {
           spatialId: hasGeom ? (values.spatialId ? String(values.spatialId) : null) : null,
           objectType: hasGeom ? (values.objectType != null ? Number(values.objectType) : null) : null,
           ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
-        });
+        };
+        await updateVtsAssist(updatePayload);
         if (uploadFileList.length > 0) {
           for (const f of uploadFileList) {
             if (f?.file) await uploadVtsAssistAttachment(updateTarget.id, f.file);
@@ -3313,14 +3345,14 @@ const VtsAssistListPage = () => {
           { label: "Hệ thống phụ trợ VTS", path: "/vts-assist" },
         ]}
         actions={[
-          hasPerm?.("vtsassist:create")
+          kchtPerms.canCreate
             ? {
                 key: "create",
                 label: "Thêm mới",
                 icon: icons.create,
                 variant: "primary" as const,
                 onClick: () => {
-                  if (!hasPerm?.("vtsassist:create")) {
+                  if (!kchtPerms.canCreate) {
                     toast.warning("Bạn không có quyền thêm mới hệ thống phụ trợ VTS");
                     return;
                   }
@@ -3415,6 +3447,7 @@ const VtsAssistListPage = () => {
               <Input placeholder="Tìm theo tên thiết bị" allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
+                onBlur={() => setInputDeviceName((prev) => prev.trim())}
                 onPressEnter={handleFilterApply}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </SidebarFilterField>
@@ -3425,6 +3458,7 @@ const VtsAssistListPage = () => {
                   <Input placeholder="Tìm theo mã thiết bị" allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
+                    onBlur={() => setInputDeviceCode((prev) => prev.trim())}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </SidebarFilterField>
@@ -3466,6 +3500,10 @@ const VtsAssistListPage = () => {
                           : "Chọn loại hạ tầng trước"
                   } allowClear
                     showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({
@@ -4332,7 +4370,7 @@ const VtsAssistListPage = () => {
             >
               Lưu và gửi phê duyệt
             </Button>
-            {canSaveAndApprove && (
+            {kchtPerms.canSaveAndApprove && (
               <Button
                 type="primary"
                 onClick={() => { createActionTypeRef.current = 'approve'; setCreateActionType('approve'); createForm.submit(); }}
@@ -4516,6 +4554,11 @@ const VtsAssistListPage = () => {
                               loading={createAttachedType === 1 ? loadingVtsCenters : createAttachedType === 2 ? loadingRadars : false}
                               disabled={!selectedCreateOrgUnitId || (createAttachedType !== 1 && createAttachedType !== 2)}
                               allowClear
+                              showSearch
+                              optionFilterProp="label"
+                              filterOption={(input, option) =>
+                                normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                              }
                             />
                           </Form.Item>
                         </Col>
@@ -4648,6 +4691,7 @@ const VtsAssistListPage = () => {
                             name="unitOfMeasure"
                             {...labelProps('Đơn vị tính')}
                             style={{ marginBottom: spaceFormField }}
+                            rules={[ { required: true, message: 'Đơn vị tính là bắt buộc' } ]}
                           >
                             <Select
                               placeholder="Chọn đơn vị tính"
@@ -4847,7 +4891,7 @@ const VtsAssistListPage = () => {
         }}
         footer={
           <>
-            {updateTarget?.approvalStatus !== 'APPROVED' && (
+            {updateTarget?.approvalStatus !== 'APPROVED' && kchtPerms.hasUpdatePerm && (
               <Button
                 onClick={() => { updateActionTypeRef.current = 'draft'; setUpdateActionType('draft'); updateForm.submit(); }}
                 loading={updateLoading && updateActionType === 'draft'}
@@ -4856,7 +4900,8 @@ const VtsAssistListPage = () => {
                 Lưu tạm
               </Button>
             )}
-            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2' || updateTarget?.approvalStatus === 'REJECTED') && (
+            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2' || updateTarget?.approvalStatus === 'REJECTED') &&
+              kchtPerms.hasUpdatePerm && (
               <Button
                 type="primary"
                 onClick={() => { updateActionTypeRef.current = 'submit'; setUpdateActionType('submit'); updateForm.submit(); }}
@@ -4866,7 +4911,7 @@ const VtsAssistListPage = () => {
                 Lưu và gửi phê duyệt
               </Button>
             )}
-            {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (
+            {updateTarget?.approvalStatus === 'APPROVED' && kchtPerms.canSaveAndApprove && (
               <Button
                 type="primary"
                 onClick={() => { updateActionTypeRef.current = 'approve'; setUpdateActionType('approve'); updateForm.submit(); }}
@@ -5027,6 +5072,11 @@ const VtsAssistListPage = () => {
                               loading={updateAttachedType === 1 ? loadingVtsCenters : updateAttachedType === 2 ? loadingRadars : false}
                               disabled={!selectedUpdateOrgUnitId || (updateAttachedType !== 1 && updateAttachedType !== 2)}
                               allowClear
+                              showSearch
+                              optionFilterProp="label"
+                              filterOption={(input, option) =>
+                                normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                              }
                             />
                           </Form.Item>
                         </Col>

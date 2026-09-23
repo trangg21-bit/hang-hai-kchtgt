@@ -434,6 +434,33 @@ class BeaconStationServiceTest {
         }
 
         @Test
+        @DisplayName("update clear field — sets field to null and persists empty value")
+        void updateClearField_persistsNullValue() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "DRAFT");
+            entity.setDetailedLocation("Vị trí chi tiết ban đầu");
+            entity.setOperator("Đơn vị vận hành ban đầu");
+            entity.setStaffCount(10);
+            when(beaconStationRepo.findById(id)).thenReturn(Optional.of(entity));
+            when(beaconStationRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+            UpdateBeaconStationRequest request = new UpdateBeaconStationRequest();
+            request.setName("Tên giữ nguyên");
+            request.setDetailedLocation(null);
+            request.setOperator("");
+            request.setStaffCount(null);
+
+            BeaconStationResponse result = service.update(id, request);
+
+            assertThat(result.getDetailedLocation()).isNull();
+            assertThat(result.getOperator()).isNull();
+            assertThat(result.getStaffCount()).isNull();
+            assertThat(entity.getDetailedLocation()).isNull();
+            assertThat(entity.getOperator()).isNull();
+            assertThat(entity.getStaffCount()).isNull();
+        }
+
+        @Test
         @DisplayName("update deleted entity — throws EntityNotFoundException")
         void updateDeletedEntity() {
             UUID id = UUID.randomUUID();

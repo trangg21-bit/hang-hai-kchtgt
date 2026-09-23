@@ -16,15 +16,21 @@ export type ApprovalStatus =
 
 export const DIKE_REVETMENT_STATUS_MAP: Record<string, { label: string }> = {
   DRAFT: { label: 'Lưu tạm' },
-  PROPOSED: { label: 'Chờ Cảng vụ duyệt' },
-  PENDING_APPROVAL: { label: 'Chờ Cảng vụ duyệt' },
-  APPROVED_LEVEL1: { label: 'Chờ Cục duyệt' },
-  REJECTED_LEVEL1: { label: 'Cảng vụ trả về' },
-  REJECTED_LEVEL2: { label: 'Cục trả về' },
-  APPROVED: { label: 'Đã duyệt' },
-  APPROVED_LEVEL2: { label: 'Đã duyệt' },
-  REJECTED: { label: 'Từ chối' },
+  PROPOSED: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  PENDING_APPROVAL: { label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
+  APPROVED_L1: { label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_LEVEL1: { label: 'Chờ phê duyệt cấp Cục' },
+  APPROVED_L2: { label: 'Đã phê duyệt' },
+  APPROVED_LEVEL2: { label: 'Đã phê duyệt' },
+  APPROVED: { label: 'Đã phê duyệt' },
+  REJECTED: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L1: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_LEVEL1: { label: 'Từ chối cấp Cảng vụ/Chi cục' },
+  REJECTED_L2: { label: 'Từ chối cấp Cục' },
+  REJECTED_LEVEL2: { label: 'Từ chối cấp Cục' },
   ARCHIVED: { label: 'Đã xóa' },
+  DELETED: { label: 'Đã xóa' },
 };
 
 export const CONDITION_STATUS_MAP: Record<string, { label: string }> = {
@@ -138,23 +144,23 @@ export interface CreateDikeRevetmentRequest {
   dikeRevetmentType: DikeRevetmentType;
   location: string;
   dikeRevetmentName: string;
-  code?: string;
-  seaportId?: string;
-  operatingUnitId?: string;
-  locationDetail?: string;
-  constructionDate?: string;
-  lastMaintenanceYear?: number | string;
-  length?: number | string;
-  crestElevation?: number | string;
-  commissioningDate?: string;
-  height?: number | string;
-  surfaceMaterial?: string;
-  status?: string;
-  note?: string;
-  orgUnitId?: string;
-  geometryType?: 'POINT' | 'LINE' | 'POLYGON';
-  coordinates?: string;
-  symbolId?: string;
+  code?: string | null;
+  seaportId?: string | null;
+  operatingUnitId?: string | null;
+  locationDetail?: string | null;
+  constructionDate?: string | null;
+  lastMaintenanceYear?: number | string | null;
+  length?: number | string | null;
+  crestElevation?: number | string | null;
+  commissioningDate?: string | null;
+  height?: number | string | null;
+  surfaceMaterial?: string | null;
+  status?: string | null;
+  note?: string | null;
+  orgUnitId?: string | null;
+  geometryType?: 'POINT' | 'LINE' | 'POLYGON' | null;
+  coordinates?: string | null;
+  symbolId?: string | null;
 }
 
 export interface UpdateDikeRevetmentRequest extends CreateDikeRevetmentRequest {

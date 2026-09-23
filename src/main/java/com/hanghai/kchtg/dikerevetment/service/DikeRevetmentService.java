@@ -357,49 +357,28 @@ public class DikeRevetmentService {
 
         // Áp dụng TƯỜNG MINH từng trường: request có giá trị mới khác cũ → gán entity + ghi CŨ vào map
         Map<String, String> previousValues = new LinkedHashMap<>();
-        applyIfChanged("dikeRevetmentName", dr.getDikeRevetmentName(), req.getDikeRevetmentName(), dr::setDikeRevetmentName, previousValues);
-        applyIfChanged("dikeRevetmentType", dr.getDikeRevetmentType(), req.getDikeRevetmentType(), dr::setDikeRevetmentType, previousValues);
-        applyIfChanged("location", dr.getLocation(), req.getLocation(), dr::setLocation, previousValues);
-        applyIfChanged("locationDetail", dr.getLocationDetail(), req.getLocationDetail(), dr::setLocationDetail, previousValues);
-        applyIfChanged("seaportId", dr.getSeaportId(), req.getSeaportId(), dr::setSeaportId, previousValues);
-        applyIfChanged("operatingUnitId", dr.getOperatingUnitId(), req.getOperatingUnitId(), dr::setOperatingUnitId, previousValues);
-        applyIfChanged("length", dr.getLength(), req.getLength(), dr::setLength, previousValues);
-        applyIfChanged("height", dr.getHeight(), req.getHeight(), dr::setHeight, previousValues);
-        applyIfChanged("crestElevation", dr.getCrestElevation(), req.getCrestElevation(), dr::setCrestElevation, previousValues);
-        applyIfChanged("commissioningDate", dr.getCommissioningDate(), req.getCommissioningDate(), dr::setCommissioningDate, previousValues);
-        applyIfChanged("constructionDate", dr.getConstructionDate(), req.getConstructionDate(), dr::setConstructionDate, previousValues);
-        applyIfChanged("lastMaintenanceYear", dr.getLastMaintenanceYear(), req.getLastMaintenanceYear(), dr::setLastMaintenanceYear, previousValues);
-        applyIfChanged("surfaceMaterial", dr.getSurfaceMaterial(), req.getSurfaceMaterial(), dr::setSurfaceMaterial, previousValues);
-        applyIfChanged("status", dr.getStatus(), req.getStatus(), dr::setStatus, previousValues);
-        applyIfChanged("note", dr.getNote(), req.getNote(), dr::setNote, previousValues);
-        applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues);
-        boolean hasGeometryType = req.getGeometryType() != null;
-        boolean hasCoordinates = req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty();
+        applyIfChanged("dikeRevetmentName", dr.getDikeRevetmentName(), trimToNull(req.getDikeRevetmentName()), dr::setDikeRevetmentName, previousValues, req);
+        applyIfChanged("dikeRevetmentType", dr.getDikeRevetmentType(), req.getDikeRevetmentType(), dr::setDikeRevetmentType, previousValues, req);
+        applyIfChanged("location", dr.getLocation(), trimToNull(req.getLocation()), dr::setLocation, previousValues, req);
+        applyIfChanged("locationDetail", dr.getLocationDetail(), trimToNull(req.getLocationDetail()), dr::setLocationDetail, previousValues, req);
+        applyIfChanged("seaportId", dr.getSeaportId(), req.getSeaportId(), dr::setSeaportId, previousValues, req);
+        applyIfChanged("operatingUnitId", dr.getOperatingUnitId(), req.getOperatingUnitId(), dr::setOperatingUnitId, previousValues, req);
+        applyIfChanged("length", dr.getLength(), req.getLength(), dr::setLength, previousValues, req);
+        applyIfChanged("height", dr.getHeight(), req.getHeight(), dr::setHeight, previousValues, req);
+        applyIfChanged("crestElevation", dr.getCrestElevation(), req.getCrestElevation(), dr::setCrestElevation, previousValues, req);
+        applyIfChanged("commissioningDate", dr.getCommissioningDate(), req.getCommissioningDate(), dr::setCommissioningDate, previousValues, req);
+        applyIfChanged("constructionDate", dr.getConstructionDate(), req.getConstructionDate(), dr::setConstructionDate, previousValues, req);
+        applyIfChanged("lastMaintenanceYear", dr.getLastMaintenanceYear(), req.getLastMaintenanceYear(), dr::setLastMaintenanceYear, previousValues, req);
+        applyIfChanged("surfaceMaterial", dr.getSurfaceMaterial(), trimToNull(req.getSurfaceMaterial()), dr::setSurfaceMaterial, previousValues, req);
+        applyIfChanged("status", dr.getStatus(), trimToNull(req.getStatus()), dr::setStatus, previousValues, req);
+        applyIfChanged("note", dr.getNote(), trimToNull(req.getNote()), dr::setNote, previousValues, req);
+        applyIfChanged("orgUnitId", dr.getOrgUnitId(), req.getOrgUnitId(), dr::setOrgUnitId, previousValues, req);
+        boolean shouldClearLocation = (req.isFieldPresent("geometryType") || req.isFieldPresent("coordinates"))
+                && (req.getGeometryType() == null
+                    || (req.getCoordinates() != null && req.getCoordinates().trim().isEmpty())
+                    || req.getCoordinates() == null);
 
-        if (hasGeometryType && hasCoordinates) {
-            applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues);
-
-            if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
-                previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
-            }
-            if (!Objects.equals(req.getGeometryType(), oldGeometryType)) {
-                previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
-            }
-
-            GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
-            GisSpatialObjectType objType = getSpatialObjectType(geomType);
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    dr.getSpatialId(),
-                    dr.getDikeRevetmentName(),
-                    dr.getCode(),
-                    geomType,
-                    objType,
-                    req.getCoordinates().trim(),
-                    dr.getId(),
-                    InfrastructureType.DIKE_REVETMENT
-            );
-            dr.setSpatialId(spatialObj.getId());
-        } else {
+        if (shouldClearLocation) {
             // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
             if (oldGeometryType != null) {
                 previousValues.put("geometryType", oldGeometryType.name());
@@ -415,11 +394,39 @@ public class DikeRevetmentService {
                 gisSpatialObjectService.delete(dr.getSpatialId());
                 dr.setSpatialId(null);
             }
+        } else {
+            applyIfChanged("symbolId", dr.getSymbolId(), req.getSymbolId(), dr::setSymbolId, previousValues, req);
+
+            if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
+                if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
+                    previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+                }
+                if (req.getGeometryType() != null && !Objects.equals(req.getGeometryType(), oldGeometryType)) {
+                    previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+                }
+
+                GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
+                GisSpatialObjectType objType = getSpatialObjectType(geomType);
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        dr.getSpatialId(),
+                        dr.getDikeRevetmentName(),
+                        dr.getCode(),
+                        geomType,
+                        objType,
+                        req.getCoordinates().trim(),
+                        dr.getId(),
+                        InfrastructureType.DIKE_REVETMENT
+                );
+                dr.setSpatialId(spatialObj.getId());
+            }
         }
 
-        if (wasApproved) {
-            dr.setApprovalStatus(ApprovalStatus.APPROVED);
-        }
+            if (!com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(req.getCoordinates(), oldCoordinates)) {
+                previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+            }
+            if (!Objects.equals(req.getGeometryType(), oldGeometryType)) {
+                previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
+            }
 
         dr.setUpdatedBy(userId);
         DikeRevetment saved = repo.save(dr);
@@ -874,12 +881,25 @@ public class DikeRevetmentService {
                 .replace('đ', 'd');
     }
 
+    private static String trimToNull(String value) {
+        return (value != null && !value.trim().isEmpty()) ? value.trim() : null;
+    }
+
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
-            Map<String, String> previousValues) {
-        if (newVal == null) return; // null = không gửi trường này khi update
+            Map<String, String> previousValues, DikeRevetmentUpdateRequest req) {
+        if (req != null) {
+            if (!req.isFieldPresent(field)) return;
+        } else if (newVal == null) {
+            return;
+        }
         if (EntityUpdateUtils.areEqual(oldVal, newVal)) return; // giá trị không đổi
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
+    }
+
+    private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
+            Map<String, String> previousValues) {
+        applyIfChanged(field, oldVal, newVal, setter, previousValues, null);
     }
 
     private String getFieldDisplayName(String field) {

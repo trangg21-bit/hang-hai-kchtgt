@@ -33,7 +33,10 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
     Optional<String> findMaxCode();
 
     @Query("SELECT d FROM DryPort d WHERE " +
-            "((:approvalStatus IS NULL) " +
+            "((:approvalStatus IS NULL AND (" +
+            "   (d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)" +
+            "   OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED" +
+            ")) " +
             " OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (d.deletedAt IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             " OR (d.deletedAt IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND ( " +
             "     d.approvalStatus = :approvalStatus " +

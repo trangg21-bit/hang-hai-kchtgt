@@ -3,7 +3,7 @@ import { fmtNum } from '../utils/numFmt';
 import { DEFAULT_IGNORED_FIELDS } from '../utils/changeHistoryRenderer';
 
 describe('VHF History Filter Logic (/vhf)', () => {
-  const isMeaningfulChange = (field: string, rawOld: any, rawNew: any): boolean => {
+  const isMeaningfulChange = (field: string, rawOld: unknown, rawNew: unknown): boolean => {
     const f = (field || '').trim();
     const fLower = f.toLowerCase();
     if (
@@ -44,7 +44,7 @@ describe('VHF History Filter Logic (/vhf)', () => {
     ) {
       return false;
     }
-    const normalize = (v: any) => {
+    const normalize = (v: unknown) => {
       if (v == null) return '';
       const s = String(v).trim();
       if (s === '(null)' || s === 'null' || s === 'Chưa có') return '';
@@ -157,7 +157,7 @@ describe('VHF History Filter Logic (/vhf)', () => {
   });
 
   it('suppresses change rows when both old and new values are empty or equal', () => {
-    const shouldSuppressRow = (isCreate: boolean, ov: any, nv: any): boolean => {
+    const shouldSuppressRow = (isCreate: boolean, ov: unknown, nv: unknown): boolean => {
       const isOvEmpty = ov == null || ov === '' || ov === '—' || ov === 'Chưa có';
       const isNvEmpty = nv == null || nv === '' || nv === '—' || nv === 'Chưa có';
       if (!isCreate && isOvEmpty && isNvEmpty) return true;
@@ -178,5 +178,74 @@ describe('VHF History Filter Logic (/vhf)', () => {
     const record = { id: 'uuid-vhf', approvalStatus: 'DRAFT' };
     const shouldLoadHistory = record.approvalStatus !== 'DRAFT';
     expect(shouldLoadHistory).toBe(false);
+  });
+
+  it('formats GIS coordinates from WKT into DMS lines matching Detail View (#1: ... N, ... E)', async () => {
+    const { gisCoordinatesToLines } = await import('../utils/historyGisFormat');
+
+    // LINESTRING (2 points)
+    const lineWkt = 'LINESTRING (106.666667 10.75, 106.7 10.783333)';
+    const lineFormatted = gisCoordinatesToLines(lineWkt);
+    expect(lineFormatted).toBeTruthy();
+    const lineLines = lineFormatted!.split('\n');
+    expect(lineLines).toHaveLength(2);
+    expect(lineLines[0]).toMatch(/^#1:\s*10°\s*45'\s*0"\s*N,\s*106°\s*40'/);
+    expect(lineLines[1]).toMatch(/^#2:\s*10°\s*46'/);
+
+    // POLYGON (4 vertices in WKT ring, but duplicate closing vertex is removed -> 3 user vertices)
+    const polyWkt = 'POLYGON ((106.666667 10.75, 106.7 10.783333, 106.75 10.75, 106.666667 10.75))';
+    const polyFormatted = gisCoordinatesToLines(polyWkt);
+    expect(polyFormatted).toBeTruthy();
+    const polyLines = polyFormatted!.split('\n');
+    expect(polyLines).toHaveLength(3);
+    expect(polyLines[0]).toMatch(/^#1:\s*10°\s*45'\s*0"\s*N,\s*106°\s*40'/);
+    expect(polyLines[1]).toMatch(/^#2:\s*10°\s*46'/);
+    expect(polyLines[2]).toMatch(/^#3:\s*10°\s*45'\s*0"\s*N,\s*106°\s*45'/);
+
+    // Single POINT (no #1: prefix)
+    const pointWkt = 'POINT (106.666667 10.75)';
+    const pointFormatted = gisCoordinatesToLines(pointWkt);
+    expect(pointFormatted).not.toContain('#1:');
+    expect(pointFormatted).toMatch(/10°\s*45'\s*0"\s*N/);
+  });
+
+  it('reconstructs legacy attachment changes from single added file to 3 prior files and 4 current files', () => {
+    const attachmentItems = [
+      { id: '1', fileName: 'Quyet_dinh_thanh_lap.pdf' },
+      { id: '2', fileName: 'Thong_so_ky_thuat.docx' },
+      { id: '3', fileName: 'So_do_lap_dat.png' },
+      { id: '4', fileName: 'Bieu 03-N_ Thong ke luong ... 24072026 (1).pdf' },
+    ];
+
+    const currentFiles = attachmentItems.map((a) => a.fileName);
+    expect(currentFiles).toHaveLength(4);
+
+    // Legacy row: oldValue is empty/null, newValue is the single uploaded file
+    const rawOldValue: string | null = null;
+    const rawNewValue = 'Bieu 03-N_ Thong ke luong ... 24072026 (1).pdf';
+
+    let ov = rawOldValue;
+    let nv = rawNewValue;
+
+    const isOvEmpty = !ov || ov === '—' || ov === 'Chưa có' || ov === '(null)';
+    if (isOvEmpty && currentFiles.length > 1) {
+      const singleNewFile = (nv && nv !== 'Chưa có' && !nv.includes(',')) ? nv.trim() : '';
+      if (singleNewFile) {
+        const priorFiles = currentFiles.filter((f) => f.toLowerCase() !== singleNewFile.toLowerCase());
+        if (priorFiles.length > 0) {
+          ov = priorFiles.join(', ');
+          nv = currentFiles.join(', ');
+        }
+      }
+    }
+
+    expect(ov).toBe('Quyet_dinh_thanh_lap.pdf, Thong_so_ky_thuat.docx, So_do_lap_dat.png');
+    expect(nv).toBe('Quyet_dinh_thanh_lap.pdf, Thong_so_ky_thuat.docx, So_do_lap_dat.png, Bieu 03-N_ Thong ke luong ... 24072026 (1).pdf');
+
+    // Splitting for stacked display
+    const oldStacked = ov.split(/,\s*(?=[^,]+)/).map((s) => s.trim());
+    const newStacked = nv.split(/,\s*(?=[^,]+)/).map((s) => s.trim());
+    expect(oldStacked).toHaveLength(3);
+    expect(newStacked).toHaveLength(4);
   });
 });

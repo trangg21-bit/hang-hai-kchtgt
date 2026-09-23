@@ -34,7 +34,7 @@ public class ChannelRouteDetail extends BaseEntity {
     @Column(name = "sequence_no")
     private Integer sequenceNo;
 
-    @Column(name = "route_classification", length = 5)
+    @Column(name = "route_classification", length = 50)
     private String routeClassification;
 
     @Column(name = "route_code", length = 50)

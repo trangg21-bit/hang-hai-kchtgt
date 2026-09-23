@@ -21,7 +21,7 @@ import {
   Drawer,
   Tooltip,
 } from "antd";
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from "../../components/org-unit";
 import { organizationService } from "../organizationService";
 import {
   PlusOutlined,
@@ -405,7 +405,8 @@ const CctvListPage = () => {
     // Đồng bộ cả 2 khóa ARCHIVED và DELETED để tab Đã xóa luôn lấy đúng số lượng
     counts.DELETED = counts.ARCHIVED || 0;
     setTabCounts(counts);
-    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối + Đã xóa (chuẩn AGENTS.md)
+    // Tất cả = Lưu tạm + Chờ Cảng vụ + Chờ Cục + Đã phê duyệt + Từ chối C1 + Từ chối C2 + Đã xóa
+    // (Theo yêu cầu: tab Tất cả bao gồm cả bản ghi Đã xóa)
     setTotalAll(
       (counts.DRAFT || 0) +
         (counts.PENDING_APPROVAL || 0) +
@@ -413,7 +414,7 @@ const CctvListPage = () => {
         (counts.APPROVED || 0) +
         (counts.REJECTED_LEVEL1 || 0) +
         (counts.REJECTED_LEVEL2 || 0) +
-        (counts.ARCHIVED || counts.DELETED || 0)
+        (counts.DELETED || 0)
     );
   }, [
     filterValues.orgUnitId,
@@ -1746,10 +1747,7 @@ const CctvListPage = () => {
         sortBy: sortField,
         sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'asc' : 'desc') : 'desc',
       });
-      const isAllTab = !filterValues.approvalStatus || filterValues.approvalStatus === 'all';
-      const content = isAllTab
-        ? (result.content || []).filter((r: CctvResponse) => !r.deletedAt && !r.deletedBy)
-        : (result.content || []);
+      const content = result.content || [];
       setData(content);
       setTotal(result.totalElements);
       setPage(result.number);
@@ -2381,6 +2379,10 @@ const CctvListPage = () => {
                           : "Chọn loại hạ tầng trước"
                   } allowClear
                     showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({

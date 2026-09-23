@@ -224,6 +224,10 @@ public class VhfApprovalService {
         .collect(Collectors.toSet());
     Map<UUID, User> userMap = resolveUsers(userIds);
 
+    // Lịch sử tệp đính kèm chỉ đọc snapshot đã lưu (previousValue/newValue) tại thời điểm thao tác.
+    // CẤM suy diễn lại từ danh sách tệp HIỆN TẠI: xóa tệp về sau sẽ bóp méo lịch sử của lần tải
+    // lên trước đó (upload A -> upload B -> xóa A sẽ hiển thị sai "B -> B").
+    // Chuẩn: .agents/skills/kcht-change-history-audit — Attachment Snapshot Standard.
     return filteredList.stream()
         .map(h -> {
           User u = h.getApprovedBy() != null ? userMap.get(h.getApprovedBy()) : null;
@@ -251,6 +255,7 @@ public class VhfApprovalService {
           }
           String prevDisp = formatDisplayValue(h.getChangedField(), h.getPreviousValue());
           String newDisp = formatDisplayValue(h.getChangedField(), h.getNewValue());
+
           if (h.getStatus() == InfrastructureHistoryStatus.UPDATED && EntityUpdateUtils.areEqual(prevDisp, newDisp)) {
             return null;
           }

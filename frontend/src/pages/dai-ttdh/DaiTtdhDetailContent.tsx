@@ -204,7 +204,8 @@ export default function DaiTtdhDetailContent({
     const found = DEFAULT_OPERATING_ORGANIZATIONS.find(
       (o) => o.id === trimmed || o.id.toLowerCase() === lower || o.code === trimmed || o.code.toLowerCase() === lower
     );
-    return found ? found.name : trimmed;
+    // Không tìm thấy trong danh mục đơn vị khai thác → trả rỗng, KHÔNG trả UUID thô
+    return found ? found.name : '';
   };
 
   const resolveUserName = (uid?: string) => {

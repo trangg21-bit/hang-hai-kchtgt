@@ -11,7 +11,9 @@ import {
 import viVN from 'antd/locale/vi_VN.js';
 import React from 'react';
 import { colors as baseColors, layout as baseLayout } from './theme';
+import { THEME_SCOPE_CLASS } from './context/ThemeTokenContext';
 
+export { THEME_SCOPE_CLASS };
 export const layout = baseLayout;
 
 /** Locale vi_VN chuẩn hóa định dạng ngày hiển thị DD/MM/YYYY cho toàn hệ thống */

@@ -29,7 +29,7 @@ import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -81,6 +81,15 @@ const sectionTitleStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 8,
 };
+
+interface GisSelectionValue {
+  geometryType?: string;
+  symbolId?: string;
+  coordinates?: string;
+}
+
+const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
+  value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
 
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },
@@ -327,7 +336,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const gisCoordSnapshotRef = useRef<{ coords: DmsCoordinateItem[]; symbolId?: string; geometryType?: string }>({ coords: [] });
-  const latestGisMapValueRef = useRef<any>(null);
+  const latestGisMapValueRef = useRef<GisSelectionValue | null>(null);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
   // Nạp danh mục đơn vị quản lý (chuẩn /radar-station: organizationService.getTree)
@@ -621,7 +630,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   };
 
   // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
-  const applyMapSelection = (val: any) => {
+  const applyMapSelection = (val: GisSelectionValue | null) => {
     if (!val) return;
     latestGisMapValueRef.current = val;
     const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
@@ -736,34 +745,80 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       const rawYear = values.yearOfUse;
       const submittedYear = rawYear != null ? (dayjs.isDayjs(rawYear) ? rawYear.year() : Number(rawYear)) : undefined;
 
-      const payload: Record<string, unknown> = {
-        ...values,
-        yearOfUse: submittedYear,
-        quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
-        coordinates: hasGeom ? wktCoordinates : null,
-        geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
-        mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
-        coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-        displayRule: hasGeom && values.displayRule != null ? (Number(values.displayRule) || null) : null,
+      const trimOrNull = (v: unknown): string | null => {
+        if (v == null) return null;
+        const s = String(v).trim();
+        return s === '' ? null : s;
+      };
+      const numOrNull = (v: unknown): number | null => {
+        if (v == null || v === '') return null;
+        const n = Number(v);
+        return Number.isNaN(n) ? null : n;
       };
 
       let targetId: string;
       if (isEdit && id) {
         targetId = id;
-        await updateVhf({
+        const updatePayload: UpdateVhfRequest = {
           id,
-          ...payload,
+          deviceName: String(values.deviceName || '').trim(),
+          detailedLocation: trimOrNull(values.detailedLocation),
+          manufacturer: trimOrNull(values.manufacturer),
+          model: trimOrNull(values.model),
+          quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
+          seaportId: values.seaportId || null,
+          orgUnitId: values.orgUnitId || null,
+          operatingUnitId: values.operatingUnitId || null,
+          provinceName: trimOrNull(values.provinceName),
+          attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
+          attachedInfrastructureId: values.attachedInfrastructureId || null,
+          unitOfMeasure: numOrNull(values.unitOfMeasure),
+          yearOfUse: submittedYear ?? null,
+          operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
+          specifications: trimOrNull(values.specifications),
+          maintenanceInformation: trimOrNull(values.maintenanceInformation),
+          note: trimOrNull(values.note),
+          objectType: hasGeom && values.objectType != null ? Number(values.objectType) : null,
+          mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
+          coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+          displayRule: hasGeom && values.displayRule != null ? (Number(values.displayRule) || null) : null,
+          geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+          coordinates: hasGeom ? wktCoordinates : null,
           ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
-        } as unknown as UpdateVhfRequest);
+        };
+        await updateVhf(updatePayload);
         if (saveAction === 'SUBMIT') {
           await submitVhf(id);
         }
       } else {
-        const res = await createVhf({
-          ...payload,
+        const createPayload: CreateVhfRequest = {
+          deviceName: String(values.deviceName || '').trim(),
+          detailedLocation: trimOrNull(values.detailedLocation),
+          manufacturer: trimOrNull(values.manufacturer),
+          model: trimOrNull(values.model),
+          quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
+          seaportId: values.seaportId || null,
+          orgUnitId: values.orgUnitId || null,
+          operatingUnitId: values.operatingUnitId || null,
+          provinceName: trimOrNull(values.provinceName),
+          attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
+          attachedInfrastructureId: values.attachedInfrastructureId || null,
+          unitOfMeasure: numOrNull(values.unitOfMeasure),
+          yearOfUse: submittedYear ?? null,
+          operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
+          specifications: trimOrNull(values.specifications),
+          maintenanceInformation: trimOrNull(values.maintenanceInformation),
+          note: trimOrNull(values.note),
+          objectType: hasGeom && values.objectType != null ? Number(values.objectType) : null,
+          mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
+          coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+          displayRule: hasGeom && values.displayRule != null ? (Number(values.displayRule) || null) : null,
+          geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+          coordinates: hasGeom ? wktCoordinates : null,
           action: currentAction,
           approvalStatus: saveAction === 'APPROVED' ? 'APPROVED' : saveAction === 'SUBMIT' ? 'PENDING_APPROVAL' : 'DRAFT',
-        } as unknown as CreateVhfRequest);
+        };
+        const res = await createVhf(createPayload);
         targetId = res.id;
       }
 
@@ -982,6 +1037,9 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                     allowClear
                     showSearch
                     optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -1374,15 +1432,15 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       label: `File đính kèm (${uploadedFiles.length})`,
       children: (
         <InfrastructureAttachmentTab
-          attachments={uploadedFiles.map((f: any) => ({
+          attachments={uploadedFiles.map((f: UploadFile) => ({
             ...f,
-            id: f.uid || f.id,
-            fileName: f.name || f.fileName,
-            fileSize: f.size || f.fileSize,
-            file: f.originFileObj || f.file,
-            originFileObj: f.originFileObj || f.file,
-            uploadedByName: f.uploadedByName || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
-            uploadedDate: f.uploadedDate || f.uploadedAt || dayjs().toISOString(),
+            id: f.uid,
+            fileName: f.name,
+            fileSize: f.size,
+            file: f.originFileObj,
+            originFileObj: f.originFileObj,
+            uploadedByName: currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
+            uploadedDate: dayjs().toISOString(),
           }))}
           readonly={false}
           userMap={userMap}
@@ -1396,15 +1454,15 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             }
             setUploadedFiles(p => p.filter(f => f.uid !== uid));
           }}
-          onDownload={async (attachmentIdOrItem: any, maybeFileName?: string) => {
-            const attId = typeof attachmentIdOrItem === 'string' ? attachmentIdOrItem : attachmentIdOrItem?.id;
-            const fileName = (typeof attachmentIdOrItem === 'object' && attachmentIdOrItem?.fileName)
-              ? attachmentIdOrItem.fileName
+          onDownload={async (attachmentIdOrItem: unknown, maybeFileName?: string) => {
+            const attId = typeof attachmentIdOrItem === 'string' ? attachmentIdOrItem : (attachmentIdOrItem as { id?: string })?.id;
+            const fileName = (typeof attachmentIdOrItem === 'object' && (attachmentIdOrItem as { fileName?: string })?.fileName)
+              ? (attachmentIdOrItem as { fileName?: string }).fileName
               : maybeFileName;
 
             // 1. Tải xuống file vừa upload tại client (ở cả chế độ Thêm mới và Sửa)
-            const target = uploadedFiles.find((f: any) => f.uid === attId || f.id === attId);
-            const rawFile = (target as any)?.originFileObj || (target as any)?.file;
+            const target = uploadedFiles.find((f: UploadFile) => f.uid === attId || (f as unknown as { id?: string }).id === attId);
+            const rawFile = target?.originFileObj || (target as unknown as { file?: File })?.file;
             if (rawFile && (rawFile instanceof Blob || rawFile instanceof File)) {
               const url = window.URL.createObjectURL(rawFile);
               const link = document.createElement('a');
@@ -1421,8 +1479,8 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
             if (isEdit && id && attId) {
               try {
                 await downloadVhfAttachment(id, attId, fileName);
-              } catch (err: any) {
-                toast.error(err?.message || 'Không thể tải xuống tệp đính kèm');
+              } catch (err: unknown) {
+                toast.error((err as { message?: string })?.message || 'Không thể tải xuống tệp đính kèm');
               }
             } else {
               toast.error('Không tìm thấy tệp để tải xuống');
@@ -1478,10 +1536,10 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
         <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={normalizeGeometryType(watchedGeometryType)}
             height={520}
             value={{
-              geometryType: (watchedGeometryType as any) || 'POINT',
+              geometryType: normalizeGeometryType(watchedGeometryType),
               coordinates: serializeCoordinatesToWkt(
                 coordinateList
                   .filter((c) => c.latD != null && c.lngD != null)

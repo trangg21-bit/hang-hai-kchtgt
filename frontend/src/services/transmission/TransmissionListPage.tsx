@@ -35,7 +35,7 @@ import {
     ScreenHeader,
     SidebarFilterField,
 } from "../../components/list-view";
-import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from "../../components/org-unit";
+import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from "../../components/org-unit";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import ApprovalModal from "../../components/shared/ApprovalModal";
 import { DetailTable } from "../../components/shared/DetailTable";
@@ -2489,6 +2489,10 @@ const TransmissionListPage = () => {
                           : "Chọn loại hạ tầng trước"
                   } allowClear
                     showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     value={filterValues.attachedInfraId || undefined}
                     onChange={(val) =>
                       setFilterValues((prev) => ({

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Input, Select, DatePicker, Drawer, Modal, Alert, Space, Typography, Button } from 'antd';
-import dayjs from 'dayjs';
+import { Input, Select, DatePicker, Modal, Button, Tooltip } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import { message } from '../../components/ToastNotification';
 import { navigationChannelCRUD, navigationChannelApproval } from '../../services/navigationChannelService';
 import { organizationService } from '../../services/organizationService';
@@ -9,12 +9,18 @@ import { userService } from '../../services/userService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import { FilterOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import type { NavigationChannelResponse, ListParams, ApprovalStatus } from '../../types/navigationChannel';
+import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 import { CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/navigationChannel';
-import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
+import { symbolService, type Symbol as MapSymbol } from '../../services/symbolService';
+import { gisCoordinatesToLines, gisGeometryTypeLabel } from '../../utils/historyGisFormat';
+import { fmtNum } from '../../utils/numFmt';
 import {
   statusOperational,
   statusCritical,
@@ -25,351 +31,107 @@ import {
   textSecondary,
   textTertiary,
   borderDefault,
-  fontSizeMd,
+  DRAWER_WIDTH,
   fontSizeLg,
-  fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
   radiusPill,
   spaceSm,
   spaceMd,
-  spaceXs,
-  spaceXl,
   spaceFormField,
   statusBadgeStyle,
   cellTitleStyle,
   cellSubtitleStyle,
   icons,
   colors,
-  filterLabelStyle,
-  drawerProps,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
-  historyGroupGridStyle,
-  historyTimeStyle,
-  historyMetaRowStyle,
-  historyInfoCardStyle,
-  historyAccentBarStyle,
-  historyInfoTitleStyle,
-  historyChangeRowStyle,
-  historyCreateRowStyle,
-  historyFieldLabelStyle,
-  historyOldValueStyle,
-  historyNewValueStyle,
-  historyArrowStyle,
+  inputStyle,
+  selectStyle,
+  getRangePickerProps,
 } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import ApprovalModal from '../../components/shared/ApprovalModal';
+import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import NavigationChannelForm from './NavigationChannelForm';
 import NavigationChannelDetailContent from './NavigationChannelDetailContent';
 import AppDrawer from '../../components/shared/AppDrawer';
 import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 
+// Cỡ chữ màn /navigation-channel: 13.5px chuẩn /beacon-stations & /berth (thay vì token tĩnh themetokenchk fontSizeMd=13px).
+const fontSizeMd = 13.5;
+
 // ── #8 Tình trạng — màu badge theo token ─────────────────────────────
 const CONDITION_STATUS_STYLE_MAP: Record<string, { label: string; color: string }> = {
-  OPERATIONAL: { label: 'Đang hoạt động', color: statusOperational },
+  OPERATIONAL: { label: 'Đang khai thác/vận hành', color: statusOperational },
+  NOT_YET_OPERATIONAL: { label: 'Chưa khai thác/vận hành', color: statusAttention },
+  SUSPENDED: { label: 'Dừng khai thác/vận hành', color: statusCritical },
   STOPPED: { label: 'Dừng hoạt động', color: statusCritical },
   MAINTENANCE: { label: 'Đang bảo trì', color: statusAttention },
   UNDER_CONSTRUCTION: { label: 'Đang xây dựng', color: statusDraft },
 };
 
-// ── #47 Trạng thái — tabs theo trạng thái phê duyệt ──────────────────
-const STATUS_TAB_LIST = [
-  { key: 'all', label: 'Tất cả', statuses: [] as string[] },
-  // Nhãn theo 7 trạng thái chuẩn — approval-2-level-spec.md mục 3.1/3.10
-  { key: 'DRAFT', label: 'Lưu tạm', statuses: ['DRAFT'] },
-  { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', statuses: ['PENDING_APPROVAL'] },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', statuses: ['APPROVED_LEVEL1'] },
-  { key: 'APPROVED', label: 'Đã duyệt', statuses: ['APPROVED'] },
-  { key: 'REJECTED', label: 'Từ chối', statuses: ['REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'] },
-  { key: 'ARCHIVED', label: 'Đã xóa', statuses: ['ARCHIVED'] },
-];
-
-const TAB_COLOR: Record<string, string> = {
-  all: textSecondary,
-  DRAFT: statusDraft,
-  PENDING_APPROVAL: statusAttention,
-  APPROVED_LEVEL1: actionPrimary,
-  APPROVED: statusOperational,
-  REJECTED: statusCritical,
-  ARCHIVED: statusCritical,
+// ── #47 Trạng thái — 8 tabs chuẩn phân cấp phê duyệt (chuẩn /beacon-stations) ──
+export const CHANNEL_APPROVAL_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Lưu tạm',
+  PENDING_APPROVAL: 'Chờ phê duyệt cấp Cảng vụ/Chi cục',
+  APPROVED_LEVEL1: 'Chờ phê duyệt cấp Cục',
+  APPROVED: 'Đã phê duyệt',
+  REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
+  REJECTED_LEVEL2: 'Từ chối cấp Cục',
+  ARCHIVED: 'Đã xóa',
 };
 
-// ── Lịch sử thay đổi (chuẩn VTS CHK) ─────────────────────────────────
-const historyFieldLabels: Record<string, string> = {
-  orgUnitId: 'Đơn vị quản lý', seaportId: 'Thuộc cảng biển', operatingUnitId: 'Đơn vị vận hành',
-  channelCode: 'Mã luồng hàng hải', channelName: 'Tên luồng hàng hải',
-  provinceId: 'Địa điểm (Tỉnh/TP)', detailedLocation: 'Địa điểm chi tiết', conditionStatus: 'Tình trạng',
-  managementStation: 'Trạm quản lý luồng', stationCount: 'Số lượng trạm', stationStaffCount: 'Số lượng nhân sự tại trạm',
-  stationAreaSquareMeters: 'Diện tích trạm (m²)', latestStationRepairMonth: 'Sửa chữa trạm gần nhất',
-  latestMaintenanceYear: 'Năm bảo trì gần nhất', latestDredgingVolumeCubicMeters: 'KL nạo vét (m³)',
-  buoyCount: 'Số lượng phao', beaconCount: 'Số lượng tiêu', notes: 'Ghi chú',
-  announcementDecisionNumber: 'Quyết định công bố số', announcementDecisionDate: 'Ngày ra quyết định',
+// ── Lịch sử thay đổi (chuẩn /vts-system) ────────────────────────
+const HISTORY_PAGE_SIZE = 20;
+
+const CHANNEL_HISTORY_FIELD_LABELS: Record<string, string> = {
+  unitId: 'Đơn vị quản lý',
+  orgUnitId: 'Đơn vị quản lý',
+  unitName: 'Đơn vị quản lý',
+  parentOrgUnitId: 'Cơ quan quản lý cấp trên',
+  seaportId: 'Thuộc cảng biển',
+  operatingUnitId: 'Đơn vị vận hành',
+  channelCode: 'Mã luồng hàng hải',
+  channelName: 'Tên luồng hàng hải',
+  code: 'Mã luồng hàng hải',
+  name: 'Tên luồng hàng hải',
+  provinceId: 'Địa điểm (Tỉnh/TP)',
+  detailedLocation: 'Địa điểm chi tiết',
+  conditionStatus: 'Tình trạng',
+  operationalStatus: 'Tình trạng',
+  managementStation: 'Trạm quản lý luồng',
+  stationCount: 'Số lượng trạm',
+  stationStaffCount: 'Số lượng nhân sự tại trạm',
+  stationAreaSquareMeters: 'Diện tích trạm (m²)',
+  latestStationRepairMonth: 'Sửa chữa trạm gần nhất',
+  latestMaintenanceYear: 'Năm bảo trì gần nhất',
+  latestDredgingVolumeCubicMeters: 'KL nạo vét (m³)',
+  buoyCount: 'Số lượng phao',
+  beaconCount: 'Số lượng tiêu',
+  notes: 'Ghi chú',
+  note: 'Ghi chú',
+  announcementDecisionNumber: 'Quyết định công bố số',
+  announcementDecisionDate: 'Ngày ra quyết định',
   announcementDecisionIssuer: 'Đơn vị ra quyết định',
-  protectionScopeMeters: 'Phạm vi bảo vệ luồng (m)', protectionNotes: 'Ghi chú phạm vi bảo vệ',
-  geometryType: 'Loại đối tượng', mapIconId: 'Biểu tượng', coordinateReferenceSystem: 'Hệ quy chiếu',
-  displayRule: 'Quy tắc hiển thị', mapSymbolId: 'Biểu tượng', approvalStatus: 'Trạng thái',
-  submittedAt: 'Ngày gửi phê duyệt', submittedBy: 'Người gửi phê duyệt',
-  level1ApprovedAt: 'Ngày duyệt Cảng vụ', level1ApprovedBy: 'Người duyệt Cảng vụ',
-  level1ApprovalContent: 'Nội dung duyệt Cảng vụ',
-  level2ApprovedAt: 'Ngày duyệt Cục', level2ApprovedBy: 'Người duyệt Cục',
-  level2ApprovalContent: 'Nội dung duyệt Cục', rejectionReason: 'Lý do từ chối',
-  updatedAt: 'Ngày cập nhật', updatedBy: 'Cán bộ cập nhật',
-  'Trạng thái': 'Hành động',
+  protectionScopeMeters: 'Phạm vi bảo vệ luồng (m)',
+  protectionNotes: 'Ghi chú phạm vi bảo vệ',
+  geometryType: 'Loại đối tượng GIS',
+  coordinates: 'Tọa độ GIS',
+  mapIconId: 'Biểu tượng GIS',
+  mapSymbolId: 'Biểu tượng GIS',
+  coordinateReferenceSystem: 'Hệ quy chiếu',
+  coordinateSystem: 'Hệ quy chiếu',
+  displayRule: 'Quy tắc hiển thị',
+  attachments: 'Tài liệu đính kèm',
+  status: 'Trạng thái',
+  approvalStatus: 'Trạng thái phê duyệt',
+  rejectionReason: 'Lý do từ chối',
 };
 
-function historyFieldName(fn: string): string { return historyFieldLabels[fn] || fn; }
-
-/** Badge thao tác cho lịch sử (chuẩn VTS CHK): phân biệt Thêm mới / Cập nhật / Phê duyệt / Từ chối / Trình duyệt. */
-function resolveHistoryActionMeta(group: any, changes: any[]): { label: string; color: string; bg: string } {
-  const item = group.items?.[0] || {};
-  const level = Number(item?.approvalLevel || 0);
-  const rawStatus = String(item.status ?? item.action ?? '').toUpperCase();
-  const rawReason = String(item.reason ?? item.ghiChu ?? item.note ?? '').toLowerCase();
-
-  if (rawStatus === 'CREATED' || rawStatus === 'CREATE' || rawReason.includes('tạo mới') || rawReason.includes('thêm mới') || rawReason.includes('tao moi') || rawReason.includes('them moi')) {
-    return { label: 'Thêm mới', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'ATTACHMENT_UPLOADED' || rawReason.includes('tải lên') || rawReason.includes('tai len') || item.changedField?.includes('đính kèm')) {
-    return { label: 'Tải lên tệp', color: '#0284c7', bg: '#0284c718' };
-  }
-  if (rawStatus === 'ATTACHMENT_DELETED' || rawReason.includes('xóa tài liệu') || rawReason.includes('xóa tệp') || rawReason.includes('xoa tep')) {
-    return { label: 'Xóa tệp', color: '#ea580c', bg: '#ea580c18' };
-  }
-  if (rawStatus === 'UPDATED' || rawStatus === 'UPDATE' || rawStatus === 'EDIT' || rawReason.includes('cập nhật') || rawReason.includes('chỉnh sửa')) {
-    return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-  }
-  if (rawReason.includes('phê duyệt cấp cảng vụ') || rawReason.includes('phe duyet cap cang vu')) {
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('phê duyệt cấp cục') || rawReason.includes('phe duyet cap cuc')) {
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawReason.includes('từ chối cấp cảng vụ') || rawReason.includes('tu choi cap cang vu')) {
-    return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawReason.includes('từ chối cấp cục') || rawReason.includes('tu choi cap cuc')) {
-    return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-  }
-
-  const approvalChange = changes.find((c: any) => {
-    const k = normalizeHistoryKey(c.field);
-    return k === 'approvalstatus' || k === 'trang thai phe duyet';
-  });
-
-  if (approvalChange) {
-    const nv = normalizeHistoryKey(approvalChange.newValue || '');
-    if (nv.includes('cang vu tra ve') || nv.includes('rejected_level1') || (nv.includes('tra ve') && nv.includes('cang vu'))) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cuc tra ve') || nv.includes('rejected_level2') || (nv.includes('tra ve') && nv.includes('cuc'))) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv === 'cho cuc duyet' || nv.includes('da phe duyet cap 1') || nv.includes('approved_level1') || nv.includes('cuc duyet')) {
-      return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-    }
-    if (nv === 'da duyet' || nv.includes('da phe duyet') || nv.includes('approved')) {
-      return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-    }
-    if (nv.includes('tu choi') || nv.includes('rejected') || nv.includes('tra ve')) {
-      return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    if (nv.includes('cho cang vu duyet') || nv.includes('cho phe duyet') || nv.includes('pending') || nv.includes('proposed') || nv.includes('luu tam') || nv.includes('nhap')) {
-      return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-    }
-  }
-
-  if (level === 1 || String(item.approvalLevel).includes('LEVEL_1') || rawReason.includes('cấp 1') || rawReason.includes('cap 1') || rawStatus === 'UNDER_REVIEW') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cảng vụ', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cảng vụ', color: '#13C2C2', bg: '#13C2C218' };
-  }
-  if (rawReason.includes('cấp 2') || rawReason.includes('cap 2') || rawStatus === 'APPROVED' || rawStatus === 'APPROVE') {
-    if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi') || rawReason.includes('trả về') || rawReason.includes('tra ve')) {
-      return { label: 'Từ chối cấp Cục', color: statusCritical, bg: `${statusCritical}18` };
-    }
-    return { label: 'Phê duyệt cấp Cục', color: statusOperational, bg: `${statusOperational}18` };
-  }
-  if (rawStatus === 'REJECTED' || rawStatus === 'REJECT' || rawReason.includes('từ chối') || rawReason.includes('tu choi')) {
-    return { label: 'Từ chối', color: statusCritical, bg: `${statusCritical}18` };
-  }
-  if (rawStatus === 'SUBMITTED' || rawStatus === 'PENDING' || rawReason.includes('trình duyệt') || rawReason.includes('trinh duyet')) {
-    return { label: 'Trình duyệt', color: statusAttention, bg: `${statusAttention}18` };
-  }
-  if (rawStatus === 'DELETED' || rawStatus === 'DELETE' || rawStatus === 'SOFT_DELETE' || rawReason.includes('xóa') || rawReason.includes('xoa')) {
-    return { label: 'Xóa', color: '#64748b', bg: '#64748b18' };
-  }
-  return { label: 'Cập nhật', color: actionPrimary, bg: `${actionPrimary}18` };
-}
-
-function historyTimestamp(item: any): string {
-  return item.approvedDate || item.changedAt || item.createdAt || '';
-}
-
-function historyField(item: any): string {
-  return item.changedField || item.fieldName || '';
-}
-
-function historyOldValue(item: any): string | null {
-  return item.previousValue ?? item.oldValue ?? null;
-}
-
-function historyNewValue(item: any): string | null {
-  return item.newValue ?? null;
-}
-
-function historyActor(item: any): string {
-  const raw = item?.approvedByName || item?.changedByName || item?.performedByName || item?.userName || item?.actorName || item?.approvedBy || item?.changedBy || item?.performedBy || '';
-  return raw || '—';
-}
-
-function normalizeHistoryKey(value: string): string {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-}
-
-function normalizedHistoryFields(value: string): string[] {
-  const fields = value.split(/[,;]+/).map((field: string) => field.trim()).filter(Boolean);
-  const hasApprovalStatus = fields.some((field) => {
-    const key = normalizeHistoryKey(field);
-    return key === 'approvalstatus' || key === 'trang thai phe duyet';
-  });
-  if (hasApprovalStatus) {
-    return fields.filter((field) => {
-      const key = normalizeHistoryKey(field);
-      return key !== 'approvedlevel1' && key !== 'approvedlevel2' && key !== 'da phe duyet cap 1' && key !== 'da phe duyet cap 2';
-    });
-  }
-  return fields;
-}
-
-function parseHistoryAssignments(value: string | null): Map<string, string> {
-  const result = new Map<string, string>();
-  if (!value) return result;
-  value.split(';').forEach((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return;
-    result.set(normalizeHistoryKey(part.slice(0, separator)), part.slice(separator + 1).trim());
-  });
-  return result;
-}
-
-function historyChangeRows(item: any): Array<{ field: string; oldValue: string | null; newValue: string | null }> {
-  const fields = normalizedHistoryFields(historyField(item));
-  const oldValue = historyOldValue(item);
-  const newValue = historyNewValue(item);
-  const oldAssignments = parseHistoryAssignments(oldValue);
-  const newAssignments = parseHistoryAssignments(newValue);
-
-  if (fields.length > 1 && oldAssignments.size === 0 && newAssignments.size === 0) {
-    return [{ field: fields.join(', '), oldValue, newValue }];
-  }
-  if (fields.length === 0) {
-    return [{ field: '', oldValue, newValue }];
-  }
-  return fields.map((field, index) => {
-    const displayField = historyFieldName(field);
-    const oldAssigned = oldAssignments.get(normalizeHistoryKey(field)) ?? oldAssignments.get(normalizeHistoryKey(displayField));
-    const newAssigned = newAssignments.get(normalizeHistoryKey(field)) ?? newAssignments.get(normalizeHistoryKey(displayField));
-    const oldParts = oldValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    const newParts = newValue?.split(';').map((part) => part.trim()).filter(Boolean) || [];
-    return {
-      field,
-      oldValue: oldAssigned ?? (fields.length === 1 ? oldValue : oldParts[index] || null),
-      newValue: newAssigned ?? (fields.length === 1 ? newValue : newParts[index] || null),
-    };
-  });
-}
-
-function renderHistoryValueTag(field: string, val: string | null) {
-  if (val === null || val === undefined || val === '—') {
-    return <span style={{ color: textTertiary }}>—</span>;
-  }
-  const normKey = normalizeHistoryKey(field);
-  const normVal = normalizeHistoryKey(val);
-
-  if (normKey === 'approvalstatus' || normKey === 'trang thai phe duyet' || normKey.includes('phe duyet') || normKey.includes('trang thai')) {
-    if (normVal === 'da duyet' || normVal === 'da phe duyet' || normVal === 'approved' || normVal === 'approved_level2') {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal === 'cho cuc duyet' || normVal === 'approved_level1' || normVal.includes('cap 1') || normVal.includes('cuc duyet')) {
-      return (<span style={statusBadgeStyle('#0082fb')}>{val}</span>);
-    }
-    if (normVal === 'cho cang vu duyet' || normVal === 'cho phe duyet' || normVal === 'cho duyet' || normVal === 'pending' || normVal === 'pending_approval' || normVal === 'proposed' || normVal.includes('cang vu')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal === 'tu choi' || normVal.includes('rejected') || normVal.includes('tra ve')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-    return (<span style={statusBadgeStyle(statusDraft)}>{val}</span>);
-  }
-
-  if (normKey === 'conditionstatus' || normKey === 'tinh trang' || normKey.includes('tinh trang')) {
-    if (normVal.includes('hoat dong tot') || normVal.includes('good') || normVal.includes('operational') || normVal.includes('hoat dong')) {
-      return (<span style={statusBadgeStyle(statusOperational)}>{val}</span>);
-    }
-    if (normVal.includes('can bao duong') || normVal.includes('warning') || normVal.includes('maintenance') || normVal.includes('bao tri')) {
-      return (<span style={statusBadgeStyle(statusAttention)}>{val}</span>);
-    }
-    if (normVal.includes('hong') || normVal.includes('ngung') || normVal.includes('dung') || normVal.includes('damaged') || normVal.includes('critical')) {
-      return (<span style={statusBadgeStyle(statusCritical)}>{val}</span>);
-    }
-    if (normVal.includes('xay dung') || normVal.includes('under_construction')) {
-      return (<span style={statusBadgeStyle(actionPrimary)}>{val}</span>);
-    }
-  }
-
-  return <span title={val} style={{ minWidth: 0, color: textPrimary, fontWeight: fontWeightMedium, overflowWrap: 'anywhere' }}>{val}</span>;
-}
-
-function historyFieldValue(
-  fn: string,
-  val: string | null,
-  orgMap?: Map<string, string>,
-  seaportMap?: Map<string, string>,
-  userMap?: Map<string, string>,
-): string {
-  if (!val || val === '(null)' || val === 'null') return '(trống)';
-  if (fn === 'orgUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
-  if (fn === 'operatingUnitId' && orgMap) { const full = orgMap.get(val); return full ? full.split(' - ').pop() || full : val; }
-  if (fn === 'seaportId' && seaportMap) return seaportMap.get(val) || val;
-  if (fn === 'provinceId') {
-    const n = Number(val);
-    if (!isNaN(n)) {
-      const p = VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(n));
-      if (p) return p.label;
-    }
-    return val;
-  }
-  if (fn === 'conditionStatus') {
-    const m: Record<string, string> = { OPERATIONAL: 'Đang hoạt động', STOPPED: 'Dừng hoạt động', MAINTENANCE: 'Đang bảo trì', UNDER_CONSTRUCTION: 'Đang xây dựng' };
-    return m[val.toUpperCase()] || val;
-  }
-  if (fn === 'approvalStatus') {
-    const m: Record<string, string> = {
-      DRAFT: 'Lưu tạm', NHAP: 'Lưu tạm', PENDING_APPROVAL: 'Chờ Cảng vụ duyệt',
-      APPROVED_LEVEL1: 'Chờ Cục duyệt', APPROVED: 'Đã duyệt', DA_PHE_DUYET: 'Đã duyệt',
-      REJECTED: 'Từ chối', REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ', REJECTED_LEVEL2: 'Từ chối cấp Cục',
-    };
-    return m[val.toUpperCase()] || val;
-  }
-  if (fn === 'updatedBy' || fn === 'submittedBy' || fn === 'level1ApprovedBy' || fn === 'level2ApprovedBy') {
-    if (userMap) return userMap.get(val) || val;
-  }
-  return val;
-}
-
-const HISTORY_FIELD_ORDER = [
-  'orgUnitId', 'seaportId', 'operatingUnitId', 'channelCode', 'channelName', 'provinceId', 'detailedLocation',
-  'conditionStatus', 'managementStation', 'stationCount', 'stationStaffCount', 'stationAreaSquareMeters',
-  'latestStationRepairMonth', 'latestMaintenanceYear', 'latestDredgingVolumeCubicMeters', 'buoyCount', 'beaconCount',
-  'notes', 'announcementDecisionNumber', 'announcementDecisionDate', 'announcementDecisionIssuer',
-  'protectionScopeMeters', 'protectionNotes', 'geometryType', 'mapIconId', 'mapSymbolId',
-  'coordinateReferenceSystem', 'displayRule',
-];
-const HISTORY_PAGE_SIZE = 10;
+const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
+  from || to ? [from ? dayjs(from) : null, to ? dayjs(to) : null] : null;
 
 export default function NavigationChannelList() {
   const isInIframe = window.self !== window.top;
@@ -378,25 +140,33 @@ export default function NavigationChannelList() {
 
   // ── Filters (DS/Lọc: #1/#2/#4/#5/#6/#8/#47/#48) ────────────────────
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
-  const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterChannelCode, setFilterChannelCode] = useState('');
+  const [inputKeyword, setInputKeyword] = useState('');
+  const [inputChannelCode, setInputChannelCode] = useState('');
+  const [appliedKeyword, setAppliedKeyword] = useState('');
+  const [appliedChannelCode, setAppliedChannelCode] = useState('');
   const [filterOrgUnitId, setFilterOrgUnitId] = useState<string | undefined>();
   const [filterSeaportId, setFilterSeaportId] = useState<string | undefined>();
   const [filterProvinceId, setFilterProvinceId] = useState<string | undefined>();
   const [filterConditionStatus, setFilterConditionStatus] = useState<string | undefined>();
-  const [filterUpdatedBy, setFilterUpdatedBy] = useState<string | undefined>();
   const [filterUpdatedFrom, setFilterUpdatedFrom] = useState('');
   const [filterUpdatedTo, setFilterUpdatedTo] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
-  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+  const [filterApprovalStatus, setFilterApprovalStatus] = useState<ApprovalStatus | undefined>();
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+  const statusCountFilterKey = useRef<string | null>(null);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string | undefined>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
   const [dataSource, setDataSource] = useState<NavigationChannelResponse[]>([]);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : null,
+    [sortField, sortOrder],
+  );
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -420,27 +190,36 @@ export default function NavigationChannelList() {
   // ── Approval / delete / history ─────────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingRecord, setDeletingRecord] = useState<NavigationChannelResponse | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submittingRecord, setSubmittingRecord] = useState<NavigationChannelResponse | null>(null);
+
   const [approveModalOpen, setApproveModalOpen] = useState(false);
   const [approvingRecord, setApprovingRecord] = useState<NavigationChannelResponse | null>(null);
   const [approveLevel, setApproveLevel] = useState<'c1' | 'c2'>('c1');
   const [approving, setApproving] = useState(false);
+
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectingRecord, setRejectingRecord] = useState<NavigationChannelResponse | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectLoading, setRejectLoading] = useState(false);
+  const [rejectLevel, setRejectLevel] = useState<'c1' | 'c2'>('c1');
 
-  const [historyOpen, setHistoryOpen] = useState(false);
+  // History drawer state (chuẩn /vts-system)
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const [historyTarget, setHistoryTarget] = useState<NavigationChannelResponse | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyRecords, setHistoryRecords] = useState<CommonHistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-  const [historySearch, setHistorySearch] = useState('');
-  const [historyFrom, setHistoryFrom] = useState('');
-  const [historyTo, setHistoryTo] = useState('');
-  const [historyReloadToken, setHistoryReloadToken] = useState(0);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historyPage, setHistoryPage] = useState(0);
+  const [historyFilters, setHistoryFilters] = useState<{ keyword: string; fromDate?: string; toDate?: string }>({ keyword: '' });
+  const [symbols, setSymbols] = useState<MapSymbol[]>([]);
+
+  useEffect(() => {
+    symbolService.getAll().then(setSymbols).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isInIframe) return;
@@ -468,35 +247,58 @@ export default function NavigationChannelList() {
         console.error('Không tải được danh sách cán bộ', err);
       }
     })();
-  }, [isInIframe]);
+  }, [isInIframe, authUser]);
 
   // ── Fetch list ──────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
+    void reloadToken;
     setIsLoading(true);
     setIsError(false);
     try {
-      const activeTabDef = STATUS_TAB_LIST.find((t) => t.key === activeTab);
+      const currentStatusCountFilterKey = JSON.stringify([
+        appliedKeyword,
+        appliedChannelCode,
+        filterOrgUnitId,
+        filterSeaportId,
+        filterProvinceId,
+        filterConditionStatus,
+        filterUpdatedFrom,
+        filterUpdatedTo,
+      ]);
+      const shouldIncludeCounts = statusCountFilterKey.current !== currentStatusCountFilterKey;
+
       const params: ListParams = {
         page: page - 1,
         size: pageSize,
-        keyword: filterKeyword.trim() || undefined,
-        channelCode: filterChannelCode.trim() || undefined,
+        keyword: appliedKeyword || undefined,
+        channelCode: appliedChannelCode || undefined,
         orgUnitId: filterOrgUnitId,
         seaportId: filterSeaportId,
         provinceId: filterProvinceId ? Number(filterProvinceId) : undefined,
         conditionStatus: filterConditionStatus as any,
-        approvalStatus: activeTabDef && activeTabDef.statuses.length === 1 ? activeTabDef.statuses[0] : undefined,
+        approvalStatus: filterApprovalStatus,
         updatedFrom: filterUpdatedFrom || undefined,
         updatedTo: filterUpdatedTo || undefined,
-        updatedBy: filterUpdatedBy,
         sortField,
         sortOrder: sortOrder || undefined,
         sortBy: sortField,
-        sortDir: sortOrder || undefined,
+        sortDir: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : undefined,
       };
       const res = await navigationChannelCRUD.search(params);
       setDataSource(res.items);
       setTotal(res.total);
+
+      if (res.statusCounts && Object.keys(res.statusCounts).length > 0) {
+        setStatusCounts(res.statusCounts);
+        statusCountFilterKey.current = currentStatusCountFilterKey;
+      } else if (shouldIncludeCounts) {
+        void navigationChannelCRUD.countStatus(params).then((cnts) => {
+          if (cnts && Object.keys(cnts).length > 0) {
+            setStatusCounts(cnts);
+            statusCountFilterKey.current = currentStatusCountFilterKey;
+          }
+        }).catch(() => {});
+      }
     } catch (err: unknown) {
       setIsError(true);
       setTotal(0);
@@ -505,59 +307,60 @@ export default function NavigationChannelList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, activeTab, filterKeyword, filterChannelCode, filterOrgUnitId, filterSeaportId, filterProvinceId, filterConditionStatus, filterUpdatedFrom, filterUpdatedTo, filterUpdatedBy, sortField, sortOrder, reloadToken]);
+  }, [
+    page,
+    pageSize,
+    filterApprovalStatus,
+    appliedKeyword,
+    appliedChannelCode,
+    filterOrgUnitId,
+    filterSeaportId,
+    filterProvinceId,
+    filterConditionStatus,
+    filterUpdatedFrom,
+    filterUpdatedTo,
+    sortField,
+    sortOrder,
+    reloadToken,
+  ]);
 
-  // ── Tab counts ──────────────────────────────────────────────────────
-  const fetchCounts = useCallback(async () => {
-    try {
-      const results = await Promise.allSettled(
-        STATUS_TAB_LIST.map((tab) =>
-          Promise.all(
-            tab.statuses.map((s) =>
-              navigationChannelCRUD.search({ approvalStatus: s, page: 0, size: 1 }).then((r) => r.total),
-            ),
-          ).then((totals) => totals.reduce((sum, n) => sum + n, 0)),
-        ),
-      );
-      const next: Record<string, number> = {};
-      STATUS_TAB_LIST.forEach((tab, i) => {
-        next[tab.key] = results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<number>).value : 0;
-      });
-      const subTotal = STATUS_TAB_LIST.filter((t) => t.key !== 'all').reduce((sum, t) => sum + (next[t.key] || 0), 0);
-      next['all'] = subTotal;
-      setTabCounts(next);
-    } catch (err) {
-      console.error('Không tính được số lượng theo trạng thái', err);
+  useEffect(() => {
+    if (!isInIframe) {
+      void fetchData();
     }
-  }, []);
-
-  useEffect(() => { if (!isInIframe) { void fetchData(); void fetchCounts(); } }, [fetchData, fetchCounts, isInIframe]);
+  }, [fetchData, isInIframe]);
 
   // ── Filter handlers ─────────────────────────────────────────────────
-  const handleFilterApply = useCallback(() => { setPage(1); }, []);
+  const handleFilterApply = useCallback(() => {
+    const trimmedKeyword = inputKeyword.trim();
+    const trimmedCode = inputChannelCode.trim();
+    setInputKeyword(trimmedKeyword);
+    setInputChannelCode(trimmedCode);
+    setAppliedKeyword(trimmedKeyword);
+    setAppliedChannelCode(trimmedCode);
+    setPage(1);
+    statusCountFilterKey.current = null;
+    setReloadToken((t) => t + 1);
+  }, [inputKeyword, inputChannelCode]);
+
   const handleFilterReset = useCallback(() => {
-    setFilterKeyword('');
-    setFilterChannelCode('');
+    statusCountFilterKey.current = null;
+    setInputKeyword('');
+    setInputChannelCode('');
+    setAppliedKeyword('');
+    setAppliedChannelCode('');
     setFilterOrgUnitId(defaultOrgUnitRef.current);
     setFilterSeaportId(undefined);
     setFilterProvinceId(undefined);
     setFilterConditionStatus(undefined);
-    setFilterUpdatedBy(undefined);
     setFilterUpdatedFrom('');
     setFilterUpdatedTo('');
-    setActiveTab('all');
+    setFilterApprovalStatus(undefined);
+    setSortField(undefined);
+    setSortOrder(null);
     setPage(1);
+    setReloadToken((t) => t + 1);
   }, []);
-
-  const handleTabChange = useCallback((key: string) => {
-    setActiveTab(key);
-    setPage(1);
-  }, []);
-
-  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | undefined => {
-    if (sortField === key && sortOrder) return sortOrder === 'asc' ? 'ascend' : 'descend';
-    return undefined;
-  }, [sortField, sortOrder]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc' | null) => {
     if (!order) {
@@ -571,8 +374,8 @@ export default function NavigationChannelList() {
   }, []);
 
   const refreshAfterMutation = useCallback(() => {
-    setSortField('updatedAt');
-    setSortOrder('desc');
+    setSortField(undefined);
+    setSortOrder(null);
     setPage(1);
     setReloadToken((t) => t + 1);
   }, []);
@@ -599,328 +402,478 @@ export default function NavigationChannelList() {
     }
   }, []);
 
-  // Map user id → tên hiển thị cho cột "Cán bộ cập nhật" (backend NavigationChannel chưa trả updatedByName như các module khác)
+  // Map user id → tên hiển thị cho các cột cán bộ (backend NavigationChannel chưa trả name như các module khác)
   const userMap = useMemo(() => {
     const m = new Map<string, string>();
     userOptions.forEach((o) => { m.set(o.value, o.label); });
     return m;
   }, [userOptions]);
 
-  // ── Delete confirmation ─────────────────────────────────────────────
-  const openDeleteModal = useCallback((record: NavigationChannelResponse) => {
-    setDeletingRecord(record); setDeleteConfirmText(''); setDeleteModalOpen(true);
+  const [resolvedActorNames, setResolvedActorNames] = useState<Record<string, string>>({});
+
+  const pendingActorIds = useMemo(() => {
+    const ids = new Set<string>();
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    dataSource.forEach((r) => {
+      [
+        r.updatedBy,
+        r.submittedBy,
+        r.approverLevel1,
+        r.level1ApprovedBy,
+        r.approverLevel2,
+        r.level2ApprovedBy,
+      ].forEach((id) => {
+        if (id && uuidRegex.test(id) && !userMap.has(id) && !resolvedActorNames[id]) {
+          ids.add(id);
+        }
+      });
+    });
+    return Array.from(ids);
+  }, [dataSource, userMap, resolvedActorNames]);
+
+  useEffect(() => {
+    if (pendingActorIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const found = await Promise.all(
+        pendingActorIds.map(async (id) => {
+          try {
+            const res = await userService.getById(id);
+            const name = res.data?.fullName || res.data?.username;
+            return name ? ([id, name] as const) : null;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      if (cancelled) return;
+      const patch: Record<string, string> = {};
+      found.forEach((entry) => {
+        if (entry) {
+          patch[entry[0]] = entry[1];
+        }
+      });
+      if (Object.keys(patch).length > 0) {
+        setResolvedActorNames((prev) => ({ ...prev, ...patch }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pendingActorIds]);
+
+  const actorName = useCallback(
+    (id?: string) => {
+      if (!id) return '';
+      if (userMap.has(id)) return userMap.get(id);
+      if (resolvedActorNames[id]) return resolvedActorNames[id];
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? '' : id;
+    },
+    [userMap, resolvedActorNames],
+  );
+
+  // ── Delete confirmation (chuẩn /beacon-stations) ────────────────────
+  const openDeleteConfirm = useCallback((record: NavigationChannelResponse) => {
+    setDeletingRecord(record);
+    setDeleteModalOpen(true);
   }, []);
 
-  const handleConfirmDelete = useCallback(async () => {
+  const confirmDelete = useCallback(async () => {
     if (!deletingRecord) return;
-    const expectedText = (deletingRecord.channelName || 'XÓA').trim().toLowerCase();
-    const input = deleteConfirmText.trim().toLowerCase();
-    if (input !== expectedText && input !== 'xóa') {
-      message.error('Vui lòng nhập đúng tên luồng hàng hải hoặc gõ "XÓA" để xác nhận');
-      return;
-    }
+    setDeleteLoading(true);
     try {
       await navigationChannelCRUD.delete(deletingRecord.id);
       message.success('Đã xóa luồng hàng hải');
-      setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText('');
+      setDeleteModalOpen(false);
+      setDeletingRecord(null);
       refreshAfterMutation();
-    } catch (err: unknown) { message.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
-  }, [deletingRecord, deleteConfirmText, refreshAfterMutation]);
+    } catch (err: unknown) {
+      message.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setDeleteLoading(false);
+    }
+  }, [deletingRecord, refreshAfterMutation]);
 
-  // ── Submit approval (Lưu tạm → Chờ Cảng vụ duyệt) ───────────────────
-  const handleConfirmSubmit = useCallback(async () => {
+  // ── Submit approval (chuẩn /beacon-stations) ────────────────────────
+  const openSubmitModal = useCallback((record: NavigationChannelResponse) => {
+    setSubmittingRecord(record);
+    setSubmitModalOpen(true);
+  }, []);
+
+  const confirmSubmit = useCallback(async () => {
     if (!submittingRecord) return;
     try {
       await navigationChannelApproval.submitApproval(submittingRecord.id);
-      message.success('Đã gửi phê duyệt luồng hàng hải');
-      setSubmitModalOpen(false); setSubmittingRecord(null);
+      message.success('Đã gửi duyệt luồng hàng hải');
+      setSubmitModalOpen(false);
+      setSubmittingRecord(null);
       refreshAfterMutation();
-    } catch (err: unknown) { message.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
+    } catch (err: unknown) {
+      message.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
+    }
   }, [submittingRecord, refreshAfterMutation]);
 
-  // ── Approve (ApprovalModal chuẩn — không modal tự chế) ──────────────
-  const handleApprove = useCallback(async (record: NavigationChannelResponse, content?: string) => {
-    if (!record) return;
-    setApproving(true);
-    try {
-      const req = { status: 'APPROVED' as const, reason: content };
-      if (record.approvalStatus === 'APPROVED_LEVEL1') {
-        await navigationChannelApproval.approveC2(record.id, req);
-      } else {
-        await navigationChannelApproval.approveC1(record.id, req);
-      }
-      message.success('Đã phê duyệt luồng hàng hải');
-      setApproveModalOpen(false); setApprovingRecord(null); setApproveLevel('c1');
-      refreshAfterMutation();
-    } catch (err: unknown) { message.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
-    finally { setApproving(false); }
-  }, [refreshAfterMutation]);
-
-  // ── Reject ──────────────────────────────────────────────────────────
-  const openRejectModal = useCallback((record: NavigationChannelResponse) => {
-    setRejectingRecord(record); setRejectReason(''); setRejectModalOpen(true);
+  // ── Approve (ApprovalModal chuẩn /beacon-stations) ──────────────────
+  const openApproveModal = useCallback((record: NavigationChannelResponse, level?: 'c1' | 'c2') => {
+    const resolvedLevel: 'c1' | 'c2' = level ?? (record.approvalStatus === 'APPROVED_LEVEL1' ? 'c2' : 'c1');
+    setApproveLevel(resolvedLevel);
+    setApprovingRecord(record);
+    setApproveModalOpen(true);
   }, []);
 
-  const handleConfirmReject = useCallback(async () => {
-    if (!rejectingRecord) return;
-    const reason = rejectReason.trim();
-    if (!reason) { message.error('Vui lòng nhập lý do từ chối'); return; }
-    if (reason.length < 10) { message.error('Lý do từ chối tối thiểu 10 ký tự'); return; }
-    if (reason.length > 500) { message.error('Lý do từ chối tối đa 500 ký tự'); return; }
+  const confirmApprove = useCallback(async (content?: string) => {
+    if (!approvingRecord) return;
+    setApproving(true);
+    const isL2 = approveLevel === 'c2' || approvingRecord.approvalStatus === 'APPROVED_LEVEL1';
     try {
+      const note = (content && content !== 'Đã phê duyệt') ? content : undefined;
+      const req = { status: 'APPROVED' as const, reason: note, note };
+      if (isL2) {
+        await navigationChannelApproval.approveC2(approvingRecord.id, req);
+        message.success('Đã phê duyệt cấp Cục');
+      } else {
+        await navigationChannelApproval.approveC1(approvingRecord.id, req);
+        message.success('Đã phê duyệt cấp Cảng vụ/Chi cục');
+      }
+      setApproveModalOpen(false);
+      setApprovingRecord(null);
+      setApproveLevel('c1');
+      refreshAfterMutation();
+    } catch (err: unknown) {
+      message.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
+    } finally {
+      setApproving(false);
+    }
+  }, [approvingRecord, approveLevel, refreshAfterMutation]);
+
+  // ── Reject (chuẩn /beacon-stations) ─────────────────────────────────
+  const openRejectModal = useCallback((record: NavigationChannelResponse, level?: 'c1' | 'c2') => {
+    const resolvedLevel: 'c1' | 'c2' = level ?? (record.approvalStatus === 'APPROVED_LEVEL1' ? 'c2' : 'c1');
+    setRejectLevel(resolvedLevel);
+    setRejectingRecord(record);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  }, []);
+
+  const handleReject = useCallback(async () => {
+    if (!rejectingRecord) return;
+    const reason = rejectReason.trim() || 'Từ chối phê duyệt';
+    setRejectLoading(true);
+    try {
+      const isL2 = rejectLevel === 'c2' || rejectingRecord.approvalStatus === 'APPROVED_LEVEL1';
       const req = { status: 'REJECTED' as const, reason };
-      if (rejectingRecord.approvalStatus === 'APPROVED_LEVEL1') {
+      if (isL2) {
         await navigationChannelApproval.rejectLevel2(rejectingRecord.id, req);
       } else {
         await navigationChannelApproval.rejectLevel1(rejectingRecord.id, req);
       }
-      message.success('Đã từ chối phê duyệt');
-      setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
+      message.success(isL2 ? 'Đã từ chối phê duyệt cấp Cục' : 'Đã từ chối phê duyệt cấp Cảng vụ/Chi cục');
+      setRejectModalOpen(false);
+      setRejectingRecord(null);
+      setRejectReason('');
       refreshAfterMutation();
-    } catch (err: unknown) { message.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
-  }, [rejectingRecord, rejectReason, refreshAfterMutation]);
+    } catch (err: unknown) {
+      message.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    } finally {
+      setRejectLoading(false);
+    }
+  }, [rejectingRecord, rejectReason, rejectLevel, refreshAfterMutation]);
 
-  // ── History (giữ nguyên API history của module — chỉ đổi render) ────
-  const openHistory = useCallback((record: NavigationChannelResponse) => {
-    setHistoryTarget(record); setHistoryOpen(true); setHistoryRecords([]);
-    setHistoryLoading(false); setLoadingMoreHistory(false);
-    setHistorySearch(''); setHistoryFrom(''); setHistoryTo(''); setHistoryPage(0);
-    setHistoryReloadToken((token) => token + 1);
-  }, []);
+  // ── orgMap / seaportMap cho timeline lịch sử và columns ────────────
+  const orgMap = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (nodes: Array<{ id?: string; name?: string; children?: unknown[] }>) => {
+      (nodes || []).forEach((n) => {
+        if (n?.id && n?.name) m.set(n.id, n.name);
+        if (n?.children?.length) walk(n.children as Array<{ id?: string; name?: string; children?: unknown[] }>);
+      });
+    };
+    walk(organizations);
+    return m;
+  }, [organizations]);
+
+  const seaportMap = useMemo(() => {
+    const m = new Map<string, string>();
+    seaportOptions.forEach((p) => { m.set(p.id, p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id); });
+    return m;
+  }, [seaportOptions]);
+
+  // ── History drawer (chuẩn /vts-system) ───────────────────────────
+  const handleViewHistory = useCallback((record: NavigationChannelResponse) => {
+    if (!hasPerm('navigationchannel:history')) {
+      message.error('Bạn không có quyền xem lịch sử');
+      return;
+    }
+    setHistoryTarget(record);
+    setHistoryModalOpen(true);
+    setHistoryRecords([]);
+    setLoadingHistory(false);
+    setLoadingMoreHistory(false);
+    setHasMoreHistory(true);
+    setHistoryFilters({ keyword: '' });
+    setHistoryPage(0);
+  }, [hasPerm]);
 
   useEffect(() => {
-    if (!historyOpen || !historyTarget) return;
-    setHistoryLoading(true); setLoadingMoreHistory(false); setHistoryPage(0);
-    const timer = setTimeout(async () => {
+    if (!historyModalOpen || !historyTarget) return;
+    let cancelled = false;
+    (async () => {
+      setLoadingHistory(true);
+      setLoadingMoreHistory(false);
+      setHasMoreHistory(true);
+      setHistoryRecords([]);
+      setHistoryPage(0);
       try {
-        const items = await navigationChannelApproval.getHistory(historyTarget.id);
-        setHistoryRecords(Array.isArray(items) ? items : []);
-      } catch { message.error('Không thể tải lịch sử'); }
-      finally { setHistoryLoading(false); }
-    }, historySearch.trim() ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [historyOpen, historyTarget, historySearch, historyFrom, historyTo, historyReloadToken]);
+        const history = await navigationChannelApproval.getHistory(historyTarget.id, 0, HISTORY_PAGE_SIZE, {
+          keyword: historyFilters.keyword || undefined,
+          fromDate: historyFilters.fromDate || undefined,
+          toDate: historyFilters.toDate || undefined,
+        });
+        if (cancelled) return;
+        const items = (history || []) as CommonHistoryEntry[];
+        setHistoryRecords(items);
+        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
+      } catch {
+        if (!cancelled) message.error('Không thể tải lịch sử thay đổi');
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [historyModalOpen, historyTarget, historyFilters]);
 
-  // Lọc phía client (keyword + khoảng ngày), phân trang cuộn vô hạn 10/trang
-  const filteredHistory = useMemo(() => {
-    const q = historySearch.trim().toLowerCase();
-    const from = historyFrom ? new Date(historyFrom.replace(' ', 'T')).getTime() : 0;
-    const to = historyTo ? new Date(historyTo.replace(' ', 'T') + ':59').getTime() : Number.POSITIVE_INFINITY;
-    const list = Array.isArray(historyRecords) ? historyRecords : [];
-    return list.filter((r: any) => {
-      const ts = new Date(historyTimestamp(r) || 0).getTime();
-      if (ts < from || ts > to) return false;
-      if (!q) return true;
-      const hay = `${historyActor(r)} ${historyField(r)} ${historyOldValue(r) || ''} ${historyNewValue(r) || ''} ${r.reason || r.ghiChu || r.note || ''} ${r.status || ''}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [historyRecords, historySearch, historyFrom, historyTo]);
-
-  const hasMoreHistory = filteredHistory.length > (historyPage + 1) * HISTORY_PAGE_SIZE;
-  const visibleHistory = filteredHistory.slice(0, (historyPage + 1) * HISTORY_PAGE_SIZE);
-
-  const loadMoreHistory = useCallback(() => {
-    if (historyLoading || loadingMoreHistory || !hasMoreHistory) return;
+  const loadMoreHistory = async () => {
+    if (!historyTarget || loadingHistory || loadingMoreHistory || !hasMoreHistory) return;
     setLoadingMoreHistory(true);
-    setHistoryPage((p) => p + 1);
-    setTimeout(() => setLoadingMoreHistory(false), 200);
-  }, [historyLoading, loadingMoreHistory, hasMoreHistory]);
-
-  const handleHistoryScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) loadMoreHistory();
+    try {
+      const nextPage = historyPage + 1;
+      const history = await navigationChannelApproval.getHistory(historyTarget.id, nextPage, HISTORY_PAGE_SIZE, {
+        keyword: historyFilters.keyword || undefined,
+        fromDate: historyFilters.fromDate || undefined,
+        toDate: historyFilters.toDate || undefined,
+      });
+      if (history && history.length > 0) {
+        setHistoryRecords((prev) => [...prev, ...(history as CommonHistoryEntry[])]);
+      }
+      setHistoryPage(nextPage);
+      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
+    } catch { /* ignore */ }
+    finally { setLoadingMoreHistory(false); }
   };
 
-  const renderNavigationChannelHistoryTimeline = (records: any[]) => {
-    const safeRecords = Array.isArray(records) ? records : [];
-    const toSec = (ts: string) => Math.floor(new Date(ts).getTime() / 1000);
-    const sorted = [...safeRecords].sort((a: any, b: any) => new Date(historyTimestamp(b) || 0).getTime() - new Date(historyTimestamp(a) || 0).getTime());
-    const groups: { tsSec: number; ts: string; actor: string; status?: any; items: any[] }[] = [];
-    for (const r of sorted) {
-      const ts = historyTimestamp(r);
-      const sec = ts ? toSec(ts) : 0;
-      const actor = historyActor(r);
-      const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor && prev.status === r.status ) {
-        prev.items.push(r);
-      } else {
-        groups.push({ tsSec: sec, ts, actor, status: r.status, items: [r] });
+  const handleHistoryFilterChange = (filters: { keyword: string; fromDate: string; toDate: string }) => {
+    setHistoryFilters({
+      keyword: filters.keyword || '',
+      fromDate: filters.fromDate || undefined,
+      toDate: filters.toDate || undefined,
+    });
+  };
+
+  const formatChannelHistoryValue = useCallback((fieldName: string, value: unknown) => {
+    if (value == null || value === '' || value === 'null' || value === '(null)') return '';
+    const sValue = String(value);
+    const fn = String(fieldName || '').toLowerCase();
+    if (fn === 'conditionstatus' || fn === 'operationalstatus' || fn.includes('tinhtrang')) {
+      return CONDITION_STATUS_STYLE_MAP[sValue]?.label || CONDITION_STATUS_MAP[sValue as keyof typeof CONDITION_STATUS_MAP] || sValue;
+    }
+    if (fn === 'approvalstatus' || fn === 'status') {
+      return CHANNEL_APPROVAL_STATUS_LABELS[sValue] || sValue;
+    }
+    if (fn === 'provinceid' || fn.includes('tinh') || fn.includes('thanhpho')) {
+      const num = Number(value);
+      if (Number.isFinite(num)) {
+        return getProvinceNameById(num) || sValue;
       }
     }
-    if (groups.length === 0) return null;
-    const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
+    if (fn === 'seaportid' || fn.includes('cangbien')) {
+      return seaportMap.get(sValue) || sValue;
+    }
+    if (fn === 'unitid' || fn === 'orgunitid' || fn === 'operatingunitid' || fn === 'parentorgunitid') {
+      return orgMap.get(sValue) || sValue;
+    }
+    if (fn === 'mapsymbolid' || fn === 'symbolid' || fn === 'mapiconid') {
+      const sym = symbols.find((s) => s.id === sValue || s.code === sValue);
+      if (sym) return sym.name;
+    }
+    if (fn === 'coordinatesystem' || fn === 'coordinatereferencesystem') {
+      const sVal = sValue.trim();
+      if (sVal === '1' || sVal === '4326' || sVal.toUpperCase() === 'WGS84' || sVal.toUpperCase() === 'WGS 84') return 'WGS 84';
+      if (sVal === '2' || sVal.toUpperCase() === 'VN2000' || sVal.toUpperCase() === 'VN-2000') return 'VN-2000';
+    }
+    if (fn === 'coordinates' || fn === 'toado' || fn.includes('toa do') || fn.includes('tọa độ')) {
+      return gisCoordinatesToLines(sValue) || sValue;
+    }
+    if (fn === 'geometrytype' || fn === 'loaidotuong' || fn.includes('loại đối tượng') || fn.includes('loai doi tuong')) {
+      return gisGeometryTypeLabel(sValue) || sValue;
+    }
+    if (fn.endsWith('date') || fn.endsWith('at') || fn.includes('repairmonth')) {
+      if (/^\d{4}-\d{2}-\d{2}/.test(sValue.trim())) {
+        return dayjs(sValue).format('DD/MM/YYYY');
+      }
+    }
+    return undefined;
+  }, [seaportMap, orgMap, symbols]);
+
+  // ── Helper render text cell with Tooltip (chuẩn /beacon-stations) ───
+  const renderCellWithTooltip = (
+    text: string | null | undefined,
+    isBold?: boolean
+  ) => {
+    if (!text) return null;
     return (
-      <div>{groups.map((g, gi) => {
-        const rec0 = g.items[0] || {};
-        const orgId = rec0.orgUnitId;
-        const orgName = orgId ? orgMap.get(orgId) : undefined;
-        const unitName = (orgName ? (orgName.split(' - ').pop() || orgName) : (rec0.orgUnitName || rec0.unitName)) || '—';
-        const changes = g.items.flatMap((item: any) => historyChangeRows(item)).sort((a: any, b: any) => {
-          const ia = HISTORY_FIELD_ORDER.indexOf(a.field);
-          const ib = HISTORY_FIELD_ORDER.indexOf(b.field);
-          return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
-        }).filter((c: any) => c.field !== 'infrastructureList' && c.field !== 'attachments' && c.field !== 'spatialId');
-        const isCreate = changes.every((c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === '');
-        const informationTitle = isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:';
-        const actionMeta = resolveHistoryActionMeta(g, changes);
-        const barColor = actionMeta.color;
-        const formatHistoryValue = (fn: string, raw: string | null) => {
-          if (raw === null || raw === '(null)' || raw === '') return null;
-          const t = raw.trim();
-          if (t.startsWith('[') && t.endsWith(']')) {
-            if (t === '[]') return 'Không có';
-            const parts = t.slice(1, -1).split(',').map((s) => s.trim()).filter(Boolean);
-            return `${parts.length} công trình hạ tầng`;
-          }
-          if (/^-?\d+(\.\d+)?$/.test(t)) {
-            const n = Number(t);
-            return Number.isInteger(n) ? String(n) : t;
-          }
-          return historyFieldValue(fn, raw, orgMap, seaportMap, userMap);
-        };
-        const validChanges = changes.filter((c: any) => {
-          if (!c.field) return false;
-          const ov = formatHistoryValue(c.field, c.oldValue);
-          const nv = formatHistoryValue(c.field, c.newValue);
-          if (ov == null && nv == null) return false;
-          if (ov === nv) return false;
-          return true;
-        });
-        const reasons = g.items.map((i: any) => i.reason || i.ghiChu || i.note).filter(Boolean);
-        if (validChanges.length === 0 && reasons.length === 0) return null;
-        return (
-          <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}>
-            <div style={{ minWidth: 0, paddingTop: spaceXs }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
-                <Typography.Text style={historyTimeStyle}>
-                  {g.ts ? fmtTime(g.ts) : '—'}
-                </Typography.Text>
-                <span style={{ flexShrink: 0 }}>
-                  <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeSm + 1, fontWeight: fontWeightMedium, background: actionMeta.bg, color: actionMeta.color, whiteSpace: 'nowrap' }}>{actionMeta.label}</span>
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginTop: 0 }}>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Người cập nhật: {g.actor || '—'}
-                </Typography.Text>
-                <Typography.Text style={historyMetaRowStyle}>
-                  Đơn vị: {unitName}
-                </Typography.Text>
-              </div>
-            </div>
-            <div style={historyInfoCardStyle}>
-              <div style={historyAccentBarStyle(barColor)} />
-              <Typography.Text style={historyInfoTitleStyle}>
-                {informationTitle}
-              </Typography.Text>
-              {validChanges.length > 0 ? <div>{validChanges.map((change, ri: number) => {
-                const fn = change.field;
-                const renderCell = (rawVal: string | null) => {
-                  const k = normalizeHistoryKey(fn);
-                  if (k === 'approvalstatus' || k === 'trang thai phe duyet' || k === 'conditionstatus' || k === 'tinh trang') {
-                    return renderHistoryValueTag(fn, rawVal);
-                  }
-                  if (rawVal === null || rawVal === undefined || rawVal === '') return <span style={{ color: textTertiary }}>—</span>;
-                  return <span title={rawVal} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block', maxWidth: 260, verticalAlign: 'bottom', color: textPrimary }}>{rawVal}</span>;
-                };
-                const isApprovalRow = ['approvalstatus', 'trang thai phe duyet', 'submittedat', 'level1approvedat', 'level2approvedat', 'submittedby', 'level1approvedby', 'level2approvedby'].includes(normalizeHistoryKey(fn));
-                return (
-                  <div key={ri} style={isApprovalRow ? historyCreateRowStyle : historyChangeRowStyle}>
-                    <span style={historyFieldLabelStyle}>{historyFieldName(fn)}</span>
-                    <span style={historyOldValueStyle}>{renderCell(change.oldValue)}</span>
-                    {!isApprovalRow && <span style={historyArrowStyle}>→</span>}
-                    <span style={historyNewValueStyle}>{renderCell(change.newValue)}</span>
-                  </div>
-                );
-              })}</div> : null}
-              {reasons.length > 0 && (
-                <div style={{ marginTop: spaceXs, fontSize: fontSizeMd, color: textSecondary }}>
-                  {reasons.map((reason, ri) => (
-                    <div key={ri} style={{ marginBottom: ri < reasons.length - 1 ? spaceXs : 0 }}>Lý do: {reason}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}</div>
+      <Tooltip title={text} placement="topLeft">
+        <span
+          style={{
+            fontSize: fontSizeMd,
+            color: textPrimary,
+            fontWeight: isBold ? fontWeightBold : undefined,
+            display: 'inline-block',
+            maxWidth: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            verticalAlign: 'middle',
+          }}
+          title={text}
+        >
+          {text}
+        </span>
+      </Tooltip>
     );
   };
 
-  // ── Columns (DS scope: #5/#4/#2/#1/#6/#8/#47/#48) ───────────────────
-  const columns = useMemo(() => {
-    const seaportLabel = (seaportId?: string) => {
-      if (!seaportId) return '';
-      const p = seaportOptions.find((o) => o.id === seaportId);
-      return p ? (p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || seaportId) : seaportId;
-    };
+  // ── Columns (DS scope: chuẩn 9 cột đồng bộ /beacon-stations) ────────
+  const columns: any[] = useMemo(() => {
     const provinceLabel = (provinceId?: number) =>
       provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(provinceId))?.label || String(provinceId)) : '';
+
     return [
       {
-        key: 'stt',
+        key: 'sequenceNo',
         label: 'STT',
         width: 60,
         align: 'center' as const,
         fixed: 'left' as const,
-        render: (_: unknown, __: unknown, idx?: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + (idx ?? 0) + 1}</span>,
+        render: (_: unknown, __: unknown, idx?: number) => (
+          <span style={{ fontSize: fontSizeMd, color: textSecondary }}>
+            {(page - 1) * pageSize + (idx ?? 0) + 1}
+          </span>
+        ),
       },
       {
         key: 'channelName',
-        label: 'Tên/Mã luồng hàng hải',
+        label: 'Tên / Mã luồng hàng hải',
         dataIndex: 'channelName',
-        width: 260,
+        width: 300,
         fixed: 'left' as const,
         sortable: true,
         sortOrder: sortOrderFor('channelName'),
         ellipsis: false,
-        render: (v: string | undefined, record: NavigationChannelResponse) => (
-          <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <a
-              title={v || ''}
-              onClick={() => openDetail(record)}
-              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-            >
-              {v || ''}
-            </a>
-            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {record.channelCode || ''}
-            </span>
-          </div>
-        ),
-      },
-      {
-        key: 'seaportId',
-        label: 'Thuộc cảng biển',
-        dataIndex: 'seaportId',
-        width: 180,
-        ellipsis: true,
-        render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{seaportLabel(v)}</span>,
+        cellTitle: (record: NavigationChannelResponse) => record.channelName || '',
+        render: (name: string | undefined, record: NavigationChannelResponse) => {
+          const canView = hasPerm('navigationchannel:read') || hasPerm('navigationchannel:view');
+          return (
+            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {canView ? (
+                <Tooltip title={name || undefined} placement="topLeft">
+                  <a
+                    title={name}
+                    onClick={() => openDetail(record)}
+                    style={{
+                      ...cellTitleStyle,
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {name || null}
+                  </a>
+                </Tooltip>
+              ) : (
+                <Tooltip title={name || undefined} placement="topLeft">
+                  <span
+                    title={name}
+                    style={{
+                      ...cellTitleStyle,
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      cursor: 'default',
+                    }}
+                  >
+                    {name || null}
+                  </span>
+                </Tooltip>
+              )}
+              {record.channelCode && (
+                <Tooltip title={record.channelCode} placement="topLeft">
+                  <span
+                    style={{
+                      ...cellSubtitleStyle,
+                      display: 'block',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={record.channelCode}
+                  >
+                    {record.channelCode}
+                  </span>
+                </Tooltip>
+              )}
+            </div>
+          );
+        },
       },
       {
         key: 'orgUnitId',
         label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
-        width: 200,
+        width: 300,
+        sortable: true,
+        sortOrder: sortOrderFor('orgUnitId'),
+        cellTitle: (record: NavigationChannelResponse) => record.orgUnitName || (record.orgUnitId ? orgMap.get(record.orgUnitId) : '') || '',
+        render: (_: string | undefined, record: NavigationChannelResponse) => {
+          const text = record.orgUnitName || (record.orgUnitId ? orgMap.get(record.orgUnitId) : undefined) || '';
+          return renderCellWithTooltip(text, true);
+        },
+      },
+      {
+        key: 'seaportId',
+        label: 'Thuộc cảng biển',
+        dataIndex: 'seaportId',
+        width: 220,
         ellipsis: true,
-        render: (_: string | undefined, record: NavigationChannelResponse) => (
-          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{record.orgUnitName || ''}</span>
-        ),
+        sortable: true,
+        sortOrder: sortOrderFor('seaportId'),
+        cellTitle: (record: NavigationChannelResponse) => seaportOptions.find((p) => p.id === record.seaportId)?.portName || '',
+        render: (v: string | undefined) =>
+          renderCellWithTooltip(seaportOptions.find((p) => p.id === v)?.portName || v || null),
       },
       {
         key: 'provinceId',
-        label: 'Địa điểm Tỉnh/TP',
+        label: 'Địa điểm (Tỉnh/TP)',
         dataIndex: 'provinceId',
-        width: 150,
-        render: (v: number | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceLabel(v)}</span>,
+        width: 230,
+        sortable: true,
+        sortOrder: sortOrderFor('provinceId'),
+        cellTitle: (record: NavigationChannelResponse) => provinceLabel(record.provinceId != null ? Number(record.provinceId) : undefined),
+        render: (v: number | undefined) =>
+          renderCellWithTooltip(provinceLabel(v != null ? Number(v) : undefined) || null),
       },
       {
         key: 'conditionStatus',
         label: 'Tình trạng',
         dataIndex: 'conditionStatus',
-        width: 150,
+        width: 230,
+        sortable: true,
+        sortOrder: sortOrderFor('conditionStatus'),
         render: (v: string | undefined) => {
-          if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
+          if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}></span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
           return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
         },
@@ -929,8 +882,12 @@ export default function NavigationChannelList() {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
+        width: 300,
+        sortable: true,
+        sortOrder: sortOrderFor('approvalStatus'),
+        ellipsis: false,
         render: (v: ApprovalStatus, record: NavigationChannelResponse) => {
-          const isArchived = activeTab === 'ARCHIVED' || Boolean(record.deletedAt) || (v as string) === 'ARCHIVED' || (v as string) === 'DELETED';
+          const isArchived = filterApprovalStatus === 'ARCHIVED' || Boolean(record.deletedAt) || (v as string) === 'ARCHIVED' || (v as string) === 'DELETED';
           const eff = isArchived ? ('ARCHIVED' as ApprovalStatus) : v;
           return eff ? <ApprovalStatusBadge status={eff} /> : null;
         },
@@ -943,58 +900,234 @@ export default function NavigationChannelList() {
         sortable: true,
         sortOrder: sortOrderFor('updatedAt'),
         ellipsis: false,
+        cellTitle: (record: NavigationChannelResponse) => {
+          const name = actorName(record.updatedBy);
+          return name || '';
+        },
         render: (v: string | undefined, record: NavigationChannelResponse) => {
-          const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
+          const name = actorName(record.updatedBy);
           return (
-            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name || record.updatedBy || ''}>
-              <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {name || record.updatedBy || ''}
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name ? (
+                <Tooltip title={name} placement="topLeft">
+                  <div
+                    title={name}
+                    style={{
+                      fontWeight: fontWeightBold,
+                      color: textPrimary,
+                      fontSize: fontSizeMd,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {name}
+                  </div>
+                </Tooltip>
+              ) : (
+                <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
+              )}
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : null}
               </div>
-              <div style={{ fontSize: fontSizeSm, color: textTertiary }}>{v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : ''}</div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'submittedAt',
+        label: 'Cán bộ gửi phê duyệt',
+        dataIndex: 'submittedAt',
+        width: 220,
+        sortable: true,
+        sortOrder: sortOrderFor('submittedAt'),
+        ellipsis: false,
+        cellTitle: (record: NavigationChannelResponse) => {
+          const name = actorName(record.submittedBy);
+          return name || '';
+        },
+        render: (v: string | undefined, record: NavigationChannelResponse) => {
+          const name = actorName(record.submittedBy);
+          const date = v || record.submittedAt;
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name ? (
+                <Tooltip title={name} placement="topLeft">
+                  <div
+                    title={name}
+                    style={{
+                      fontWeight: fontWeightBold,
+                      color: textPrimary,
+                      fontSize: fontSizeMd,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {name}
+                  </div>
+                </Tooltip>
+              ) : (
+                <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
+              )}
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : null}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'approvedDateLevel1',
+        label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+        dataIndex: 'approvedDateLevel1',
+        width: 340,
+        sortable: true,
+        sortOrder: sortOrderFor('approvedDateLevel1'),
+        ellipsis: false,
+        cellTitle: (record: NavigationChannelResponse) => {
+          const name = actorName(record.approverLevel1 || record.level1ApprovedBy);
+          return name || '';
+        },
+        render: (v: string | undefined, record: NavigationChannelResponse) => {
+          const name = actorName(record.approverLevel1 || record.level1ApprovedBy);
+          const date = v || record.approvedDateLevel1 || record.level1ApprovedAt;
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name ? (
+                <Tooltip title={name} placement="topLeft">
+                  <div
+                    title={name}
+                    style={{
+                      fontWeight: fontWeightBold,
+                      color: textPrimary,
+                      fontSize: fontSizeMd,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {name}
+                  </div>
+                </Tooltip>
+              ) : (
+                <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
+              )}
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : null}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'approvedDateLevel2',
+        label: 'Cán bộ phê duyệt cấp Cục',
+        dataIndex: 'approvedDateLevel2',
+        width: 260,
+        sortable: true,
+        sortOrder: sortOrderFor('approvedDateLevel2'),
+        ellipsis: false,
+        cellTitle: (record: NavigationChannelResponse) => {
+          const name = actorName(record.approverLevel2 || record.level2ApprovedBy);
+          return name || '';
+        },
+        render: (v: string | undefined, record: NavigationChannelResponse) => {
+          const name = actorName(record.approverLevel2 || record.level2ApprovedBy);
+          const date = v || record.approvedDateLevel2 || record.level2ApprovedAt;
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              {name ? (
+                <Tooltip title={name} placement="topLeft">
+                  <div
+                    title={name}
+                    style={{
+                      fontWeight: fontWeightBold,
+                      color: textPrimary,
+                      fontSize: fontSizeMd,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {name}
+                  </div>
+                </Tooltip>
+              ) : (
+                <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
+              )}
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : null}
+              </div>
             </div>
           );
         },
       },
     ];
-  }, [page, pageSize, seaportOptions, openDetail, userMap, sortOrderFor]);
+  }, [page, pageSize, seaportOptions, openDetail, actorName, orgMap, hasPerm, sortOrderFor, filterApprovalStatus]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
       const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
       const st = record.approvalStatus || '';
-      if (hasPerm('navigationchannel:read')) {
+      const currentUserId = useAuthStore.getState().user?.userId;
+      const creatorId = record.submittedBy || (record as any).createdBy;
+      const isCreator = Boolean(creatorId && currentUserId && String(creatorId) === String(currentUserId));
+      const approver1Id = record.approverLevel1 || record.level1ApprovedBy;
+      const isApprover1 = Boolean(approver1Id && currentUserId && String(approver1Id) === String(currentUserId));
+
+      if (hasPerm('navigationchannel:read') || hasPerm('navigationchannel:view')) {
         actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetail(record) });
       }
       if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'navigationchannel' })) {
-        actions.push({ key: 'edit', label: 'Sửa', icon: icons.edit, onClick: () => openModal('edit', record.id) });
-      }
-      // Quy tắc 11 (approval-2-level-spec.md mục 3.6): chỉ xóa được hồ sơ Lưu tạm.
-      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'navigationchannel' })) {
-        actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteModal(record) });
-      }
-      // Gửi phê duyệt: chỉ hồ sơ Lưu tạm
-      if (st === 'DRAFT' && hasPerm('navigationchannel:update')) {
-        actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: icons.submit, onClick: () => { setSubmittingRecord(record); setSubmitModalOpen(true); } });
-      }
-      // Phê duyệt / Từ chối theo cấp hiện tại
-      const canApproveCurrent =
-        (st === 'PENDING_APPROVAL' && hasPerm('navigationchannel:approvec1')) ||
-        (st === 'APPROVED_LEVEL1' && hasPerm('navigationchannel:approvec2'));
-      if (canApproveCurrent) {
-        actions.push({
-          key: 'approve',
-          label: st === 'APPROVED_LEVEL1' ? 'Cục phê duyệt' : 'Cảng vụ phê duyệt',
-          icon: icons.approve,
-          onClick: () => { setApprovingRecord(record); setApproveLevel(st === 'APPROVED_LEVEL1' ? 'c2' : 'c1'); setApproveModalOpen(true); },
-        });
-        actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, danger: true, onClick: () => openRejectModal(record) });
+        actions.push({ key: 'edit', label: 'Chỉnh sửa', icon: icons.edit, onClick: () => openModal('edit', record.id) });
       }
       if (hasPerm('navigationchannel:history')) {
-        actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
+        actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => handleViewHistory(record) });
+      }
+      // Gửi phê duyệt (chuẩn /beacon-stations)
+      if (['DRAFT', 'PROPOSED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('navigationchannel:update') || hasPerm('navigationchannel:create'))) {
+        actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: icons.submit, onClick: () => openSubmitModal(record) });
+      }
+      // Cấp 1 (Cảng vụ/Chi cục) - chống tự duyệt (4-eyes)
+      if (hasPerm('navigationchannel:approvec1') && (st === 'PENDING_APPROVAL' || st === 'PROPOSED') && !isCreator) {
+        actions.push({
+          key: 'approveC1',
+          label: 'Phê duyệt cấp Cảng vụ/Chi cục',
+          icon: icons.approve,
+          onClick: () => openApproveModal(record, 'c1'),
+        });
+        actions.push({
+          key: 'rejectC1',
+          label: 'Từ chối cấp Cảng vụ/Chi cục',
+          icon: icons.reject,
+          danger: true,
+          onClick: () => openRejectModal(record, 'c1'),
+        });
+      }
+      // Cấp 2 (Cục) - người duyệt C1 không tự duyệt C2 (4-eyes)
+      if (hasPerm('navigationchannel:approvec2') && st === 'APPROVED_LEVEL1' && !isApprover1) {
+        actions.push({
+          key: 'approveC2',
+          label: 'Phê duyệt cấp Cục',
+          icon: icons.approve,
+          onClick: () => openApproveModal(record, 'c2'),
+        });
+        actions.push({
+          key: 'rejectC2',
+          label: 'Từ chối cấp Cục',
+          icon: icons.reject,
+          danger: true,
+          onClick: () => openRejectModal(record, 'c2'),
+        });
+      }
+      // Xóa: đứng cuối cùng theo chuẩn /beacon-stations
+      if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'navigationchannel' })) {
+        actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, danger: true, onClick: () => openDeleteConfirm(record) });
       }
       return actions;
     },
-    [hasPerm, openModal, openDetail, openDeleteModal, openRejectModal, openHistory],
+    [hasPerm, openModal, openDetail, handleViewHistory, openSubmitModal, openApproveModal, openRejectModal, openDeleteConfirm],
   );
 
   // ── Filter panel (FilterTableLayout renders the sidebar) ────────────
@@ -1015,104 +1148,124 @@ export default function NavigationChannelList() {
           align-items: center !important;
         }
       `}</style>
-      <div style={{ marginBottom: spaceFormField, marginTop: 16 }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Đơn vị quản lý</div>
+      <div style={{ marginBottom: 12, marginTop: spaceMd }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Đơn vị quản lý</div>
         <FilterOrgUnitTreeSelect
           organizations={organizations}
           placeholder="Tất cả"
           allowClear
           value={filterOrgUnitId}
-          onChange={(v) => { setFilterOrgUnitId(v || undefined); setFilterSeaportId(undefined); setPage(1); }}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          onChange={(v) => {
+            const nextUnit = (v as string) || '';
+            setFilterOrgUnitId(nextUnit || undefined);
+            if (nextUnit && nextUnit !== '__all__' && filterSeaportId) {
+              const rawSet = resolveOrgSubtreeIds(organizations, nextUnit);
+              const normalizedSet = new Set<string>();
+              rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+              const valid = seaportOptions.some((p) => p.id === filterSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()));
+              if (!valid) setFilterSeaportId(undefined);
+            }
+            setPage(1);
+          }}
+          style={{ width: '100%' }}
         />
       </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tên luồng</div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên luồng hàng hải</div>
         <Input
-          placeholder="Tìm theo tên luồng..."
+          placeholder="Nhập tên luồng hàng hải"
           allowClear
-          value={filterKeyword}
-          onChange={(e) => { setFilterKeyword(e.target.value); setPage(1); }}
+          value={inputKeyword}
+          onChange={(e) => setInputKeyword(e.target.value)}
+          onBlur={() => {
+            if (typeof inputKeyword === 'string') {
+              setInputKeyword((prev) => prev.trim());
+            }
+          }}
           onPressEnter={handleFilterApply}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          style={inputStyle}
         />
       </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Tình trạng</div>
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tình trạng</div>
         <Select
-          placeholder="Chọn tình trạng"
+          placeholder="Tất cả"
           allowClear
           value={filterConditionStatus}
           onChange={(v) => { setFilterConditionStatus(v); setPage(1); }}
           options={CONDITION_STATUS_OPTIONS}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+          style={{ ...selectStyle, width: '100%' }}
         />
       </div>
 
+      {/* ── Bộ lọc nâng cao (ẩn, hiện khi bấm nút Filter) ── */}
       {filterCollapsed && (
         <>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Thuộc cảng biển</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
             <Select
-              placeholder="Chọn cảng biển..."
+              placeholder="Tất cả cảng biển"
               allowClear
               showSearch
-              optionFilterProp="label"
+              filterOption={(input, option) =>
+                normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+              }
               value={filterSeaportId}
               onChange={(v) => { setFilterSeaportId(v); setPage(1); }}
-              options={filteredSeaportOptions.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id }))}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              options={filteredSeaportOptions.map((p) => ({
+                value: p.id,
+                label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),
+              }))}
+              style={{ ...selectStyle, width: '100%' }}
             />
           </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Mã luồng</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã luồng hàng hải</div>
             <Input
-              placeholder="Nhập mã luồng..."
+              placeholder="Nhập mã luồng hàng hải"
               allowClear
-              value={filterChannelCode}
-              onChange={(e) => { setFilterChannelCode(e.target.value); setPage(1); }}
+              value={inputChannelCode}
+              onChange={(e) => setInputChannelCode(e.target.value)}
+              onBlur={() => {
+                if (typeof inputChannelCode === 'string') {
+                  setInputChannelCode((prev) => prev.trim());
+                }
+              }}
               onPressEnter={handleFilterApply}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              style={inputStyle}
             />
           </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Địa điểm Tỉnh/TP</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Ngày cập nhật</div>
+            <DatePicker.RangePicker
+              {...getRangePickerProps({
+                value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => {
+                  setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD 00:00:00') : '');
+                  setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD 23:59:59') : '');
+                  setPage(1);
+                },
+              })}
+            />
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
             <Select
-              placeholder="Chọn tỉnh/thành phố..."
+              placeholder="Tất cả tỉnh/thành phố"
               allowClear
               showSearch
-              optionFilterProp="label"
+              filterOption={(input, option) =>
+                normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+              }
               value={filterProvinceId}
               onChange={(v) => { setFilterProvinceId(v); setPage(1); }}
               options={VIETNAM_PROVINCE_OPTIONS}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Cán bộ cập nhật</div>
-            <Select
-              placeholder="Chọn cán bộ cập nhật"
-              allowClear
-              showSearch
-              value={filterUpdatedBy}
-              onChange={(v) => { setFilterUpdatedBy(v || undefined); setPage(1); }}
-              options={userOptions}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-            />
-          </div>
-          <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, marginBottom: spaceXs }}>Ngày cập nhật</div>
-            <DatePicker.RangePicker
-              placeholder={['Từ ngày', 'Đến ngày']}
-              format="DD/MM/YYYY"
-              classNames={{ popup: { root: 'chk-range-datepicker-popup' } }}
-              value={filterUpdatedFrom && filterUpdatedTo ? [dayjs(filterUpdatedFrom), dayjs(filterUpdatedTo)] : null}
-              onChange={(range) => {
-                setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD 00:00:00') : '');
-                setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD 23:59:59') : '');
-                setPage(1);
-              }}
-              style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+              style={{ ...selectStyle, width: '100%' }}
             />
           </div>
         </>
@@ -1120,13 +1273,16 @@ export default function NavigationChannelList() {
     </>
   );
 
-  const statusTabs = STATUS_TAB_LIST.map((tab) => ({
-    key: tab.key,
-    label: tab.label,
-    count: tabCounts[tab.key] ?? 0,
-    color: TAB_COLOR[tab.key],
-    active: activeTab === tab.key,
-  }));
+  const approvalTabsState = useStandardApprovalStatusTabs(
+    statusCounts,
+    filterApprovalStatus,
+    (status) => {
+      setFilterApprovalStatus(status);
+      setPage(1);
+    }
+  );
+  const statusTabs = approvalTabsState.statusTabs;
+  const handleTabChange = approvalTabsState.handleTabChange;
 
   const headerActions = useMemo(
     () =>
@@ -1141,30 +1297,188 @@ export default function NavigationChannelList() {
     [dataSource, page, pageSize],
   );
 
-  // ── orgMap / seaportMap cho timeline lịch sử ────────────────────────
-  const orgMap = useMemo(() => {
-    const m = new Map<string, string>();
-    const walk = (nodes: any[]) => {
-      (nodes || []).forEach((n) => {
-        if (n?.id && n?.name) m.set(n.id, n.name);
-        if (n?.children?.length) walk(n.children);
-      });
-    };
-    walk(organizations);
-    return m;
-  }, [organizations]);
-
-  const seaportMap = useMemo(() => {
-    const m = new Map<string, string>();
-    seaportOptions.forEach((p) => { m.set(p.id, p.portCode ? `${p.portCode} - ${p.portName || ''}` : p.portName || p.id); });
-    return m;
-  }, [seaportOptions]);
+  const CHK_FILTER_LABEL = { ...themeTokenChk.filterLabelStyle, fontSize: 13.5 };
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-    <div className="channel-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5, filterLabelStyle: CHK_FILTER_LABEL }}>
+    <div className="channel-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      <style>{`
+        .channel-page-wrapper,
+        .channel-page-wrapper .ant-input,
+        .channel-page-wrapper .ant-table,
+        .channel-page-wrapper .ant-table-cell,
+        .channel-page-wrapper .ant-table-thead > tr > th,
+        .channel-page-wrapper .ant-table-tbody > tr > td,
+        .channel-page-wrapper .ant-select,
+        .channel-page-wrapper .ant-select-selection-item,
+        .channel-page-wrapper .ant-select-item-option-content,
+        .channel-page-wrapper .ant-picker,
+        .channel-page-wrapper .ant-picker-input > input,
+        .channel-page-wrapper .ant-btn,
+        .channel-page-wrapper .ant-pagination,
+        .channel-page-wrapper .ant-breadcrumb,
+        .channel-page-wrapper .ant-form-item-label > label,
+        .channel-drawer-scope .ant-input,
+        .channel-drawer-scope .ant-select,
+        .channel-drawer-scope .ant-select-selection-item,
+        .channel-drawer-scope .ant-select-item-option-content,
+        .channel-drawer-scope .ant-picker,
+        .channel-drawer-scope .ant-picker-input > input,
+        .channel-drawer-scope .ant-btn,
+        .channel-drawer-scope .ant-table,
+        .channel-drawer-scope .ant-table-cell,
+        .channel-drawer-scope .ant-pagination,
+        .channel-drawer-scope .ant-form-item-label > label {
+          font-size: 13.5px !important;
+        }
+        /* Chuẩn /berth & /beacon-stations — bảng chi tiết 13.5px, label hẹp hơn, nhịp dòng gọn */
+        .channel-drawer-scope .chk-detail-tabs .ant-tabs-tab {
+          font-size: 13.5px !important;
+        }
+        .channel-drawer-scope .chk-detail-tabs .ant-table,
+        .channel-drawer-scope .chk-detail-tabs .ant-table-cell,
+        .channel-drawer-scope .chk-detail-tabs .ant-table-thead > tr > th,
+        .channel-drawer-scope .chk-detail-tabs .ant-table-tbody > tr > td {
+          font-size: 13.5px !important;
+        }
+        .channel-drawer-scope .chk-detail-grid {
+          display: grid !important;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+          column-gap: 28px !important;
+          row-gap: 0 !important;
+        }
+        .channel-drawer-scope .chk-detail-row {
+          display: flex !important;
+          align-items: flex-start !important;
+          min-height: 36px !important;
+          padding: 7px 0 !important;
+          border-bottom: 1px solid #f1f5f9 !important;
+          line-height: 1.5 !important;
+          gap: 10px !important;
+        }
+        .channel-drawer-scope .chk-detail-row:last-child {
+          border-bottom: none !important;
+        }
+        .channel-drawer-scope .chk-detail-row--full {
+          grid-column: 1 / -1 !important;
+        }
+        .channel-drawer-scope .chk-detail-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+          font-weight: 600 !important;
+          font-size: 13.5px !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+        }
+        .channel-drawer-scope .sec-col1-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .channel-drawer-scope .sec-col2-label {
+          width: 250px !important;
+          min-width: 250px !important;
+          max-width: 250px !important;
+          flex-shrink: 0 !important;
+        }
+        .channel-drawer-scope .sec-full-label {
+          width: 215px !important;
+          min-width: 215px !important;
+          max-width: 215px !important;
+          flex-shrink: 0 !important;
+        }
+        .channel-drawer-scope .chk-detail-label::after {
+          content: ':' !important;
+          margin-left: 1px !important;
+          margin-right: 4px !important;
+        }
+        .channel-drawer-scope .chk-detail-value {
+          color: #1e293b !important;
+          font-size: 13.5px !important;
+          flex: 1 !important;
+          min-width: 0 !important;
+          text-align: left !important;
+          line-height: 1.5 !important;
+          word-break: break-word !important;
+        }
+        @media (max-width: 960px) {
+          .channel-drawer-scope .chk-detail-grid {
+            grid-template-columns: 1fr !important;
+            column-gap: 0 !important;
+          }
+          .channel-drawer-scope .chk-detail-row--full {
+            grid-column: 1 !important;
+          }
+          .channel-drawer-scope .chk-detail-label,
+          .channel-drawer-scope .sec-col1-label,
+          .channel-drawer-scope .sec-col2-label,
+          .channel-drawer-scope .sec-full-label {
+            width: 250px !important;
+            min-width: 250px !important;
+            max-width: 250px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .channel-drawer-scope .chk-detail-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+            padding: 6px 0 !important;
+          }
+          .channel-drawer-scope .chk-detail-label,
+          .channel-drawer-scope .sec-col1-label,
+          .channel-drawer-scope .sec-col2-label,
+          .channel-drawer-scope .sec-full-label {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+          }
+          .channel-drawer-scope .chk-detail-value {
+            width: 100% !important;
+          }
+        }
+        /* ── Responsive StatusTabs: căn giữa khi đủ chỗ, cuộn ngang khi tràn (khi zoom in) — chuẩn /beacon-stations ── */
+        .channel-page-wrapper div:has(> button[aria-pressed]) {
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          overflow-y: hidden !important;
+          justify-content: safe center !important;
+          align-items: center !important;
+          scrollbar-width: thin !important;
+          scrollbar-color: #cbd5e1 #f8fafc !important;
+          scroll-behavior: smooth !important;
+          -webkit-overflow-scrolling: touch !important;
+          padding: 2px 8px 4px 8px !important;
+          gap: clamp(6px, 1vw, 14px) !important;
+        }
+        .channel-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+          height: 4px !important;
+          display: block !important;
+        }
+        .channel-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+          background: #f1f5f9 !important;
+          border-radius: 999px !important;
+        }
+        .channel-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+          background: #cbd5e1 !important;
+          border-radius: 999px !important;
+        }
+        .channel-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8 !important;
+        }
+        .channel-page-wrapper div:has(> button[aria-pressed]) > button {
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          cursor: pointer !important;
+          padding: 4px 2px !important;
+        }
+      `}</style>
       <ScreenHeader
-        breadcrumb={[{ label: 'KCHT hàng hải' }, { label: 'Luồng hàng hải' }]}
+        breadcrumb={[{ label: 'Quản lý hàng hải' }, { label: 'Luồng hàng hải' }]}
         actions={headerActions}
       />
 
@@ -1212,10 +1526,14 @@ export default function NavigationChannelList() {
         onSuccess={(savedRecord) => {
           setIsModalOpen(false);
           setEditingId(null);
-          setActiveTab('all');
+          setFilterApprovalStatus(undefined);
+          setInputKeyword('');
+          setInputChannelCode('');
+          setAppliedKeyword('');
+          setAppliedChannelCode('');
           setPage(1);
-          setSortField('updatedAt');
-          setSortOrder('desc');
+          setSortField(undefined);
+          setSortOrder(null);
           if (savedRecord && savedRecord.id) {
             setDataSource((prev) => {
               const filtered = prev.filter((item) => item.id !== savedRecord.id);
@@ -1229,75 +1547,81 @@ export default function NavigationChannelList() {
 
       {/* ── Detail drawer (5 tab read-only — NavigationChannelDetailContent) ── */}
       <AppDrawer
+        rootClassName="channel-drawer-scope"
+        className="channel-drawer-scope"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
-            <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>
-              Chi tiết Luồng hàng hải: {detailRecord?.channelName}
-            </span>
-            {detailRecord?.approvalStatus && <ApprovalStatusBadge status={detailRecord.approvalStatus} />}
-          </div>
+          <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+            {`Chi tiết luồng hàng hải${detailRecord ? ` — ${detailRecord.channelName}` : ''}`}
+          </span>
         }
         open={detailOpen}
+        destroyOnHidden
         onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
-        size={1080}
+        width={DRAWER_WIDTH}
+        styles={{
+          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+          body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
+        }}
         footer={null}
       >
-        {detailRecord && <NavigationChannelDetailContent record={detailRecord} userMap={userMap} />}
+        {detailRecord && (
+          <NavigationChannelDetailContent
+            record={detailRecord}
+            userMap={userMap}
+            orgMap={orgMap}
+            seaportMap={seaportMap}
+            seaportOptions={seaportOptions}
+            symbols={symbols}
+            onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
+          />
+        )}
       </AppDrawer>
 
-      {/* ── Xác nhận xóa ─────────────────────────────────────────── */}
-      <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận xóa luồng hàng hải</span>}
+      {/* ── Delete Confirmation Modal (chuẩn /beacon-stations) ─────── */}
+      <DeleteConfirmModal
         open={deleteModalOpen}
-        onCancel={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-        footer={[
-          <Button key="cancel" onClick={() => { setDeleteModalOpen(false); setDeletingRecord(null); setDeleteConfirmText(''); }}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="delete" type="primary" danger onClick={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận xóa</Button>,
-        ]}
-        width={480}>
-        <div style={{ padding: '8px 0' }}>
-          <Alert message="Hành động này không thể hoàn tác" type="warning" showIcon
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập <strong>tên luồng hàng hải</strong> hoặc gõ <strong>"XÓA"</strong> để xác nhận xóa.
-          </p>
-          {deletingRecord && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
-              Luồng hàng hải: <strong style={{ color: textPrimary }}>{deletingRecord.channelName}</strong>
-            </p>
-          )}
-          <Input placeholder="Nhập tên luồng hàng hải hoặc XÓA" value={deleteConfirmText}
-            onChange={(e) => setDeleteConfirmText(e.target.value)} onPressEnter={handleConfirmDelete}
-            style={{ borderRadius: radiusPill, height: 40 }} autoFocus />
-        </div>
-      </Modal>
+        onCancel={() => {
+          if (!deleteLoading) {
+            setDeleteModalOpen(false);
+            setDeletingRecord(null);
+          }
+        }}
+        onConfirm={confirmDelete}
+        loading={deleteLoading}
+        itemType="luồng hàng hải"
+        itemName={deletingRecord?.channelName}
+        itemCode={deletingRecord?.channelCode}
+      />
 
-      {/* ── Gửi phê duyệt ────────────────────────────────────────── */}
+      {/* ── Submit Modal (chuẩn /beacon-stations) ──────────────────── */}
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Gửi phê duyệt</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xác nhận gửi Cảng vụ phê duyệt</span>}
         open={submitModalOpen}
         onCancel={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
         footer={[
           <Button key="cancel" onClick={() => { setSubmitModalOpen(false); setSubmittingRecord(null); }}
             style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={handleConfirmSubmit}
-            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Xác nhận gửi</Button>,
+          <Button key="submit" type="primary" onClick={confirmSubmit}
+            style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Xác nhận</Button>,
         ]}
-        width={520}>
+        width={480}>
         <div style={{ padding: '8px 0' }}>
-          <Alert message="Sau khi gửi, hồ sơ sẽ chuyển sang trạng thái Chờ Cảng vụ duyệt và không thể sửa trực tiếp." type="info" showIcon
-            style={{ marginBottom: spaceFormField, borderRadius: radiusPill }} />
-          {submittingRecord && (
-            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: 0 }}>
-              Luồng hàng hải: <strong style={{ color: textPrimary }}>{submittingRecord.channelName}</strong>
-            </p>
-          )}
+          <p style={{ fontSize: fontSizeMd, color: textPrimary }}>
+            Gửi <strong>{submittingRecord?.channelCode ? `${submittingRecord.channelCode} — ` : ''}{submittingRecord?.channelName}</strong> để Cảng vụ phê duyệt?
+          </p>
         </div>
       </Modal>
 
-      {/* ── Từ chối phê duyệt ────────────────────────────────────── */}
+      {/* ── Approve Modal (chuẩn /beacon-stations & ApprovalModal CHK) ── */}
+      <ApprovalModal
+        visible={approveModalOpen}
+        level={approveLevel}
+        loading={approving}
+        onConfirm={(content) => { void confirmApprove(content); }}
+        onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); setApproveLevel('c1'); }}
+      />
+
+      {/* ── Reject Reason Modal (chuẩn /beacon-stations) ──────────── */}
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt</span>}
         open={rejectModalOpen}
@@ -1305,86 +1629,48 @@ export default function NavigationChannelList() {
         footer={[
           <Button key="cancel" onClick={() => { setRejectModalOpen(false); setRejectingRecord(null); setRejectReason(''); }}
             style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
-          <Button key="ok" danger type="primary" onClick={handleConfirmReject}
+          <Button key="reject" type="primary" danger loading={rejectLoading} onClick={handleReject}
             style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Xác nhận từ chối</Button>,
         ]}
-        width={520}>
+        width={480}>
         <div style={{ padding: '8px 0' }}>
-          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>
-            Vui lòng nhập lý do từ chối (tối thiểu 10 ký tự).
-          </p>
+          <p style={{ fontSize: fontSizeMd, color: textPrimary, marginBottom: spaceFormField }}>Vui lòng nhập lý do từ chối cho luồng hàng hải (không bắt buộc):</p>
+          {rejectingRecord && (
+            <p style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceFormField }}>
+              <strong style={{ color: textPrimary }}>
+                {rejectingRecord.channelCode ? `${rejectingRecord.channelCode} — ` : ''}{rejectingRecord.channelName}
+              </strong>
+            </p>
+          )}
           <Input.TextArea
-            rows={3}
-            maxLength={500}
-            showCount
+            placeholder="Nhập lý do từ chối (nếu có)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Nhập lý do từ chối..."
-            style={{ borderRadius: radiusPill, height: 'auto' }}
+            rows={3}
+            style={{ borderRadius: 8, fontSize: fontSizeMd }}
           />
         </div>
       </Modal>
 
-      {/* ── Phê duyệt (ApprovalModal chuẩn) ──────────────────────── */}
-      <ApprovalModal
-        visible={approveModalOpen}
-        level={approveLevel}
-        loading={approving}
-        onConfirm={(content) => { if (approvingRecord) void handleApprove(approvingRecord, content); }}
-        onCancel={() => { setApproveModalOpen(false); setApprovingRecord(null); setApproveLevel('c1'); }}
+      {/* ── History Drawer (chuẩn /vts-system) ──────────────────── */}
+      <CommonHistoryDrawer
+        open={historyModalOpen}
+        onClose={() => {
+          setHistoryModalOpen(false);
+          setHistoryTarget(null);
+          setHistoryRecords([]);
+        }}
+        entityName={historyTarget?.channelName || historyTarget?.code}
+        records={historyRecords}
+        loading={loadingHistory}
+        serverFiltered
+        onFilterChange={handleHistoryFilterChange}
+        onLoadMore={loadMoreHistory}
+        loadingMore={loadingMoreHistory}
+        variant="berth"
+        fieldLabelMap={CHANNEL_HISTORY_FIELD_LABELS}
+        formatValue={formatChannelHistoryValue}
       />
-
-      {/* ── Lịch sử thay đổi ─────────────────────────────────────── */}
-      <Drawer
-        {...drawerProps}
-        size={880}
-        mask
-        title={
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <Space size={spaceSm} style={{ alignItems: 'center' }}>
-              {icons.history}
-              <span style={drawerTitleStyle}>
-                {historyTarget ? `Lịch sử thay đổi — ${historyTarget.channelName}` : 'Lịch sử thay đổi'}
-              </span>
-            </Space>
-          </div>
-        }
-        onClose={() => setHistoryOpen(false)}
-        extra={<Button type="text" onClick={() => setHistoryOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={null}
-        styles={{
-          header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
-          body: { padding: '12px 24px 12px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' },
-        }}>
-        <div style={{ flexShrink: 0 }}>
-          {!historyLoading && (
-            <div style={{ display: 'flex', gap: spaceSm, marginBottom: spaceMd }}>
-              <Input placeholder="Tìm kiếm nội dung thay đổi..." allowClear value={historySearch}
-                onChange={e => setHistorySearch(e.target.value)} style={{ flex: 1, borderRadius: radiusPill, height: 40 }} />
-              <DatePicker placeholder="Từ ngày" value={historyFrom ? dayjs(historyFrom) : null}
-                onChange={d => setHistoryFrom(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <DatePicker placeholder="Đến ngày" value={historyTo ? dayjs(historyTo) : null}
-                onChange={d => setHistoryTo(d ? d.format('YYYY-MM-DD HH:mm') : '')}
-                style={{ width: 170, borderRadius: radiusPill, height: 40 }} format="DD/MM/YYYY HH:mm" showTime={{ format: 'HH:mm' }} />
-              <Button type="primary" icon={icons.search} onClick={() => setHistoryReloadToken((token) => token + 1)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Tìm kiếm</Button>
-            </div>
-          )}
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
-          {historyLoading && visibleHistory.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải lịch sử...</div>
-          ) : visibleHistory.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
-              {icons.history}
-              <div style={{ marginTop: spaceSm, color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyFrom || historyTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
-            </div>
-          ) : (<>
-            {renderNavigationChannelHistoryTimeline(visibleHistory)}
-            {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
-          </>)}
-        </div>
-      </Drawer>
     </div>
     </ThemeTokenProvider>
   );

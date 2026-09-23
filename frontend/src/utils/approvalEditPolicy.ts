@@ -11,8 +11,12 @@
  * | APPROVED_LEVEL1 (Chờ Cục duyệt)     | ❌      | —                       |
  * | REJECTED_LEVEL1 (Bị Cảng vụ trả về) | ✅      | `<resource>:update`     |
  * | REJECTED_LEVEL2 (Bị Cục trả về)     | ✅      | `<resource>:update`     |
- * | APPROVED (Đã duyệt)                 | ✅      | `<resource>:update` hoặc `<resource>:approvec2` |
+ * | APPROVED (Đã duyệt)                 | ✅      | `<resource>:update` VÀ `<resource>:approvec2` |
  * | ARCHIVED (Đã xóa)                   | ❌      | —                       |
+ *
+ * `<resource>:update` là điều kiện BẮT BUỘC cho MỌI trạng thái cho sửa — không có quyền
+ * cập nhật thì không được sửa hồ sơ dưới bất kỳ hình thức nào; quyền `<resource>:approvec2`
+ * chỉ mở thêm nhánh "Lưu và phê duyệt" cho hồ sơ Đã duyệt, KHÔNG thay thế quyền cập nhật.
  *
  * Vì sao cấm sửa khi đang chờ duyệt: nếu cho sửa, người nhập có thể đổi nội dung sau khi
  * cán bộ đã đọc, khiến cán bộ ký duyệt vào nội dung mình chưa từng xem — mất tính toàn vẹn
@@ -21,6 +25,12 @@
  * Sửa hồ sơ "Đã duyệt": theo Backend @PreAuthorize("@auth.checkAny(authentication, '<res>:update', '<res>:approvec2')"),
  * cán bộ có quyền update hoặc quyền approvec2 đều được phép cập nhật. Thao tác này lưu lại lịch sử thay đổi
  * và giữ nguyên trạng thái APPROVED (quy tắc 12/T12).
+ *
+ * Vì sao vẫn phải có thêm `<resource>:update`: vế phê duyệt chỉ trả lời "được phép thay đổi
+ * nội dung đã có hiệu lực hay không". Việc CẬP NHẬT bản ghi vẫn là thao tác ghi, và máy chủ
+ * cưỡng chế nó bằng chính quyền `<resource>:update` (`PermissionMiddleware.mapMethodToAction`
+ * ánh xạ PUT/PATCH → action `update`). Thiếu vế này, giao diện vẽ nút Chỉnh sửa cho tài khoản
+ * mà máy chủ vẫn từ chối 403 — nút chết. Hai vế là hai câu hỏi khác nhau và phải cùng đúng.
  *
  * CẤM tự viết lại điều kiện này ở từng màn hình.
  */
@@ -31,8 +41,8 @@ import { usePermissionStore } from '../store/permissionStore';
 const STATUS_ALIASES: Record<string, string> = {
   // Lưu tạm
   NHAP: 'DRAFT',
-  PROPOSED: 'DRAFT',
   // Chờ Cảng vụ/Chi cục duyệt
+  PROPOSED: 'PENDING_APPROVAL',
   PENDING: 'PENDING_APPROVAL',
   CHO_PHE_DUYET: 'PENDING_APPROVAL',
   // Chờ Cục duyệt
@@ -112,6 +122,8 @@ export function canEditApprovalRecord(
 
   let hasPerm: ((key: string) => boolean) | undefined;
   let resource = '';
+  let extraUpdatePerms: string[] = [];
+  let extraApprovePerms: string[] = [];
 
   if (typeof optionsOrResource === 'string') {
     resource = optionsOrResource;
@@ -119,6 +131,8 @@ export function canEditApprovalRecord(
   } else if (optionsOrResource && typeof optionsOrResource === 'object') {
     hasPerm = optionsOrResource.hasPerm;
     resource = optionsOrResource.resource || '';
+    extraUpdatePerms = optionsOrResource.extraUpdatePerms || [];
+    extraApprovePerms = optionsOrResource.extraApprovePerms || [];
   }
 
   if (typeof hasPerm !== 'function') {
@@ -133,20 +147,7 @@ export function canEditApprovalRecord(
     }
   };
 
-  const extraUpdatePerms = (optionsOrResource && typeof optionsOrResource === 'object' && optionsOrResource.extraUpdatePerms) || [];
-
-  // Điều kiện tiên quyết: BẮT BUỘC phải có quyền cập nhật (<resource>:update)
-  // Khi người quản trị bỏ tích quyền cập nhật thì nút Chỉnh sửa phải ẩn 100% trên toàn bộ các dòng.
-  const hasUpdatePerm = Boolean(resource) && (
-    checkPerm(`${resource}:update`) || extraUpdatePerms.some((p) => checkPerm(p))
-  );
-
-  if (!hasUpdatePerm) {
-    return false;
-  }
-
-  // Đã duyệt (APPROVED): cần đủ cả 2 quyền update và phê duyệt C2 (quy tắc 12/T12)
-  // hoặc người dùng cấp Cục được phép chỉnh sửa hồ sơ đã duyệt qua allowEditApproved
+  // Đã duyệt: sửa qua "Lưu và phê duyệt" (T12) — cần ĐỒNG THỜI quyền cập nhật và quyền duyệt C2.
   if (st === 'APPROVED') {
     const allowApproved = Boolean(
       optionsOrResource &&
@@ -156,21 +157,38 @@ export function canEditApprovalRecord(
     if (allowApproved) {
       return true;
     }
-    const hasApproveC2 =
-      checkPerm(`${resource}:approvec2`) ||
-      checkPerm(`${resource}:approve:c2`) ||
-      checkPerm(`${resource}:approvel2`) ||
-      checkPerm(`${resource}:approve_level2`);
-    return Boolean(hasApproveC2);
+
+    const updatePerms = [
+      ...(resource ? [`${resource}:update`] : ['data:update']),
+      ...extraUpdatePerms,
+    ];
+    if (!updatePerms.some(checkPerm)) {
+      return false;
+    }
+
+    const approvePerms = [
+      ...(resource ? [`${resource}:approvec2`, `${resource}:approve:c2`, `${resource}:approvel2`, `${resource}:approve_level2`] : []),
+      ...extraApprovePerms.filter(isExplicitC2Permission),
+    ];
+    return approvePerms.some(checkPerm);
   }
 
-  // Lưu tạm / Bị trả về: đã có quyền update -> cho phép sửa
+  // Lưu tạm / Bị trả về: người nhập sửa được nếu có quyền cập nhật.
   if (isEditableByOwner(st)) {
-    return true;
+    const perms = [
+      ...(resource ? [`${resource}:update`, `${resource}:write`] : ['data:update']),
+      ...extraUpdatePerms,
+    ];
+    return perms.some(checkPerm);
   }
 
   // Trạng thái lạ: mặc định an toàn là không cho sửa.
   return false;
+}
+
+function isExplicitC2Permission(permission: string): boolean {
+  const normalized = permission.trim().toLowerCase();
+  return /:(approvec2|approvel2|approve:c2|approve:l2|approve-c2|approve-l2|approve_level2)$/.test(normalized);
 }
 
 export interface ApprovalDeletePolicyOptions {
@@ -209,6 +227,7 @@ export function canDeleteApprovalRecord(
 
   let hasPerm: ((key: string) => boolean) | undefined;
   let resource = '';
+  let extraDeletePerms: string[] = [];
 
   if (typeof optionsOrResource === 'string') {
     resource = optionsOrResource;
@@ -216,6 +235,7 @@ export function canDeleteApprovalRecord(
   } else if (optionsOrResource && typeof optionsOrResource === 'object') {
     hasPerm = optionsOrResource.hasPerm;
     resource = optionsOrResource.resource || '';
+    extraDeletePerms = optionsOrResource.extraDeletePerms || [];
   }
 
   if (typeof hasPerm !== 'function') {
@@ -234,6 +254,7 @@ export function canDeleteApprovalRecord(
     ...(resource ? [`${resource}:delete`] : []),
     // `admin:manage` chỉ là quyền quản trị chức năng, không phải bypass dữ
     // liệu nghiệp vụ. Chỉ `admin:all` mới tương ứng với wildcard của backend.
+    'admin:all',
   ];
   return perms.some(checkPerm);
 }

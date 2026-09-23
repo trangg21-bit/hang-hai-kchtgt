@@ -21,4 +21,5 @@ public class SearchResultResponse {
     private int totalPages;
     private int currentPage;
     private int pageSize;
+    private java.util.Map<String, Long> statusCounts;
 }

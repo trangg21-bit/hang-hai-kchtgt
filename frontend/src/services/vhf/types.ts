@@ -105,6 +105,7 @@ export interface PageResponse<T> {
   totalPages: number;
   first: boolean;
   last: boolean;
+  statusCounts?: Record<string, number>;
 }
 
 // ── ApiResponse envelope ────────────────────────────────────────────

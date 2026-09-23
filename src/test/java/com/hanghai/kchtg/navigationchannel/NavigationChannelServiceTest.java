@@ -4,12 +4,14 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.navigationchannel.controller.NavigationChannelController;
 import com.hanghai.kchtg.navigationchannel.dto.ChannelRouteDetailRequest;
 import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.navigationchannel.service.NavigationChannelHistoryService;
 import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -28,11 +30,14 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -78,54 +83,138 @@ class NavigationChannelServiceTest {
     @Mock
     private NavigationChannelService controllerService;
 
+    /** The controller takes 3 collaborators; the binding tests exercise only the service, the rest are stubs. */
+    private static NavigationChannelController controller(NavigationChannelService service) {
+        return new NavigationChannelController(service, mock(NavigationChannelHistoryService.class),
+                mock(NavigationChannelRepository.class));
+    }
+
     // ── F1: approvalStatus (camelCase) binding ─────────────────────────────
 
     @Test
     @DisplayName("F1: /search?approvalStatus=PROPOSED binds the camelCase param and forwards it to the service")
     void search_bindsCamelCaseApprovalStatusParam() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new NavigationChannelController(controllerService)).build();
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller(controllerService)).build();
 
         mockMvc.perform(get("/api/v1/navigation-channel/search").param("approvalStatus", "PROPOSED"))
                 .andExpect(status().isOk());
 
         verify(controllerService).searchDocuments(
-                isNull(), isNull(), isNull(), isNull(), isNull(), eq("PROPOSED"), eq(0), eq(20));
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq("PROPOSED"), isNull(), isNull(), eq(0), eq(20), isNull(), isNull());
     }
 
     @Test
     @DisplayName("F1: legacy /search?ApprovalStatus=... (wrong case) must NOT bind — status stays null")
     void search_doesNotBindPascalCaseApprovalStatusParam() throws Exception {
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new NavigationChannelController(controllerService)).build();
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller(controllerService)).build();
 
         mockMvc.perform(get("/api/v1/navigation-channel/search").param("ApprovalStatus", "PROPOSED"))
                 .andExpect(status().isOk());
 
         verify(controllerService).searchDocuments(
-                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20));
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20), isNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("channelCode param binds and is forwarded to service")
+    void search_bindsChannelCodeParam() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller(controllerService)).build();
+
+        mockMvc.perform(get("/api/v1/navigation-channel/search").param("channelCode", "LHH-001"))
+                .andExpect(status().isOk());
+
+        verify(controllerService).searchDocuments(
+                isNull(), isNull(), isNull(), isNull(), isNull(), eq("LHH-001"), isNull(), isNull(), isNull(), eq(0), eq(20), isNull(), isNull());
+    }
+
+    @Test
+    @DisplayName("sortBy and sortDir params bind and are forwarded to service")
+    void search_bindsSortParams() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller(controllerService)).build();
+
+        mockMvc.perform(get("/api/v1/navigation-channel/search")
+                .param("sortBy", "channelName")
+                .param("sortDir", "ASC"))
+                .andExpect(status().isOk());
+
+        verify(controllerService).searchDocuments(
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20), eq("channelName"), eq("ASC"));
+    }
+
+    @Test
+    @DisplayName("updatedFrom and updatedTo params bind and are forwarded to service")
+    void search_bindsUpdatedDateParams() throws Exception {
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(controller(controllerService)).build();
+
+        mockMvc.perform(get("/api/v1/navigation-channel/search")
+                .param("updatedFrom", "2026-09-01T00:00:00")
+                .param("updatedTo", "2026-09-23T23:59:59"))
+                .andExpect(status().isOk());
+
+        verify(controllerService).searchDocuments(
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq("2026-09-01T00:00:00"), eq("2026-09-23T23:59:59"), eq(0), eq(20), isNull(), isNull());
     }
 
     @Test
     @DisplayName("F1: service parses status string to enum and forwards it to the repository")
     void searchDocuments_forwardsParsedApprovalStatus() {
         Page<NavigationChannel> empty = new PageImpl<>(Collections.emptyList());
-        when(repo.searchDocuments(any(), any(), any(), any(), any(), any(), any())).thenReturn(empty);
+        when(repo.searchDocuments(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(empty);
 
-        service.searchDocuments(null, null, null, null, null, "  PROPOSED  ", 0, 20);
+        service.searchDocuments(null, null, null, null, null, null, "  PROPOSED  ", 0, 20);
 
         verify(repo).searchDocuments(
-                isNull(), isNull(), isNull(), isNull(), isNull(), eq(ApprovalStatus.PROPOSED), any());
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(ApprovalStatus.PROPOSED), isNull(), isNull(), any());
     }
 
     @Test
     @DisplayName("F1: invalid status string is ignored — repository called with null status")
     void searchDocuments_ignoresInvalidStatus() {
         Page<NavigationChannel> empty = new PageImpl<>(Collections.emptyList());
-        when(repo.searchDocuments(any(), any(), any(), any(), any(), any(), any())).thenReturn(empty);
+        when(repo.searchDocuments(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(empty);
 
-        service.searchDocuments(null, null, null, null, null, "NOT_A_STATUS", 0, 20);
+        service.searchDocuments(null, null, null, null, null, null, "NOT_A_STATUS", 0, 20);
 
         verify(repo).searchDocuments(
-                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("searchDocuments normalizes accents and trims Vietnamese keyword & channelCode")
+    void searchDocuments_trimsAndNormalizesVietnameseUnaccentedKeywordAndChannelCode() {
+        Page<NavigationChannel> empty = new PageImpl<>(Collections.emptyList());
+        when(repo.searchDocuments(any(), any(), any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(empty);
+
+        service.searchDocuments(null, null, null, null, "  Đà Nẵng  ", "  LHH 01  ", null, 0, 20);
+
+        verify(repo).searchDocuments(
+                isNull(), isNull(), isNull(), isNull(), eq("%da nang%"), eq("%lhh 01%"), isNull(), isNull(), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("P2: NavigationChannelHistoryService bỏ dấu + lowercase từ khóa trước khi tìm nhật ký — khớp immutable_unaccent(LOWER(...))")
+    void historyService_normalizesVietnameseKeywordBeforeSearchHistory() {
+        NavigationChannelHistoryService historyService =
+                new NavigationChannelHistoryService(repo, approvalHistoryRepo, userRepository, orgUnitCacheService);
+        UUID channelId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        when(repo.findById(channelId)).thenReturn(Optional.of(NavigationChannel.builder().id(channelId).build()));
+        when(approvalHistoryRepo.searchHistory(eq(InfrastructureType.NAVIGATION_CHANNEL), eq(channelId),
+                eq("den bien hai phong"), isNull(), isNull(), any())).thenReturn(Collections.emptyList());
+
+        historyService.getHistory(channelId, 0, 20, "  Đèn biển Hải Phòng  ", null, null);
+
+        verify(approvalHistoryRepo).searchHistory(eq(InfrastructureType.NAVIGATION_CHANNEL), eq(channelId),
+                eq("den bien hai phong"), isNull(), isNull(), any());
+    }
+
+    @Test
+    @DisplayName("resolveSort defaults to COALESCE(l.updatedAt, l.createdAt) DESC")
+    void resolveSort_defaultsToUpdatedAtDesc() {
+        org.springframework.data.domain.Sort sort = NavigationChannelService.resolveSort(null, null);
+        assertThat(sort.toString()).contains("COALESCE(l.updatedAt, l.createdAt): DESC");
+
+        org.springframework.data.domain.Sort updatedSort = NavigationChannelService.resolveSort("updatedAt", "desc");
+        assertThat(updatedSort.toString()).contains("COALESCE(l.updatedAt, l.createdAt): DESC");
     }
 
     // ── BR-038-03: routeCode server-side generation ────────────────────────
@@ -152,6 +241,30 @@ class NavigationChannelServiceTest {
 
         assertThat(detail.getRouteCode()).isEqualTo("LHH000042-03");
         assertThat(detail.getSequenceNo()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("saveAttachments generates default filePath if null or blank, avoiding not-null constraint violation")
+    void saveAttachments_generatesDefaultFilePathWhenNull() throws Exception {
+        UUID refId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        com.hanghai.kchtg.navigationchannel.dto.NavigationChannelAttachmentRequest req =
+                com.hanghai.kchtg.navigationchannel.dto.NavigationChannelAttachmentRequest.builder()
+                        .fileName("test.pdf")
+                        .filePath(null)
+                        .build();
+
+        Method method = NavigationChannelService.class.getDeclaredMethod(
+                "saveAttachments", UUID.class, java.util.List.class, UUID.class);
+        method.setAccessible(true);
+        method.invoke(service, refId, java.util.List.of(req), userId);
+
+        org.mockito.ArgumentCaptor<com.hanghai.kchtg.common.entity.InfrastructureAttachment> captor =
+                org.mockito.ArgumentCaptor.forClass(com.hanghai.kchtg.common.entity.InfrastructureAttachment.class);
+        verify(attachmentRepository).save(captor.capture());
+
+        assertThat(captor.getValue().getFilePath()).isEqualTo("uploads/navigation-channel/" + refId + "/test.pdf");
+        assertThat(captor.getValue().getFileType()).isEqualTo(com.hanghai.kchtg.common.enums.AttachmentFileType.OTHER);
     }
 
     private ChannelRouteDetail invokeToRouteDetail(ChannelRouteDetailRequest d, NavigationChannel nc, int index)
