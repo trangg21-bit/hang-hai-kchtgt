@@ -3,20 +3,21 @@
 // #1-#46 editable (create/update), #47-#71 read-only do hệ thống ghi.
 
 // ── #8 Tình trạng (ConditionStatus, ordinal SMALLINT trong DB) ────────────
-export type ConditionStatus = 'OPERATIONAL' | 'STOPPED' | 'MAINTENANCE' | 'UNDER_CONSTRUCTION';
+export type ConditionStatus =
+  | 'OPERATIONAL'
+  | 'NOT_YET_OPERATIONAL'
+  | 'SUSPENDED';
 
 export const CONDITION_STATUS_OPTIONS: { value: ConditionStatus; label: string }[] = [
-  { value: 'OPERATIONAL', label: 'Đang hoạt động' },
-  { value: 'STOPPED', label: 'Dừng hoạt động' },
-  { value: 'MAINTENANCE', label: 'Đang bảo trì' },
-  { value: 'UNDER_CONSTRUCTION', label: 'Đang xây dựng' },
+  { value: 'OPERATIONAL', label: 'Đang khai thác/vận hành' },
+  { value: 'NOT_YET_OPERATIONAL', label: 'Chưa khai thác/vận hành' },
+  { value: 'SUSPENDED', label: 'Dừng khai thác/vận hành' },
 ];
 
-export const CONDITION_STATUS_MAP: Record<ConditionStatus, string> = {
-  OPERATIONAL: 'Đang hoạt động',
-  STOPPED: 'Dừng hoạt động',
-  MAINTENANCE: 'Đang bảo trì',
-  UNDER_CONSTRUCTION: 'Đang xây dựng',
+export const CONDITION_STATUS_MAP: Record<string, string> = {
+  OPERATIONAL: 'Đang khai thác/vận hành',
+  NOT_YET_OPERATIONAL: 'Chưa khai thác/vận hành',
+  SUSPENDED: 'Dừng khai thác/vận hành',
 };
 
 // ── #47 Trạng thái phê duyệt (ApprovalStatus — hệ thống ghi) ─────────────
@@ -29,7 +30,8 @@ export type ApprovalStatus =
   | 'APPROVED'
   | 'REJECTED'
   | 'REJECTED_LEVEL1'
-  | 'REJECTED_LEVEL2';
+  | 'REJECTED_LEVEL2'
+  | 'ARCHIVED';
 
 export const APPROVAL_STATUS_OPTIONS: { value: ApprovalStatus; label: string }[] = [
   { value: 'DRAFT', label: 'Nháp' },
@@ -72,6 +74,14 @@ export interface ChannelRouteDetailResponse {
   routeLatestDredgingVolumeCubicMeters?: number; // #36
   routeLatestMaintenanceYear?: number; // #37
   routeGrade?: number; // #38
+  // Tab Thông tin vị trí (chuẩn /vts-operation-center)
+  geometryType?: GisGeometryType | string;
+  mapIconId?: string;
+  symbolId?: string;
+  coordinateReferenceSystem?: string | number;
+  coordinateSystem?: number;
+  displayRule?: string;
+  coordinates?: string;
 }
 
 export interface ChannelRouteDetailRequest extends ChannelRouteDetailResponse {}
@@ -87,13 +97,19 @@ export interface NavigationChannelCoordinateResponse {
 
 export interface NavigationChannelCoordinateRequest extends NavigationChannelCoordinateResponse {}
 
-// ── #46 File đính kèm (infrastructure_attachments ref_type = NAVIGATION_CHANNEL) ──
 export interface NavigationChannelAttachment {
   id?: string;
   fileName: string;
   fileUrl?: string;
+  filePath?: string;
   contentType?: string;
+  fileType?: string;
   fileSize?: number;
+  uploadedBy?: string;
+  uploadedByName?: string;
+  uploadedDate?: string;
+  uploadedAt?: string;
+  createdAt?: string;
 }
 
 // ── Response (71 trường: #1-#46 + #47-#71 read-only) ─────────────────────
@@ -179,33 +195,35 @@ export interface NavigationChannelResponse {
 // ── Create — 46 trường nhập (#1-#46), chỉ bắt buộc #1/#5/#8 ──────────────
 export interface CreateNavigationChannelRequest {
   orgUnitId: string; // #1 bắt buộc
-  seaportId?: string; // #2
-  operatingUnitId?: string; // #3
+  seaportId?: string | null; // #2
+  operatingUnitId?: string | null; // #3
+  channelCode?: string | null; // #4 tự sinh LHH
   channelName: string; // #5 bắt buộc
-  provinceId?: number; // #6
-  detailedLocation?: string; // #7
+  provinceId?: number | null; // #6
+  detailedLocation?: string | null; // #7
   conditionStatus: ConditionStatus; // #8 bắt buộc
-  managementStation?: string; // #9
-  stationCount?: number; // #10
-  stationStaffCount?: number; // #11
-  stationAreaSquareMeters?: number; // #12
-  latestStationRepairMonth?: string; // #13
-  latestMaintenanceYear?: number; // #14
-  latestDredgingVolumeCubicMeters?: number; // #15
-  buoyCount?: number; // #16
-  beaconCount?: number; // #17
-  notes?: string; // #18
-  announcementDecisionNumber?: string; // #19
-  announcementDecisionDate?: string; // #20
-  announcementDecisionIssuer?: string; // #21
-  protectionScopeMeters?: number; // #39
-  protectionNotes?: string; // #40
-  geometryType?: GisGeometryType; // #41
-  mapIconId?: string; // #42
-  coordinateReferenceSystem?: string; // #43
-  displayRule?: string; // #44
+  managementStation?: string | null; // #9
+  stationCount?: number | null; // #10
+  stationStaffCount?: number | null; // #11
+  stationAreaSquareMeters?: number | null; // #12
+  latestStationRepairMonth?: string | null; // #13
+  latestMaintenanceYear?: number | null; // #14
+  latestDredgingVolumeCubicMeters?: number | null; // #15
+  buoyCount?: number | null; // #16
+  beaconCount?: number | null; // #17
+  notes?: string | null; // #18
+  announcementDecisionNumber?: string | null; // #19
+  announcementDecisionDate?: string | null; // #20
+  announcementDecisionIssuer?: string | null; // #21
+  protectionScopeMeters?: number | null; // #39
+  protectionNotes?: string | null; // #40
+  geometryType?: GisGeometryType | null; // #41
+  mapIconId?: string | null; // #42
+  coordinateReferenceSystem?: string | null; // #43
+  displayRule?: string | null; // #44
   routeDetails?: ChannelRouteDetailRequest[]; // #22-#38
-  coordinates?: NavigationChannelCoordinateRequest[]; // #45
+  coordinates?: string | null; // #88 GIS WKT chuỗi (LINESTRING / POINT / POLYGON)
+  coordinateList?: NavigationChannelCoordinateRequest[] | null; // #45 danh sách bảng con tọa độ
   attachments?: NavigationChannelAttachment[]; // #46
 }
 
@@ -229,9 +247,32 @@ export interface ApprovalResponse {
 export interface HistoryEntry {
   id: string;
   navigationChannelId?: string;
+  approvalLevel?: string;
   status: string;
-  approvedBy: string;
-  approvedDate: string;
+  approvedBy?: string;
+  changedBy?: string;
+  orgUnitName?: string;
+  approvedDate?: string;
+  changedAt?: string;
+  reason?: string;
+  changedField?: string;
+  previousValue?: string;
+  newValue?: string;
+}
+
+/** Nhật ký thay đổi/phê duyệt đầy đủ (chuẩn /beacon-stations) — drawer Lịch sử. */
+export interface NavigationChannelHistoryEntry {
+  id: string;
+  /** LEVEL_1 = lần lưu hồ sơ, LEVEL_2 = lần duyệt/từ chối gắn vào lần lưu đó. */
+  approvalLevel?: string;
+  status?: string;
+  approvedBy?: string;
+  orgUnitName?: string;
+  approvedDate?: string;
+  reason?: string | null;
+  changedField?: string;
+  previousValue?: string | null;
+  newValue?: string | null;
 }
 
 // ── List params (DS/Lọc: #1/#2/#4/#5/#6/#8/#47/#48) ──────────────────────
@@ -259,4 +300,5 @@ export interface SearchResponse<T> {
   total: number;
   page: number;
   size: number;
+  statusCounts?: Record<string, number>;
 }

@@ -336,4 +336,72 @@ class VtsAssistServiceTest {
 
         verify(historyRepository, atLeastOnce()).save(any());
     }
+
+    @Test
+    void update_whenDetailedLocationCleared_setsDetailedLocationToNull() {
+        entity.setDetailedLocation("Hải Phòng");
+        when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vtsAssistRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVtsAssistRequest req = new UpdateVtsAssistRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống phụ trợ VTS Hải Phòng");
+        req.setOperatingUnitId(UUID.randomUUID());
+        req.setDetailedLocation(null);
+
+        VtsAssistResponse result = service.update(req);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(result);
+        assertNull(entity.getDetailedLocation());
+    }
+
+    @Test
+    void update_whenMultipleFieldsCleared_setsFieldsToNull() {
+        entity.setDetailedLocation("Hải Phòng");
+        entity.setManufacturer("Schneider");
+        entity.setModel("UPS Galaxy");
+        entity.setSpecifications("Specs info");
+        entity.setMaintenanceInformation("Maintenance info");
+        entity.setNote("Ghi chú cũ");
+        entity.setUnitOfMeasure(1);
+        entity.setYearOfUse(2022);
+        entity.setAttachedInfrastructureType(1);
+        entity.setAttachedInfrastructureId(UUID.randomUUID());
+        entity.setProvinceName("Hải Phòng");
+        entity.setApprovalStatus(ApprovalStatus.DRAFT);
+
+        when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(vtsAssistRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateVtsAssistRequest req = new UpdateVtsAssistRequest();
+        req.setId(ID);
+        req.setDeviceName("Hệ thống phụ trợ VTS Hải Phòng");
+        req.setOperatingUnitId(UUID.randomUUID());
+        req.setDetailedLocation(null);
+        req.setManufacturer(null);
+        req.setModel(null);
+        req.setSpecifications(null);
+        req.setMaintenanceInformation(null);
+        req.setNote(null);
+        req.setUnitOfMeasure(null);
+        req.setYearOfUse(null);
+        req.setAttachedInfrastructureType(null);
+        req.setAttachedInfrastructureId(null);
+        req.setProvinceName(null);
+
+        VtsAssistResponse result = service.update(req);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(result);
+        assertNull(entity.getDetailedLocation());
+        assertNull(entity.getManufacturer());
+        assertNull(entity.getModel());
+        assertNull(entity.getSpecifications());
+        assertNull(entity.getMaintenanceInformation());
+        assertNull(entity.getNote());
+        assertNull(entity.getUnitOfMeasure());
+        assertNull(entity.getYearOfUse());
+        assertNull(entity.getAttachedInfrastructureType());
+        assertNull(entity.getAttachedInfrastructureId());
+        assertNull(entity.getProvinceName());
+    }
 }

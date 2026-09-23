@@ -85,7 +85,6 @@ class VhfApprovalServiceTest {
     private RadarStationRepository radarStationRepository;
     @Mock
     private PortRepository portRepository;
-
     private VhfApprovalService service;
 
     private Vhf entity;
@@ -501,6 +500,62 @@ class VhfApprovalServiceTest {
             actorWithDept.setDepartment(null);
             result = service.getHistory(ID);
             assertThat(result.get(0).getOrgUnitName()).isEqualTo("Cục Hàng hải Việt Nam");
+        }
+
+        @Test
+        @DisplayName("Lịch sử tệp đính kèm: dùng snapshot đã lưu, KHÔNG suy diễn từ danh sách tệp hiện tại")
+        void getHistory_attachmentUploaded_usesStoredSnapshotOnly() {
+            givenStatus(ApprovalStatus.APPROVED);
+
+            // Kịch bản P1: upload A.pdf -> upload B.pdf -> xóa A.pdf.
+            // Lịch sử của lần upload A.pdf phải giữ nguyên snapshot đã lưu lúc thao tác
+            // (Chưa có -> A.pdf), tuyệt đối không được dựng lại thành "B.pdf -> B.pdf"
+            // từ danh sách tệp hiện tại.
+            InfrastructureHistory uploadA = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refType(InfrastructureType.VHF)
+                    .refId(ID)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                    .changedField("attachments")
+                    .previousValue(null)
+                    .newValue("A.pdf")
+                    .approvedDate(LocalDateTime.now())
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))
+                    .thenReturn(List.of(uploadA));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("Chưa có");
+            assertThat(result.get(0).getNewValue()).isEqualTo("A.pdf");
+        }
+
+        @Test
+        @DisplayName("Lịch sử tệp đính kèm: dòng xóa tệp giữ nguyên snapshot đã lưu")
+        void getHistory_attachmentDeleted_usesStoredSnapshotOnly() {
+            givenStatus(ApprovalStatus.APPROVED);
+
+            InfrastructureHistory deleteA = InfrastructureHistory.builder()
+                    .id(UUID.randomUUID())
+                    .refType(InfrastructureType.VHF)
+                    .refId(ID)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                    .changedField("attachments")
+                    .previousValue("A.pdf, B.pdf")
+                    .newValue(null)
+                    .approvedDate(LocalDateTime.now())
+                    .build();
+
+            when(historyRepository.findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.VHF, ID))
+                    .thenReturn(List.of(deleteA));
+
+            List<HistoryEntry> result = service.getHistory(ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getPreviousValue()).isEqualTo("A.pdf, B.pdf");
+            assertThat(result.get(0).getNewValue()).isEqualTo("Chưa có");
         }
 
         @Test

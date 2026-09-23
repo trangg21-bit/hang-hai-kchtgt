@@ -545,12 +545,28 @@ function parseCoordinatesPoints(raw: string | null): { typeName?: string; points
     return { x: clean, y: '', index: idx + 1 };
   });
 
+  // WKT polygon rings repeat the first vertex at the end. Strip duplicate closing vertex.
+  if ((typeName === 'Vùng' || /^POLYGON/i.test(str)) && points.length > 1) {
+    const first = points[0];
+    const last = points[points.length - 1];
+    if (first.x === last.x && first.y === last.y) {
+      points.pop();
+    }
+  }
+
   return { typeName, points };
 }
 
 function renderCoordinatesDisplay(val: string | null) {
   if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
     return val === 'Chưa có' ? <span style={{ color: textTertiary }}>Chưa có</span> : null;
+  }
+  if (val.includes('°') || /^#\d+:/m.test(val)) {
+    return (
+      <div style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5, whiteSpace: 'pre-line', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+        {val}
+      </div>
+    );
   }
   const parsed = parseCoordinatesPoints(val);
   if (!parsed || parsed.points.length === 0) {

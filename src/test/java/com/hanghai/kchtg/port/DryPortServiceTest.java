@@ -198,6 +198,48 @@ class DryPortServiceTest {
         }
 
         @Test
+        @DisplayName("update — when fields are cleared, should set fields to null and record changes")
+        void update_whenFieldsCleared_shouldSetFieldsToNull() {
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+            testEntity.setRegion("Miền Bắc");
+            testEntity.setDetailedLocation("KM 12, QL 5");
+            testEntity.setTransportCorridor("Hành lang Đông Tây");
+            testEntity.setWarehouseArea(new BigDecimal("2000.00"));
+            testEntity.setYardArea(new BigDecimal("5000.00"));
+            testEntity.setConnectionMode("Đường bộ");
+            testEntity.setRemarks("Ghi chú cũ");
+            testEntity.setAnnouncementDecisionNumber("QD-123");
+
+            when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+            when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            UpdateDryPortRequest req = UpdateDryPortRequest.builder()
+                    .id(testId)
+                    .region("") // user cleared
+                    .detailedLocation("   ") // user cleared
+                    .transportCorridor(null)
+                    .warehouseArea(null)
+                    .yardArea(null)
+                    .connectionMode("")
+                    .remarks("")
+                    .announcementDecisionNumber(null)
+                    .build();
+
+            DryPortResponse result = service.update(req);
+
+            assertNotNull(result);
+            assertNull(testEntity.getRegion());
+            assertNull(testEntity.getDetailedLocation());
+            assertNull(testEntity.getTransportCorridor());
+            assertNull(testEntity.getWarehouseArea());
+            assertNull(testEntity.getYardArea());
+            assertNull(testEntity.getConnectionMode());
+            assertNull(testEntity.getRemarks());
+            assertNull(testEntity.getAnnouncementDecisionNumber());
+            verify(changeHistoryService).recordChanges(eq("DryPort"), any(), any(), any(), any());
+        }
+
+        @Test
         @DisplayName("F-027: update — entity not found → EntityNotFoundException")
         void update_notFound_throws() {
             UpdateDryPortRequest request = new UpdateDryPortRequest();

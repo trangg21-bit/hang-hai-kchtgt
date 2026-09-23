@@ -26,7 +26,7 @@ describe('VTS Assist API Query Trim (/vts-assist)', () => {
     });
 
     expect(api.get).toHaveBeenCalledTimes(1);
-    const requestedUrl: string = (api.get as any).mock.calls[0][0];
+    const requestedUrl: string = vi.mocked(api.get).mock.calls[0][0] as string;
     const urlObj = new URL(`http://localhost${requestedUrl}`);
 
     expect(urlObj.searchParams.get('deviceCode')).toBe('VTS-ASSIST-001');
@@ -42,7 +42,7 @@ describe('VTS Assist API Query Trim (/vts-assist)', () => {
     });
 
     expect(api.get).toHaveBeenCalledTimes(1);
-    const requestedUrl: string = (api.get as any).mock.calls[0][0];
+    const requestedUrl: string = vi.mocked(api.get).mock.calls[0][0] as string;
     const urlObj = new URL(`http://localhost${requestedUrl}`);
 
     expect(urlObj.searchParams.get('deviceCode')).toBeNull();

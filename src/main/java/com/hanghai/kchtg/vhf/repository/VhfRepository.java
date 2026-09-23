@@ -110,6 +110,41 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
             @Param("search") String search,
             Pageable pageable);
 
+    @Query("SELECT CASE WHEN (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+           "THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE v.approvalStatus END, COUNT(v) " +
+           "FROM Vhf v WHERE " +
+           "(:includeAll = true OR v.orgUnitId IN :orgUnitIds) " +
+           "AND (:filterEnabled = false OR v.orgUnitId IN :filterOrgUnitIds) " +
+           "AND (:seaportId IS NULL OR v.seaportId = :seaportId) " +
+           "AND (CAST(:deviceCode AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string)) " +
+           "AND (CAST(:deviceName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceName AS string), '%'))) AS string)) " +
+           "AND (:operationalStatus IS NULL OR v.operationalStatus = :operationalStatus) " +
+           "AND (:yearOfUse IS NULL OR v.yearOfUse = :yearOfUse) " +
+           "AND (CAST(:updatedFrom AS java.time.LocalDateTime) IS NULL OR v.updatedAt >= :updatedFrom) " +
+           "AND (CAST(:updatedTo AS java.time.LocalDateTime) IS NULL OR v.updatedAt <= :updatedTo) " +
+           "AND (CAST(:provinceId AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(v.provinceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:provinceId AS string), '%'))) AS string)) " +
+           "AND (:attachedInfrastructureType IS NULL OR v.attachedInfrastructureType = :attachedInfrastructureType) " +
+           "AND (:attachedInfrastructureId IS NULL OR v.attachedInfrastructureId = :attachedInfrastructureId) " +
+           "AND (CAST(:search AS string) IS NULL OR (CAST(function('immutable_unaccent', LOWER(v.deviceCode)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:deviceCode AS string), '%'))) AS string) OR CAST(function('immutable_unaccent', LOWER(v.deviceName)) AS string) LIKE CAST(function('immutable_unaccent', LOWER(CONCAT('%', CAST(:search AS string), '%'))) AS string))) " +
+           "GROUP BY CASE WHEN (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED) " +
+           "THEN com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED ELSE v.approvalStatus END")
+    List<Object[]> countByApprovalStatus(
+            @Param("includeAll") boolean includeAll,
+            @Param("orgUnitIds") Collection<UUID> orgUnitIds,
+            @Param("filterEnabled") boolean filterEnabled,
+            @Param("filterOrgUnitIds") Collection<UUID> filterOrgUnitIds,
+            @Param("seaportId") UUID seaportId,
+            @Param("deviceCode") String deviceCode,
+            @Param("deviceName") String deviceName,
+            @Param("operationalStatus") OperationalStatus operationalStatus,
+            @Param("yearOfUse") Integer yearOfUse,
+            @Param("updatedFrom") LocalDateTime updatedFrom,
+            @Param("updatedTo") LocalDateTime updatedTo,
+            @Param("provinceId") String provinceId,
+            @Param("attachedInfrastructureType") Integer attachedInfrastructureType,
+            @Param("attachedInfrastructureId") UUID attachedInfrastructureId,
+            @Param("search") String search);
+
     @Query(value = "SELECT COALESCE(MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)), 0) FROM vhf WHERE device_code ~ '^VHF-[0-9]+$'",
            nativeQuery = true)
     int findMaxDeviceCodeNumber();

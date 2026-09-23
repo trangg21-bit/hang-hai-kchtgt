@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
@@ -22,4 +23,10 @@ public class NavigationChannelAttachmentResponse {
     private String filePath;
     private Long fileSize;
     private LocalDate uploadDate;
+    private String fileType;
+    private String contentType;
+    private UUID uploadedBy;
+    private String uploadedByName;
+    private LocalDateTime uploadedDate;
+    private String fileUrl;
 }

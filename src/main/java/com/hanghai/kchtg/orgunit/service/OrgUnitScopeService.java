@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.orgunit.service;
 
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class OrgUnitScopeService {
 
     private final UserRepository userRepository;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final PermissionCacheService permissionCacheService;
 
     public Scope currentUserScope() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -46,7 +48,15 @@ public class OrgUnitScopeService {
             return Scope.restricted(List.of());
         }
 
-        var permissions = currentUser.getAllPermissions();
+        // Đọc tập quyền hiệu lực qua permission cache — CÙNG nguồn với DataScopeAspect
+        // (bộ lọc đọc orgUnitFilter) và VtsSystemService.resolveDataScope(). Trước đây hàm này
+        // đọc thẳng currentUser.getAllPermissions() (snapshot entity/DB) nên khi Redis còn giữ
+        // wildcard '*' cũ, bộ lọc ĐỌC bị tắt (thấy dữ liệu toàn quốc) trong khi guard GHI vẫn
+        // siết theo subtree của tài khoản ⇒ người dùng xem/sửa được trên UI nhưng mọi thao tác
+        // ghi trả 403. Dùng chung một nguồn thì đọc và ghi không thể lệch nhau.
+        var permissions = permissionCacheService != null
+                ? permissionCacheService.getEffectivePermissions(currentUser)
+                : currentUser.getAllPermissions();
         if (permissions.contains(SCOPE_ALL) || permissions.contains("*")) {
             return Scope.allScope();
         }

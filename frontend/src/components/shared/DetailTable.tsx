@@ -288,6 +288,18 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
           text-overflow: ellipsis !important;
           vertical-align: middle !important;
         }
+        .${instanceId} .ant-table-cell-fix-right,
+        .${instanceId} .ant-table-cell-fix-left,
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell-fix-right,
+        .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td.ant-table-cell-fix-left {
+          background: #ffffff !important;
+          z-index: 10 !important;
+        }
+        .${instanceId} .ant-table-thead > tr > th.ant-table-cell-fix-right,
+        .${instanceId} .ant-table-thead > tr > th.ant-table-cell-fix-left {
+          background: #f8fafc !important;
+          z-index: 11 !important;
+        }
         .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row):has(input) > td,
         .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row):has(.ant-input-number) > td,
         .${instanceId} .ant-table-tbody > tr:not(.ant-table-measure-row) > td:has(input),

@@ -5,9 +5,10 @@ import type {
   CreateNavigationChannelRequest,
   UpdateNavigationChannelRequest,
   ApprovalRequest,
-  HistoryEntry,
+  NavigationChannelHistoryEntry,
   ListParams,
   SearchResponse,
+  NavigationChannelAttachment,
 } from '../types/navigationChannel';
 
 export const navigationChannelCRUD = {
@@ -40,19 +41,37 @@ export const navigationChannelCRUD = {
         sortField: params?.sortField,
         sortOrder: params?.sortOrder,
         sortBy: params?.sortBy || params?.sortField,
-        sortDir: params?.sortDir || params?.sortOrder,
+        sortDir: params?.sortDir || (params?.sortOrder === 'asc' ? 'ASC' : params?.sortOrder === 'desc' ? 'DESC' : params?.sortOrder),
         page: params?.page || 0,
         size: params?.size || 20,
       },
     });
     const data = res.data || {};
-    const items = toArray<NavigationChannelResponse>(data);
+    const innerData = data.data || data;
+    const items = toArray<NavigationChannelResponse>(innerData.results || innerData.content || data);
     return {
       items,
       total: toTotalCount(data, items.length),
       page: params?.page || 0,
       size: params?.size || 20,
+      statusCounts: innerData.statusCounts || data.statusCounts || {},
     };
+  },
+
+  async countStatus(params?: ListParams): Promise<Record<string, number>> {
+    const res = await api.get('/v1/navigation-channel/status-counts', {
+      params: {
+        orgUnitId: params?.orgUnitId,
+        keyword: params?.keyword,
+        channelCode: params?.channelCode,
+        seaportId: params?.seaportId,
+        provinceId: params?.provinceId,
+        conditionStatus: params?.conditionStatus,
+        updatedFrom: params?.updatedFrom,
+        updatedTo: params?.updatedTo,
+      },
+    });
+    return res.data?.data || res.data || {};
   },
 
   async getById(id: string): Promise<NavigationChannelResponse> {
@@ -87,6 +106,36 @@ export const navigationChannelCRUD = {
   async getByStatus(status: string): Promise<NavigationChannelResponse[]> {
     const res = await api.get(`/v1/navigation-channel/approval-status/${status}`);
     return toArray<NavigationChannelResponse>(res.data);
+  },
+
+  async generateCode(orgUnitId: string): Promise<string> {
+    const res = await api.get('/v1/navigation-channel/generate-code', { params: { orgUnitId } });
+    return res.data?.data?.channelCode || '';
+  },
+
+  async uploadAttachments(id: string, files: File[]): Promise<NavigationChannelAttachment[]> {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('files', f));
+    const res = await api.post(`/v1/navigation-channel/${id}/attachments`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return (res.data?.data || []) as NavigationChannelAttachment[];
+  },
+
+  async listAttachments(id: string): Promise<NavigationChannelAttachment[]> {
+    const res = await api.get(`/v1/navigation-channel/${id}/attachments`);
+    return (res.data?.data || []) as NavigationChannelAttachment[];
+  },
+
+  async deleteAttachment(id: string, attachmentId: string): Promise<void> {
+    await api.delete(`/v1/navigation-channel/${id}/attachments/${attachmentId}`);
+  },
+
+  async downloadAttachment(id: string, attachmentId: string): Promise<Blob> {
+    const res = await api.get(`/v1/navigation-channel/${id}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    return res.data as Blob;
   },
 };
 
@@ -124,8 +173,29 @@ export const navigationChannelApproval = {
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
   },
 
-  async getHistory(id: string): Promise<HistoryEntry[]> {
-    const res = await api.get(`/v1/navigation-channel/${id}/history`);
-    return toArray<HistoryEntry>(res.data);
-  },
-};
+    async getHistory(
+      id: string,
+      page?: number,
+      pageSize?: number,
+      filters?: { keyword?: string; fromDate?: string; toDate?: string },
+    ): Promise<NavigationChannelHistoryEntry[]> {
+      const sp = new URLSearchParams();
+      if (page !== undefined && page !== null) sp.set('page', String(page));
+      if (pageSize !== undefined && pageSize !== null) sp.set('pageSize', String(pageSize));
+      if (filters?.keyword?.trim()) sp.set('keyword', filters.keyword.trim());
+      if (filters?.fromDate) sp.set('fromDate', filters.fromDate);
+      if (filters?.toDate) sp.set('toDate', filters.toDate);
+      const query = sp.toString() ? `?${sp.toString()}` : '';
+      const res = await api.get(`/v1/navigation-channel/${id}/history${query}`);
+      return toArray<NavigationChannelHistoryEntry>(res.data);
+    },
+
+    async getPagedHistory(
+      id: string,
+      page?: number,
+      pageSize?: number,
+      filters?: { keyword?: string; fromDate?: string; toDate?: string },
+    ): Promise<NavigationChannelHistoryEntry[]> {
+      return this.getHistory(id, page, pageSize, filters);
+    },
+  };

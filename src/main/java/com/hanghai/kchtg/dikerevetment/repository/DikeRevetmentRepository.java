@@ -3,6 +3,8 @@ package com.hanghai.kchtg.dikerevetment.repository;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -38,7 +40,29 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
 
     boolean existsByCode(String code);
 
-    @Query("SELECT d FROM DikeRevetment d WHERE " +
+    @Query(value = "SELECT d FROM DikeRevetment d " +
+            "LEFT JOIN OrgUnit o ON o.id = d.orgUnitId " +
+            "LEFT JOIN Port p ON p.id = d.seaportId " +
+            "WHERE " +
+            "(:isDeleted IS NULL OR (:isDeleted = true AND (d.deletedAt IS NOT NULL OR d.deletedBy IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND d.deletedAt IS NULL AND d.deletedBy IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) AND " +
+            "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
+            "(:seaportId IS NULL OR d.seaportId = :seaportId) AND " +
+            "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
+            "(:conditionStatus IS NULL OR d.status = :conditionStatus) AND " +
+            "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) AND " +
+            "(:updatedBy IS NULL OR d.updatedBy = :updatedBy) AND " +
+            "(CAST(:updatedFrom AS timestamp) IS NULL OR d.updatedAt >= :updatedFrom) AND " +
+            "(CAST(:updatedTo AS timestamp) IS NULL OR d.updatedAt <= :updatedTo) AND " +
+            "(CAST(:keyword AS string) IS NULL OR " +
+            "  CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:keyword AS string) OR " +
+            "  CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE CAST(:keyword AS string) OR " +
+            "  CAST(function('immutable_unaccent', LOWER(d.location)) AS string) LIKE CAST(:keyword AS string)) AND " +
+            "(CAST(:dikeRevetmentName AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.dikeRevetmentName)) AS string) LIKE CAST(:dikeRevetmentName AS string)) AND " +
+            "(CAST(:code AS string) IS NULL OR CAST(function('immutable_unaccent', LOWER(d.code)) AS string) LIKE :code) AND " +
+            "(CAST(:location AS string) IS NULL OR d.location = :location) AND " +
+            "(CAST(:commissioningFrom AS date) IS NULL OR d.commissioningDate >= :commissioningFrom) AND " +
+            "(CAST(:commissioningTo AS date) IS NULL OR d.commissioningDate <= :commissioningTo)",
+            countQuery = "SELECT COUNT(d) FROM DikeRevetment d WHERE " +
             "(:isDeleted IS NULL OR (:isDeleted = true AND (d.deletedAt IS NOT NULL OR d.deletedBy IS NOT NULL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND d.deletedAt IS NULL AND d.deletedBy IS NULL AND d.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) AND " +
             "(:scopeEnabled = false OR d.orgUnitId IN :scopeOrgUnitIds) AND " +
             "(:seaportId IS NULL OR d.seaportId = :seaportId) AND " +

@@ -259,6 +259,39 @@ class RadarStationServiceTest {
     }
 
     @Test
+    @DisplayName("update when fields cleared - should set fields to null")
+    void update_whenFieldsCleared_shouldSetFieldsToNull() {
+        entity.setLocation("Địa điểm cũ");
+        entity.setCoverage("Vùng phủ sóng cũ");
+        entity.setTowerHeight(new BigDecimal("45.5"));
+        entity.setRadarRange(new BigDecimal("30.0"));
+        entity.setNote("Ghi chú cũ");
+        entity.setUnitOfMeasure("Trạm");
+
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
+                .stationName(entity.getStationName())
+                .location(null)
+                .coverage("")
+                .towerHeight(null)
+                .radarRange(null)
+                .note("   ")
+                .unitOfMeasure(null)
+                .build();
+
+        service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertNull(entity.getLocation());
+        assertNull(entity.getCoverage());
+        assertNull(entity.getTowerHeight());
+        assertNull(entity.getRadarRange());
+        assertNull(entity.getNote());
+        assertNull(entity.getUnitOfMeasure());
+    }
+
+    @Test
     void testDelete() {
         RadarStation draftEntity = RadarStation.builder()
                 .id(TEST_ID).stationName("ABC").location("Hà Nội")

@@ -633,57 +633,68 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
         const opOrgId = values.operatingOrgId || selectedOp?.id || undefined;
         const opUnit = selectedOp ? selectedOp.name : values.operatingUnit || values.operatingOrgId || undefined;
 
+        const cleanString = (val: any) => {
+          if (val === null || val === undefined) return isEdit ? null : undefined;
+          const s = String(val).trim();
+          return s === '' ? (isEdit ? null : undefined) : s;
+        };
+        const cleanNumber = (val: any) => {
+          if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+          const num = Number(val);
+          return isNaN(num) ? (isEdit ? null : undefined) : num;
+        };
+        const cleanDecimal = (val: any) => {
+          const res = safeDecimal(val);
+          return res !== undefined ? res : (isEdit ? null : undefined);
+        };
+        const cleanDate = (val: any) => {
+          if (!val) return isEdit ? null : undefined;
+          return dayjs.isDayjs(val) ? val.format('YYYY-MM-DD') : String(val);
+        };
+        const cleanDateTime = (val: any) => {
+          if (!val) return isEdit ? null : undefined;
+          return dayjs.isDayjs(val) ? val.toISOString() : String(val);
+        };
+
         const payload: any = {
           saveAction: actionMap[saveAction],
           dryPortCode: String(values.dryPortCode || '').trim() || undefined,
-          dryPortName,
+          dryPortName: cleanString(dryPortName),
           orgUnitId,
-          geometryType: hasGeom ? values.geometryType : null,
-          latitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].latitude : null,
-          longitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].longitude : null,
-          coordinates: hasGeom ? buildCoordinatesWkt(values.geometryType, manualCoords) : null,
-          operatingOrgId: opOrgId,
-          operatingUnit: opUnit,
-          region: values.region || undefined,
-          provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
-          detailedLocation: values.detailedLocation || undefined,
-          transportCorridor: values.transportCorridor || undefined,
-          area: safeDecimal(values.area),
-          teuCapacity: safeDecimal(values.teuCapacity),
-          warehouseArea: safeDecimal(values.warehouseArea),
-          yardArea: safeDecimal(values.yardArea),
-          connectionMode: values.connectionMode || undefined,
-          portStatus: values.portStatus !== undefined && values.portStatus !== null ? Number(values.portStatus) : undefined,
-          remarks: values.remarks || undefined,
-          mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
+          geometryType: hasGeom ? values.geometryType : (isEdit ? null : null),
+          latitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].latitude : (isEdit ? null : null),
+          longitude: hasGeom && manualCoords.length > 0 ? manualCoords[0].longitude : (isEdit ? null : null),
+          coordinates: hasGeom ? buildCoordinatesWkt(values.geometryType, manualCoords) : (isEdit ? null : null),
+          operatingOrgId: opOrgId || (isEdit ? null : undefined),
+          operatingUnit: cleanString(opUnit),
+          region: cleanString(values.region),
+          provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : (isEdit ? null : undefined),
+          detailedLocation: cleanString(values.detailedLocation),
+          transportCorridor: cleanString(values.transportCorridor),
+          area: cleanDecimal(values.area),
+          teuCapacity: cleanDecimal(values.teuCapacity),
+          warehouseArea: cleanDecimal(values.warehouseArea),
+          yardArea: cleanDecimal(values.yardArea),
+          connectionMode: cleanString(values.connectionMode),
+          portStatus: cleanNumber(values.portStatus),
+          remarks: cleanString(values.remarks),
+          mapSymbolId: hasGeom ? (values.mapSymbolId || null) : (isEdit ? null : null),
           coordinateSystem:
             hasGeom && values.coordinateSystem !== undefined && values.coordinateSystem !== null
               ? Number(values.coordinateSystem)
-              : null,
+              : (isEdit ? null : null),
           displayRule:
             hasGeom && values.displayRule != null && !Number.isNaN(Number(values.displayRule))
               ? Number(values.displayRule)
-              : (hasGeom ? 1 : null),
-          announcementTime: values.announcementTime
-            ? typeof values.announcementTime === 'string'
-              ? values.announcementTime
-              : values.announcementTime.toISOString()
-            : undefined,
-          announcementDecisionNumber: values.announcementDecisionNumber || undefined,
-          announcementDecisionDate: values.announcementDecisionDate
-            ? typeof values.announcementDecisionDate === 'string'
-              ? values.announcementDecisionDate
-              : values.announcementDecisionDate.format('YYYY-MM-DD')
-            : undefined,
-          announcementOrg: values.announcementOrg || undefined,
+              : (hasGeom ? 1 : (isEdit ? null : null)),
+          announcementTime: cleanDateTime(values.announcementTime),
+          announcementDecisionNumber: cleanString(values.announcementDecisionNumber),
+          announcementDecisionDate: cleanDate(values.announcementDecisionDate),
+          announcementOrg: cleanString(values.announcementOrg),
           // Opening announcement (đồng bộ chuẩn Cầu cảng - Pier)
-          openingAnnouncementDate: values.openingAnnouncementDate
-            ? typeof values.openingAnnouncementDate === 'string'
-              ? values.openingAnnouncementDate
-              : values.openingAnnouncementDate.format('YYYY-MM-DD')
-            : undefined,
-          openingDecision: values.openingDecision?.trim() || undefined,
-          investmentAgreementDoc: values.investmentAgreementDoc?.trim() || undefined,
+          openingAnnouncementDate: cleanDate(values.openingAnnouncementDate),
+          openingDecision: cleanString(values.openingDecision),
+          investmentAgreementDoc: cleanString(values.investmentAgreementDoc),
         };
 
         Object.keys(payload).forEach((key) => {
@@ -951,6 +962,7 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                       getValueFromEvent={getValueFromEvent20}
                     >
                       <NumberInputWithCount
+                        allowDecimal
                         min={0}
                         step={0.01}
                         maxLength={20}
@@ -963,19 +975,19 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
                   </Col>
                   <Col span={12}>
                     <Form.Item name="area" {...labelProps('Tổng diện tích cảng (m²)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="warehouseArea" {...labelProps('Diện tích kho (m²)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="yardArea" {...labelProps('Diện tích bãi (m²)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>

@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.entity.EntityFields;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
@@ -23,24 +22,34 @@ import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelCoordinate;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hanghai.kchtg.common.enums.AttachmentFileType;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.Normalizer;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -50,15 +59,15 @@ import java.util.stream.Collectors;
  * <p>
  * Write-scope: every create/update validates the target orgUnitId against the current user's
  * {@link OrgUnitScopeService.Scope} (BR-038-04) — out-of-scope assignment throws 403.
- * Codegen: channelCode prefix {@code LHH} + %06d per orgUnitId (chốt a3); a duplicate-code
- * collision (unique index ux_navigation_channel_org_code) is retried once with a fresh count.
+ * Codegen: channelCode prefix {@code LHH-} + %06d per orgUnitId (chốt a3); a duplicate-code
+ * collision (unique index ux_navigation_channel_org_code) is retried with fresh next sequence.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class NavigationChannelService {
 
-    private static final String CHANNEL_CODE_PREFIX = "LHH";
+    private static final String CHANNEL_CODE_PREFIX = "LHH-";
 
     private final NavigationChannelRepository repo;
     private final InfrastructureHistoryRepository approvalHistoryRepo;
@@ -74,12 +83,30 @@ public class NavigationChannelService {
     public NavigationChannelResponse create(NavigationChannelCreateRequest req, UUID userId) {
         FieldWriteGuard.validateObject(req);
 
-        // BR-038-04: đơn vị quản lý phải nằm trong phạm vi được phân quyền (write-scope)
-        if (!orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) {
-            throw new AccessDeniedException("Đơn vị quản lý nằm ngoài phạm vi được phân quyền");
+        // BR-038-04: đơn vị quản lý phải nằm trong phạm vi được phân quyền (write-scope).
+        //
+        // Field 'Đơn vị quản lý' để trống KHÔNG phải lỗi phân quyền: trước đây allows(null) = false
+        // nên mọi thao tác GHI hợp lệ của tài khoản bị giới hạn phạm vi đều bị chặn bằng 403 rỗng
+        // body (UI chỉ hiện toast quyền chung). Nay thiếu orgUnitId thì fallback về đơn vị của người
+        // thao tác; CHỈ ném 403 khi request GỬI đơn vị cụ thể nhưng đơn vị đó ngoài phạm vi.
+        UUID effectiveOrgUnitId = req.getOrgUnitId() != null
+                ? req.getOrgUnitId()
+                : resolveOperatorOrgUnitId(userId);
+        if (req.getOrgUnitId() != null && !orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) {
+            throw new IllegalArgumentException(
+                    "Đơn vị quản lý không thuộc phạm vi đơn vị được phép sử dụng");
         }
-        if (!orgUnitRepository.existsById(req.getOrgUnitId())) {
-            throw new IllegalArgumentException("Không tìm thấy đơn vị với id: " + req.getOrgUnitId());
+        if (!orgUnitRepository.existsById(effectiveOrgUnitId)) {
+            throw new IllegalArgumentException("Không tìm thấy đơn vị với id: " + effectiveOrgUnitId);
+        }
+
+        ApprovalStatus initialStatus = req.getApprovalStatus() != null ? req.getApprovalStatus() : ApprovalStatus.DRAFT;
+        boolean submitForApproval = req.isSubmitForApproval();
+        if (submitForApproval && initialStatus == ApprovalStatus.APPROVED) {
+            throw new IllegalArgumentException("Không thể vừa gửi phê duyệt vừa phê duyệt trực tiếp");
+        }
+        if (initialStatus == ApprovalStatus.APPROVED) {
+            approvalService.requireApproveC2Permission(userId, "navigationchannel:approvec2");
         }
 
         NavigationChannel nc = NavigationChannel.builder()
@@ -107,23 +134,28 @@ public class NavigationChannelService {
                 .mapIconId(req.getMapIconId())
                 .coordinateReferenceSystem(trimToNull(req.getCoordinateReferenceSystem()))
                 .displayRule(trimToNull(req.getDisplayRule()))
-                .orgUnitId(req.getOrgUnitId())
+                .orgUnitId(effectiveOrgUnitId)
                 .provinceId(req.getProvinceId())
-                // F-038: trạng thái mặc định DRAFT (design plan 6.3 — không dùng PROPOSED)
-                .approvalStatus(ApprovalStatus.DRAFT)
+                // F-038: trạng thái mặc định DRAFT (hoặc APPROVED nếu có thẩm quyền tạo và duyệt)
+                .approvalStatus(initialStatus)
                 .build();
 
-        String generatedCode = generateChannelCode(req.getOrgUnitId());
+        String generatedCode = generateChannelCode(effectiveOrgUnitId);
         nc.setChannelCode(generatedCode);
+        LocalDateTime now = LocalDateTime.now();
+        if (nc.getCreatedAt() == null) {
+            nc.setCreatedAt(now);
+        }
+        nc.setUpdatedAt(now);
         nc = repo.save(nc);
 
-        // Retry once nếu unique index ux_navigation_channel_org_code chặn code trùng (count+1 không atomic)
+        // Retry nếu unique index ux_navigation_channel_org_code chặn code trùng do tương tác đồng thời
         try {
             attachChildren(nc, req.getRouteDetails(), req.getCoordinateList(), req.getAttachments(), userId);
             nc = repo.save(nc);
         } catch (DataIntegrityViolationException e) {
-            log.warn("channel_code collision detected for orgUnitId={}, regenerating once", req.getOrgUnitId());
-            nc.setChannelCode(generateChannelCode(req.getOrgUnitId()));
+            log.warn("channel_code collision detected for orgUnitId={}, regenerating code", effectiveOrgUnitId);
+            nc.setChannelCode(generateChannelCode(effectiveOrgUnitId));
             nc = repo.save(nc);
         }
 
@@ -144,6 +176,19 @@ public class NavigationChannelService {
             nc = repo.save(nc);
         }
 
+        if (submitForApproval) {
+            approvalService.submit(nc, InfrastructureType.NAVIGATION_CHANNEL, userId);
+            nc = repo.save(nc);
+        }
+        if (initialStatus == ApprovalStatus.APPROVED) {
+            approvalService.recordSaveAndApprove(
+                    nc,
+                    InfrastructureType.NAVIGATION_CHANNEL,
+                    "Create and approve directly",
+                    userId);
+            nc = repo.save(nc);
+        }
+
         // F-043: ghi history CREATED sau khi create thành công (cùng transaction với toàn bộ create)
         approvalHistoryRepo.save(InfrastructureHistory.builder()
                 .refId(nc.getId())
@@ -159,16 +204,8 @@ public class NavigationChannelService {
     /** Tạo và phê duyệt trong một transaction để không để lại bản ghi khi C2 bị từ chối. */
     @Transactional
     public NavigationChannelResponse createAndApprove(NavigationChannelCreateRequest req, UUID userId) {
-        approvalService.requireApproveC2Permission(userId, "navigationchannel:approvec2");
-        NavigationChannelResponse created = create(req, userId);
-        NavigationChannel entity = repo.findById(created.getId())
-                .orElseThrow(() -> new IllegalStateException("Navigation channel was not created"));
-        approvalService.recordSaveAndApprove(
-                entity,
-                InfrastructureType.NAVIGATION_CHANNEL,
-                "Create and approve directly",
-                userId);
-        return toResponse(repo.save(entity));
+        req.setApprovalStatus(ApprovalStatus.APPROVED);
+        return create(req, userId);
     }
 
     @Transactional(readOnly = true)
@@ -208,9 +245,9 @@ public class NavigationChannelService {
                     ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
                     : null;
             results = orgUnitIds != null
-                    ? repo.searchDocumentsByOrgUnitIds(orgUnitIds, null, null, null, keyword, approvalStatus,
+                    ? repo.searchDocumentsByOrgUnitIds(orgUnitIds, null, null, null, toKeywordLike(keyword), null, approvalStatus, null, null,
                             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
-                    : repo.searchDocuments(null, null, null, null, keyword, approvalStatus,
+                    : repo.searchDocuments(null, null, null, null, toKeywordLike(keyword), null, approvalStatus, null, null,
                             PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
             results = repo.findByDeletedAtIsNull(
@@ -234,16 +271,33 @@ public class NavigationChannelService {
         approvalService.assertEditable(nc);
         ApprovalStatus currentStatus = nc.getApprovalStatus() != null ? nc.getApprovalStatus() : ApprovalStatus.DRAFT;
 
-        // BR-039-08 (chốt TRI-1787825767692-3dab): hồ sơ đã duyệt là bất biến qua update —
-        // mọi thay đổi phải đi qua quy trình phê duyệt mới. Fail-fast trước MỌI mutation để
-        // request bị từ chối không để lại bất kỳ side effect (child/GIS/history) nào.
-        if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
-            throw new IllegalStateException("Không thể sửa hồ sơ đã duyệt");
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9 - T12 "Lưu và phê duyệt"):
+        // Hồ sơ Đã duyệt chỉ được phép sửa bởi người có quyền phê duyệt cấp Cục (approvec2).
+        boolean isApprovedFlow = (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2);
+        if (isApprovedFlow || req.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            approvalService.requireApproveC2Permission(updatedBy, "navigationchannel:approvec2");
         }
 
         // BR-038-04: nếu đổi đơn vị quản lý phải nằm trong phạm vi được phân quyền
-        if (req.getOrgUnitId() != null && !orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) {
-            throw new AccessDeniedException("Đơn vị quản lý nằm ngoài phạm vi được phân quyền");
+        if (req.getOrgUnitId() != null && !Objects.equals(req.getOrgUnitId(), nc.getOrgUnitId())
+                && !orgUnitScopeService.currentUserScope().allows(req.getOrgUnitId())) {
+            throw new IllegalArgumentException(
+                    "Đơn vị quản lý không thuộc phạm vi đơn vị được phép sử dụng");
+        }
+        // Field 'Đơn vị quản lý' để trống ⇒ giữ đơn vị hiện có của bản ghi. Bản ghi cũ tạo trước khi
+        // có DataScope đang để org_unit_id NULL thì gán bù đơn vị người thao tác — nhờ đó vẫn sửa được
+        // và bản ghi thoát khỏi trạng thái NULL (trước đây NULL vĩnh viễn vì nhánh copy bên dưới chỉ
+        // chạy khi req.getOrgUnitId() != null). Cố ý dùng bản KHÔNG ném lỗi: một bản ghi cũ thiếu đơn
+        // vị không được phép làm hỏng thao tác cập nhật; nếu không resolve được thì giữ nguyên và để
+        // migration backfill xử lý.
+        if (req.getOrgUnitId() == null && nc.getOrgUnitId() == null) {
+            UUID operatorOrgUnitId = resolveOperatorOrgUnitIdOrNull(updatedBy);
+            if (operatorOrgUnitId != null) {
+                nc.setOrgUnitId(operatorOrgUnitId);
+            }
+        }
+        if (nc.getChannelCode() == null || nc.getChannelCode().isBlank()) {
+            nc.setChannelCode(generateChannelCode(nc.getOrgUnitId()));
         }
 
         // BR-039-08: chuẩn hóa trim trên REQUEST trước khi copy — payload chỉ khác khoảng trắng
@@ -253,23 +307,14 @@ public class NavigationChannelService {
         Map<String, String> previousValues = new LinkedHashMap<>();
         Map<String, String> manualNewValues = new LinkedHashMap<>();
 
-        // F-039 D3: copy field đơn qua EntityUpdateUtils.copyProperties (hỗ trợ lưu null) — ignore field có xử lý riêng
-        EntityUpdateUtils.copyProperties(req, nc, previousValues,
-                NavigationChannelUpdateRequest.Fields.channelName,
+        // F-039 D3: copy field đơn (non-null) qua EntityUpdateUtils — ignore field có xử lý riêng
+        EntityUpdateUtils.copyPropertiesIfPresent(req, nc, previousValues,
                 NavigationChannelUpdateRequest.Fields.orgUnitId,
                 NavigationChannelUpdateRequest.Fields.geometryType,
                 NavigationChannelUpdateRequest.Fields.coordinates,
                 NavigationChannelUpdateRequest.Fields.routeDetails,
                 NavigationChannelUpdateRequest.Fields.coordinateList,
                 NavigationChannelUpdateRequest.Fields.attachments);
-
-        if (req.getChannelName() != null && !req.getChannelName().isBlank()) {
-            if (!Objects.equals(req.getChannelName().trim(), nc.getChannelName())) {
-                previousValues.put(NavigationChannelUpdateRequest.Fields.channelName,
-                        nc.getChannelName() != null ? nc.getChannelName() : "Chưa có");
-                nc.setChannelName(req.getChannelName().trim());
-            }
-        }
 
         if (req.getOrgUnitId() != null) {
             if (!Objects.equals(req.getOrgUnitId(), nc.getOrgUnitId())) {
@@ -280,21 +325,23 @@ public class NavigationChannelService {
         }
 
         // F-039 D3: normalize trim sau reflection copy (BR-039-04)
-        if (nc.getDetailedLocation() != null)
+        if (req.getChannelName() != null)
+            nc.setChannelName(trimToNull(nc.getChannelName()));
+        if (req.getDetailedLocation() != null)
             nc.setDetailedLocation(trimToNull(nc.getDetailedLocation()));
-        if (nc.getManagementStation() != null)
+        if (req.getManagementStation() != null)
             nc.setManagementStation(trimToNull(nc.getManagementStation()));
-        if (nc.getNotes() != null)
+        if (req.getNotes() != null)
             nc.setNotes(trimToNull(nc.getNotes()));
-        if (nc.getAnnouncementDecisionNumber() != null)
+        if (req.getAnnouncementDecisionNumber() != null)
             nc.setAnnouncementDecisionNumber(trimToNull(nc.getAnnouncementDecisionNumber()));
-        if (nc.getAnnouncementDecisionIssuer() != null)
+        if (req.getAnnouncementDecisionIssuer() != null)
             nc.setAnnouncementDecisionIssuer(trimToNull(nc.getAnnouncementDecisionIssuer()));
-        if (nc.getProtectionNotes() != null)
+        if (req.getProtectionNotes() != null)
             nc.setProtectionNotes(trimToNull(nc.getProtectionNotes()));
-        if (nc.getCoordinateReferenceSystem() != null)
+        if (req.getCoordinateReferenceSystem() != null)
             nc.setCoordinateReferenceSystem(trimToNull(nc.getCoordinateReferenceSystem()));
-        if (nc.getDisplayRule() != null)
+        if (req.getDisplayRule() != null)
             nc.setDisplayRule(trimToNull(nc.getDisplayRule()));
 
         // Bảng con #22-#38, #45, #46 — thay thế toàn bộ cùng transaction (BR-038-08), chỉ khi thực sự đổi
@@ -345,8 +392,8 @@ public class NavigationChannelService {
         }
 
         // GIS — chỉ ghi flag khi tọa độ thực sự đổi (tránh no-op gây reset DRAFT)
-        if (req.getCoordinates() != null) {
-            if (req.getCoordinates().trim().isEmpty()) {
+        if (req.isFieldPresent("coordinates") || req.getCoordinates() != null) {
+            if (req.getCoordinates() == null || req.getCoordinates().trim().isEmpty()) {
                 if (nc.getSpatialId() != null) {
                     previousValues.put(NavigationChannelUpdateRequest.Fields.coordinates, "Có tọa độ GIS");
                     manualNewValues.put(NavigationChannelUpdateRequest.Fields.coordinates, "Đã xóa");
@@ -407,10 +454,16 @@ public class NavigationChannelService {
             return toResponse(nc);
         }
 
-        // F-039 D2: hồ sơ Bị trả về sau khi sửa thì quay về Lưu tạm để người nhập gửi lại.
-        // BR-039-08 (chốt TRI-1787825767692-3dab): APPROVED / APPROVED_LEVEL2 đã bị chặn từ đầu
-        // method (guard fail-fast) — nhánh này chỉ còn phục vụ REJECTED-family / PROPOSED.
-        if (currentStatus != ApprovalStatus.DRAFT) {
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9):
+        // Hồ sơ Đã duyệt khi sửa qua "Lưu và phê duyệt" giữ nguyên trạng thái APPROVED và ghi nhận thông tin duyệt.
+        // Hồ sơ Bị trả về sau khi sửa thì quay về Lưu tạm (DRAFT) để người nhập gửi lại.
+        if (isApprovedFlow || req.getApprovalStatus() == ApprovalStatus.APPROVED) {
+            approvalService.recordSaveAndApprove(
+                    nc,
+                    InfrastructureType.NAVIGATION_CHANNEL,
+                    "Update and approve directly",
+                    updatedBy);
+        } else if (currentStatus != ApprovalStatus.DRAFT) {
             nc.setApprovalStatus(ApprovalStatus.DRAFT);
             nc.setSubmittedAt(null);
             nc.setSubmittedBy(null);
@@ -424,6 +477,7 @@ public class NavigationChannelService {
         }
 
         nc.setUpdatedBy(updatedBy);
+        nc.setUpdatedAt(LocalDateTime.now());
         NavigationChannel saved = repo.save(nc);
 
         // F-039 D3: ghi history UPDATED sau save (cùng transaction) - lưu từng trường riêng biệt
@@ -486,6 +540,7 @@ public class NavigationChannelService {
     public NavigationChannelResponse submit(UUID id, UUID userId) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+        nc.setUpdatedAt(LocalDateTime.now());
         approvalService.submit(nc, InfrastructureType.NAVIGATION_CHANNEL, userId);
         return toResponse(repo.save(nc));
     }
@@ -495,6 +550,7 @@ public class NavigationChannelService {
         approvalService.requireApproveC2Permission(userId, "navigationchannel:approvec2");
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Navigation channel not found"));
+        nc.setUpdatedAt(LocalDateTime.now());
         approvalService.recordSaveAndApprove(
                 nc,
                 InfrastructureType.NAVIGATION_CHANNEL,
@@ -507,7 +563,7 @@ public class NavigationChannelService {
     public ApprovalResponse approveC1(UUID id, ApprovalRequest req, UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
-
+        nc.setUpdatedAt(LocalDateTime.now());
         approvalService.approveC1(nc, InfrastructureType.NAVIGATION_CHANNEL, req.getStatus(), req.getReason(), approvedBy);
         repo.save(nc);
         return buildApprovalResponse(nc, 1);
@@ -517,7 +573,7 @@ public class NavigationChannelService {
     public ApprovalResponse approveC2(UUID id, ApprovalRequest req, UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
-
+        nc.setUpdatedAt(LocalDateTime.now());
         approvalService.approveC2(nc, InfrastructureType.NAVIGATION_CHANNEL, req.getStatus(), req.getReason(), approvedBy);
         repo.save(nc);
         return buildApprovalResponse(nc, 2);
@@ -528,6 +584,7 @@ public class NavigationChannelService {
     public ApprovalResponse rejectLevel1(UUID id, ApprovalRequest req, UUID userId) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+        nc.setUpdatedAt(LocalDateTime.now());
         approvalService.approveC1(nc, InfrastructureType.NAVIGATION_CHANNEL, ApprovalStatus.REJECTED.name(), req.getReason(), userId);
         repo.save(nc);
         return buildApprovalResponse(nc, 1);
@@ -538,6 +595,7 @@ public class NavigationChannelService {
     public ApprovalResponse rejectLevel2(UUID id, ApprovalRequest req, UUID userId) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+        nc.setUpdatedAt(LocalDateTime.now());
         approvalService.approveC2(nc, InfrastructureType.NAVIGATION_CHANNEL, ApprovalStatus.REJECTED.name(), req.getReason(), userId);
         repo.save(nc);
         return buildApprovalResponse(nc, 2);
@@ -554,40 +612,29 @@ public class NavigationChannelService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public List<HistoryEntry> getHistory(UUID id) {
-        // F-043 (QA CHANGES-REQUESTED): existence + org-unit data scope — repo.findById đi qua
-        // @Filter(orgUnitFilter) (được bật bởi @DataScope ở controller), nên hồ sơ không tồn tại /
-        // đã xóa mềm / ngoài phạm vi đơn vị → orElseThrow → 400-family thay vì trả [] (AC-043-04/06).
-        repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
-        List<InfrastructureHistory> history = approvalHistoryRepo
-                .findByRefTypeAndRefIdOrderByApprovedDateDesc(InfrastructureType.NAVIGATION_CHANNEL, id);
-        Set<UUID> userIds = history.stream()
-                .map(InfrastructureHistory::getApprovedBy)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<UUID, String> userNames = resolveUserNames(userIds);
+    // F-043: đường đọc nhật ký đã chuyển sang NavigationChannelHistoryService — endpoint
+    // /{id}/history gọi historyService.getHistory(...). Các bản getHistory/getApprovalHistory tại
+    // đây (trả DTO HistoryEntry rời rạc, không gộp phiên LEVEL_1/LEVEL_2) đã bị xoá để chỉ còn MỘT
+    // đường lịch sử; xem docs/JOURNAL.md mục "P2: Luồng hàng hải có HAI đường lịch sử".
 
-        return history.stream().map(h -> {
-            HistoryEntry entry = new HistoryEntry();
-            entry.setId(h.getId());
-            entry.setNavigationChannelId(h.getRefId());
-            entry.setStatus(h.getStatus() != null ? h.getStatus().getCode() : null);
-            entry.setApprovedBy(h.getApprovedBy() != null
-                    ? userNames.getOrDefault(h.getApprovedBy(), null)
-                    : null);
-            entry.setApprovedDate(h.getApprovedDate());
-            entry.setChangedField(h.getChangedField());
-            entry.setPreviousValue(formatDisplayValue(h.getChangedField(), h.getPreviousValue()));
-            entry.setNewValue(formatDisplayValue(h.getChangedField(), h.getNewValue()));
-            return entry;
-        }).collect(Collectors.toList());
+    /**
+     * Chuẩn hóa từ khóa cho vế LIKE của truy vấn nhật ký — vế CSDL so với
+     * {@code immutable_unaccent(LOWER(...))} nên từ khóa PHẢI bỏ dấu + lowercase,
+     * nếu không gõ tiếng Việt có dấu (Đèn biển) hay chữ hoa sẽ không bao giờ khớp.
+     * KHÔNG bọc `%` ở đây: repository tự CONCAT `%` quanh tham số.
+     */
+    private static String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return null;
+        }
+        return Normalizer.normalize(keyword.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
     }
 
     public String formatDisplayValue(String field, String rawValue) {
         if (rawValue == null || rawValue.isEmpty() || "null".equalsIgnoreCase(rawValue) || "Chưa có".equals(rawValue)) {
-            return "Chưa có";
+            return null;
         }
         if (NavigationChannelUpdateRequest.Fields.coordinates.equals(field) || "coordinates".equals(field)) {
             return rawValue.trim();
@@ -636,11 +683,6 @@ public class NavigationChannelService {
     }
 
     @Transactional(readOnly = true)
-    public List<HistoryEntry> getApprovalHistory(UUID id) {
-        return getHistory(id);
-    }
-
-    @Transactional(readOnly = true)
     public List<NavigationChannelResponse> findByApprovalStatus(ApprovalStatus s) {
         return repo.findByApprovalStatusAndDeletedAtIsNull(s)
                 .stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList());
@@ -652,31 +694,169 @@ public class NavigationChannelService {
                 .stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList());
     }
 
-    private String mapSortProperty(String sortBy) {
-        if (sortBy == null) {
-            return EntityFields.UPDATED_AT;
+    private static String toKeywordLike(String keyword) {
+        String normalized = normalizeSearchKeyword(keyword);
+        return normalized == null ? null : "%" + normalized + "%";
+    }
+
+    public static Sort resolveSort(String sortBy, String sortDir) {
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) || "ascend".equalsIgnoreCase(sortDir)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "COALESCE(l.updatedAt, l.createdAt)")
+                .and(JpaSort.unsafe(Sort.Direction.DESC, "l.createdAt"))
+                .and(JpaSort.unsafe(Sort.Direction.ASC, "l.id"));
+        if (sortBy == null || sortBy.isBlank()) {
+            return defaultSort;
         }
-        return switch (sortBy) {
-            case "channelName", "name" -> NavigationChannel.Fields.channelName;
-            case "channelCode", "code" -> NavigationChannel.Fields.channelCode;
-            case "provinceId" -> BaseApprovableEntity.Fields.provinceId;
-            case "conditionStatus", "status", "operationalStatus" -> NavigationChannel.Fields.conditionStatus;
-            case "approvalStatus" -> BaseApprovableEntity.Fields.approvalStatus;
-            case "createdAt" -> EntityFields.CREATED_AT;
-            case "updatedAt" -> EntityFields.UPDATED_AT;
-            default -> EntityFields.UPDATED_AT;
-        };
+        String field = sortBy.trim();
+        String property;
+        switch (field) {
+            case "channelName":
+            case "name":
+                property = "LOWER(l.channelName)";
+                break;
+            case "channelCode":
+            case "code":
+                property = "LOWER(l.channelCode)";
+                break;
+            case "orgUnitId":
+            case "orgUnitName":
+            case "unitId":
+            case "unitName":
+                property = "LOWER(o.name)";
+                break;
+            case "seaportId":
+            case "seaportName":
+            case "portId":
+            case "portName":
+                property = "LOWER(p.portName)";
+                break;
+            case "operatingUnitId":
+            case "operatingUnitName":
+                property = "LOWER(op.name)";
+                break;
+            case "provinceId":
+            case "provinceName":
+            case "province":
+                property = "LOWER(pv.name)";
+                break;
+            case "conditionStatus":
+                property = "l.conditionStatus";
+                break;
+            case "approvalStatus":
+            case "status":
+                property = "l.approvalStatus";
+                break;
+            case "updatedAt":
+            case "updatedBy":
+            case "updatedByName":
+                property = "COALESCE(l.updatedAt, l.createdAt)";
+                break;
+            case "submittedAt":
+            case "submittedBy":
+            case "submittedByName":
+            case "submittedForApprovalAt":
+            case "submittedForApprovalBy":
+                property = "l.submittedAt";
+                break;
+            case "approvedDateLevel1":
+            case "approverLevel1":
+            case "approverLevel1Name":
+            case "level1ApprovedAt":
+            case "level1ApprovedBy":
+            case "portAuthorityApprovedAt":
+            case "portAuthorityApprovedBy":
+                property = "l.approvedDateLevel1";
+                break;
+            case "approvedDateLevel2":
+            case "approverLevel2":
+            case "approverLevel2Name":
+            case "level2ApprovedAt":
+            case "level2ApprovedBy":
+            case "departmentApprovedAt":
+            case "departmentApprovedBy":
+                property = "l.approvedDateLevel2";
+                break;
+            case "createdAt":
+            case "createdBy":
+                property = "l.createdAt";
+                break;
+            case "stationCount":
+                property = "l.stationCount";
+                break;
+            case "buoyCount":
+                property = "l.buoyCount";
+                break;
+            case "beaconCount":
+                property = "l.beaconCount";
+                break;
+            default:
+                property = null;
+        }
+        if (property == null) {
+            return defaultSort;
+        }
+        return JpaSort.unsafe(direction, property).and(defaultSort);
+    }
+
+    private static LocalDateTime parseLocalDateTime(String value, boolean endOfDay) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String v = value.trim();
+            if (v.length() == 10) {
+                return endOfDay ? LocalDate.parse(v).atTime(23, 59, 59, 999999000) : LocalDate.parse(v).atStartOfDay();
+            }
+            v = v.replace(" ", "T");
+            return LocalDateTime.parse(v);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(UUID orgUnitId, UUID seaportId, Integer provinceId,
+            ConditionStatus conditionStatus, String kw, String channelCode, String updatedFrom, String updatedTo) {
+        String keywordLike = toKeywordLike(kw);
+        String codeLike = toKeywordLike(channelCode);
+        LocalDateTime fromDt = parseLocalDateTime(updatedFrom, false);
+        LocalDateTime toDt = parseLocalDateTime(updatedTo, true);
+        Collection<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : null;
+        List<Object[]> rows = orgUnitIds != null
+                ? repo.countByApprovalStatusByOrgUnitIds(orgUnitIds, seaportId, provinceId, conditionStatus, keywordLike, codeLike, fromDt, toDt)
+                : repo.countByApprovalStatus(orgUnitId, seaportId, provinceId, conditionStatus, keywordLike, codeLike, fromDt, toDt);
+
+        Map<String, Long> counts = new HashMap<>();
+        counts.put("ALL", 0L);
+        for (ApprovalStatus s : ApprovalStatus.values()) {
+            counts.put(s.name(), 0L);
+        }
+
+        long total = 0;
+        for (Object[] r : rows) {
+            ApprovalStatus st = (ApprovalStatus) r[0];
+            Long cnt = (Long) r[1];
+            if (st != null && cnt != null) {
+                counts.put(st.name(), cnt);
+                total += cnt;
+            }
+        }
+        counts.put("ALL", total);
+        return counts;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Long> countByStatus(UUID orgUnitId, UUID seaportId, Integer provinceId,
+            ConditionStatus conditionStatus, String kw, String channelCode) {
+        return countByStatus(orgUnitId, seaportId, provinceId, conditionStatus, kw, channelCode, null, null);
     }
 
     @Transactional(readOnly = true)
     public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
-            ConditionStatus conditionStatus, String kw, String statusStr, int page, int size) {
-        return searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus, kw, statusStr, page, size, null, null);
-    }
-
-    @Transactional(readOnly = true)
-    public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
-            ConditionStatus conditionStatus, String kw, String statusStr, int page, int size,
+            ConditionStatus conditionStatus, String kw, String channelCode, String statusStr,
+            String updatedFrom, String updatedTo, int page, int size,
             String sortBy, String sortDir) {
         ApprovalStatus status = null;
         if (statusStr != null && !statusStr.trim().isEmpty()) {
@@ -686,22 +866,21 @@ public class NavigationChannelService {
                 log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", statusStr);
             }
         }
-        String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
-        String sortProperty = mapSortProperty(sortBy);
-        Sort sort = Sort.by(new Sort.Order(direction, sortProperty),
-                Sort.Order.desc(EntityFields.CREATED_AT),
-                Sort.Order.asc(EntityFields.ID));
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        java.util.Collection<UUID> orgUnitIds = orgUnitId != null
-                ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
-                : null;
+        String keywordLike = toKeywordLike(kw);
+        String codeLike = toKeywordLike(channelCode);
+        LocalDateTime fromDt = parseLocalDateTime(updatedFrom, false);
+        LocalDateTime toDt = parseLocalDateTime(updatedTo, true);
+        Sort sort = resolveSort(sortBy, sortDir);
+        Collection<UUID> orgUnitIds = orgUnitId != null ? orgUnitScopeService.resolveSubtreeIds(orgUnitId) : null;
         Page<NavigationChannel> r = orgUnitIds != null
                 ? repo.searchDocumentsByOrgUnitIds(orgUnitIds, seaportId, provinceId, conditionStatus,
-                        keywordLike, status, pageable)
-                : repo.searchDocuments(null, seaportId, provinceId, conditionStatus,
-                        keywordLike, status, pageable);
+                        keywordLike, codeLike, status, fromDt, toDt,
+                        PageRequest.of(page, size, sort))
+                : repo.searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus,
+                        keywordLike, codeLike, status, fromDt, toDt,
+                        PageRequest.of(page, size, sort));
+
+        Map<String, Long> statusCounts = countByStatus(orgUnitId, seaportId, provinceId, conditionStatus, kw, channelCode, updatedFrom, updatedTo);
 
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(nc -> toResponse(nc, false)).collect(Collectors.toList()))
@@ -709,7 +888,27 @@ public class NavigationChannelService {
                 .totalPages(r.getTotalPages())
                 .currentPage(r.getNumber())
                 .pageSize(r.getSize())
+                .statusCounts(statusCounts)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
+            ConditionStatus conditionStatus, String kw, String channelCode, String statusStr, int page, int size,
+            String sortBy, String sortDir) {
+        return searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus, kw, channelCode, statusStr, null, null, page, size, sortBy, sortDir);
+    }
+
+    @Transactional(readOnly = true)
+    public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
+            ConditionStatus conditionStatus, String kw, String channelCode, String statusStr, int page, int size) {
+        return searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus, kw, channelCode, statusStr, page, size, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public SearchResultResponse searchDocuments(UUID orgUnitId, UUID seaportId, Integer provinceId,
+            ConditionStatus conditionStatus, String kw, String statusStr, int page, int size) {
+        return searchDocuments(orgUnitId, seaportId, provinceId, conditionStatus, kw, null, statusStr, page, size);
     }
 
     private NavigationChannelResponse toResponse(NavigationChannel nc) {
@@ -721,13 +920,7 @@ public class NavigationChannelService {
                 ? attachmentRepository
                         .findByRefIdAndRefTypeOrderByUploadedDateDesc(nc.getId(), InfrastructureType.NAVIGATION_CHANNEL)
                         .stream()
-                        .map(a -> NavigationChannelAttachmentResponse.builder()
-                                .id(a.getId())
-                                .fileName(a.getFileName())
-                                .filePath(a.getFilePath())
-                                .fileSize(a.getFileSize())
-                                .uploadDate(a.getUploadedDate() != null ? a.getUploadedDate().toLocalDate() : null)
-                                .build())
+                        .map(a -> toAttachmentResponse(a, resolveUserName(a.getUploadedBy())))
                         .collect(Collectors.toList())
                 : null;
 
@@ -876,10 +1069,72 @@ public class NavigationChannelService {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /** Tự sinh channelCode prefix LHH (chốt a3): count + 1 theo orgUnitId. */
-    private String generateChannelCode(UUID orgUnitId) {
-        long count = repo.countByOrgUnitId(orgUnitId);
-        return CHANNEL_CODE_PREFIX + String.format("%06d", count + 1);
+    /** Tự sinh channelCode format chuẩn LHH-000001 (MAX(seq) + 1 theo orgUnitId, chống xung đột). */
+    public synchronized String generateChannelCode(UUID orgUnitId) {
+        List<String> codes = repo.findActiveChannelCodesByOrgUnitId(orgUnitId);
+        int maxSeq = 0;
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("^LHH-?(\\d+)$", java.util.regex.Pattern.CASE_INSENSITIVE);
+        if (codes != null) {
+            for (String code : codes) {
+                if (code == null) continue;
+                java.util.regex.Matcher m = pattern.matcher(code.trim());
+                if (m.matches()) {
+                    try {
+                        int seq = Integer.parseInt(m.group(1));
+                        if (seq > maxSeq) {
+                            maxSeq = seq;
+                        }
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            }
+        }
+        int nextSeq = maxSeq + 1;
+        String candidate = String.format("LHH-%06d", nextSeq);
+        while (repo.existsActiveByOrgUnitIdAndChannelCode(orgUnitId, candidate)) {
+            nextSeq++;
+            candidate = String.format("LHH-%06d", nextSeq);
+        }
+        return candidate;
+    }
+
+    /**
+     * Đơn vị của người thao tác — dùng làm fallback khi request không gửi orgUnitId.
+     *
+     * <p>Ném lỗi NGHIỆP VỤ (IllegalArgumentException → 400 kèm message tiếng Việt), KHÔNG ném
+     * AccessDeniedException: tài khoản thiếu đơn vị không phải lỗi phân quyền, và 403 rỗng body
+     * khiến UI chỉ hiện toast quyền chung mà không nói được người dùng cần làm gì.
+     */
+    private UUID resolveOperatorOrgUnitId(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("Không xác định được người thao tác để gán đơn vị quản lý");
+        }
+        User operator = userRepository.findByIdWithRelations(userId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Không tìm thấy tài khoản người thao tác với id: " + userId));
+        OrgUnit orgUnit = operator.getOrgUnit();
+        if (orgUnit == null || orgUnit.getId() == null) {
+            throw new IllegalArgumentException(
+                    "Tài khoản của bạn chưa được gán đơn vị quản lý, vui lòng chọn đơn vị quản lý trước khi lưu");
+        }
+        return orgUnit.getId();
+    }
+
+    /**
+     * Như {@link #resolveOperatorOrgUnitId(UUID)} nhưng trả {@code null} thay vì ném lỗi — dùng cho
+     * nhánh gán bù khi CẬP NHẬT bản ghi cũ.
+     *
+     * <p>Tạo mới thì bắt buộc phải có đơn vị (ném lỗi để người dùng chọn), nhưng cập nhật một bản ghi
+     * cũ đang thiếu đơn vị không được phép thất bại vì lý do đó.
+     */
+    private UUID resolveOperatorOrgUnitIdOrNull(UUID userId) {
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findByIdWithRelations(userId)
+                .map(User::getOrgUnit)
+                .map(OrgUnit::getId)
+                .orElse(null);
     }
 
     /** Gắn bảng con route details (#22-#38), coordinates (#45), attachments (#46) cùng transaction. */
@@ -945,16 +1200,256 @@ public class NavigationChannelService {
             if (a.getFileName() == null || a.getFileName().trim().isEmpty()) {
                 continue;
             }
+            String path = a.getFilePath() != null && !a.getFilePath().trim().isEmpty()
+                    ? a.getFilePath().trim()
+                    : "uploads/navigation-channel/" + refId + "/" + a.getFileName().trim();
             attachmentRepository.save(InfrastructureAttachment.builder()
                     .refId(refId)
                     .refType(InfrastructureType.NAVIGATION_CHANNEL)
                     .fileName(a.getFileName().trim())
-                    .filePath(a.getFilePath() != null ? a.getFilePath().trim() : null)
+                    .filePath(path)
                     .fileSize(a.getFileSize())
-                    .fileType(a.getFileType())
+                    .fileType(a.getFileType() != null ? a.getFileType() : AttachmentFileType.OTHER)
                     .uploadedBy(userId)
+                    .uploadedDate(LocalDateTime.now())
                     .build());
         }
+    }
+
+    private static final int MAX_ATTACHMENTS = 10;
+    private static final long MAX_ATTACHMENT_SIZE = 20L * 1024 * 1024;
+    private static final List<String> ALLOWED_ATTACHMENT_EXTS = List.of(
+            "pdf", "doc", "docx", "xls", "xlsx", "jpg", "jpeg", "png", "tiff", "tif");
+
+    private void validateAttachment(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Tài liệu đính kèm không được để trống");
+        }
+        if (file.getSize() > MAX_ATTACHMENT_SIZE) {
+            throw new IllegalArgumentException("Tài liệu đính kèm không được vượt quá 20MB theo quy định");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.contains(".")) {
+            throw new IllegalArgumentException("Định dạng file không hỗ trợ");
+        }
+        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase(java.util.Locale.ROOT);
+        if (!ALLOWED_ATTACHMENT_EXTS.contains(ext)) {
+            throw new IllegalArgumentException("Định dạng file không hỗ trợ");
+        }
+    }
+
+    @Transactional
+    public List<NavigationChannelAttachmentResponse> uploadAttachments(UUID id, List<MultipartFile> files, UUID userId) {
+        NavigationChannel entity = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+
+        if (files == null || files.isEmpty()) {
+            return List.of();
+        }
+
+        List<InfrastructureAttachment> currentAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.NAVIGATION_CHANNEL);
+        if (currentAtts.size() + files.size() > MAX_ATTACHMENTS) {
+            throw new IllegalArgumentException("Số lượng tệp đính kèm tối đa là " + MAX_ATTACHMENTS + " tệp");
+        }
+
+        List<String> fileListBefore = currentAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+
+        boolean isNewlyCreated = entity.getCreatedAt() != null
+                && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
+        boolean wasApproved = !isNewlyCreated
+                && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
+                    || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
+
+        for (MultipartFile file : files) {
+            validateAttachment(file);
+        }
+
+        Path uploadDir = Paths.get("uploads", "navigation-channel", id.toString()).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(uploadDir);
+        } catch (IOException e) {
+            throw new RuntimeException("Không thể tạo thư mục lưu file đính kèm: " + e.getMessage(), e);
+        }
+
+        List<NavigationChannelAttachmentResponse> uploaded = new ArrayList<>();
+        List<String> uploadedFileNames = new ArrayList<>();
+        LocalDateTime batchNow = LocalDateTime.now();
+
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "attachment";
+            String safePrefix = System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + "_";
+            String storageFileName = safePrefix + originalFilename;
+            Path filePath = uploadDir.resolve(storageFileName);
+
+            try {
+                file.transferTo(filePath.toFile());
+            } catch (IOException e) {
+                throw new RuntimeException("Không thể lưu file đính kèm: " + originalFilename, e);
+            }
+
+            String relativePath = "uploads/navigation-channel/" + id + "/" + storageFileName;
+            String ext = originalFilename.contains(".")
+                    ? originalFilename.substring(originalFilename.lastIndexOf('.') + 1).toLowerCase(java.util.Locale.ROOT)
+                    : "";
+            AttachmentFileType fileType = AttachmentFileType.fromValue(ext);
+
+            InfrastructureAttachment attachment = InfrastructureAttachment.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                    .fileName(originalFilename)
+                    .filePath(relativePath)
+                    .fileSize(file.getSize())
+                    .fileType(fileType)
+                    .uploadedBy(userId)
+                    .uploadedDate(batchNow)
+                    .build();
+
+            InfrastructureAttachment saved = attachmentRepository.save(attachment);
+            uploaded.add(toAttachmentResponse(saved, resolveUserName(userId)));
+            uploadedFileNames.add(originalFilename);
+        }
+
+        // Snapshot danh sách file sau khi upload
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        if (wasApproved && !uploadedFileNames.isEmpty()) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal)) {
+                approvalHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(id)
+                        .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                        .approvedBy(userId)
+                        .approvedDate(LocalDateTime.now())
+                        .changedField("Tài liệu đính kèm")
+                        .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
+                        .build());
+            }
+        }
+
+        return uploaded;
+    }
+
+    @Transactional(readOnly = true)
+    public List<NavigationChannelAttachmentResponse> listAttachments(UUID id) {
+        NavigationChannel entity = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+        List<InfrastructureAttachment> attachments = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.NAVIGATION_CHANNEL);
+        return attachments.stream()
+                .map(a -> toAttachmentResponse(a, resolveUserName(a.getUploadedBy())))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID id, UUID attachmentId, UUID userId) {
+        NavigationChannel entity = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+
+        InfrastructureAttachment att = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new IllegalArgumentException("File đính kèm không tồn tại: " + attachmentId));
+
+        if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.NAVIGATION_CHANNEL) {
+            throw new IllegalArgumentException("File đính kèm không thuộc luồng hàng hải này");
+        }
+
+        List<InfrastructureAttachment> existingAtts = attachmentRepository
+                .findByRefIdAndRefTypeOrderByUploadedDateDesc(id, InfrastructureType.NAVIGATION_CHANNEL);
+        String oldFilesSummary = existingAtts.stream()
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(a -> !a.getId().equals(attachmentId))
+                .map(InfrastructureAttachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String fileName = att.getFileName();
+        try {
+            if (att.getFilePath() != null) {
+                Path path = Paths.get(att.getFilePath()).toAbsolutePath().normalize();
+                Files.deleteIfExists(path);
+            }
+        } catch (Exception ignored) {
+        }
+
+        attachmentRepository.delete(att);
+
+        boolean wasApproved = entity != null
+                && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
+                    || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
+        if (wasApproved) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            approvalHistoryRepo.save(InfrastructureHistory.builder()
+                    .refId(id)
+                    .refType(InfrastructureType.NAVIGATION_CHANNEL)
+                    .approvalLevel(ApprovalLevel.LEVEL_0)
+                    .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                    .approvedBy(userId)
+                    .approvedDate(LocalDateTime.now())
+                    .changedField("Tài liệu đính kèm")
+                    .approvalContent("Xóa tệp: " + fileName)
+                    .previousValue(oldVal != null ? oldVal : "—")
+                    .newValue(newVal != null ? newVal : "—")
+                    .build());
+        }
+    }
+
+    public InfrastructureAttachment getAttachment(UUID id, UUID attachmentId) {
+        NavigationChannel entity = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với id: " + id));
+
+        InfrastructureAttachment att = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new IllegalArgumentException("File đính kèm không tồn tại: " + attachmentId));
+
+        if (!Objects.equals(att.getRefId(), id) || att.getRefType() != InfrastructureType.NAVIGATION_CHANNEL) {
+            throw new IllegalArgumentException("File đính kèm không thuộc luồng hàng hải này");
+        }
+        return att;
+    }
+
+    private String resolveUserName(UUID userId) {
+        if (userId == null) return "Cán bộ quản lý";
+        return userRepository.findById(userId)
+                .map(u -> (u.getFullName() != null && !u.getFullName().isBlank()) ? u.getFullName() : u.getUsername())
+                .orElse("Cán bộ quản lý");
+    }
+
+    private NavigationChannelAttachmentResponse toAttachmentResponse(InfrastructureAttachment a, String uploaderName) {
+        return NavigationChannelAttachmentResponse.builder()
+                .id(a.getId())
+                .fileName(a.getFileName())
+                .filePath(a.getFilePath())
+                .fileUrl("/api/v1/navigation-channel/" + a.getRefId() + "/attachments/" + a.getId() + "/download")
+                .fileSize(a.getFileSize())
+                .fileType(a.getFileType() != null ? a.getFileType().getCode() : null)
+                .contentType(a.getFileType() != null ? a.getFileType().name() : null)
+                .uploadedBy(a.getUploadedBy())
+                .uploadedByName(uploaderName)
+                .uploadedDate(a.getUploadedDate())
+                .uploadDate(a.getUploadedDate() != null ? a.getUploadedDate().toLocalDate() : null)
+                .build();
     }
 
     /** Trim chuỗi; chuỗi rỗng sau trim → null (BR-038-05). */
@@ -971,15 +1466,15 @@ public class NavigationChannelService {
      * payload chỉ khác khoảng trắng so với giá trị đang lưu được coi là no-op.
      */
     private void trimRequestStrings(NavigationChannelUpdateRequest req) {
-        req.setChannelName(trimToNull(req.getChannelName()));
-        req.setDetailedLocation(trimToNull(req.getDetailedLocation()));
-        req.setManagementStation(trimToNull(req.getManagementStation()));
-        req.setNotes(trimToNull(req.getNotes()));
-        req.setAnnouncementDecisionNumber(trimToNull(req.getAnnouncementDecisionNumber()));
-        req.setAnnouncementDecisionIssuer(trimToNull(req.getAnnouncementDecisionIssuer()));
-        req.setProtectionNotes(trimToNull(req.getProtectionNotes()));
-        req.setCoordinateReferenceSystem(trimToNull(req.getCoordinateReferenceSystem()));
-        req.setDisplayRule(trimToNull(req.getDisplayRule()));
+        if (req.getChannelName() != null) req.setChannelName(trimToNull(req.getChannelName()));
+        if (req.getDetailedLocation() != null) req.setDetailedLocation(trimToNull(req.getDetailedLocation()));
+        if (req.getManagementStation() != null) req.setManagementStation(trimToNull(req.getManagementStation()));
+        if (req.getNotes() != null) req.setNotes(trimToNull(req.getNotes()));
+        if (req.getAnnouncementDecisionNumber() != null) req.setAnnouncementDecisionNumber(trimToNull(req.getAnnouncementDecisionNumber()));
+        if (req.getAnnouncementDecisionIssuer() != null) req.setAnnouncementDecisionIssuer(trimToNull(req.getAnnouncementDecisionIssuer()));
+        if (req.getProtectionNotes() != null) req.setProtectionNotes(trimToNull(req.getProtectionNotes()));
+        if (req.getCoordinateReferenceSystem() != null) req.setCoordinateReferenceSystem(trimToNull(req.getCoordinateReferenceSystem()));
+        if (req.getDisplayRule() != null) req.setDisplayRule(trimToNull(req.getDisplayRule()));
     }
 
     // ── F-039 D3: helpers định dạng diff / history UPDATED ──────────────────
@@ -1056,11 +1551,6 @@ public class NavigationChannelService {
         return (fileName == null ? "" : fileName.trim()) + "|" + (filePath == null ? "" : filePath.trim());
     }
 
-    @Transactional(readOnly = true)
-    public List<NavigationChannelOptionResponse> getOptions() {
-        return repo.findActiveOptions();
-    }
-
     private String nullToEmpty(Object value) {
         return value == null ? "" : String.valueOf(value);
     }
@@ -1083,4 +1573,18 @@ public class NavigationChannelService {
         }
         return "";
     }
+
+    @Transactional(readOnly = true)
+    public List<NavigationChannelOptionResponse> getOptions() {
+        return getOptions(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<NavigationChannelOptionResponse> getOptions(UUID orgUnitId) {
+        if (orgUnitId != null) {
+            return repo.findOptionsByOrgUnitId(orgUnitId);
+        }
+        return repo.findAllOptions();
+    }
 }
+

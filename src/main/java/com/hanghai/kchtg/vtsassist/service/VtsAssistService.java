@@ -404,24 +404,22 @@ public class VtsAssistService {
 
     Map<String, String> previousValues = new LinkedHashMap<>();
 
-    if (request.getDeviceName() != null && !request.getDeviceName().trim().isEmpty()) {
-      applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName().trim(), entity::setDeviceName, previousValues);
-    }
-    applyIfChanged("detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation(), entity::setDetailedLocation, previousValues);
-    applyIfChanged("manufacturer", entity.getManufacturer(), request.getManufacturer(), entity::setManufacturer, previousValues);
-    applyIfChanged("model", entity.getModel(), request.getModel(), entity::setModel, previousValues);
-    applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues);
-    applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues);
-    applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues);
-    applyIfChanged("provinceName", entity.getProvinceName(), request.getProvinceName(), entity::setProvinceName, previousValues);
-    applyIfChanged("attachedInfrastructureType", entity.getAttachedInfrastructureType(), request.getAttachedInfrastructureType(), entity::setAttachedInfrastructureType, previousValues);
-    applyIfChanged("attachedInfrastructureId", entity.getAttachedInfrastructureId(), request.getAttachedInfrastructureId(), entity::setAttachedInfrastructureId, previousValues);
-    applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure(), entity::setUnitOfMeasure, previousValues);
-    applyIfChanged("yearOfUse", entity.getYearOfUse(), request.getYearOfUse(), entity::setYearOfUse, previousValues);
-    applyIfChanged("operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus(), entity::setOperationalStatus, previousValues);
-    applyIfChanged("specifications", entity.getSpecifications(), request.getSpecifications(), entity::setSpecifications, previousValues);
-    applyIfChanged("maintenanceInformation", entity.getMaintenanceInformation(), request.getMaintenanceInformation(), entity::setMaintenanceInformation, previousValues);
-    applyIfChanged("note", entity.getNote(), request.getNote(), entity::setNote, previousValues);
+    applyIfChanged("deviceName", entity.getDeviceName(), request.getDeviceName() != null ? request.getDeviceName().trim() : null, entity::setDeviceName, previousValues, request);
+    applyIfChanged("detailedLocation", entity.getDetailedLocation(), request.getDetailedLocation(), entity::setDetailedLocation, previousValues, request);
+    applyIfChanged("manufacturer", entity.getManufacturer(), request.getManufacturer(), entity::setManufacturer, previousValues, request);
+    applyIfChanged("model", entity.getModel(), request.getModel(), entity::setModel, previousValues, request);
+    applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues, request);
+    applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues, request);
+    applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues, request);
+    applyIfChanged("provinceName", entity.getProvinceName(), request.getProvinceName(), entity::setProvinceName, previousValues, request);
+    applyIfChanged("attachedInfrastructureType", entity.getAttachedInfrastructureType(), request.getAttachedInfrastructureType(), entity::setAttachedInfrastructureType, previousValues, request);
+    applyIfChanged("attachedInfrastructureId", entity.getAttachedInfrastructureId(), request.getAttachedInfrastructureId(), entity::setAttachedInfrastructureId, previousValues, request);
+    applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure(), entity::setUnitOfMeasure, previousValues, request);
+    applyIfChanged("yearOfUse", entity.getYearOfUse(), request.getYearOfUse(), entity::setYearOfUse, previousValues, request);
+    applyIfChanged("operationalStatus", entity.getOperationalStatus(), request.getOperationalStatus(), entity::setOperationalStatus, previousValues, request);
+    applyIfChanged("specifications", entity.getSpecifications(), request.getSpecifications(), entity::setSpecifications, previousValues, request);
+    applyIfChanged("maintenanceInformation", entity.getMaintenanceInformation(), request.getMaintenanceInformation(), entity::setMaintenanceInformation, previousValues, request);
+    applyIfChanged("note", entity.getNote(), request.getNote(), entity::setNote, previousValues, request);
 
     // Chụp trạng thái GIS cũ trước khi đồng bộ để ghi 'Tọa độ GIS'/'Loại đối tượng GIS'
     // vào lịch sử khi sửa hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
@@ -436,40 +434,17 @@ public class VtsAssistService {
       }
     }
 
-    boolean hasGeometryType = request.getGeometryType() != null;
-    boolean hasCoordinates = request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty();
+    boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
+        && (request.getGeometryType() == null
+            || (request.getCoordinates() != null && request.getCoordinates().trim().isEmpty()));
 
-    if (hasGeometryType && hasCoordinates) {
-      applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues);
-      applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues);
-      applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues);
-      applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues);
-
-      if (!WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
-        previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+    if (shouldClearLocation) {
+      // 1. Xóa đối tượng không gian trong gis_spatial_objects và xóa foreign key spatialId
+      if (entity.getSpatialId() != null) {
+        gisSpatialObjectService.delete(entity.getSpatialId());
+        entity.setSpatialId(null);
       }
-      if (!Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
-        previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
-      }
-
-      GisGeometryType geomType = request.getGeometryType();
-      UUID spatialId = gisSpatialObjectService.syncSpatialObject(
-        entity.getSpatialId(),
-        "Hệ thống phụ trợ VTS " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
-        entity.getDeviceCode(),
-        geomType,
-        request.getCoordinates().trim(),
-        entity.getId(),
-        InfrastructureType.VTS_ASSIST);
-      entity.setSpatialId(spatialId);
-    } else {
-      // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
-      if (oldGeometryType != null) {
-        previousValues.put("geometryType", oldGeometryType);
-      }
-      if (oldCoordinates != null && !oldCoordinates.isBlank()) {
-        previousValues.put("coordinates", oldCoordinates);
-      }
+      // 2. Xóa các trường bản đồ liên kết trên entity
       if (entity.getMapSymbolId() != null) {
         previousValues.put("mapSymbolId", entity.getMapSymbolId().toString());
         entity.setMapSymbolId(null);
@@ -486,9 +461,37 @@ public class VtsAssistService {
         previousValues.put("objectType", String.valueOf(entity.getObjectType()));
         entity.setObjectType(null);
       }
-      if (entity.getSpatialId() != null) {
-        gisSpatialObjectService.delete(entity.getSpatialId());
-        entity.setSpatialId(null);
+      // 3. Ghi nhận biến động xóa vào previousValues để lưu vết lịch sử nếu là hồ sơ ĐÃ DUYỆT
+      if (oldCoordinates != null && !oldCoordinates.isBlank()) {
+        previousValues.put("coordinates", oldCoordinates);
+      }
+      if (oldGeometryType != null && !oldGeometryType.isBlank()) {
+        previousValues.put("geometryType", oldGeometryType);
+      }
+    } else {
+      applyIfChanged("objectType", entity.getObjectType(), request.getObjectType(), entity::setObjectType, previousValues, request);
+      applyIfChanged("mapSymbolId", entity.getMapSymbolId(), request.getMapSymbolId(), entity::setMapSymbolId, previousValues, request);
+      applyIfChanged("coordinateSystem", entity.getCoordinateSystem(), request.getCoordinateSystem(), entity::setCoordinateSystem, previousValues, request);
+      applyIfChanged("displayRule", entity.getDisplayRule(), request.getDisplayRule(), entity::setDisplayRule, previousValues, request);
+
+      if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+        if (!WktCoordinateUtils.coordinatesEqual(request.getCoordinates(), oldCoordinates)) {
+          previousValues.put("coordinates", oldCoordinates != null ? oldCoordinates : "Chưa có");
+        }
+        if (request.getGeometryType() != null && !Objects.equals(request.getGeometryType().name(), oldGeometryType)) {
+          previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType : "Chưa có");
+        }
+
+        GisGeometryType geomType = request.getGeometryType();
+        UUID spatialId = gisSpatialObjectService.syncSpatialObject(
+          entity.getSpatialId(),
+          "Hệ thống phụ trợ VTS " + (request.getDeviceName() != null ? request.getDeviceName() : entity.getDeviceName()),
+          entity.getDeviceCode(),
+          geomType,
+          request.getCoordinates().trim(),
+          entity.getId(),
+          InfrastructureType.VTS_ASSIST);
+        entity.setSpatialId(spatialId);
       }
     }
 
@@ -545,10 +548,25 @@ public class VtsAssistService {
     }
   }
 
-  private <T> void applyIfChanged(String fieldName, T currentVal, T newVal, java.util.function.Consumer<T> setter, Map<String, String> previousValues) {
-    if (EntityUpdateUtils.areEqual(currentVal, newVal)) return;
+  private <T> void applyIfChanged(String fieldName, T currentVal, T newVal, java.util.function.Consumer<T> setter,
+      Map<String, String> previousValues, UpdateVtsAssistRequest request) {
+    if (request != null) {
+      if (!request.isFieldPresent(fieldName)) {
+        return;
+      }
+    } else if (newVal == null) {
+      return;
+    }
+    if (EntityUpdateUtils.areEqual(currentVal, newVal)) {
+      return;
+    }
     previousValues.put(fieldName, currentVal != null ? String.valueOf(currentVal) : "Chưa có");
     setter.accept(newVal);
+  }
+
+  private <T> void applyIfChanged(String fieldName, T currentVal, T newVal, java.util.function.Consumer<T> setter,
+      Map<String, String> previousValues) {
+    applyIfChanged(fieldName, currentVal, newVal, setter, previousValues, null);
   }
 
   private Object getEntityFieldValue(VtsAssist entity, String field) {

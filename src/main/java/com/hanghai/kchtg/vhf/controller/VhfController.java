@@ -63,7 +63,29 @@ public class VhfController {
       .body(ApiResponse.success("Tạo mới hệ thống VHF thành công", response));
   }
 
-  @GetMapping("/{id}")
+  @GetMapping("/status-counts")
+  @PreAuthorize("@auth.check(authentication, 'vhf:read')")
+  public ResponseEntity<ApiResponse<Map<String, Long>>> countStatus(
+      @RequestParam(required = false) UUID orgUnitId,
+      @RequestParam(required = false) UUID seaportId,
+      @RequestParam(required = false) String deviceCode,
+      @RequestParam(required = false) String deviceName,
+      @RequestParam(required = false) String province,
+      @RequestParam(required = false) String operatingStatus,
+      @RequestParam(required = false) Integer attachedInfrastructureType,
+      @RequestParam(required = false) UUID attachedInfrastructureId,
+      @RequestParam(required = false) Integer yearOfUse,
+      @RequestParam(required = false) String updatedFrom,
+      @RequestParam(required = false) String updatedTo,
+      @RequestParam(required = false) String search) {
+    Map<String, Long> counts = vhfService.countByStatus(
+        orgUnitId, seaportId, deviceCode, deviceName, province,
+        operatingStatus, attachedInfrastructureType, attachedInfrastructureId,
+        yearOfUse, updatedFrom, updatedTo, search);
+    return ResponseEntity.ok(ApiResponse.success("Lấy số lượng theo trạng thái thành công", counts));
+  }
+
+  @GetMapping("/{id:[0-9a-fA-F-]{36}}")
   @PreAuthorize("@auth.check(authentication, 'vhf:read')")
   public ResponseEntity<ApiResponse<VhfResponse>> findById(@PathVariable UUID id) {
     log.info("Fetching VHF: id={}", id);
@@ -73,7 +95,7 @@ public class VhfController {
 
   @GetMapping
   @PreAuthorize("@auth.check(authentication, 'vhf:read')")
-  public ResponseEntity<ApiResponse<Page<VhfResponse>>> findAll(
+  public ResponseEntity<ApiResponse<Map<String, Object>>> findAll(
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "20") int size,
     @RequestParam(required = false) UUID orgUnitId,
@@ -104,7 +126,23 @@ public class VhfController {
       attachedInfrastructureType,
       attachedInfrastructureId,
       yearOfUse, updatedFrom, updatedTo, search, sortBy, sortOrder);
-    return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hệ thống thông tin liên lạc VHF thành công", result));
+
+    Map<String, Long> statusCounts = vhfService.countByStatus(
+      orgUnitId, seaportId, deviceCode, deviceName, province,
+      operatingStatus, attachedInfrastructureType, attachedInfrastructureId,
+      yearOfUse, updatedFrom, updatedTo, search);
+
+    Map<String, Object> data = new java.util.HashMap<>();
+    data.put("content", result.getContent());
+    data.put("totalElements", result.getTotalElements());
+    data.put("totalPages", result.getTotalPages());
+    data.put("number", result.getNumber());
+    data.put("size", result.getSize());
+    data.put("first", result.isFirst());
+    data.put("last", result.isLast());
+    data.put("statusCounts", statusCounts);
+
+    return ResponseEntity.ok(ApiResponse.success("Lấy danh sách hệ thống thông tin liên lạc VHF thành công", data));
   }
 
   @PutMapping

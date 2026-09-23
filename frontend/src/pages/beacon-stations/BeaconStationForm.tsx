@@ -264,7 +264,9 @@ export default forwardRef(function BeaconStationForm(
     if (!selectedUnitId) return new Set<string>();
     const rawSet = resolveOrgSubtreeIds(organizations, String(selectedUnitId));
     const normalizedSet = new Set<string>();
-    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+    rawSet.forEach((oId) => {
+      normalizedSet.add(String(oId).toLowerCase());
+    });
     return normalizedSet;
   }, [organizations, selectedUnitId]);
 
@@ -643,45 +645,60 @@ export default forwardRef(function BeaconStationForm(
     onSubmittingChange?.(true);
 
     try {
-      const toDate = (v: any) => (v ? (dayjs.isDayjs(v) ? v.toISOString() : String(v)) : undefined);
+      const toDate = (v: any) => (v ? (dayjs.isDayjs(v) ? v.toISOString() : String(v)) : (isEdit ? null : undefined));
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        const res = safeDecimal(val);
+        return res !== undefined ? res : (isEdit ? null : undefined);
+      };
+
       const stationCode = values.code ? String(values.code).trim() : (isEdit ? undefined : await beaconStationCRUD.generateCode());
       const payload: any = {
         action,
         code: stationCode || undefined,
-        name: values.name ? String(values.name).trim() : undefined,
-        type: values.type,
-        lightRange: safeDecimal(values.lightRange),
-        towerColor: values.towerColor,
-        location: values.location,
-        shape: values.shape,
-        structure: values.structure,
-        towerHeight: safeDecimal(values.towerHeight),
-        lightHeight: safeDecimal(values.lightHeight),
-        geographicRange: values.geographicRange,
-        backupLightModel: values.backupLightModel,
-        powerSupply: values.powerSupply,
-        staffCount: values.staffCount != null ? Number(values.staffCount) : undefined,
-        stationArea: safeDecimal(values.stationArea),
-        primaryLightModel: values.primaryLightModel,
-        area: safeDecimal(values.area),
+        name: cleanString(values.name),
+        type: cleanString(values.type),
+        lightRange: cleanDecimal(values.lightRange),
+        towerColor: cleanString(values.towerColor),
+        location: cleanString(values.location),
+        shape: cleanString(values.shape),
+        structure: cleanString(values.structure),
+        towerHeight: cleanDecimal(values.towerHeight),
+        lightHeight: cleanDecimal(values.lightHeight),
+        geographicRange: cleanString(values.geographicRange),
+        backupLightModel: cleanString(values.backupLightModel),
+        powerSupply: cleanString(values.powerSupply),
+        staffCount: cleanNumber(values.staffCount),
+        stationArea: cleanDecimal(values.stationArea),
+        primaryLightModel: cleanString(values.primaryLightModel),
+        area: cleanDecimal(values.area),
         lastRepairDate: toDate(values.lastRepairDate),
         commissionedDate: toDate(values.commissionedDate),
-        unitId: values.unitId,
-        provinceId: values.provinceId != null ? Number(values.provinceId) : undefined,
-        seaportId: values.seaportId,
-        operator: values.operator,
-        detailedLocation: values.detailedLocation,
-        operationalStatus: values.operationalStatus != null ? Number(values.operationalStatus) : undefined,
-        region: values.region,
-        identifyingFeature: values.identifyingFeature,
-        note: values.note,
-        geometryType: hasGeom ? values.geometryType : null,
-        mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : null,
-        coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-        displayRule: hasGeom && values.displayRule ? values.displayRule : null,
-        coordinates: hasGeom && coordinatesWkt ? coordinatesWkt : null,
-        latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
-        longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
+        unitId: values.unitId || (isEdit ? null : undefined),
+        provinceId: cleanNumber(values.provinceId),
+        seaportId: values.seaportId || (isEdit ? null : undefined),
+        operator: cleanString(values.operator),
+        detailedLocation: cleanString(values.detailedLocation),
+        operationalStatus: cleanNumber(values.operationalStatus),
+        region: cleanString(values.region),
+        identifyingFeature: cleanString(values.identifyingFeature),
+        note: cleanString(values.note),
+        geometryType: hasGeom ? (values.geometryType || null) : (isEdit ? null : undefined),
+        mapSymbolId: hasGeom && values.mapSymbolId ? values.mapSymbolId : (isEdit ? null : undefined),
+        coordinateSystem: hasGeom && values.coordinateSystem != null ? Number(values.coordinateSystem) : (isEdit ? null : undefined),
+        displayRule: hasGeom && values.displayRule ? values.displayRule : (isEdit ? null : undefined),
+        coordinates: hasGeom && coordinatesWkt ? coordinatesWkt : (isEdit ? null : undefined),
+        latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : undefined),
+        longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : undefined),
       };
 
       Object.keys(payload).forEach((k) => {
@@ -766,7 +783,9 @@ export default forwardRef(function BeaconStationForm(
                       } else if (currentSeaportId) {
                         const rawSet = resolveOrgSubtreeIds(organizations, String(val));
                         const normalizedSet = new Set<string>();
-                        rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
+                        rawSet.forEach((oId) => {
+                          normalizedSet.add(String(oId).toLowerCase());
+                        });
                         const isValid = seaports.some(
                           (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
                         );
@@ -891,7 +910,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[{ required: true, message: 'Vui lòng nhập tầm hiệu lực' }, decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0.01} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -928,7 +947,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -939,7 +958,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>
@@ -1005,7 +1024,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -1016,7 +1035,7 @@ export default forwardRef(function BeaconStationForm(
                   rules={[decimalNumberRule]}
                   getValueFromEvent={getValueFromEvent20}
                 >
-                  <NumberInputWithCount min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                  <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="0" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                 </Form.Item>
               </Col>
             </Row>

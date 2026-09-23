@@ -1,4 +1,4 @@
-import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
+import { useEffect, useState, forwardRef, useImperativeHandle, useCallback, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, Tabs,
@@ -21,15 +21,14 @@ import {
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, spaceMd,
   surfaceCard, readonlyInputStyle,
   primaryButtonStyle, outlineButtonStyle, drawerTabBarStyle, drawerFormScrollStyle,
-  drawerGisControlBoxStyle,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import api from '../api';
 import toast from '../../components/ToastNotification';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
-import { organizationService } from '../organizationService';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
+import { organizationService, type Organization } from '../organizationService';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from '../../components/org-unit';
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -77,6 +76,25 @@ const sectionBoxStyle: React.CSSProperties = {
   marginBottom: 14,
   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
 };
+
+interface GisSelectionValue {
+  geometryType?: string;
+  symbolId?: string;
+  coordinates?: string;
+}
+
+const normalizeGeometryType = (value: unknown): 'POINT' | 'LINE' | 'POLYGON' =>
+  value === 'LINE' || value === 'POLYGON' ? value : 'POINT';
+
+interface CoordinateRowItem {
+  _idx: number;
+  latD: number | null;
+  latM: number | null;
+  latS: number | null;
+  lngD: number | null;
+  lngM: number | null;
+  lngS: number | null;
+}
 
 const sectionHeaderStyle: React.CSSProperties = {
   display: 'flex',
@@ -300,7 +318,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
     note: useMaxReached('note', 2000),
   };
 
-  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [orgUnits, setOrgUnits] = useState<Organization[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   const [radarStations, setRadarStations] = useState<Array<{ value: string; label: string; orgUnitId?: string }>>([]);
@@ -337,7 +355,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const gisCoordSnapshotRef = useRef<{ coords: Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>; symbolId?: string; geometryType?: string }>({ coords: [], symbolId: undefined });
-  const latestGisMapValueRef = useRef<any>(null);
+  const latestGisMapValueRef = useRef<GisSelectionValue | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadFile[]>([]);
   const [pendingDeletedIds, setPendingDeletedIds] = useState<string[]>([]);
 
@@ -361,9 +379,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
     userService.list({ pageSize: 1000 })
       .then((resp) => {
-        const users = resp.data || (resp as any).content || [];
+        const users = (resp.items || resp.data || (resp as unknown as { content?: Array<{ id: string; fullName?: string; username?: string }> }).content || []) as Array<{ id: string; fullName?: string; username?: string }>;
         const map = new Map<string, string>();
-        users.forEach((u: any) => {
+        users.forEach((u) => {
           map.set(u.id, u.fullName || u.username || u.id);
         });
         setUserMap(map);
@@ -541,17 +559,20 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       .then((files) => {
         if (!isMounted) return;
         setUploadedFiles(
-          (Array.isArray(files) ? files : []).map((a: any) => ({
-            uid: String(a.id),
-            id: String(a.id),
-            name: a.fileName || a.name || '—',
-            fileName: a.fileName || a.name || '—',
-            size: a.fileSize ?? a.size,
-            fileSize: a.fileSize ?? a.size,
-            uploadedByName: a.uploadedByName || a.uploadedBy || 'Cán bộ quản lý',
-            uploadedDate: a.uploadedDate || a.createdAt || dayjs().toISOString(),
-            status: 'done' as const,
-          })),
+          (Array.isArray(files) ? files : []).map((a: unknown) => {
+            const item = a as { id: string; fileName?: string; name?: string; fileSize?: number; size?: number; uploadedByName?: string; uploadedBy?: string; uploadedDate?: string; createdAt?: string };
+            return {
+              uid: String(item.id),
+              id: String(item.id),
+              name: item.fileName || item.name || '—',
+              fileName: item.fileName || item.name || '—',
+              size: item.fileSize ?? item.size,
+              fileSize: item.fileSize ?? item.size,
+              uploadedByName: item.uploadedByName || item.uploadedBy || 'Cán bộ quản lý',
+              uploadedDate: item.uploadedDate || item.createdAt || dayjs().toISOString(),
+              status: 'done' as const,
+            };
+          }),
         );
       })
       .catch(() => {});
@@ -593,7 +614,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         uploadedAt: nowIso,
         createdAt: nowIso,
         status: 'done',
-        originFileObj: file as any,
+        originFileObj: file as unknown as UploadFile['originFileObj'],
       },
     ]);
     return false;
@@ -624,7 +645,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   };
 
   // ── GIS: chọn tọa độ trên bản đồ (chuẩn CHK — GisLocationSelector) ──
-  const applyMapSelection = (val: any) => {
+  const applyMapSelection = (val: GisSelectionValue | null) => {
     if (!val) return;
     latestGisMapValueRef.current = val;
     const geom = ((val.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
@@ -678,8 +699,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       const values = form.getFieldsValue(true);
       try {
         await form.validateFields();
-      } catch (e: any) {
-        const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
+      } catch (e: unknown) {
+        const errFields: Array<{ name: Array<string | number>; errors?: string[] }> =
+          (e as { errorFields?: Array<{ name: Array<string | number>; errors?: string[] }> })?.errorFields ?? [];
         const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
         toast.error(firstError);
         if (
@@ -730,41 +752,50 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       setGpsError(null);
       const coordinatesWkt = geomType && coordResult.validCoords.length > 0 ? serializeCoordinatesToWkt(coordResult.validCoords, geomType) : undefined;
 
+      const trimOrNull = (v: unknown): string | null => {
+        if (v == null) return null;
+        const s = String(v).trim();
+        return s === '' ? null : s;
+      };
+      const numOrNull = (v: unknown): number | null => {
+        if (v == null || v === '') return null;
+        const n = Number(v);
+        return Number.isNaN(n) ? null : n;
+      };
+
       onSubmittingChange?.(true);
 
       try {
-        const payload: Record<string, unknown> = {
-          deviceCode: values.deviceCode ? String(values.deviceCode).trim() : undefined,
-          deviceName: String(values.deviceName ?? '').trim(),
-          orgUnitId: values.orgUnitId || undefined,
-          operatingUnitId: values.operatingUnitId || undefined,
-          attachedInfrastructureType: values.attachedInfrastructureType != null ? Number(values.attachedInfrastructureType) : undefined,
-          attachedInfrastructureId: values.attachedInfrastructureId || undefined,
-          provinceName: values.provinceName || undefined,
-          detailedLocation: values.detailedLocation ? String(values.detailedLocation).trim() : undefined,
-          unitOfMeasure: values.unitOfMeasure != null ? Number(values.unitOfMeasure) : undefined,
-          quantity: values.quantity != null ? Number(values.quantity) : 1,
-          yearOfUse: values.yearOfUse != null ? Number(values.yearOfUse) : undefined,
-          operationalStatus: values.operationalStatus != null ? Number(values.operationalStatus) : 1,
-          model: values.model ? String(values.model).trim() : undefined,
-          manufacturer: values.manufacturer ? String(values.manufacturer).trim() : undefined,
-          specifications: values.specifications ? String(values.specifications).trim() : undefined,
-          maintenanceInformation: values.maintenanceInformation ? String(values.maintenanceInformation).trim() : undefined,
-          note: values.note ? String(values.note).trim() : undefined,
-          geometryType: geomType || null,
-          mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
-          coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
-          coordinates: geomType ? (coordinatesWkt || null) : null,
-          displayRule: geomType && values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null,
-        };
-
         let targetId = id;
         if (isEdit && id) {
-          await updateTransmission({
+          const updatePayload: UpdateTransmissionRequest = {
             id,
-            ...payload,
+            deviceCode: trimOrNull(values.deviceCode),
+            deviceName: String(values.deviceName ?? '').trim(),
+            orgUnitId: values.orgUnitId || null,
+            operatingUnitId: values.operatingUnitId || null,
+            attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
+            attachedInfrastructureId: values.attachedInfrastructureId || null,
+            provinceName: trimOrNull(values.provinceName),
+            detailedLocation: trimOrNull(values.detailedLocation),
+            unitOfMeasure: numOrNull(values.unitOfMeasure),
+            quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
+            yearOfUse: numOrNull(values.yearOfUse),
+            operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
+            model: trimOrNull(values.model),
+            manufacturer: trimOrNull(values.manufacturer),
+            specifications: trimOrNull(values.specifications),
+            maintenanceInformation: trimOrNull(values.maintenanceInformation),
+            note: trimOrNull(values.note),
+            geometryType: geomType ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+            mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
+            coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+            coordinates: geomType ? (coordinatesWkt || null) : null,
+            displayRule: geomType && values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null,
             ...(action === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
-          });
+          };
+
+          await updateTransmission(updatePayload);
 
           // Xóa file đánh dấu xóa
           if (pendingDeletedIds.length > 0) {
@@ -788,10 +819,32 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             await submitTransmission(id);
           }
         } else {
-          const createRes = await createTransmission({
-            ...payload,
+          const createPayload: CreateTransmissionRequest = {
+            deviceCode: trimOrNull(values.deviceCode) || undefined,
+            deviceName: String(values.deviceName ?? '').trim(),
+            orgUnitId: values.orgUnitId || null,
+            operatingUnitId: values.operatingUnitId || null,
+            attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
+            attachedInfrastructureId: values.attachedInfrastructureId || null,
+            provinceName: trimOrNull(values.provinceName),
+            detailedLocation: trimOrNull(values.detailedLocation),
+            unitOfMeasure: numOrNull(values.unitOfMeasure),
+            quantity: values.quantity != null && !Number.isNaN(Number(values.quantity)) ? Number(values.quantity) : 1,
+            yearOfUse: numOrNull(values.yearOfUse),
+            operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
+            model: trimOrNull(values.model),
+            manufacturer: trimOrNull(values.manufacturer),
+            specifications: trimOrNull(values.specifications),
+            maintenanceInformation: trimOrNull(values.maintenanceInformation),
+            note: trimOrNull(values.note),
+            geometryType: geomType ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+            mapSymbolId: geomType ? (values.mapSymbolId || null) : null,
+            coordinateSystem: geomType && values.coordinateSystem != null ? Number(values.coordinateSystem) : null,
+            coordinates: geomType ? (coordinatesWkt || null) : null,
+            displayRule: geomType && values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null,
             action,
-          } as CreateTransmissionRequest);
+          };
+          const createRes = await createTransmission(createPayload);
           targetId = createRes?.id;
 
           // Upload file cho bản ghi mới tạo
@@ -814,9 +867,10 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         );
 
         onFinish();
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[TransmissionForm] save error:', err);
-        toast.error(err?.response?.data?.message || err?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
+        const apiErr = err as { response?: { data?: { message?: string } }; message?: string };
+        toast.error(apiErr?.response?.data?.message || apiErr?.message || 'Có lỗi xảy ra khi lưu dữ liệu');
       } finally {
         onSubmittingChange?.(false);
       }
@@ -960,6 +1014,9 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     allowClear
                     showSearch
                     optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      normalizeSearchText(option?.label).includes(normalizeSearchText(input))
+                    }
                     style={selectStyle}
                   />
                 </Form.Item>
@@ -1328,23 +1385,23 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
                   </div>
                 )}
-                <DetailTable
+                <DetailTable<CoordinateRowItem>
                   size="small"
                   scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
                   dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
-                  rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+                  rowKey={(r) => String(r._idx)}
                   emptyText="Chưa có tọa độ GPS nào"
                   columns={[
                     {
                       title: 'STT',
                       width: 60,
                       align: 'center' as const,
-                      render: (_v: any, _r: any, idx: number) => idx + 1,
+                      render: (_v, _r, idx: number) => idx + 1,
                     },
                     {
                       title: 'Vĩ độ (Latitude - N)',
                       key: 'lat',
-                      render: (_v: any, record: any) =>
+                      render: (_v, record) =>
                         renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) =>
                           updateGpsPoint(record._idx, 'lat', d, m, s),
                         ),
@@ -1352,7 +1409,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                     {
                       title: 'Kinh độ (Longitude - E)',
                       key: 'lng',
-                      render: (_v: any, record: any) =>
+                      render: (_v, record) =>
                         renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) =>
                           updateGpsPoint(record._idx, 'lng', d, m, s),
                         ),
@@ -1362,7 +1419,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
                       width: 50,
                       align: 'center' as const,
                       onCell: () => ({ style: { verticalAlign: 'top' } }),
-                      render: (_v: any, record: any) => (
+                      render: (_v, record) => (
                         <Button
                           type="text"
                           danger
@@ -1396,18 +1453,18 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       children: (
         <div style={{ ...drawerFormScrollStyle, paddingTop: spaceMd }}>
           <InfrastructureAttachmentTab
-            attachments={uploadedFiles.map((f: any) => ({
+            attachments={uploadedFiles.map((f: UploadFile) => ({
               ...f,
-              id: f.uid || f.id,
-              fileName: f.name || f.fileName,
-              fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
+              id: f.uid,
+              fileName: f.name,
+              fileSize: f.size ?? f.originFileObj?.size,
               uploadedByName:
-                f.uploadedByName ||
-                (f.uploadedBy ? userMap.get(f.uploadedBy) || f.uploadedBy : '') ||
+                (f as unknown as { uploadedByName?: string }).uploadedByName ||
+                ((f as unknown as { uploadedBy?: string }).uploadedBy ? userMap.get((f as unknown as { uploadedBy?: string }).uploadedBy!) || (f as unknown as { uploadedBy?: string }).uploadedBy : '') ||
                 currentUser?.fullName ||
                 currentUser?.username ||
                 'Cán bộ quản lý',
-              uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
+              uploadedDate: (f as unknown as { uploadedDate?: string; uploadedAt?: string; createdAt?: string }).uploadedDate || (f as unknown as { uploadedAt?: string }).uploadedAt || (f as unknown as { createdAt?: string }).createdAt || dayjs().toISOString(),
             }))}
             readonly={false}
             userMap={userMap}
@@ -1424,8 +1481,8 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
               setUploadedFiles((prev) => prev.filter((x) => x.uid !== uid));
             }}
             onDownload={async (uid, name) => {
-              const fileItem = uploadedFiles.find((x: any) => (x.uid || x.id) === uid);
-              const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+              const fileItem = uploadedFiles.find((x) => x.uid === uid || (x as unknown as { id?: string }).id === uid);
+              const rawFile = fileItem?.originFileObj || (fileItem as unknown as { file?: File })?.file;
               if (rawFile) {
                 const url = window.URL.createObjectURL(rawFile);
                 const a = document.createElement('a');
@@ -1494,10 +1551,10 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         <div style={{ height: 520, borderRadius: 8, overflow: 'hidden', marginTop: 12 }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={normalizeGeometryType(watchedGeometryType)}
             height={520}
             value={{
-              geometryType: (watchedGeometryType as any) || 'POINT',
+              geometryType: normalizeGeometryType(watchedGeometryType),
               coordinates: serializeCoordinatesToWkt(
                 coordinateList
                   .filter((c) => c.latD != null && c.lngD != null)

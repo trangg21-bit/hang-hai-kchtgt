@@ -13,6 +13,7 @@ import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelResponse;
 import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelUpdateRequest;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.dto.ApprovalRequest;
+import com.hanghai.kchtg.navigationchannel.dto.NavigationChannelOptionResponse;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
@@ -27,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
@@ -125,18 +127,41 @@ class NavigationChannelServiceTest {
     }
 
     @Test
-    void update_approved_shouldReject() {
-        // BR-039-08 (chốt TRI-1787825767692-3dab): hồ sơ Đã duyệt là bất biến qua update —
-        // fail-fast trước MỌI mutation, không để lại side effect nào.
+    void update_whenProtectionScopeMetersCleared_shouldSetToNullAndRecordHistory() {
+        testEntity.setProtectionScopeMeters(BigDecimal.valueOf(36));
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .protectionScopeMeters(null)
+                .build();
+
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        NavigationChannelResponse r = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertThat(r).isNotNull();
+        assertThat(testEntity.getProtectionScopeMeters()).isNull();
+        verify(repo).save(testEntity);
+
+        ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(approvalHistoryRepo).save(historyCaptor.capture());
+        InfrastructureHistory savedHistory = historyCaptor.getValue();
+        assertThat(savedHistory.getChangedField()).contains("protectionScopeMeters");
+        assertThat(savedHistory.getPreviousValue()).contains("36");
+    }
+
+    @Test
+    void update_approved_withoutC2Permission_shouldReject() {
+        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): Không có quyền approvec2 thì từ chối sửa hồ sơ Đã duyệt.
         testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
         NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
                 .channelName("Luong Cai Lan Moi")
                 .build();
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        doThrow(new org.springframework.security.access.AccessDeniedException("Bạn không có quyền phê duyệt cấp Cục"))
+                .when(approvalService).requireApproveC2Permission(any(), eq("navigationchannel:approvec2"));
 
         assertThatThrownBy(() -> service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Không thể sửa hồ sơ đã duyệt");
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessage("Bạn không có quyền phê duyệt cấp Cục");
         assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
         assertThat(testEntity.getChannelName()).isEqualTo("Luong Hon Gai - Cai Lan");
         verify(repo, never()).save(any());
@@ -144,22 +169,45 @@ class NavigationChannelServiceTest {
     }
 
     @Test
-    void update_approvedLevel2_shouldReject() {
-        // BR-039-08: APPROVED_LEVEL2 (Đã duyệt cấp 2) cũng bị chặn như APPROVED.
+    void update_approved_withC2Permission_shouldSucceed() {
+        // Quy tắc 12 (T12 - "Lưu và phê duyệt"): Có quyền approvec2 thì được sửa, giữ nguyên APPROVED và ghi history.
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
+                .channelName("Luong Cai Lan Moi")
+                .build();
+        when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        when(repo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        NavigationChannelResponse res = service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertThat(res).isNotNull();
+        assertThat(testEntity.getChannelName()).isEqualTo("Luong Cai Lan Moi");
+        verify(approvalService).requireApproveC2Permission(any(), eq("navigationchannel:approvec2"));
+        verify(approvalService).recordSaveAndApprove(eq(testEntity), eq(InfrastructureType.NAVIGATION_CHANNEL), any(), any());
+        verify(approvalHistoryRepo).save(any());
+        verify(repo).save(testEntity);
+    }
+
+    @Test
+    void update_approvedLevel2_withoutC2Permission_shouldReject() {
+        // Quy tắc 12: APPROVED_LEVEL2 cũng yêu cầu quyền approvec2.
         testEntity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL2);
         NavigationChannelUpdateRequest updateReq = NavigationChannelUpdateRequest.builder()
                 .channelName("Luong Cai Lan Moi")
                 .build();
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
+        doThrow(new org.springframework.security.access.AccessDeniedException("Bạn không có quyền phê duyệt cấp Cục"))
+                .when(approvalService).requireApproveC2Permission(any(), eq("navigationchannel:approvec2"));
 
         assertThatThrownBy(() -> service.update(TEST_ID, updateReq, UUID.fromString("00000000-0000-0000-0000-000000000001")))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Không thể sửa hồ sơ đã duyệt");
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessage("Bạn không có quyền phê duyệt cấp Cục");
         assertThat(testEntity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL2);
         assertThat(testEntity.getChannelName()).isEqualTo("Luong Hon Gai - Cai Lan");
         verify(repo, never()).save(any());
         verify(approvalHistoryRepo, never()).save(any());
     }
+
+    
 
     @Test
     void update_rejectedWithRealChange_shouldResetToDraftAndClearWorkflow() {
@@ -354,5 +402,34 @@ class NavigationChannelServiceTest {
                 ApprovalRequest.builder().status("REJECTED").reason("Lý do từ chối 2").build(),
                 UUID.fromString("00000000-0000-0000-0000-000000000003"));
         verify(approvalService, times(1)).approveC2(eq(testEntity), eq(InfrastructureType.NAVIGATION_CHANNEL), eq("REJECTED"), eq("Lý do từ chối 2"), any());
+    }
+
+    @Test
+    void getOptions_shouldReturnAllOptions() {
+        var opt = NavigationChannelOptionResponse.builder()
+                .id(TEST_ID)
+                .channelName("Luong Hon Gai - Cai Lan")
+                .channelCode("NC-000001")
+                .build();
+        when(repo.findAllOptions()).thenReturn(java.util.List.of(opt));
+
+        var result = service.getOptions();
+        assertThat(result).containsExactly(opt);
+        verify(repo).findAllOptions();
+    }
+
+    @Test
+    void getOptions_withOrgUnitId_shouldFilterByOrgUnit() {
+        var opt = NavigationChannelOptionResponse.builder()
+                .id(TEST_ID)
+                .channelName("Luong Hon Gai - Cai Lan")
+                .channelCode("NC-000001")
+                .orgUnitId(ORG_UNIT_ID)
+                .build();
+        when(repo.findOptionsByOrgUnitId(ORG_UNIT_ID)).thenReturn(java.util.List.of(opt));
+
+        var result = service.getOptions(ORG_UNIT_ID);
+        assertThat(result).containsExactly(opt);
+        verify(repo).findOptionsByOrgUnitId(ORG_UNIT_ID);
     }
 }

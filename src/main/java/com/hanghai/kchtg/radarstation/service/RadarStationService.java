@@ -249,24 +249,24 @@ public class RadarStationService {
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         Map<String, String> previousValues = new LinkedHashMap<>();
-        applyIfChanged("stationName", entity.getStationName(), request.getStationName() != null ? request.getStationName().trim() : null, entity::setStationName, previousValues);
-        applyIfChanged("stationType", entity.getStationType(), request.getStationType() != null ? request.getStationType().trim() : null, entity::setStationType, previousValues);
-        applyIfChanged("location", entity.getLocation(), request.getLocation() != null ? request.getLocation().trim() : null, entity::setLocation, previousValues);
-        applyIfChanged("coverage", entity.getCoverage(), request.getCoverage() != null ? request.getCoverage().trim() : null, entity::setCoverage, previousValues);
-        applyIfChanged("emissionArea", entity.getEmissionArea(), request.getEmissionArea(), entity::setEmissionArea, previousValues);
-        applyIfChanged("source", entity.getSource(), request.getSource() != null ? request.getSource().trim() : null, entity::setSource, previousValues);
-        applyIfChanged("conditionStatus", entity.getConditionStatus(), request.getConditionStatus() != null ? request.getConditionStatus().trim() : null, entity::setConditionStatus, previousValues);
-        applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues);
-        applyIfChanged("seaportId", entity.getSeaportId(), request.getSeaportId(), entity::setSeaportId, previousValues);
-        applyIfChanged("vtsSystemId", entity.getVtsSystemId(), request.getVtsSystemId(), entity::setVtsSystemId, previousValues);
-        applyIfChanged("vtsOperationCenterId", entity.getVtsOperationCenterId(), request.getVtsOperationCenterId(), entity::setVtsOperationCenterId, previousValues);
-        applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues);
-        applyIfChanged("provinceId", entity.getProvinceId(), request.getProvinceId(), entity::setProvinceId, previousValues);
-        applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), request.getUnitOfMeasure() != null ? request.getUnitOfMeasure().trim() : null, entity::setUnitOfMeasure, previousValues);
-        applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues);
-        applyIfChanged("towerHeight", entity.getTowerHeight(), request.getTowerHeight(), entity::setTowerHeight, previousValues);
-        applyIfChanged("radarRange", entity.getRadarRange(), request.getRadarRange(), entity::setRadarRange, previousValues);
-        applyIfChanged("note", entity.getNote(), request.getNote() != null ? request.getNote().trim() : null, entity::setNote, previousValues);
+        applyIfChanged("stationName", entity.getStationName(), trimToNull(request.getStationName()), entity::setStationName, previousValues, request);
+        applyIfChanged("stationType", entity.getStationType(), trimToNull(request.getStationType()), entity::setStationType, previousValues, request);
+        applyIfChanged("location", entity.getLocation(), trimToNull(request.getLocation()), entity::setLocation, previousValues, request);
+        applyIfChanged("coverage", entity.getCoverage(), trimToNull(request.getCoverage()), entity::setCoverage, previousValues, request);
+        applyIfChanged("emissionArea", entity.getEmissionArea(), request.getEmissionArea(), entity::setEmissionArea, previousValues, request);
+        applyIfChanged("source", entity.getSource(), trimToNull(request.getSource()), entity::setSource, previousValues, request);
+        applyIfChanged("conditionStatus", entity.getConditionStatus(), trimToNull(request.getConditionStatus()), entity::setConditionStatus, previousValues, request);
+        applyIfChanged("orgUnitId", entity.getOrgUnitId(), request.getOrgUnitId(), entity::setOrgUnitId, previousValues, request);
+        applyIfChanged("seaportId", entity.getSeaportId(), request.getSeaportId(), entity::setSeaportId, previousValues, request);
+        applyIfChanged("vtsSystemId", entity.getVtsSystemId(), request.getVtsSystemId(), entity::setVtsSystemId, previousValues, request);
+        applyIfChanged("vtsOperationCenterId", entity.getVtsOperationCenterId(), request.getVtsOperationCenterId(), entity::setVtsOperationCenterId, previousValues, request);
+        applyIfChanged("operatingUnitId", entity.getOperatingUnitId(), request.getOperatingUnitId(), entity::setOperatingUnitId, previousValues, request);
+        applyIfChanged("provinceId", entity.getProvinceId(), request.getProvinceId(), entity::setProvinceId, previousValues, request);
+        applyIfChanged("unitOfMeasure", entity.getUnitOfMeasure(), trimToNull(request.getUnitOfMeasure()), entity::setUnitOfMeasure, previousValues, request);
+        applyIfChanged("quantity", entity.getQuantity(), request.getQuantity(), entity::setQuantity, previousValues, request);
+        applyIfChanged("towerHeight", entity.getTowerHeight(), request.getTowerHeight(), entity::setTowerHeight, previousValues, request);
+        applyIfChanged("radarRange", entity.getRadarRange(), request.getRadarRange(), entity::setRadarRange, previousValues, request);
+        applyIfChanged("note", entity.getNote(), trimToNull(request.getNote()), entity::setNote, previousValues, request);
 
         String oldCoord = entity.getSpatialId() != null ? gisSpatialObjectService.getCoordinatesBySpatialId(entity.getSpatialId()) : null;
         GisGeometryType oldGeom = null;
@@ -281,9 +281,11 @@ public class RadarStationService {
 
         boolean hasGeometryType = request.getGeometryType() != null;
         boolean hasCoordinates = newCoord != null && !newCoord.trim().isEmpty();
+        boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
+                && (!hasGeometryType || !hasCoordinates);
 
         if (hasGeometryType && hasCoordinates) {
-            applyIfChanged("mapIcon", entity.getMapIcon(), request.getMapIcon() != null ? request.getMapIcon().trim() : null, entity::setMapIcon, previousValues);
+            applyIfChanged("mapIcon", entity.getMapIcon(), trimToNull(request.getMapIcon()), entity::setMapIcon, previousValues, request);
 
             if (!WktCoordinateUtils.coordinatesEqual(newCoord, oldCoord)) {
                 previousValues.put("coordinates", oldCoord != null ? oldCoord : "Chưa có");
@@ -306,7 +308,7 @@ public class RadarStationService {
                     InfrastructureType.RADAR_STATION_LEGACY
             );
             entity.setSpatialId(spatialObj.getId());
-        } else {
+        } else if (shouldClearLocation) {
             // Loại bỏ thông tin vị trí GIS khi "Loại đối tượng" hoặc tọa độ bị xóa/trống
             if (oldGeom != null) {
                 previousValues.put("geometryType", oldGeom.name());
@@ -367,10 +369,20 @@ public class RadarStationService {
     }
 
     private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
-            Map<String, String> previousValues) {
+            Map<String, String> previousValues, RadarStationUpdateRequest req) {
+        if (req != null) {
+            if (!req.isFieldPresent(field)) return;
+        } else if (newVal == null) {
+            return;
+        }
         if (EntityUpdateUtils.areEqual(oldVal, newVal)) return;
         previousValues.put(field, oldVal != null ? String.valueOf(oldVal) : "Chưa có");
         setter.accept(newVal);
+    }
+
+    private <T> void applyIfChanged(String field, T oldVal, T newVal, java.util.function.Consumer<T> setter,
+            Map<String, String> previousValues) {
+        applyIfChanged(field, oldVal, newVal, setter, previousValues, null);
     }
 
     private String getFieldDisplayName(String field) {
