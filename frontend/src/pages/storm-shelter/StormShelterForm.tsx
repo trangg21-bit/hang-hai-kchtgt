@@ -374,7 +374,6 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
 
   // GPS Coordinates (Tab 2)
   const [coordinateList, setCoordinateList] = useState<GpsCoordinateItem[]>([]);
-  const [gpsError, setGpsError] = useState<string | null>(null);
   const [gisModalOpen, setGisModalOpen] = useState(false);
 
   // Attachments (Tab 3)
@@ -618,34 +617,6 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       .catch(() => {})
       .finally(() => setStormShelterCodeLoading(false));
   }, [watchedPortId, isEdit, form]);
-
-  // Sync geometryType to coordinateList
-  const handleGeometryTypeChange = (val: string | undefined) => {
-    form.setFieldValue('geometryType', val);
-    if (!val) {
-      setGpsError(null);
-      return;
-    }
-    form.setFieldsValue({
-      displayRule: 'Độ, phút, giây (DMS)',
-      coordinateSystem: form.getFieldValue('coordinateSystem') ?? 1,
-    });
-    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
-    setCoordinateList((prev) => {
-      if (!prev || prev.length === 0) {
-        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-      }
-      if (val === 'POINT' && prev.length > 1) {
-        return [prev[0]];
-      }
-      if (prev.length < count) {
-        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-        return [...prev, ...added];
-      }
-      return prev;
-    });
-    setGpsError(null);
-  };
 
   // Load initial data for Edit mode
   useEffect(() => {
@@ -1063,7 +1034,6 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
     const currentMapSymbolId = vals.mapSymbolId ?? form.getFieldValue('mapSymbolId');
     const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
-    const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
 
     if (currentGeometryType) {
       if (!currentMapSymbolId) {

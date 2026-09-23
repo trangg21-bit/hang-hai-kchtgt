@@ -11,7 +11,7 @@ import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, sidebarBg, readonlyInputStyle, textAreaStyle,
@@ -32,7 +32,6 @@ import {
   safeDecimal,
   parseNumber5,
   getValueFromEvent5,
-  integer5NonNegativeRule,
 } from './shipRepairYardRules';
 import { organizationService } from '../../services/organizationService';
 import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portService';
@@ -180,14 +179,14 @@ const renderDmsGroup = (
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
       radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
       radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
@@ -406,31 +405,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       .catch(() => {})
       .finally(() => setShipRepairYardCodeLoading(false));
   }, [watchedPortId]);
-
-  // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
-  const handleGeometryTypeChange = (val: string | undefined) => {
-    form.setFieldValue('geometryType', val);
-    if (!val) {
-      setGpsError(null);
-      return;
-    }
-    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
-    setCoordinateList((prev) => {
-      if (!prev || prev.length === 0) {
-        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-      }
-      if (val === 'POINT' && prev.length > 1) {
-        return [prev[0]];
-      }
-      if (prev.length < count) {
-        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-        return [...prev, ...added];
-      }
-      return prev;
-    });
-    setGpsError(null);
-  };
 
   // Edit mode: load existing
   useEffect(() => {

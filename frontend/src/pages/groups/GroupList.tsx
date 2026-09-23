@@ -24,7 +24,7 @@ import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { userService } from '../../services/userService';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import {
-  actionPrimary, textPrimary, textSecondary, textTertiary,
+  actionPrimary, textSecondary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
   radiusMd, radiusPill, spaceFormField, spaceMd,
   statusOperational, statusCritical, surfaceCard, borderDefault,

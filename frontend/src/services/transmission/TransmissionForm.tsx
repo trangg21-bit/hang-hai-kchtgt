@@ -54,7 +54,7 @@ import {
   submitTransmission,
   fetchOperatingOrganizations,
 } from './api';
-import type { TransmissionResponse } from './types';
+import type { TransmissionResponse, CreateTransmissionRequest, UpdateTransmissionRequest } from './types';
 import { OPERATIONAL_STATUS_OPTIONS } from './schema';
 
 const labelProps = (text: string) => ({
@@ -378,7 +378,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
 
     userService.list({ pageSize: 1000 })
       .then((resp) => {
-        const users = (resp.items || resp.data || (resp as unknown as { content?: Array<{ id: string; fullName?: string; username?: string }> }).content || []) as Array<{ id: string; fullName?: string; username?: string }>;
+        const users = ((resp as any).items || resp.data || (resp as any).content || []) as Array<{ id: string; fullName?: string; username?: string }>;
         const map = new Map<string, string>();
         users.forEach((u) => {
           map.set(u.id, u.fullName || u.username || u.id);
@@ -775,7 +775,6 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
         if (isEdit && id) {
           const updatePayload: UpdateTransmissionRequest = {
             id,
-            deviceCode: trimOrNull(values.deviceCode),
             deviceName: String(values.deviceName ?? '').trim(),
             orgUnitId: values.orgUnitId || null,
             operatingUnitId: values.operatingUnitId || null,

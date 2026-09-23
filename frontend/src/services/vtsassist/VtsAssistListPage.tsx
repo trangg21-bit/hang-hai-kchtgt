@@ -3031,7 +3031,6 @@ const VtsAssistListPage = () => {
         const currentAction = updateActionTypeRef.current;
         const updatePayload: UpdateVtsAssistRequest = {
           id: updateTarget.id,
-          deviceCode: trimOrNull(values.deviceCode),
           deviceName: String(values.deviceName ?? '').trim(),
           detailedLocation: trimOrNull(values.detailedLocation),
           manufacturer: trimOrNull(values.manufacturer),
@@ -3039,11 +3038,11 @@ const VtsAssistListPage = () => {
           quantity: values.quantity != null && !Number.isNaN(Number(String(values.quantity).replace(/,/g, '')))
             ? Number(String(values.quantity).replace(/,/g, ''))
             : 1,
-          orgUnitId: values.orgUnitId || null,
-          operatingUnitId: values.operatingUnitId,
+          orgUnitId: trimOrNull(values.orgUnitId),
+          operatingUnitId: trimOrNull(values.operatingUnitId),
           provinceName: trimOrNull(values.provinceName),
           attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
-          attachedInfrastructureId: values.attachedInfrastructureId || null,
+          attachedInfrastructureId: trimOrNull(values.attachedInfrastructureId),
           unitOfMeasure: numOrNull(values.unitOfMeasure),
           yearOfUse: numOrNull(values.yearOfUse),
           operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,

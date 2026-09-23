@@ -1312,24 +1312,6 @@ export default function DaiTtdhListPage() {
     ];
   }, [userMap]);
 
-  // ── Sorting helper ──────────────────────────────────────────────
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    // Đơn vị khai thác không còn trong danh mục đơn vị → để trống (''), KHÔNG rơi về UUID thô
-    if (field === 'operatingUnitId') return resolveOrgLevel2Name(organizations, r.operatingUnitId) || orgMap.get(r.operatingUnitId || '') || r.operatingUnitName || '';
-    if (field === 'daiTtdhName') return r.daiTtdhName ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[r.provinceId - 1] ?? '') : '';
-    if (field === 'stationLevel') return DAI_TTDH_STATION_LEVEL_OPTIONS.find((o) => o.value === r.stationLevel)?.label ?? r.stationLevel ?? '';
-    if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap]);
 
   // ── Columns ─────────────────────────────────────────────────────
   const columns = useMemo(() => {

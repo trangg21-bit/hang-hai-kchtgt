@@ -2,14 +2,12 @@ package com.hanghai.kchtg.port.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,8 +28,6 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.port.dto.transferarea.TransferAreaResponse;
 import com.hanghai.kchtg.port.dto.transferarea.UpdateTransferAreaRequest;
 import com.hanghai.kchtg.port.entity.TransferArea;
-import com.hanghai.kchtg.port.entity.TransferAreaMooringWaterArea;
-import com.hanghai.kchtg.port.entity.TransferAreaMooringWaterAreaAnchorPoint;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.TransferAreaMooringWaterAreaAnchorPointRepository;
