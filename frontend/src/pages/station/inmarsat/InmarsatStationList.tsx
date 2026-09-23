@@ -910,7 +910,7 @@ export default function InmarsatStationList() {
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
-            { label: 'Đài thông tin vệ tinh Inmarsat' },
+            { label: 'Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
           ]}
           actions={
             hasPerm('coastalstationinmarsat:create')

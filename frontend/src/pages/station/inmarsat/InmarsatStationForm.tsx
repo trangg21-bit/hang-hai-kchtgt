@@ -753,9 +753,9 @@ export default function InmarsatStationForm({
       title={
         <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
           {isDetailMode
-            ? (record?.name ? `Chi tiết Đài thông tin vệ tinh Inmarsat - ${record.name}` : 'Chi tiết Đài thông tin vệ tinh Inmarsat')
+            ? (record?.name ? `Chi tiết Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng - ${record.name}` : 'Chi tiết Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng')
             : isCreateMode
-              ? 'Thêm mới Đài thông tin vệ tinh Inmarsat'
+              ? 'Thêm mới Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng'
               : (record?.name ? `Chỉnh sửa thông tin — ${record.name}` : 'Chỉnh sửa thông tin')}
         </span>
       }

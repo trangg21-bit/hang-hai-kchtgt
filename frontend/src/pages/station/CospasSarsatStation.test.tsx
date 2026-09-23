@@ -223,7 +223,7 @@ describe('CospasSarsatStationList', () => {
   it('renders CospasSarsatStationList with standard and advanced filter controls', () => {
     const html = renderToStaticMarkup(<CospasSarsatStationList />);
     expect(html).toContain('Tài sản KCHTGT');
-    expect(html).toContain('Đài Cospas-Sarsat');
+    expect(html).toContain('Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam');
     expect(html).toContain('Thêm mới');
     expect(html).toContain('Tìm kiếm');
     expect(html).toContain('Làm mới bộ lọc');
@@ -286,7 +286,7 @@ describe('CospasSarsatStationForm & DetailContent', () => {
         onSuccess={vi.fn()}
       />
     );
-    expect(html).toContain('Thêm mới đài Cospas-Sarsat');
+    expect(html).toContain('Thêm mới Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam');
     expect(html).toContain('Lưu tạm');
     expect(html).toContain('Lưu và gửi phê duyệt');
     expect(html).toContain('Lưu và phê duyệt');
@@ -303,7 +303,7 @@ describe('CospasSarsatStationForm & DetailContent', () => {
         onSuccess={vi.fn()}
       />
     );
-    expect(html).toContain('Chỉnh sửa đài Cospas-Sarsat');
+    expect(html).toContain('Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam');
     expect(html).not.toContain('Hủy');
     expect(html).toContain('Lưu tạm');
     expect(html).toContain('Lưu và gửi phê duyệt');
@@ -321,7 +321,7 @@ describe('CospasSarsatStationForm & DetailContent', () => {
         onSuccess={vi.fn()}
       />
     );
-    expect(html).toContain('Chỉnh sửa đài Cospas-Sarsat');
+    expect(html).toContain('Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam');
     expect(html).not.toContain('Hủy');
     expect(html).toContain('Lưu và phê duyệt');
     expect(html).not.toContain('Lưu tạm');

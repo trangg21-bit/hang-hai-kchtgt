@@ -297,7 +297,7 @@ export function autoFormatHistoryValue(fn: string, raw: unknown): string | null 
     TRANSMISSION: 'Tài sản hệ thống truyền dẫn',
     VHF: 'Tài sản đài thông tin VHF',
     SCADA: 'Tài sản hệ thống SCADA',
-    AIS_SYSTEM: 'Tài sản hệ thống trạm bờ AIS',
+    AIS_SYSTEM: 'Tài sản hệ thống AIS',
     LRIT_STATION: 'Tài sản đài LRIT',
     INMARSAT_STATION: 'Tài sản đài Inmarsat',
     COSPAS_SARSAT_STATION: 'Tài sản đài Cospas-Sarsat',

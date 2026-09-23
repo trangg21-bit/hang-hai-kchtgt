@@ -947,7 +947,7 @@ export default function CospasSarsatStationList() {
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
-            { label: 'Đài Cospas-Sarsat' },
+            { label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam' },
           ]}
           actions={
             canCreate

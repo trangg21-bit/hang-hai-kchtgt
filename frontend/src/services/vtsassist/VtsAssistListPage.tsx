@@ -901,6 +901,7 @@ const VtsAssistListPage = () => {
   const [inputDeviceCode, setInputDeviceCode] = useState("");
   const [filterDeviceName, setFilterDeviceName] = useState("");
   const [filterDeviceCode, setFilterDeviceCode] = useState("");
+  const [filterTrigger, setFilterTrigger] = useState(0);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
   const [filterValues, setFilterValues] = useState({
     orgUnitId: "" as string,
@@ -931,7 +932,7 @@ const VtsAssistListPage = () => {
   }, []);
 
   const sortOrderFor = useCallback(
-    (key: string) =>
+    (key: string): 'ascend' | 'descend' | null =>
       sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
     [sortField, sortOrder]
   );
@@ -1689,9 +1690,9 @@ const VtsAssistListPage = () => {
         type: "mono" as const,
         align: "center" as const,
         fixed: "left" as const,
-        render: (_: unknown, __: VtsAssistResponse, index: number) => (
+        render: (_: unknown, __: VtsAssistResponse, index?: number) => (
           <span style={{ ...tableMetaStyle, fontWeight: fontWeightMedium }}>
-            {page * pageSize + index + 1}
+            {page * pageSize + (index ?? 0) + 1}
           </span>
         ),
       },
@@ -1750,11 +1751,11 @@ const VtsAssistListPage = () => {
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
-        key: "vtsSystemName",
+        key: "attachedInfrastructureName",
         label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        sortable: false,
+        sortOrder: sortOrderFor("attachedInfrastructureName"),
         cellTitle: (record: VtsAssistResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -1763,7 +1764,7 @@ const VtsAssistListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        sortable: false,
+        sortOrder: sortOrderFor("operatingUnitName"),
         cellTitle: (record: VtsAssistResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -2772,7 +2773,7 @@ const VtsAssistListPage = () => {
     if (!orgUnitReady) return;
     fetchData();
     fetchTabCounts();
-  }, [orgUnitReady, fetchData, fetchTabCounts]);
+  }, [orgUnitReady, fetchData, fetchTabCounts, filterTrigger]);
 
   const handleFilterApply = useCallback(() => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
@@ -2782,13 +2783,14 @@ const VtsAssistListPage = () => {
     }
     // Trim 2 đầu ô nhập liệu trước khi áp dụng (chuẩn /station/cospas-sarsat):
     // vừa giữ state filter sạch, vừa phản ánh lại giá trị đã trim lên ô input
-    const trimmedDeviceName = inputDeviceName.trim();
-    const trimmedDeviceCode = inputDeviceCode.trim();
+    const trimmedDeviceName = (inputDeviceName || '').trim();
+    const trimmedDeviceCode = (inputDeviceCode || '').trim();
     setInputDeviceName(trimmedDeviceName);
     setInputDeviceCode(trimmedDeviceCode);
     setFilterDeviceName(trimmedDeviceName);
     setFilterDeviceCode(trimmedDeviceCode);
     setPage(0);
+    setFilterTrigger((prev) => prev + 1);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
@@ -2812,6 +2814,7 @@ const VtsAssistListPage = () => {
     setSortField('updatedByName');
     setSortOrder('desc');
     setPage(0);
+    setFilterTrigger((prev) => prev + 1);
   }, []);
 
   const handleDeleteConfirm = useCallback(async () => {
@@ -3031,7 +3034,6 @@ const VtsAssistListPage = () => {
         const currentAction = updateActionTypeRef.current;
         const updatePayload: UpdateVtsAssistRequest = {
           id: updateTarget.id,
-          deviceCode: trimOrNull(values.deviceCode),
           deviceName: String(values.deviceName ?? '').trim(),
           detailedLocation: trimOrNull(values.detailedLocation),
           manufacturer: trimOrNull(values.manufacturer),
@@ -3039,11 +3041,11 @@ const VtsAssistListPage = () => {
           quantity: values.quantity != null && !Number.isNaN(Number(String(values.quantity).replace(/,/g, '')))
             ? Number(String(values.quantity).replace(/,/g, ''))
             : 1,
-          orgUnitId: values.orgUnitId || null,
-          operatingUnitId: values.operatingUnitId,
+          orgUnitId: values.orgUnitId ? String(values.orgUnitId) : null,
+          operatingUnitId: values.operatingUnitId ? String(values.operatingUnitId) : null,
           provinceName: trimOrNull(values.provinceName),
           attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
-          attachedInfrastructureId: values.attachedInfrastructureId || null,
+          attachedInfrastructureId: values.attachedInfrastructureId ? String(values.attachedInfrastructureId) : null,
           unitOfMeasure: numOrNull(values.unitOfMeasure),
           yearOfUse: numOrNull(values.yearOfUse),
           operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
@@ -3452,7 +3454,12 @@ const VtsAssistListPage = () => {
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
                 onBlur={() => setInputDeviceName((prev) => prev.trim())}
-                onPressEnter={handleFilterApply}
+                onPressEnter={() => {
+                  const trimmed = inputDeviceName.trim();
+                  setInputDeviceName(trimmed);
+                  setFilterDeviceName(trimmed);
+                  handleFilterApply();
+                }}
                 style={{ borderRadius: radiusPill, height: 40 }} />
             </SidebarFilterField>
 
@@ -3463,7 +3470,12 @@ const VtsAssistListPage = () => {
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
                     onBlur={() => setInputDeviceCode((prev) => prev.trim())}
-                    onPressEnter={handleFilterApply}
+                    onPressEnter={() => {
+                      const trimmed = inputDeviceCode.trim();
+                      setInputDeviceCode(trimmed);
+                      setFilterDeviceCode(trimmed);
+                      handleFilterApply();
+                    }}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </SidebarFilterField>
 
@@ -3686,7 +3698,6 @@ const VtsAssistListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        size={undefined}
         size={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
         style={{ maxWidth: '96vw' }}
         rootClassName="vtsassist-drawer-scope"

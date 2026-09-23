@@ -1050,6 +1050,16 @@ public class VtsAssistService {
       case "orgUnitId":
         property = "LOWER(o.name)";
         break;
+      case "attachedInfrastructureName":
+      case "vtsSystemName":
+      case "attachedInfrastructure":
+        property = "COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')";
+        break;
+      case "operatingUnitName":
+      case "operatingOrgName":
+      case "operatingUnit":
+        property = "COALESCE(LOWER(opo.name), LOWER(opu.name), '')";
+        break;
       case "provinceName":
         property = "LOWER(c.provinceName)";
         break;

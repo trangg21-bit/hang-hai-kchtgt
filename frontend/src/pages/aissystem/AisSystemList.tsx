@@ -1010,7 +1010,7 @@ export function AisSystemList() {
         <ScreenHeader
           breadcrumb={[
             { label: 'Tài sản KCHTGT' },
-            { label: 'Hệ thống trạm bờ AIS' },
+            { label: 'Hệ thống AIS' },
           ]}
           actions={
             hasPerm('aissystem:create')
