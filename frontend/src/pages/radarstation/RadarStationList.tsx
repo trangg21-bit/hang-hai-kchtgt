@@ -1534,9 +1534,13 @@ export default function RadarStationList() {
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
-  const handleFilterApply = useCallback(() => {
-    setFilterStationName(inputStationName.trim());
-    setFilterCode(inputCode.trim());
+  const handleFilterApply = useCallback((overrides?: { stationName?: string; code?: string }) => {
+    const nextStationName = (overrides?.stationName !== undefined ? overrides.stationName : inputStationName).trim();
+    const nextCode = (overrides?.code !== undefined ? overrides.code : inputCode).trim();
+    setInputStationName(nextStationName);
+    setInputCode(nextCode);
+    setFilterStationName(nextStationName);
+    setFilterCode(nextCode);
     setPage(1);
   }, [inputStationName, inputCode]);
   const handleFilterReset = useCallback(() => {
@@ -2421,21 +2425,39 @@ export default function RadarStationList() {
       </div>
       <div style={{ marginBottom: spaceFormField }}>
         <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Tên trạm radar</div>
-        <Input placeholder="Nhập tên trạm radar" allowClear value={inputStationName}
+        <Input
+          placeholder="Nhập tên trạm radar"
+          allowClear
+          value={inputStationName}
           onChange={(e) => setInputStationName(e.target.value)}
-          onBlur={() => setInputStationName((prev) => prev.trim())}
-          onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
+          onBlur={() => setInputStationName((prev) => (prev ? prev.trim() : ''))}
+          onPressEnter={(e) => {
+            const val = ((e.target as HTMLInputElement)?.value ?? inputStationName).trim();
+            setInputStationName(val);
+            handleFilterApply({ stationName: val });
+          }}
+          style={{ ...inputStyle, width: '100%' }}
+        />
       </div>
 
       {/* ── Bộ lọc nâng cao (ẩn, hiện khi bấm nút Filter) ── */}
       {filterCollapsed && (
         <>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Mã radar</div>
-        <Input placeholder="Nhập mã radar" allowClear value={inputCode}
-          onChange={(e) => setInputCode(e.target.value)}
-          onBlur={() => setInputCode((prev) => prev.trim())}
-          onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
+            <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Mã trạm radar</div>
+            <Input
+              placeholder="Nhập mã trạm radar"
+              allowClear
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
+              onBlur={() => setInputCode((prev) => (prev ? prev.trim() : ''))}
+              onPressEnter={(e) => {
+                const val = ((e.target as HTMLInputElement)?.value ?? inputCode).trim();
+                setInputCode(val);
+                handleFilterApply({ code: val });
+              }}
+              style={{ ...inputStyle, width: '100%' }}
+            />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Hệ thống VTS</div>
@@ -2472,8 +2494,8 @@ export default function RadarStationList() {
               {...getRangePickerProps({
                 value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
                 onChange: (range: any) => {
-                  setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
-                  setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
+                  setFilterUpdatedFrom(range && range[0] ? `${range[0].format('YYYY-MM-DD')} 00:00:00.000` : '');
+                  setFilterUpdatedTo(range && range[1] ? `${range[1].format('YYYY-MM-DD')} 23:59:59.999` : '');
                   setPage(1);
                 },
               })}
@@ -4717,7 +4739,7 @@ export default function RadarStationList() {
               placeholder="Từ ngày"
               classNames={{ popup: { root: 'history-dt-popup' } }}
               value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={(d) => setHistoryDateFrom(d ? d.startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '')}
+              onChange={(d) => setHistoryDateFrom(d ? `${d.format('YYYY-MM-DD')} 00:00:00.000` : '')}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }}
               format="DD/MM/YYYY"
             />
@@ -4725,7 +4747,7 @@ export default function RadarStationList() {
               placeholder="Đến ngày"
               classNames={{ popup: { root: 'history-dt-popup' } }}
               value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={(d) => setHistoryDateTo(d ? d.endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '')}
+              onChange={(d) => setHistoryDateTo(d ? `${d.format('YYYY-MM-DD')} 23:59:59.999` : '')}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }}
               format="DD/MM/YYYY"
             />

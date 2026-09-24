@@ -134,6 +134,21 @@ class VhfServiceTest {
     }
 
     @Test
+    void create_WhenDeviceCodeIsNull_AutoGeneratesDeviceCode() {
+        when(vhfRepository.findMaxDeviceCodeNumber()).thenReturn(8);
+        when(vhfRepository.existsDeviceCodeAnyState("VHF-000009")).thenReturn(false);
+        when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateVhfRequest req = createRequest();
+        req.setDeviceCode(null);
+
+        VhfResponse result = service.create(req);
+
+        assertEquals("VHF-000009", result.getDeviceCode());
+        assertEquals(ApprovalStatus.DRAFT, result.getApprovalStatus());
+    }
+
+    @Test
     void createWithApproveActionDirectlyApprovesWithoutHistory() {
         when(vhfRepository.existsDeviceCodeAnyState("VHF-000001")).thenReturn(false);
         when(vhfRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -390,7 +405,7 @@ class VhfServiceTest {
     }
 
     @Test
-    void findAll_whenApprovalStatusIsNull_passesIsDeletedFalseAndNullApprovalStatus() {
+    void findAll_whenApprovalStatusIsNull_passesIsDeletedNullAndNullApprovalStatus() {
         when(vhfRepository.searchVhf(
                 any(), anyBoolean(), any(), anyBoolean(), any(),
                 any(), any(), any(), any(), any(),
@@ -441,7 +456,7 @@ class VhfServiceTest {
     }
 
     @Test
-    void findAll_whenApprovalStatusIsAll_passesIsDeletedFalseAndNullApprovalStatus() {
+    void findAll_whenApprovalStatusIsAll_passesIsDeletedNullAndNullApprovalStatus() {
         when(vhfRepository.searchVhf(
                 any(), anyBoolean(), any(), anyBoolean(), any(),
                 any(), any(), any(), any(), any(),
@@ -538,5 +553,103 @@ class VhfServiceTest {
         assertNull(entity.getAttachedInfrastructureType());
         assertNull(entity.getAttachedInfrastructureId());
         assertNull(entity.getProvinceName());
+    }
+
+    @Test
+    void findAll_withSortAttachedInfrastructureName_buildsCorrectSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(),
+                pageableCaptor.capture()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "attachedInfrastructureName", "asc");
+
+        org.springframework.data.domain.Sort sort = pageableCaptor.getValue().getSort();
+        org.junit.jupiter.api.Assertions.assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primaryOrder = sort.iterator().next();
+        assertEquals(org.springframework.data.domain.Sort.Direction.ASC, primaryOrder.getDirection());
+        assertEquals("COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')", primaryOrder.getProperty());
+    }
+
+    @Test
+    void findAll_withSortOperatingUnitName_buildsCorrectSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+
+        when(vhfRepository.searchVhf(
+                any(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(),
+                pageableCaptor.capture()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "operatingUnitName", "desc");
+
+        org.springframework.data.domain.Sort sort = pageableCaptor.getValue().getSort();
+        org.junit.jupiter.api.Assertions.assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primaryOrder = sort.iterator().next();
+        assertEquals(org.springframework.data.domain.Sort.Direction.DESC, primaryOrder.getDirection());
+        assertEquals("COALESCE(LOWER(opo.name), LOWER(opu.name), '')", primaryOrder.getProperty());
+    }
+
+    @Test
+    void findAll_withNullApprovalStatus_passesNullIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(vhfRepository.searchVhf(
+                isDeletedCaptor.capture(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertNull(isDeletedCaptor.getValue(), "Tab Tất cả (approvalStatus == null) bắt buộc isDeleted == null để bao gồm bản ghi đã xóa");
+    }
+
+    @Test
+    void findAll_withArchivedStatus_passesTrueIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(vhfRepository.searchVhf(
+                isDeletedCaptor.capture(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.TRUE, isDeletedCaptor.getValue(), "Tab Đã xóa bắt buộc isDeleted == true");
+    }
+
+    @Test
+    void findAll_withDraftStatus_passesFalseIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(vhfRepository.searchVhf(
+                isDeletedCaptor.capture(), anyBoolean(), any(), anyBoolean(), any(),
+                any(), any(), any(), any(), any(),
+                any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, "DRAFT", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.FALSE, isDeletedCaptor.getValue(), "Tab trạng thái cụ thể bắt buộc isDeleted == false");
+    }
+
+    @Test
+    void toResponse_whenEntityIsDeleted_returnsArchivedApprovalStatus() {
+        entity.setDeletedAt(java.time.LocalDateTime.now());
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VhfResponse response = service.toResponse(entity);
+
+        assertEquals(ApprovalStatus.ARCHIVED, response.getApprovalStatus(),
+                "Bản ghi đã xóa mềm khi chuyển sang DTO bắt buộc có approvalStatus = ARCHIVED");
     }
 }

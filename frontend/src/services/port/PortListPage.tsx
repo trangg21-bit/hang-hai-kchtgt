@@ -142,6 +142,34 @@ import { AppDrawer } from '../../components/shared/AppDrawer';
 import PortForm from './PortForm';
 import PortDetailContent from './PortDetailContent';
 
+/**
+ * Chuẩn gửi dữ liệu khi LƯU (tạo mới & chỉnh sửa): ô bị xóa trắng BẮT BUỘC đi kèm
+ * request dưới dạng `null` tường minh.
+ *
+ * Lý do: `JSON.stringify` loại bỏ hoàn toàn key có giá trị `undefined` khỏi body, nên
+ * server không phân biệt được "người dùng đã xóa trắng trường" với "trường không được
+ * gửi". Với các trường có guard ở server, thao tác xóa bị bỏ qua âm thầm mà API vẫn
+ * trả về thành công — đúng lỗi "xóa trường mà dữ liệu không hề thay đổi".
+ */
+const clearableText = (v: unknown): string | null => {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === '' ? null : s;
+};
+
+/** Số: rỗng hoặc không hợp lệ -> null (KHÔNG trả 0, KHÔNG trả NaN). */
+const clearableNumber = (v: unknown): number | null => {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** UUID hợp lệ -> chính nó; rỗng hoặc không hợp lệ -> null. */
+const clearableUuid = (v: unknown): string | null => {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ? s : null;
+};
+
 // ── Render lịch sử thay đổi (giống màn Bến cảng) ─────────────────────
 // Nhóm các thay đổi theo cùng thời điểm (đến giây) + người thao tác thành 1 card,
 // cột trái: mốc thời gian + pill hành động; cột phải: info-card có vạch accent,
@@ -1524,50 +1552,34 @@ export default function PortListPage() {
       const payload = {
         portCode,
         portName,
-        province: (values.province as string) || undefined,
-        area: values.area as number | undefined,
-        maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
-        operationalStatus: (values.operationalStatus as string) || undefined,
+        province: clearableText(values.province),
+        area: clearableNumber(values.area),
+        maxVesselCapacity: clearableNumber(values.khaNangTiepNhan),
+        operationalStatus: clearableText(values.operationalStatus),
         approvalStatus: currentAction === 'draft' ? 'DRAFT' : currentAction === 'submit' ? 'PENDING' : 'APPROVED',
-        orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
-        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
-        mapSymbolId: (values.mapSymbolId as string) || undefined,
+        orgUnitId: clearableUuid(values.orgUnitId),
+        portGroup: clearableNumber(values.portGroup),
+        mapSymbolId: clearableText(values.mapSymbolId),
         geometryType: values.geometryType as string,
-        detailedLocation: (values.detailedLocation as string) || undefined,
-        portClass: values.portClass != null && !Number.isNaN(values.portClass as number)
-          ? Number(values.portClass) : undefined,
-        coordinateSystem: values.coordinateSystem != null && !Number.isNaN(values.coordinateSystem as number)
-          ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null && !Number.isNaN(values.displayRule as number)
-          ? Number(values.displayRule) : undefined,
-        waterAreaScope: (values.waterAreaScope as string) || undefined,
-        totalBerths: values.totalBerths != null && !Number.isNaN(values.totalBerths as number)
-          ? Number(values.totalBerths) : undefined,
-        totalAnchoragesTransshipment: values.totalAnchoragesTransshipment != null && !Number.isNaN(values.totalAnchoragesTransshipment as number)
-          ? Number(values.totalAnchoragesTransshipment) : undefined,
-        totalPublicChannels: values.totalPublicChannels != null && !Number.isNaN(values.totalPublicChannels as number)
-          ? Number(values.totalPublicChannels) : undefined,
-        totalDedicatedChannels: values.totalDedicatedChannels != null && !Number.isNaN(values.totalDedicatedChannels as number)
-          ? Number(values.totalDedicatedChannels) : undefined,
-        totalPublicChannelLength: values.totalPublicChannelLength != null && !Number.isNaN(values.totalPublicChannelLength as number)
-          ? Number(values.totalPublicChannelLength) : undefined,
-        totalDedicatedChannelLength: values.totalDedicatedChannelLength != null && !Number.isNaN(values.totalDedicatedChannelLength as number)
-          ? Number(values.totalDedicatedChannelLength) : undefined,
-        totalBuoysBeacons: values.totalBuoysBeacons != null && !Number.isNaN(values.totalBuoysBeacons as number)
-          ? Number(values.totalBuoysBeacons) : undefined,
-        totalDikes: values.totalDikes != null && !Number.isNaN(values.totalDikes as number)
-          ? Number(values.totalDikes) : undefined,
-        totalDikeLength: values.totalDikeLength != null && !Number.isNaN(values.totalDikeLength as number)
-          ? Number(values.totalDikeLength) : undefined,
-        totalLighthouses: values.totalLighthouses != null && !Number.isNaN(values.totalLighthouses as number)
-          ? Number(values.totalLighthouses) : undefined,
-        buoyBerthCount: values.buoyBerthCount != null && !Number.isNaN(values.buoyBerthCount as number)
-          ? Number(values.buoyBerthCount) : undefined,
-        anchorageCount: values.anchorageCount != null && !Number.isNaN(values.anchorageCount as number)
-          ? Number(values.anchorageCount) : undefined,
-        transshipmentCount: values.transshipmentCount != null && !Number.isNaN(values.transshipmentCount as number)
-          ? Number(values.transshipmentCount) : undefined,
-        otherWaterAreas: (values.otherWaterAreas as string) || undefined,
+        detailedLocation: clearableText(values.detailedLocation),
+        portClass: clearableNumber(values.portClass),
+        coordinateSystem: clearableNumber(values.coordinateSystem),
+        displayRule: clearableNumber(values.displayRule),
+        waterAreaScope: clearableText(values.waterAreaScope),
+        totalBerths: clearableNumber(values.totalBerths),
+        totalAnchoragesTransshipment: clearableNumber(values.totalAnchoragesTransshipment),
+        totalPublicChannels: clearableNumber(values.totalPublicChannels),
+        totalDedicatedChannels: clearableNumber(values.totalDedicatedChannels),
+        totalPublicChannelLength: clearableNumber(values.totalPublicChannelLength),
+        totalDedicatedChannelLength: clearableNumber(values.totalDedicatedChannelLength),
+        totalBuoysBeacons: clearableNumber(values.totalBuoysBeacons),
+        totalDikes: clearableNumber(values.totalDikes),
+        totalDikeLength: clearableNumber(values.totalDikeLength),
+        totalLighthouses: clearableNumber(values.totalLighthouses),
+        buoyBerthCount: clearableNumber(values.buoyBerthCount),
+        anchorageCount: clearableNumber(values.anchorageCount),
+        transshipmentCount: clearableNumber(values.transshipmentCount),
+        otherWaterAreas: clearableText(values.otherWaterAreas),
         coordinateList,
         wharfAreas: wharfAreaList,
         infrastructureList: infraList
@@ -1677,49 +1689,43 @@ export default function PortListPage() {
 
     setSubmitting(true);
     try {
-      const n = (v: unknown): number | undefined =>
-        v != null && !Number.isNaN(v as number) ? Number(v) : undefined;
-
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
         .filter(c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
         .map(c => ({ latitude: dmToDd(c.latD, c.latM, c.latS), longitude: dmToDd(c.lngD, c.lngM, c.lngS) }));
 
       const payload = {
         id: selectedRecord.id,
-        portCode: (values.portCode as string) || undefined,
-        portName: (values.portName as string) || undefined,
-        province: (values.province as string) || undefined,
-        area: values.area as number | undefined,
-        maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
-        operationalStatus: (values.operationalStatus as string) || undefined,
+        portCode: clearableText(values.portCode),
+        portName: clearableText(values.portName),
+        province: clearableText(values.province),
+        area: clearableNumber(values.area),
+        maxVesselCapacity: clearableNumber(values.khaNangTiepNhan),
+        operationalStatus: clearableText(values.operationalStatus),
         approvalStatus: editActionRef.current === 'draft' ? 'DRAFT' : 'APPROVED',
-        orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
-        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
-        mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
+        orgUnitId: clearableUuid(values.orgUnitId),
+        portGroup: clearableNumber(values.portGroup),
+        mapSymbolId: clearableText((values.gisLocation as any)?.mapSymbolId || values.mapSymbolId),
         geometryType: values.geometryType as string,
-        coordinates: (values.gisLocation as any)?.coordinates || undefined,
-        detailedLocation: (values.detailedLocation as string) || undefined,
-        portClass: values.portClass != null && !Number.isNaN(values.portClass as number)
-          ? Number(values.portClass) : undefined,
-        coordinateSystem: values.coordinateSystem != null && !Number.isNaN(values.coordinateSystem as number)
-          ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null && !Number.isNaN(values.displayRule as number)
-          ? Number(values.displayRule) : undefined,
-        waterAreaScope: (values.waterAreaScope as string) || null,
-        totalBerths: n(values.totalBerths),
-        totalAnchoragesTransshipment: n(values.totalAnchoragesTransshipment),
-        totalPublicChannels: n(values.totalPublicChannels),
-        totalDedicatedChannels: n(values.totalDedicatedChannels),
-        totalPublicChannelLength: n(values.totalPublicChannelLength),
-        totalDedicatedChannelLength: n(values.totalDedicatedChannelLength),
-        totalBuoysBeacons: n(values.totalBuoysBeacons),
-        totalDikes: n(values.totalDikes),
-        totalDikeLength: n(values.totalDikeLength),
-        totalLighthouses: n(values.totalLighthouses),
-        buoyBerthCount: n(values.buoyBerthCount),
-        anchorageCount: n(values.anchorageCount),
-        transshipmentCount: n(values.transshipmentCount),
-        otherWaterAreas: (values.otherWaterAreas as string) || null,
+        coordinates: clearableText((values.gisLocation as any)?.coordinates),
+        detailedLocation: clearableText(values.detailedLocation),
+        portClass: clearableNumber(values.portClass),
+        coordinateSystem: clearableNumber(values.coordinateSystem),
+        displayRule: clearableNumber(values.displayRule),
+        waterAreaScope: clearableText(values.waterAreaScope),
+        totalBerths: clearableNumber(values.totalBerths),
+        totalAnchoragesTransshipment: clearableNumber(values.totalAnchoragesTransshipment),
+        totalPublicChannels: clearableNumber(values.totalPublicChannels),
+        totalDedicatedChannels: clearableNumber(values.totalDedicatedChannels),
+        totalPublicChannelLength: clearableNumber(values.totalPublicChannelLength),
+        totalDedicatedChannelLength: clearableNumber(values.totalDedicatedChannelLength),
+        totalBuoysBeacons: clearableNumber(values.totalBuoysBeacons),
+        totalDikes: clearableNumber(values.totalDikes),
+        totalDikeLength: clearableNumber(values.totalDikeLength),
+        totalLighthouses: clearableNumber(values.totalLighthouses),
+        buoyBerthCount: clearableNumber(values.buoyBerthCount),
+        anchorageCount: clearableNumber(values.anchorageCount),
+        transshipmentCount: clearableNumber(values.transshipmentCount),
+        otherWaterAreas: clearableText(values.otherWaterAreas),
         coordinateList,
         wharfAreas: wharfAreaList,
         infrastructureList: infraList

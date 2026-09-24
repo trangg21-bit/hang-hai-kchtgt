@@ -155,6 +155,8 @@ export interface ListParams {
   approvalStatus?: string;
   status?: string;
   updatedBy?: string;
+  commissionedFrom?: string;
+  commissionedTo?: string;
   updatedFrom?: string;
   updatedTo?: string;
   page?: number;

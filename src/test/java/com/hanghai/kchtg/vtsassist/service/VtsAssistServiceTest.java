@@ -458,4 +458,57 @@ class VtsAssistServiceTest {
         assertNotNull(order);
         assertEquals(org.springframework.data.domain.Sort.Direction.ASC, order.getDirection());
     }
+
+    @Test
+    void findAll_withNullApprovalStatus_passesNullIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(vtsAssistRepository.searchVtsAssist(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertNull(isDeletedCaptor.getValue(), "Tab Tất cả (approvalStatus == null) bắt buộc isDeleted == null để bao gồm bản ghi đã xóa");
+    }
+
+    @Test
+    void findAll_withArchivedStatus_passesTrueIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(vtsAssistRepository.searchVtsAssist(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.TRUE, isDeletedCaptor.getValue(), "Tab Đã xóa bắt buộc isDeleted == true");
+    }
+
+    @Test
+    void findAll_withDraftStatus_passesFalseIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(vtsAssistRepository.searchVtsAssist(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, "DRAFT", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.FALSE, isDeletedCaptor.getValue(), "Tab trạng thái cụ thể bắt buộc isDeleted == false");
+    }
+
+    @Test
+    void toResponse_whenEntityIsDeleted_returnsArchivedApprovalStatus() {
+        entity.setDeletedAt(java.time.LocalDateTime.now());
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        VtsAssistResponse response = service.toResponse(entity);
+
+        assertEquals(ApprovalStatus.ARCHIVED, response.getApprovalStatus(),
+                "Bản ghi đã xóa mềm khi chuyển sang DTO bắt buộc có approvalStatus = ARCHIVED");
+    }
 }

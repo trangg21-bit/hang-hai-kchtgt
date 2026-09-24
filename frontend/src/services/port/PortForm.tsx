@@ -542,7 +542,9 @@ export default function PortForm({
               {...labelProps('Tên cảng biển')}
               style={{ marginBottom: spaceFormField }}
               rules={[
-                { required: true, message: 'Tên cảng không được để trống' },
+                // `whitespace: true`: chặn cả chuỗi chỉ gồm khoảng trắng — antd coi '   '
+                // là KHÔNG rỗng nên trước đây lọt qua validate rồi bị server bỏ qua âm thầm.
+                { required: true, whitespace: true, message: 'Tên cảng không được để trống' },
                 { max: 255, message: 'Tên cảng tối đa 255 ký tự' },
               ]}
             >

@@ -573,6 +573,9 @@ public class CctvService {
       }
     }
 
+    boolean isDeletedEntity = entity.getDeletedAt() != null || entity.getDeletedBy() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED;
+    ApprovalStatus effectiveApprovalStatus = isDeletedEntity ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus();
+
     return CctvResponse.builder()
       .id(entity.getId())
       .deviceCode(entity.getDeviceCode())
@@ -592,7 +595,7 @@ public class CctvService {
       .unitOfMeasure(entity.getUnitOfMeasure())
       .yearOfUse(entity.getYearOfUse())
       .operationalStatus(entity.getOperationalStatus())
-      .approvalStatus(entity.getApprovalStatus())
+      .approvalStatus(effectiveApprovalStatus)
       .approverLevel1(entity.getApproverLevel1())
       .approverLevel1Name(resolveUserName(entity.getApproverLevel1()))
       .approvedDateLevel1(entity.getApprovedDateLevel1())
@@ -735,7 +738,7 @@ public class CctvService {
         if (jdbcTemplate != null) {
           List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
-          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_station WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
         }
         return rawValue;
@@ -913,6 +916,9 @@ public class CctvService {
       if ("REJECTED_LEVEL2".equals(upper) || "REJECTED_L2".equals(upper)) {
         return ApprovalStatus.REJECTED_LEVEL2;
       }
+      if ("ARCHIVED".equals(upper) || "DELETED".equals(upper) || "DA_XOA".equals(upper)) {
+        return ApprovalStatus.ARCHIVED;
+      }
       return null;
     } catch (Exception e) {
       return null;
@@ -959,6 +965,16 @@ public class CctvService {
       case "orgUnitName":
       case "orgUnitId":
         property = "LOWER(o.name)";
+        break;
+      case "attachedInfrastructureName":
+      case "vtsSystemName":
+      case "attachedInfrastructure":
+        property = "COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')";
+        break;
+      case "operatingUnitName":
+      case "operatingOrgName":
+      case "operatingUnit":
+        property = "COALESCE(LOWER(opo.name), LOWER(opu.name), '')";
         break;
       case "provinceName":
         property = "LOWER(c.provinceName)";

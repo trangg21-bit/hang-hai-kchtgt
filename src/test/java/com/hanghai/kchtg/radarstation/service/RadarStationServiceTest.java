@@ -546,6 +546,30 @@ class RadarStationServiceTest {
         }
 
         @Test
+        @DisplayName("Criterion 4: Formatted date range (with time) parsed correctly")
+        void getHistory_withFormattedDateRanges_shouldParseStartAndEndOfDay() {
+            when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+            when(historyRepository.searchHistory(eq(InfrastructureType.RADAR_STATION), eq(TEST_ID), any(), any(), any(), any()))
+                    .thenReturn(List.of());
+
+            service.getHistory(TEST_ID, null, null, null, "2026-06-01 00:00:00.000", "2026-06-30 23:59:59.999");
+
+            ArgumentCaptor<LocalDateTime> fromCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+            ArgumentCaptor<LocalDateTime> toCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+
+            verify(historyRepository).searchHistory(
+                    eq(InfrastructureType.RADAR_STATION), eq(TEST_ID), isNull(),
+                    fromCaptor.capture(), toCaptor.capture(), any());
+
+            assertThat(fromCaptor.getValue()).isEqualTo(LocalDateTime.of(2026, 6, 1, 0, 0, 0, 0));
+            assertThat(toCaptor.getValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 6, 30));
+            assertThat(toCaptor.getValue().getHour()).isEqualTo(23);
+            assertThat(toCaptor.getValue().getMinute()).isEqualTo(59);
+            assertThat(toCaptor.getValue().getSecond()).isEqualTo(59);
+            assertThat(toCaptor.getValue().getNano()).isEqualTo(999_999_999);
+        }
+
+        @Test
         @DisplayName("Criterion 5: Update captures modified fields and formats history")
         void update_onApprovedEntity_shouldRecordChangedFields() {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);

@@ -356,8 +356,15 @@ public class BerthService {
                 .activityStatus(entity.getActivityStatus())
                 .build();
 
-        if (request.getBerthName() != null)
-            entity.setBerthName(request.getBerthName());
+        if (request.getBerthName() != null) {
+            // berthName là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng,
+            // TUYỆT ĐỐI không được âm thầm giữ lại giá trị cũ rồi vẫn trả về thành công —
+            // đó chính là lỗi "xóa trường mà dữ liệu không hề thay đổi".
+            if (request.getBerthName().isBlank()) {
+                throw new IllegalArgumentException("Tên bến cảng không được để trống");
+            }
+            entity.setBerthName(request.getBerthName().trim());
+        }
         if (request.getPortId() != null) {
             Port parent = portRepository.findById(request.getPortId())
                     .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
@@ -384,6 +391,8 @@ public class BerthService {
         entity.setBerthType(request.getBerthType());
         entity.setChannelDepth(request.getChannelDepth());
         entity.setOperationalFunction(request.getOperationalFunction());
+        // operationalStatus: frontend đã chặn xóa trắng trường này (validate + toast) nên khi
+        // request không gửi giá trị thì giữ nguyên giá trị cũ.
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         entity.setMapSymbolId(request.getMapSymbolId());
@@ -425,6 +434,14 @@ public class BerthService {
         }
         Berth saved = berthRepository.saveAndFlush(entity);
 
+        if (coordinates != null && coordinates.trim().isEmpty() && saved.getSpatialId() != null) {
+            // Người dùng đã XÓA TRẮNG vị trí: client gửi chuỗi rỗng TƯỜNG MINH (khác với null =
+            // "không gửi trường"). Phải xóa spatial object cũ, nếu không tọa độ cũ vẫn còn nguyên
+            // — đúng lỗi "xóa triệt để mà kiểm tra không có gì thay đổi".
+            gisSpatialObjectService.delete(saved.getSpatialId());
+            saved.setSpatialId(null);
+            berthRepository.save(saved);
+        }
         if (coordinates != null && !coordinates.trim().isEmpty()) {
             // Lấy tọa độ + loại hình cũ (WKT) trước khi createOrUpdate ghi đè spatial object
             GisGeometryType oldGeomType = null;

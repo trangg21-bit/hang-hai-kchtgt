@@ -199,4 +199,44 @@ class DikeRevetmentControllerTest {
                 })
         );
     }
+
+    @Test
+    void testSearchPaged_WithFormattedDateFilterRange() {
+        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testResp)));
+
+        var resp = controller.searchPaged(
+                null, null, null, null, null, null, null, false, null,
+                "2026-09-22 00:00:00.000", "2026-09-22 23:59:59.999", null, null, null,
+                0, 20, "updatedAt", "DESC"
+        );
+
+        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+        verify(service).searchPaged(
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull(),
+                argThat(from -> from != null && from.getYear() == 2026 && from.getMonthValue() == 9 && from.getDayOfMonth() == 22 && from.getHour() == 0 && from.getMinute() == 0 && from.getSecond() == 0),
+                argThat(to -> to != null && to.getYear() == 2026 && to.getMonthValue() == 9 && to.getDayOfMonth() == 22 && to.getHour() == 23 && to.getMinute() == 59 && to.getSecond() == 59 && to.getNano() == 999_999_999),
+                isNull(), isNull(), isNull(), any()
+        );
+    }
+
+    @Test
+    void testSearchPaged_WithDateOnlyFilterRange() {
+        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testResp)));
+
+        var resp = controller.searchPaged(
+                null, null, null, null, null, null, null, false, null,
+                "2026-09-22", "2026-09-22", null, null, null,
+                0, 20, "updatedAt", "DESC"
+        );
+
+        assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
+        verify(service).searchPaged(
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), eq(false), isNull(),
+                argThat(from -> from != null && from.getYear() == 2026 && from.getMonthValue() == 9 && from.getDayOfMonth() == 22 && from.getHour() == 0 && from.getMinute() == 0 && from.getSecond() == 0),
+                argThat(to -> to != null && to.getYear() == 2026 && to.getMonthValue() == 9 && to.getDayOfMonth() == 22 && to.getHour() == 23 && to.getMinute() == 59 && to.getSecond() == 59 && to.getNano() == 999_999_999),
+                isNull(), isNull(), isNull(), any()
+        );
+    }
 }

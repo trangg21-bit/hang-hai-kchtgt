@@ -40,7 +40,9 @@ import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 
@@ -724,5 +726,62 @@ class AisSystemServiceTest {
 
     }
 
-}
-
+
+    @Test
+    void testUpdate_CoordinatesWithoutGeometryType_InfersGeometryTypeAndPreservesSpatialId() {
+        UUID spatialId = UUID.randomUUID();
+        GisSpatialObject existingSpatial = new GisSpatialObject();
+        existingSpatial.setId(spatialId);
+        existingSpatial.setCoordinates("POINT (106.1 10.2)");
+        existingSpatial.setGeometryType(GisGeometryType.POINT);
+
+        when(repository.findByIdAndDeletedAtIsNull(AIS_ID)).thenReturn(Optional.of(entity));
+        when(gisSpatialObjectService.findByRef(AIS_ID, InfrastructureType.AIS_SYSTEM))
+                .thenReturn(Optional.of(existingSpatial));
+        when(gisSpatialObjectService.syncSpatialObject(
+                eq(spatialId),
+                any(),
+                any(),
+                eq(GisGeometryType.POINT),
+                eq("POINT (106.1 10.2)"),
+                eq(AIS_ID),
+                eq(InfrastructureType.AIS_SYSTEM)))
+                .thenReturn(spatialId);
+        when(repository.save(any())).thenReturn(entity);
+
+        AisSystemRequest updateReq = new AisSystemRequest();
+        updateReq.setCoordinates("POINT (106.1 10.2)");
+
+        service.update(AIS_ID, updateReq, USER_ID);
+
+        verify(gisSpatialObjectService).syncSpatialObject(
+                eq(spatialId),
+                any(),
+                any(),
+                eq(GisGeometryType.POINT),
+                eq("POINT (106.1 10.2)"),
+                eq(AIS_ID),
+                eq(InfrastructureType.AIS_SYSTEM));
+    }
+
+    @Test
+    void testGetById_BackfillsSpatialIdAndInfersGeometryType() {
+        UUID spatialId = UUID.randomUUID();
+        GisSpatialObject spatial = new GisSpatialObject();
+        spatial.setId(spatialId);
+        spatial.setCoordinates("POINT (106.5 10.5)");
+        spatial.setGeometryType(null);
+
+        entity.setSpatialId(null);
+        when(repository.findById(AIS_ID)).thenReturn(Optional.of(entity));
+        when(gisSpatialObjectService.findByRef(AIS_ID, InfrastructureType.AIS_SYSTEM))
+                .thenReturn(Optional.of(spatial));
+
+        AisSystemResponse response = service.getById(AIS_ID);
+
+        assertNotNull(response);
+        assertEquals("POINT (106.5 10.5)", response.getCoordinates());
+        assertEquals(GisGeometryType.POINT, response.getGeometryType());
+        assertEquals(spatialId, entity.getSpatialId());
+    }
+}

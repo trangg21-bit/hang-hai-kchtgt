@@ -799,7 +799,14 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           await submitVhf(id);
         }
       } else {
+        const rawCode = String(values.deviceCode || form.getFieldValue('deviceCode') || '').trim();
+        const finalDeviceCode = rawCode || (await generateVhfCode());
+        if (!rawCode && finalDeviceCode) {
+          form.setFieldValue('deviceCode', finalDeviceCode);
+        }
+
         const createPayload: CreateVhfRequest = {
+          deviceCode: finalDeviceCode,
           deviceName: String(values.deviceName || '').trim(),
           detailedLocation: trimOrNull(values.detailedLocation),
           manufacturer: trimOrNull(values.manufacturer),

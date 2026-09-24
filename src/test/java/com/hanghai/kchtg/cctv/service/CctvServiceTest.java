@@ -508,9 +508,9 @@ class CctvServiceTest {
     }
 
     @Test
-    void findAll_whenApprovalStatusNull_shouldPassIsDeletedFalse() {
+    void findAll_whenApprovalStatusNull_shouldPassIsDeletedNull() {
         when(cctvRepository.searchCctv(
-                org.mockito.ArgumentMatchers.eq(Boolean.FALSE),
+                org.mockito.ArgumentMatchers.isNull(),
                 any(Boolean.class), any(), any(Boolean.class), any(),
                 any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any()
         )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entity)));
@@ -520,7 +520,7 @@ class CctvServiceTest {
 
         assertEquals(1, page.getTotalElements());
         verify(cctvRepository).searchCctv(
-                org.mockito.ArgumentMatchers.eq(Boolean.FALSE),
+                org.mockito.ArgumentMatchers.isNull(),
                 any(Boolean.class), any(), any(Boolean.class), any(),
                 any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any());
     }
@@ -678,5 +678,96 @@ class CctvServiceTest {
         assertNull(entity.getNote());
         assertNull(entity.getSpecifications());
         assertNull(result.getDetailedLocation());
+    }
+
+    @Test
+    void findAll_withSortAttachedInfrastructureName_buildsCorrectSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+
+        when(cctvRepository.searchCctv(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                pageableCaptor.capture()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "attachedInfrastructureName", "asc");
+
+        org.springframework.data.domain.Sort sort = pageableCaptor.getValue().getSort();
+        org.junit.jupiter.api.Assertions.assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primaryOrder = sort.iterator().next();
+        assertEquals(org.springframework.data.domain.Sort.Direction.ASC, primaryOrder.getDirection());
+        assertEquals("COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')", primaryOrder.getProperty());
+    }
+
+    @Test
+    void findAll_withSortOperatingUnitName_buildsCorrectSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+
+        when(cctvRepository.searchCctv(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                pageableCaptor.capture()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "operatingUnitName", "desc");
+
+        org.springframework.data.domain.Sort sort = pageableCaptor.getValue().getSort();
+        org.junit.jupiter.api.Assertions.assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primaryOrder = sort.iterator().next();
+        assertEquals(org.springframework.data.domain.Sort.Direction.DESC, primaryOrder.getDirection());
+        assertEquals("COALESCE(LOWER(opo.name), LOWER(opu.name), '')", primaryOrder.getProperty());
+    }
+
+    @Test
+    void findAll_withNullApprovalStatus_passesNullIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(cctvRepository.searchCctv(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertNull(isDeletedCaptor.getValue(), "Tab Tất cả (approvalStatus == null) bắt buộc isDeleted == null để bao gồm bản ghi đã xóa");
+    }
+
+    @Test
+    void findAll_withArchivedStatus_passesTrueIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(cctvRepository.searchCctv(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.TRUE, isDeletedCaptor.getValue(), "Tab Đã xóa bắt buộc isDeleted == true");
+    }
+
+    @Test
+    void findAll_withDraftStatus_passesFalseIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(cctvRepository.searchCctv(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, "DRAFT", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.FALSE, isDeletedCaptor.getValue(), "Tab trạng thái cụ thể bắt buộc isDeleted == false");
+    }
+
+    @Test
+    void toResponse_whenEntityIsDeleted_returnsArchivedApprovalStatus() {
+        entity.setDeletedAt(java.time.LocalDateTime.now());
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse response = service.toResponse(entity);
+
+        assertEquals(ApprovalStatus.ARCHIVED, response.getApprovalStatus(),
+                "Bản ghi đã xóa mềm khi chuyển sang DTO bắt buộc có approvalStatus = ARCHIVED");
     }
 }

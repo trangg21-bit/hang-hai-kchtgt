@@ -615,7 +615,7 @@ export default function DikeRevetmentList() {
   }, []);
 
   const sortOrderFor = useCallback(
-    (key: string) =>
+    (key: string): 'ascend' | 'descend' | null =>
       sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
     [sortField, sortOrder]
   );
@@ -995,8 +995,8 @@ export default function DikeRevetmentList() {
         isDeleted: activeTab === 'ARCHIVED' ? true : undefined,
         orgUnitId: filterUnitId && filterUnitId !== '__all__' ? filterUnitId : undefined,
         commissioningYear: filterCommissioningYear,
-        updatedFrom: filterUpdatedRange?.[0] ? filterUpdatedRange[0].format('YYYY-MM-DD') : undefined,
-        updatedTo: filterUpdatedRange?.[1] ? filterUpdatedRange[1].format('YYYY-MM-DD') : undefined,
+        updatedFrom: filterUpdatedRange?.[0] ? `${filterUpdatedRange[0].format('YYYY-MM-DD')} 00:00:00.000` : undefined,
+        updatedTo: filterUpdatedRange?.[1] ? `${filterUpdatedRange[1].format('YYYY-MM-DD')} 23:59:59.999` : undefined,
         sortBy: sortField,
         sortOrder: sortField && sortOrder ? (sortOrder === 'asc' ? 'ASC' : 'DESC') : 'DESC',
       });
@@ -1026,8 +1026,8 @@ export default function DikeRevetmentList() {
       dikeRevetmentType: filterType,
       conditionStatus: filterStatusVal,
       commissioningYear: filterCommissioningYear,
-      updatedFrom: filterUpdatedRange?.[0] ? filterUpdatedRange[0].format('YYYY-MM-DD') : undefined,
-      updatedTo: filterUpdatedRange?.[1] ? filterUpdatedRange[1].format('YYYY-MM-DD') : undefined,
+      updatedFrom: filterUpdatedRange?.[0] ? `${filterUpdatedRange[0].format('YYYY-MM-DD')} 00:00:00.000` : undefined,
+      updatedTo: filterUpdatedRange?.[1] ? `${filterUpdatedRange[1].format('YYYY-MM-DD')} 23:59:59.999` : undefined,
     };
     const results = await Promise.allSettled(
       STATUS_TAB_LIST.map((tab) =>
@@ -1080,9 +1080,13 @@ export default function DikeRevetmentList() {
     });
   };
 
-  const handleFilterApply = () => {
-    setFilterName(inputName.trim());
-    setFilterMa(inputCode.trim());
+  const handleFilterApply = (overrides?: { name?: string; code?: string }) => {
+    const nextName = (overrides?.name !== undefined ? overrides.name : inputName).trim();
+    const nextCode = (overrides?.code !== undefined ? overrides.code : inputCode).trim();
+    setInputName(nextName);
+    setInputCode(nextCode);
+    setFilterName(nextName);
+    setFilterMa(nextCode);
     setPage(1);
   };
   const handleFilterReset = () => {
@@ -1279,7 +1283,7 @@ export default function DikeRevetmentList() {
     try {
       const detail = await dikeRevetmentCRUD.getById(record.id);
       setDetailRecord(detail);
-    } catch {
+    } catch (err) {
       console.error('Failed to load detail', err);
     }
   }, []);
@@ -1448,7 +1452,7 @@ export default function DikeRevetmentList() {
       setPendingDeletedAttachments([]);
       fetchData();
       fetchTabCounts();
-    } catch {
+    } catch (err) {
       if ((err as any)?.errorFields) return; // validation errors handled by Form
       toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
@@ -2497,7 +2501,12 @@ export default function DikeRevetmentList() {
           allowClear
           value={inputName}
           onChange={(e) => setInputName(e.target.value)}
-          onPressEnter={handleFilterApply}
+          onBlur={() => setInputName((prev) => (prev ? prev.trim() : ''))}
+          onPressEnter={(e) => {
+            const val = ((e.target as HTMLInputElement)?.value ?? inputName).trim();
+            setInputName(val);
+            handleFilterApply({ name: val });
+          }}
           style={inputStyle}
         />
       </div>
@@ -2512,7 +2521,12 @@ export default function DikeRevetmentList() {
               allowClear
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
-              onPressEnter={handleFilterApply}
+              onBlur={() => setInputCode((prev) => (prev ? prev.trim() : ''))}
+              onPressEnter={(e) => {
+                const val = ((e.target as HTMLInputElement)?.value ?? inputCode).trim();
+                setInputCode(val);
+                handleFilterApply({ code: val });
+              }}
               style={inputStyle}
             />
           </div>

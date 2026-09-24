@@ -283,6 +283,9 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
   const isInitialLoadDoneRef = useRef(false);
+  // Chỉ nạp dữ liệu bản ghi MỘT LẦN cho mỗi id — effect prefill bên dưới phụ thuộc `symbols`
+  // (nạp bất đồng bộ) nên nếu không có chốt này nó sẽ chạy lại và ghi đè form.
+  const prefilledIdRef = useRef<string | null>(null);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
@@ -409,6 +412,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   // Edit mode: load existing
   useEffect(() => {
     if (!isEdit || !id) return;
+    // `symbols` (danh sách biểu tượng) nạp BẤT ĐỒNG BỘ nên effect này sẽ chạy lại khi nó về muộn.
+    // Không có chốt dưới đây, lần chạy lại sẽ findById() lần nữa rồi setFieldsValue() ghi đè giá trị
+    // CŨ của bản ghi lên đúng những ô người dùng vừa sửa/xóa ⇒ trường bị xóa trắng "không hề có gì
+    // thay đổi" khi lưu (lỗi phụ thuộc timing nên lúc tái hiện được, lúc không).
+    if (prefilledIdRef.current === id) return;
+    prefilledIdRef.current = id;
     isInitialLoadDoneRef.current = false;
     (async () => {
       try {
@@ -732,7 +741,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         <Row gutter={[24, 0]}>
           <Col span={12}>
             <Form.Item name="shipRepairYardName" {...labelProps('Tên cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }}
-              rules={[{ required: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+              rules={[{ required: true, whitespace: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
               <Input placeholder="Nhập tên cơ sở sửa chữa, đóng tàu" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
           </Col>
@@ -746,7 +755,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm chi tiết không được để trống' }]}>
+            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, whitespace: true, message: 'Địa điểm chi tiết không được để trống' }]}>
               <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
             </Form.Item>
           </Col>

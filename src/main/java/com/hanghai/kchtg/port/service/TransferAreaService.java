@@ -165,15 +165,19 @@ public class TransferAreaService {
                 Port parent = portRepository.findById(request.getPortId())
                         .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
                 entity.setPortId(request.getPortId());
-                entity.setOrgUnitId(parent.getOrgUnitId());
             } else {
                 entity.setPortId(null);
             }
-        } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
-            portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
         }
         if (request.isFieldPresent("orgUnitId"))
             entity.setOrgUnitId(request.getOrgUnitId());
+        // Suy ra đơn vị quản lý từ cảng biển CHỈ KHI bản ghi vẫn chưa có đơn vị — đặt SAU khối
+        // orgUnitId để giá trị client gửi luôn thắng. Trước đây dòng setOrgUnitId nằm trong nhánh
+        // portId (chạy TRƯỚC khối orgUnitId), mà frontend luôn gửi portId mỗi lần lưu, nên đơn vị
+        // quản lý bị ghi đè âm thầm: người dùng sửa/xóa đơn vị nhưng bản ghi "không hề thay đổi".
+        if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
+            portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));
+        }
         if (request.isFieldPresent("provinceId"))
             entity.setProvinceId(request.getProvinceId());
         if (request.isFieldPresent("detailedLocation"))
@@ -213,10 +217,23 @@ public class TransferAreaService {
         if (request.isFieldPresent("activityEndDate"))
             entity.setActivityEndDate(request.getActivityEndDate());
 
-        boolean hasGeometryType = request.getGeometryType() != null;
-        boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
-        boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
-                && (!hasGeometryType || !hasCoordinates);
+        GisGeometryType geomType = request.getGeometryType();
+        if (geomType == null && coordinates != null && !coordinates.isBlank()) {
+            String clean = coordinates.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+            if (clean.startsWith("POLYGON")) {
+                geomType = GisGeometryType.POLYGON;
+            } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                geomType = GisGeometryType.LINE;
+            } else {
+                geomType = GisGeometryType.POINT;
+            }
+        }
+
+        boolean hasCoordinates = coordinates != null && !coordinates.isBlank();
+        boolean hasGeometryType = geomType != null;
+        boolean shouldClearLocation = (request.isFieldPresent("coordinates") || request.isFieldPresent("geometryType"))
+                && !hasCoordinates
+                && (request.getGeometryType() == null);
 
         if (shouldClearLocation) {
             entity.setMapSymbolId(null);
@@ -262,14 +279,14 @@ public class TransferAreaService {
         }
 
         TransferArea saved = transferAreaRepository.saveAndFlush(entity);
-        persistGisAndMooring(saved, request.getGeometryType(), coordinates,
+        persistGisAndMooring(saved, geomType, coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas(), shouldClearLocation, hasGeometryType && hasCoordinates);
 
         // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
             if (hasGeometryType && hasCoordinates) {
-                GisGeometryType geomType = request.getGeometryType() != null
-                        ? request.getGeometryType() : GisGeometryType.POINT;
+                GisGeometryType effectiveGeomType = geomType != null
+                        ? geomType : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
@@ -277,7 +294,7 @@ public class TransferAreaService {
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
-                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                boolean typeChanged = geomType != null && oldGeomType != geomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("TransferArea", saved.getId(), "Loại đối tượng GIS",
                             oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
@@ -690,11 +707,22 @@ public class TransferAreaService {
         }
         if (spatialObj != null) {
             response.setSpatialId(spatialObj.getId());
-            if (spatialObj.getGeometryType() != null) {
-                response.setGeometryType(spatialObj.getGeometryType());
+            GisGeometryType gt = spatialObj.getGeometryType();
+            if (gt == null && spatialObj.getCoordinates() != null) {
+                String clean = spatialObj.getCoordinates().trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+                if (clean.startsWith("POLYGON")) gt = GisGeometryType.POLYGON;
+                else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) gt = GisGeometryType.LINE;
+                else gt = GisGeometryType.POINT;
             }
+            response.setGeometryType(gt != null ? gt : GisGeometryType.POINT);
             response.setCoordinates(spatialObj.getCoordinates());
             parseLatLng(spatialObj.getCoordinates(), response);
+            if (response.getCoordinateSystem() == null) {
+                response.setCoordinateSystem(1);
+            }
+            if (response.getDisplayRule() == null) {
+                response.setDisplayRule(1);
+            }
         }
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
@@ -704,7 +732,7 @@ public class TransferAreaService {
     private void parseLatLng(String coordinates, TransferAreaResponse response) {
         if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String trimmed = coordinates.trim();
+            String trimmed = coordinates.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim();
             if (trimmed.toUpperCase().startsWith("POINT")) {
                 int start = trimmed.indexOf('(') + 1;
                 int end = trimmed.indexOf(')', start);
@@ -778,10 +806,22 @@ public class TransferAreaService {
             if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
                 wkt = "POINT(" + longitude + " " + latitude + ")";
             }
-            if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
-                GisGeometryType geomType = geometryType;
+            GisGeometryType geomType = geometryType;
+            if (geomType == null && wkt != null && !wkt.trim().isEmpty()) {
+                String clean = wkt.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+                if (clean.startsWith("POLYGON")) geomType = GisGeometryType.POLYGON;
+                else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) geomType = GisGeometryType.LINE;
+                else geomType = GisGeometryType.POINT;
+            }
+            if (geomType != null && wkt != null && !wkt.trim().isEmpty()) {
+                UUID currentSpatialId = saved.getSpatialId();
+                if (currentSpatialId == null && saved.getId() != null) {
+                    currentSpatialId = gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.TRANSSHIPMENT_AREA)
+                            .map(GisSpatialObject::getId)
+                            .orElse(null);
+                }
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                        saved.getSpatialId(), saved.getTransferAreaName(), "TRANSFER_AREA_" + saved.getTransferAreaCode(),
+                        currentSpatialId, saved.getTransferAreaName(), "TRANSFER_AREA_" + saved.getTransferAreaCode(),
                         geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
                         InfrastructureType.TRANSSHIPMENT_AREA);
                 saved.setSpatialId(spatialObj.getId());

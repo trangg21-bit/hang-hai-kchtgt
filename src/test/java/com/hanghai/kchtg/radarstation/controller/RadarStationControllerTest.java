@@ -200,6 +200,28 @@ class RadarStationControllerTest {
         );
     }
 
+    @Test
+    void testSearchPaged_WithFormattedDateRanges() {
+        org.springframework.data.domain.Page<RadarStationResponse> pageResult = new org.springframework.data.domain.PageImpl<>(Collections.singletonList(response));
+        when(service.searchPaged(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(pageResult);
+
+        ResponseEntity<?> result = controller.searchPaged(
+                null, null, null, null, null, null, null,
+                null, null, null, null, null, null,
+                "2026-09-24 00:00:00.000", "2026-09-24 23:59:59.999",
+                0, 20, "updatedAt", "DESC"
+        );
+        assertEquals(HttpStatus.OK, result.getStatusCode());
+        verify(service).searchPaged(
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                argThat(from -> from != null && from.getYear() == 2026 && from.getMonthValue() == 9 && from.getDayOfMonth() == 24 && from.getHour() == 0 && from.getMinute() == 0 && from.getSecond() == 0 && from.getNano() == 0),
+                argThat(to -> to != null && to.getYear() == 2026 && to.getMonthValue() == 9 && to.getDayOfMonth() == 24 && to.getHour() == 23 && to.getMinute() == 59 && to.getSecond() == 59 && to.getNano() == 999_999_999),
+                any()
+        );
+    }
+
     private Authentication mockAuth() {
         User principal = new User();
         principal.setId(TEST_USER_ID);

@@ -48,6 +48,7 @@ import {
   isUuidString,
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import { mapPortStatusToOperationalStatus, normalizeDryPortPayload } from './dry-port/payload';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 import { decimalNumberRule, parseNumber20, getValueFromEvent20, safeDecimal } from '../../utils/numberRuleHelper';
@@ -644,7 +645,11 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           operatingOrgId: opOrgId || (isEdit ? null : undefined),
           operatingUnit: cleanString(opUnit),
           region: cleanString(values.region),
-          provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : (isEdit ? null : undefined),
+          provinceId: provinceName
+            ? (VIETNAM_PROVINCES.indexOf(provinceName) >= 0
+                ? VIETNAM_PROVINCES.indexOf(provinceName) + 1
+                : (isEdit ? null : undefined))
+            : (isEdit ? null : undefined),
           detailedLocation: cleanString(values.detailedLocation),
           transportCorridor: cleanString(values.transportCorridor),
           area: cleanDecimal(values.area),
@@ -653,6 +658,11 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           yardArea: cleanDecimal(values.yardArea),
           connectionMode: cleanString(values.connectionMode),
           portStatus: cleanNumber(values.portStatus),
+          // Giữ `operationalStatus` đồng bộ với `portStatus`: badge "Tình trạng hoạt động"
+          // ở màn danh sách/chi tiết (trangThaiHoatDongBadge) ƯU TIÊN operationalStatus,
+          // và cột này còn được dashboard đếm KCHT dùng. Không gửi ⇒ sửa Tình trạng xong
+          // vẫn thấy badge y như cũ.
+          operationalStatus: mapPortStatusToOperationalStatus(values.portStatus),
           remarks: cleanString(values.remarks),
           mapSymbolId: hasGeom ? (currentMapSymbolId || null) : (isEdit ? null : null),
           coordinateSystem:
@@ -673,16 +683,17 @@ export default forwardRef<DryPortFormHandle, DryPortFormProps>(function DryPortF
           investmentAgreementDoc: cleanString(values.investmentAgreementDoc),
         };
 
-        Object.keys(payload).forEach((key) => {
-          if (payload[key] === undefined) delete payload[key];
-        });
+        // Hợp đồng chung của họ màn Cảng biển: ô bị xóa trắng phải đi kèm `null` TƯỜNG MINH
+        // (xem comment clearableText/clearableNumber/clearableUuid trong PortListPage.tsx).
+        // Bỏ hẳn key ⇒ server không phân biệt được "đã xóa trắng" với "không gửi" ⇒ giữ giá trị cũ.
+        const normalizedPayload = normalizeDryPortPayload(payload, { isEdit });
 
         let savedId: string | undefined;
         if (isEdit && id) {
-          await updateDryPort({ ...payload, id });
+          await updateDryPort({ ...normalizedPayload, id });
           savedId = id;
         } else {
-          const res = await createDryPort(payload);
+          const res = await createDryPort(normalizedPayload);
           savedId = res?.id;
         }
 

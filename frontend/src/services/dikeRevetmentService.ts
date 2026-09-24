@@ -11,7 +11,7 @@ import type {
 
 const BASE_PATH = '/v1/dike-revetment';
 
-function buildSearchParams(params: Record<string, string | number | undefined>) {
+function buildSearchParams(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== '') sp.set(k, String(v));

@@ -780,9 +780,11 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       <Form.Item
         {...labelProps('Chiều dài (m)')}
         name="length"
+        required
         style={formFieldStyle}
         getValueFromEvent={getValueFromEvent20}
         rules={[
+          { required: true, message: 'Vui lòng nhập chiều dài' },
           decimalNumberRule,
           {
             validator: (_, value) => {
@@ -796,9 +798,9 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         <NumberInputWithCount
           allowDecimal
           min={0}
+          step={0.01}
           placeholder="0"
           style={numberInputStyle}
-          step={0.01}
           maxLength={20}
           parser={parseNumber20}
           formatter={fmtInputNumber}
@@ -815,9 +817,9 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         <NumberInputWithCount
           allowDecimal
           allowNegative
+          step={0.01}
           placeholder="0"
           style={numberInputStyle}
-          step={0.01}
           maxLength={20}
           parser={parseNumber20Signed}
           formatter={fmtInputNumber}

@@ -239,6 +239,8 @@ public class RadarStationController {
             @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) UUID updatedBy,
+            @RequestParam(required = false) String commissionedFrom,
+            @RequestParam(required = false) String commissionedTo,
             @RequestParam(required = false) String updatedFrom,
             @RequestParam(required = false) String updatedTo,
             @RequestParam(defaultValue = "0") int page,
@@ -257,6 +259,17 @@ public class RadarStationController {
             log.warn("Lỗi khi tìm kiếm phân trang trạm radar: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    public ResponseEntity<ApiResponse<Page<RadarStationResponse>>> searchPaged(
+            String keyword, String stationName, String code, UUID orgUnitId, UUID seaportId,
+            UUID vtsSystemId, UUID vtsOperationCenterId, UUID operatingUnitId, Integer provinceId,
+            String conditionStatus, String approvalStatus, String status, UUID updatedBy,
+            String updatedFrom, String updatedTo,
+            int page, int size, String sortBy, String sortOrder) {
+        return searchPaged(keyword, stationName, code, orgUnitId, seaportId, vtsSystemId, vtsOperationCenterId,
+                operatingUnitId, provinceId, conditionStatus, approvalStatus, status, updatedBy,
+                null, null, updatedFrom, updatedTo, page, size, sortBy, sortOrder);
     }
 
     @PreAuthorize("@auth.checkAny(authentication, 'radarstation:manage', 'radarstation:update', 'radarstation:approvec2')")
@@ -491,15 +504,15 @@ public class RadarStationController {
     private LocalDateTime parseUpdatedFrom(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty())
             return null;
-        String trimmed = dateStr.trim();
+        String s = dateStr.trim();
         try {
-            if (trimmed.length() == 10) {
-                return LocalDate.parse(trimmed).atStartOfDay();
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atStartOfDay();
             }
-            return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_DATE_TIME);
+            return LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
             try {
-                return LocalDateTime.parse(trimmed + "T00:00:00");
+                return LocalDateTime.parse(s.replace(" ", "T"));
             } catch (Exception e2) {
                 return null;
             }
@@ -509,15 +522,19 @@ public class RadarStationController {
     private LocalDateTime parseUpdatedTo(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty())
             return null;
-        String trimmed = dateStr.trim();
+        String s = dateStr.trim();
         try {
-            if (trimmed.length() == 10) {
-                return LocalDate.parse(trimmed).atTime(LocalTime.MAX);
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
             }
-            return LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_DATE_TIME);
+            LocalDateTime ldt = LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
+            if (ldt.getNano() == 0 || (ldt.getNano() == 999_000_000 && (s.endsWith(".999") || s.endsWith(":59")))) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
         } catch (Exception e) {
             try {
-                return LocalDateTime.parse(trimmed + "T23:59:59.999999");
+                return LocalDateTime.parse(s.replace(" ", "T"));
             } catch (Exception e2) {
                 return null;
             }

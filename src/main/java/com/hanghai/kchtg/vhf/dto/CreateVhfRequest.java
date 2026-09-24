@@ -15,7 +15,6 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @Data
 public class CreateVhfRequest {
 
-    @NotBlank(message = "Mã thiết bị VHF không được để trống")
     @Size(max = 200, message = "Mã thiết bị tối đa 200 ký tự")
     private String deviceCode;
 

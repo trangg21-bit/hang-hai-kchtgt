@@ -47,7 +47,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "(:seaportId IS NULL OR d.seaportId = :seaportId) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
             "(:conditionStatus IS NULL OR d.status = :conditionStatus) AND " +
-            "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) AND " +
+            "(:approvalStatus IS NULL " +
+            "  OR d.approvalStatus = :approvalStatus " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2))) AND " +
             "(:updatedBy IS NULL OR d.updatedBy = :updatedBy) AND " +
             "(CAST(:updatedFrom AS timestamp) IS NULL OR d.updatedAt >= :updatedFrom) AND " +
             "(CAST(:updatedTo AS timestamp) IS NULL OR d.updatedAt <= :updatedTo) AND " +
@@ -66,7 +70,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "(:seaportId IS NULL OR d.seaportId = :seaportId) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
             "(:conditionStatus IS NULL OR d.status = :conditionStatus) AND " +
-            "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus) AND " +
+            "(:approvalStatus IS NULL " +
+            "  OR d.approvalStatus = :approvalStatus " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2))) AND " +
             "(:updatedBy IS NULL OR d.updatedBy = :updatedBy) AND " +
             "(CAST(:updatedFrom AS timestamp) IS NULL OR d.updatedAt >= :updatedFrom) AND " +
             "(CAST(:updatedTo AS timestamp) IS NULL OR d.updatedAt <= :updatedTo) AND " +
@@ -123,7 +131,11 @@ public interface DikeRevetmentRepository extends JpaRepository<DikeRevetment, UU
             "  CAST(function('immutable_unaccent', LOWER(d.location)) AS string) LIKE CAST(:keyword AS string)) AND " +
             "(:status IS NULL OR d.status = :status) AND " +
             "(:dikeRevetmentType IS NULL OR d.dikeRevetmentType = :dikeRevetmentType) AND " +
-            "(:approvalStatus IS NULL OR d.approvalStatus = :approvalStatus)")
+            "(:approvalStatus IS NULL " +
+            "  OR d.approvalStatus = :approvalStatus " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PENDING_APPROVAL OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.PROPOSED)) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED AND (d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR d.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)))")
     Page<DikeRevetment> searchDocuments(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("keyword") String keyword,

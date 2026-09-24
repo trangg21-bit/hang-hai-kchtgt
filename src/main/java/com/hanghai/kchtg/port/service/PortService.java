@@ -555,11 +555,24 @@ public class PortService {
                 .build();
 
         // Update mutable fields — code (portCode) is immutable
-        if (request.getPortName() != null && !request.getPortName().isBlank()) entity.setPortName(request.getPortName());
+        // portName là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng,
+        // TUYỆT ĐỐI không được âm thầm giữ lại giá trị cũ rồi vẫn trả về thành công —
+        // đó chính là lỗi "xóa trường mà dữ liệu không hề thay đổi".
+        if (request.getPortName() != null) {
+            if (request.getPortName().isBlank()) {
+                throw new IllegalArgumentException("Tên cảng biển không được để trống");
+            }
+            entity.setPortName(request.getPortName().trim());
+        }
         entity.setProvince(request.getProvince());
 
         entity.setArea(request.getArea());
         entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
+        // orgUnitId là trường BẮT BUỘC: gửi null (xóa trắng) phải báo lỗi rõ ràng thay vì
+        // âm thầm bỏ qua rồi vẫn trả về thành công.
+        if (request.getOrgUnitId() == null) {
+            throw new IllegalArgumentException("Đơn vị quản lý không được để trống");
+        }
         if (request.getOrgUnitId() != null) {
             UUID oldOrgUnitId = entity.getOrgUnitId();
             entity.setOrgUnitId(request.getOrgUnitId());
@@ -580,6 +593,8 @@ public class PortService {
         }
         entity.setPortGroup(request.getPortGroup());
         entity.setMapSymbolId(request.getMapSymbolId());
+        // operationalStatus: màn Cảng biển không có ô nhập cho trường này nên frontend
+        // không thể xóa trắng; giữ nguyên giá trị cũ khi request không gửi giá trị.
         if (request.getOperationalStatus() != null) {
             entity.setOperationalStatus(request.getOperationalStatus());
         }

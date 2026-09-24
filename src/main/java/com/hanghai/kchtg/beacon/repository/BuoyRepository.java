@@ -21,6 +21,12 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     @Query("SELECT MAX(b.code) FROM Buoy b WHERE b.code LIKE 'PT-%'")
     Optional<String> findMaxCode();
 
+    /**
+     * Kiểm tra mã phao tiêu đã tồn tại trên toàn bộ bảng buoy (kể cả bản ghi xóa mềm và mọi đơn vị).
+     */
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM buoy WHERE code = :code)", nativeQuery = true)
+    boolean existsCodeAnyState(@Param("code") String code);
+
     Page<Buoy> findByStatus(String status, Pageable pageable);
     Page<Buoy> findByType(String type, Pageable pageable);
     List<Buoy> findByNameContainingIgnoreCase(String name);

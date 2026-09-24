@@ -55,6 +55,9 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
 /**
  * Service for BeaconStation CRUD + approval workflow (F-068 to F-072).
  * Follows M-007 PointObjectService pattern exactly.
@@ -95,17 +98,59 @@ public class BeaconStationService {
 
     @Transactional(readOnly = true)
     public String generateBeaconStationCode() {
-        String maxCode = beaconStationRepo.findMaxCode();
-        int nextNumber = 1;
-        if (maxCode != null && maxCode.startsWith("DBNT-")) {
+        int sequence = 0;
+        try {
+            sequence = beaconStationRepo.findMaxBeaconStationCodeSequence().orElse(0);
+        } catch (Exception e) {
             try {
-                String numPart = maxCode.substring(5);
-                nextNumber = Integer.parseInt(numPart) + 1;
-            } catch (NumberFormatException e) {
-                // mã không đúng định dạng DBNT-XXXXXX, bắt đầu từ 1
+                List<String> codes = beaconStationRepo.findAllCodesWithBeaconPrefix();
+                for (String c : codes) {
+                    if (c != null && c.startsWith("DBNT-")) {
+                        try {
+                            int val = Integer.parseInt(c.substring(5).trim());
+                            if (val > sequence) {
+                                sequence = val;
+                            }
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                sequence = (int) beaconStationRepo.count();
             }
         }
-        return String.format("DBNT-%06d", nextNumber);
+
+        if (sequence == 0) {
+            try {
+                String legacyMax = beaconStationRepo.findMaxCode();
+                if (legacyMax != null && legacyMax.startsWith("DBNT-")) {
+                    try {
+                        sequence = Integer.parseInt(legacyMax.substring(5).trim());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        sequence++;
+        String code = String.format("DBNT-%06d", sequence);
+        while (isCodeTaken(code)) {
+            sequence++;
+            code = String.format("DBNT-%06d", sequence);
+        }
+        return code;
+    }
+
+    private boolean isCodeTaken(String code) {
+        if (code == null || code.isBlank()) return false;
+        try {
+            if (beaconStationRepo.existsCodeAnyState(code) || buoyRepo.existsCodeAnyState(code)) {
+                return true;
+            }
+        } catch (Exception ignored) {
+        }
+        return beaconStationRepo.existsByCode(code) || buoyRepo.existsByCode(code);
     }
 
     public BeaconStationResponse findById(UUID id) {
@@ -143,8 +188,8 @@ public class BeaconStationService {
                 updatedBy,
                 parseLocalDate(commissionedFrom),
                 parseLocalDate(commissionedTo),
-                parseLocalDateTime(updatedFrom),
-                parseLocalDateTime(updatedTo)).stream()
+                parseUpdatedFrom(updatedFrom),
+                parseUpdatedTo(updatedTo)).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -167,7 +212,7 @@ public class BeaconStationService {
                 seaportId, operator, provinceId,
                 operationalStatus, stationArea, parseApprovalStatus(approvalStatus), updatedBy,
                 parseLocalDate(commissionedFrom), parseLocalDate(commissionedTo),
-                parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
+                parseUpdatedFrom(updatedFrom), parseUpdatedTo(updatedTo),
                 pageable)
                 .map(this::toResponse);
     }
@@ -231,8 +276,8 @@ public class BeaconStationService {
         }
         String normalizedKeyword = normalizeHistoryKeyword(keyword);
         boolean paged = page != null && pageSize != null && pageSize > 0;
-        java.time.LocalDateTime from = parseLocalDateTime(fromDate);
-        java.time.LocalDateTime to = parseLocalDateTime(toDate);
+        java.time.LocalDateTime from = parseUpdatedFrom(fromDate);
+        java.time.LocalDateTime to = parseUpdatedTo(toDate);
         List<InfrastructureHistory> list;
         if (normalizedKeyword == null && from == null && to == null) {
             list = paged
@@ -389,9 +434,16 @@ public class BeaconStationService {
     @Transactional
     public BeaconStationResponse create(CreateBeaconStationRequest request) {
         FieldWriteGuard.validateObject(request);
-        if (beaconStationRepo.existsByCode(request.getCode())
-                || buoyRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Mã đã tồn tại: " + request.getCode());
+        String code = request.getCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = generateBeaconStationCode();
+            request.setCode(code);
+        } else {
+            code = code.trim();
+            request.setCode(code);
+        }
+        if (isCodeTaken(code)) {
+            throw new IllegalArgumentException("Mã đã tồn tại: " + code);
         }
 
         validateMaintenanceDates(request.getLastRepairDate(), request.getCommissionedDate());
@@ -720,6 +772,7 @@ public class BeaconStationService {
                     "Không thể xóa đèn biển đang chờ phê duyệt");
         }
 
+        String previousStatus = entity.getStatus();
         entity.setStatus("DELETED");
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         entity.softDelete(SecurityUtils.getCurrentUserId());
@@ -728,6 +781,8 @@ public class BeaconStationService {
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
+
+        logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, "Trạng thái", previousStatus, "DELETED");
     }
 
     // -- APPROVAL --
@@ -864,28 +919,61 @@ public class BeaconStationService {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
+        String v = value.trim();
         try {
-            return LocalDate.parse(value.trim());
+            if (v.length() >= 10) {
+                return LocalDate.parse(v.substring(0, 10));
+            }
+            return LocalDate.parse(v);
         } catch (Exception e) {
             return null;
         }
     }
 
-    private LocalDateTime parseLocalDateTime(String value) {
+    private LocalDateTime parseUpdatedFrom(String value) {
         if (value == null || value.trim().isEmpty()) {
             return null;
         }
+        String s = value.trim();
         try {
-            String v = value.trim();
-            if (v.length() == 10) {
-                v = v + "T00:00:00";
-            } else {
-                v = v.replace(" ", "T");
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atStartOfDay();
             }
-            return LocalDateTime.parse(v);
+            return LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s.replace(" ", "T"));
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseUpdatedTo(String value) {
+        if (value == null || value.trim().isEmpty()) {
             return null;
         }
+        String s = value.trim();
+        try {
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
+            }
+            LocalDateTime ldt = LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
+            if (ldt.getNano() == 0 || (ldt.getNano() == 999_000_000 && (s.endsWith(".999") || s.endsWith(":59")))) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s.replace(" ", "T"));
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseLocalDateTime(String value) {
+        return parseUpdatedFrom(value);
     }
 
     private void logHistory(BeaconStation entity,
@@ -1061,6 +1149,9 @@ public class BeaconStationService {
      * hoặc quản trị nâng cao (chuẩn F-092/AC-006 — backend chặn non-Cục).
      */
     private void requireApproveC2Permission() {
+        if (SecurityUtils.isElevatedAdministrator()) {
+            return;
+        }
         java.util.Set<String> perms = SecurityUtils.getCurrentUserPermissions();
         if (perms == null || !perms.contains("beaconstation:approvec2")) {
             throw new AccessDeniedException(

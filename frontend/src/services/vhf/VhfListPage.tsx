@@ -1117,9 +1117,9 @@ const VhfListPage = () => {
     ];
     const filterScope = {
       orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
-      search: filterValues.deviceCode || filterValues.deviceName || undefined,
-      deviceCode: filterValues.deviceCode || undefined,
-      deviceName: filterValues.deviceName || undefined,
+      search: (filterValues.deviceCode || filterValues.deviceName || "").trim() || undefined,
+      deviceCode: filterValues.deviceCode ? filterValues.deviceCode.trim() : undefined,
+      deviceName: filterValues.deviceName ? filterValues.deviceName.trim() : undefined,
       seaportId: filterValues.seaportId || undefined,
       operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
       province: filterValues.province || undefined,
@@ -1163,9 +1163,9 @@ const VhfListPage = () => {
         page: safePage,
         size: safeSize,
         orgUnitId: (filterValues.orgUnitId && filterValues.orgUnitId !== '__all__' ? filterValues.orgUnitId : undefined),
-        search: filterValues.deviceCode || filterValues.deviceName || undefined,
-        deviceCode: filterValues.deviceCode || undefined,
-        deviceName: filterValues.deviceName || undefined,
+        search: (filterValues.deviceCode || filterValues.deviceName || "").trim() || undefined,
+        deviceCode: filterValues.deviceCode ? filterValues.deviceCode.trim() : undefined,
+        deviceName: filterValues.deviceName ? filterValues.deviceName.trim() : undefined,
         seaportId: filterValues.seaportId || undefined,
         operationalStatus: filterValues.operationalStatus != null ? String(filterValues.operationalStatus) : undefined,
         approvalStatus: filterValues.approvalStatus || undefined,
@@ -1205,11 +1205,23 @@ const VhfListPage = () => {
     fetchData();
   }, [orgUnitReady, fetchData]);
 
-  const handleFilterApply = useCallback(() => {
+  const handleFilterApply = useCallback((overrides?: { deviceName?: string; deviceCode?: string }) => {
+    // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
+    if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
+      toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
+      return;
+    }
+    const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : (filterValues.deviceName || "")).trim();
+    const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : (filterValues.deviceCode || "")).trim();
+    setFilterValues((prev) => ({
+      ...prev,
+      deviceName: nextName,
+      deviceCode: nextCode,
+    }));
     setPage(0);
     statusCountFilterKey.current = null;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, filterValues.deviceName, filterValues.deviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
   const handleFilterReset = useCallback(() => {
     const defaultOrg = defaultOrgUnitId.current;
@@ -1835,11 +1847,11 @@ const validHistoryGroups = useMemo(() => {
       render: (val: string) => renderCellWithTooltip(val, true),
     },
     {
-      key: "vtsSystemName",
+      key: "attachedInfrastructureName",
       label: "Thuộc TTDH VTS/Trạm radar",
       dataIndex: "attachedInfrastructureName",
       width: 280,
-      sortable: false,
+      sortOrder: sortOrderFor("attachedInfrastructureName"),
       cellTitle: (record: VhfResponse) => record.attachedInfrastructureName || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -1848,7 +1860,7 @@ const validHistoryGroups = useMemo(() => {
       label: "Đơn vị khai thác",
       dataIndex: "operatingUnitName",
       width: 260,
-      sortable: false,
+      sortOrder: sortOrderFor("operatingUnitName"),
       cellTitle: (record: VhfResponse) => record.operatingUnitName || '',
       render: (val: string) => renderCellWithTooltip(val),
     },
@@ -2417,7 +2429,12 @@ const validHistoryGroups = useMemo(() => {
                   allowClear
                   value={filterValues.deviceName || ""}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, deviceName: e.target.value }))}
-                  onPressEnter={handleFilterApply}
+                  onBlur={() => setFilterValues((prev) => ({ ...prev, deviceName: (prev.deviceName || "").trim() }))}
+                  onPressEnter={(e) => {
+                    const val = ((e.target as HTMLInputElement)?.value ?? filterValues.deviceName ?? "").trim();
+                    setFilterValues((prev) => ({ ...prev, deviceName: val }));
+                    handleFilterApply({ deviceName: val });
+                  }}
                   style={{ borderRadius: radiusPill, height: 40 }}
                 />
               </SidebarFilterField>
@@ -2430,7 +2447,12 @@ const validHistoryGroups = useMemo(() => {
                       allowClear
                       value={filterValues.deviceCode || ""}
                       onChange={(e) => setFilterValues((prev) => ({ ...prev, deviceCode: e.target.value }))}
-                      onPressEnter={handleFilterApply}
+                      onBlur={() => setFilterValues((prev) => ({ ...prev, deviceCode: (prev.deviceCode || "").trim() }))}
+                      onPressEnter={(e) => {
+                        const val = ((e.target as HTMLInputElement)?.value ?? filterValues.deviceCode ?? "").trim();
+                        setFilterValues((prev) => ({ ...prev, deviceCode: val }));
+                        handleFilterApply({ deviceCode: val });
+                      }}
                       style={{ borderRadius: radiusPill, height: 40 }}
                     />
                   </SidebarFilterField>
