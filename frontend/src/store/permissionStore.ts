@@ -52,6 +52,7 @@ export const RESOURCE_CANONICAL_MAP: Record<string, string> = {
   anchoragearea: 'anchorage',
   shiprepair: 'shiprepairfacility',
   shiprepairyard: 'shiprepairfacility',
+  shipprepairfacility: 'shiprepairfacility',
   beaconlight: 'beaconstation',
   lighthousestation: 'beaconstation',
   lighthouse: 'beaconstation',
@@ -76,11 +77,26 @@ export function getEquivalentPermissionKeys(key: string): string[] {
   const canonical = canonicalResource(res);
   const keys = new Set<string>();
   keys.add(normalized);
+
+  const actionEquivalents = [action];
+  if (action === 'approvec2') actionEquivalents.push('approve2', 'approvel2', 'approve_level2');
+  else if (action === 'approve2') actionEquivalents.push('approvec2', 'approvel2', 'approve_level2');
+  else if (action === 'approvec1') actionEquivalents.push('approve1', 'approvel1', 'approve_level1');
+  else if (action === 'approve1') actionEquivalents.push('approvec1', 'approvel1', 'approve_level1');
+
   if (canonical) {
-    keys.add(action ? `${canonical}:${action}` : canonical);
-    for (const [alias, target] of Object.entries(RESOURCE_CANONICAL_MAP)) {
-      if (target === canonical) {
-        keys.add(action ? `${alias}:${action}` : alias);
+    for (const act of actionEquivalents) {
+      keys.add(act ? `${canonical}:${act}` : canonical);
+      for (const [alias, target] of Object.entries(RESOURCE_CANONICAL_MAP)) {
+        if (target === canonical) {
+          keys.add(act ? `${alias}:${act}` : alias);
+        }
+      }
+    }
+  } else {
+    for (const act of actionEquivalents) {
+      if (act !== action) {
+        keys.add(`${res}:${act}`);
       }
     }
   }
@@ -236,7 +252,11 @@ export function normalizePermissionKey(key: string): string {
     .replace('user:lock', 'user:update')
     .replace('user:reset_password', 'user:update')
     .replace(':approve:c1', ':approvec1')
-    .replace(':approve:c2', ':approvec2');
+    .replace(':approve:c2', ':approvec2')
+    .replace(':approve1', ':approvec1')
+    .replace(':approve2', ':approvec2')
+    .replace(':reject1', ':rejectc1')
+    .replace(':reject2', ':rejectc2');
 }
 
 /**

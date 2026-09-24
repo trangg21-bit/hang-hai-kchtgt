@@ -6,6 +6,7 @@ import com.hanghai.kchtg.cctv.dto.UpdateCctvRequest;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -21,6 +22,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,7 +34,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.web.MockMultipartFile;
 
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -84,6 +91,9 @@ class CctvServiceTest {
     @InjectMocks
     private CctvService service;
 
+    @TempDir
+    Path uploadDirectory;
+
     private Cctv entity;
     private User principal;
 
@@ -92,6 +102,7 @@ class CctvServiceTest {
         InfrastructureApprovalService approvalService =
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
+        ReflectionTestUtils.setField(service, "uploadPath", uploadDirectory.toString());
 
         principal = mock(User.class);
         when(principal.getId()).thenReturn(USER_ID);
@@ -505,6 +516,29 @@ class CctvServiceTest {
 
         verify(attachmentRepository).delete(att);
         verify(historyRepository).save(any());
+    }
+
+    @Test
+    void uploadAttachment_onRecentlyApprovedEntity_shouldRecordFullSnapshot() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setCreatedAt(LocalDateTime.now());
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+        com.hanghai.kchtg.port.entity.Attachment existing = new com.hanghai.kchtg.port.entity.Attachment();
+        existing.setFileName("existing.pdf");
+        when(attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("CCTV", ID))
+                .thenReturn(List.of(existing));
+        when(attachmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockMultipartFile upload = new MockMultipartFile(
+                "files", "new.pdf", "application/pdf", "test".getBytes());
+
+        service.uploadAttachments(ID, List.of(upload), USER_ID);
+
+        ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        assertEquals("existing.pdf", historyCaptor.getValue().getPreviousValue());
+        assertEquals("existing.pdf, new.pdf", historyCaptor.getValue().getNewValue());
     }
 
     @Test

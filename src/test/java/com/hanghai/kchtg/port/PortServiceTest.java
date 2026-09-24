@@ -6,9 +6,13 @@ import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
 import com.hanghai.kchtg.port.entity.Port;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.port.service.PortService;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
@@ -72,6 +76,12 @@ class PortServiceTest {
 
     @Mock
     private PortCacheService portCacheService;
+
+    @Mock
+    private AttachmentRepository attachmentRepository;
+
+    @Mock
+    private InfrastructureHistoryRepository historyRepository;
 
     private UUID testId;
     private Port testEntity;
@@ -205,6 +215,34 @@ class PortServiceTest {
     }
 
     @Test
+    @DisplayName("F-009: update — payload rút gọn không làm mất phân cấp, tỉnh và biểu tượng bản đồ")
+    void update_partialPayload_preservesCriticalReferenceFields() {
+        UUID mapSymbolId = UUID.randomUUID();
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+        testEntity.setPortGroup(2);
+        testEntity.setPortClass(1);
+        testEntity.setMapSymbolId(mapSymbolId);
+        testEntity.setCoordinateSystem(1);
+        testEntity.setDisplayRule(2);
+
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdatePortRequest request = new UpdatePortRequest();
+        request.setId(testId);
+        request.setPortName("Cảng sửa lần hai");
+
+        service.update(request);
+
+        assertEquals("Hà Nội", testEntity.getProvince());
+        assertEquals(2, testEntity.getPortGroup());
+        assertEquals(1, testEntity.getPortClass());
+        assertEquals(mapSymbolId, testEntity.getMapSymbolId());
+        assertEquals(1, testEntity.getCoordinateSystem());
+        assertEquals(2, testEntity.getDisplayRule());
+    }
+
+    @Test
     @DisplayName("F-009: update — throws EntityNotFoundException when not found")
     void update_notFound_throws() {
         UpdatePortRequest request = new UpdatePortRequest();
@@ -213,6 +251,35 @@ class PortServiceTest {
         when(portRepository.findById(testId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.update(request));
+    }
+
+    @Test
+    @DisplayName("F-009: xóa file của bản ghi đã duyệt luôn ghi lịch sử")
+    void deleteAttachment_approvedPort_recordsHistory() {
+        UUID attachmentId = UUID.randomUUID();
+        UUID actorId = UUID.randomUUID();
+        Attachment attachment = new Attachment();
+        attachment.setId(attachmentId);
+        attachment.setEntityType("PORT");
+        attachment.setEntityId(testId);
+        attachment.setFileName("quyet-dinh.pdf");
+        attachment.setFilePath("target/nonexistent/quyet-dinh.pdf");
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(attachmentRepository.findById(attachmentId)).thenReturn(Optional.of(attachment));
+        when(attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("PORT", testId))
+                .thenReturn(List.of(attachment));
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+
+        service.deleteAttachmentGeneric(testId, attachmentId, actorId);
+
+        var historyCaptor = org.mockito.ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        InfrastructureHistory history = historyCaptor.getValue();
+        assertEquals("File đính kèm", history.getChangedField());
+        assertEquals("quyet-dinh.pdf", history.getPreviousValue());
+        assertNull(history.getNewValue());
+        assertEquals("Xóa tệp đính kèm: quyet-dinh.pdf", history.getReason());
     }
 
     // ── DELETE (F-010) ─────────────────────────────────────────────────────

@@ -100,6 +100,7 @@ const checkDecimalBody = (s: string): string | null => {
   if (dotIdx !== -1) {
     const intPart = norm.slice(0, dotIdx);
     const decPart = norm.slice(dotIdx + 1);
+
     if (intPart.length > 16) {
       return 'Giới hạn phần nguyên là 16 chữ số (Giới hạn chữ số khi có dấu "." là 16)';
     }
@@ -107,6 +108,7 @@ const checkDecimalBody = (s: string): string | null => {
       return 'Phần thập phân tối đa 4 chữ số (Số sau dấu "." tối đa 4 chữ số)';
     }
     if (norm.replace(/\./g, '').length > 20) {
+
       return 'Giới hạn tối đa 20 chữ số';
     }
   } else if (norm.length > 20) {

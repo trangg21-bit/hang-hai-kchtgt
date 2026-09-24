@@ -1044,12 +1044,10 @@ public class CctvService {
     String oldFilesSummary = String.join(", ", fileListBefore);
     List<String> uploadedFileNames = new ArrayList<>();
 
-    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_UPLOADED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
-    // Guard: Thêm mới không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát thời điểm hiện tại).
+    // Ghi nhật ký khi hồ sơ đã duyệt. Không suy đoán thao tác tạo/sửa bằng tuổi
+    // bản ghi vì thao tác sửa hợp lệ có thể diễn ra ngay sau lúc tạo.
     Cctv entity = cctvRepository.findById(entityId).orElse(null);
-    boolean isNewlyCreated = entity != null && entity.getCreatedAt() != null
-        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
-    boolean wasApproved = !isNewlyCreated && entity != null
+    boolean wasApproved = entity != null
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     for (MultipartFile file : files) {

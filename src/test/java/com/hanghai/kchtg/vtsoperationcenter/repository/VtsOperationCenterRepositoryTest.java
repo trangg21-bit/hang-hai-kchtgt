@@ -154,6 +154,7 @@ class VtsOperationCenterRepositoryTest {
         assertDoesNotThrow(
                 () -> repository.search(false, List.of(), null, null, null, null, null, null, null, null, null, pageableAsc).getContent(),
                 "Sắp xếp theo vtsSystemName ASC không được ném ngoại lệ cú pháp");
+
     }
 
     @Test

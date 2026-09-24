@@ -4,6 +4,12 @@ export interface SharedMapView {
   zoom: number;
 }
 
+/** Viewport mặc định tương thích màn GIS cũ: Việt Nam và khu vực Biển Đông. */
+export const DEFAULT_GIS_MAP_VIEW = {
+  center: [16, 108] as const,
+  zoom: 6,
+};
+
 /**
  * KCHT lines and polygons stay represented by their map symbol in the
  * overview. Rendering their complete geometry earlier makes the national

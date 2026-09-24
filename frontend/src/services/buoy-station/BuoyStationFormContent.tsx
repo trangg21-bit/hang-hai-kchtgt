@@ -2,7 +2,8 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import dayjs from 'dayjs';
 import { Tabs, Form, Row, Col, Select, Input, DatePicker, Space, Button, Modal } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
-import type { FormInstance, UploadFile, InputNumberProps } from 'antd';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import type { FormInstance, UploadFile } from 'antd';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined } from '@ant-design/icons';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
@@ -29,7 +30,7 @@ import {
   sidebarBg, actionPrimary, statusCritical,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
   outlineButtonStyle, primaryButtonStyle, fontSizeLg,
-  spaceFormField, radiusPill, radiusMd, borderDefault, textSecondary, textTertiary,
+  spaceFormField, radiusPill, radiusMd, borderDefault, textTertiary,
   spaceSm, spaceXs, fontWeightBold, fontSizeSm, surfaceCard,
   DRAWER_TABLE_SCROLL_Y, textAreaStyle,
 } from '../../themetokenchk';
@@ -50,21 +51,6 @@ type SaveAction = 'DRAFT' | 'SUBMIT' | 'APPROVED' | 'UPDATE';
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: buoyStationFormFontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Xem chi tiết & chuẩn Bến cảng
 const sectionBoxStyle: React.CSSProperties = {
@@ -153,7 +139,7 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
@@ -252,6 +238,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   onFinish,
 }, ref) {
   const currentUser = useAuthStore((s) => s.user);
+  const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   useEffect(() => {
     let cancelled = false;

@@ -9,11 +9,12 @@ import {
   message, Space, Modal,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
-import type { UploadProps, InputNumberProps } from 'antd';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import type { UploadProps } from 'antd';
 import { DeleteOutlined, PlusOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';
 import {
-  textSecondary, textTertiary, sidebarBg, statusCritical, actionPrimary,
+  textTertiary, sidebarBg, statusCritical, actionPrimary,
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, borderDefault,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
@@ -35,6 +36,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { fmtInputNumber } from '../../utils/numFmt';
 import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { parseWktToCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },
@@ -46,21 +48,6 @@ const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 const datePickerStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
 
 // Màn Cảng biển dùng font 13.5px cho phần tiêu đề/chỉ số trong drawer.
@@ -162,7 +149,7 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
@@ -193,18 +180,6 @@ const renderDmsGroup = (
       {messageRow}
     </div>
   );
-};
-
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
 };
 
 export const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'tiff', 'tif'];
@@ -751,14 +726,11 @@ export default function BuoyFormContent({
               <DetailTable
                 size="small"
                 scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                pagination={gpsCoordList.length > 10 ? {
-                  current: gpsPage,
-                  pageSize: 10,
-                  total: gpsCoordList.length,
-                  onChange: (p: number) => setGpsPage(p),
-                  showSizeChanger: false,
-                  size: 'small',
-                } : false}
+                total={gpsCoordList.length}
+                pageSize={10}
+                currentPage={gpsPage}
+                onPageChange={(p) => setGpsPage(p)}
+                hidePagination={gpsCoordList.length <= 10}
                 dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
                 rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
                 emptyText="Chưa có tọa độ GPS nào"
@@ -828,7 +800,7 @@ export default function BuoyFormContent({
           }))}
           readonly={false}
           userMap={userMap}
-          onUpload={(file) => { handleBeforeUpload(file); return false; }}
+          onUpload={(file) => { handleBeforeUpload(file as any, [file as any]); return false; }}
           onDelete={(uid) => {
             onDeleteAttachment?.(uid);
             setUploadFileList((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid));
@@ -896,20 +868,15 @@ export default function BuoyFormContent({
                 .map((row) => ({
                   latitude: row.latD! + row.latM! / 60 + row.latS! / 3600,
                   longitude: row.lngD! + row.lngM! / 60 + row.lngS! / 3600,
-                }));
+              }));
               if (!geometryType || points.length === 0) return undefined;
-              const pairs = points.map((point) => `${point.longitude} ${point.latitude}`);
-              const coordinates = geometryType === 'POLYGON'
-                ? `POLYGON((${[...pairs, pairs[0]].join(',')}))`
-                : geometryType === 'LINE'
-                  ? `LINESTRING(${pairs.join(',')})`
-                  : `POINT(${pairs[0]})`;
+              const coordinates = serializeCoordinatesToWkt(points, geometryType);
               return { geometryType, coordinates };
             })()}
             height={520}
             onChange={(val) => {
               if (val?.coordinates) {
-                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
+                const points = parseWktToCoordinates(val.coordinates);
                 if (points.length > 0) {
                   const toDmsRow = (p: { latitude: number; longitude: number }) => {
                     const latDms = ddToDms(p.latitude);

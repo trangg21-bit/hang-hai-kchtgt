@@ -24,6 +24,8 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { formatHistoryNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { renderWharfAreaHistory } from '../../utils/changeHistoryRenderer';
+import { formatPortHistoryCoordinates } from '../../utils/portHistoryCoordinates';
+import { PaginatedHistoryList } from '../../components/shared/HistoryPagination';
 import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
 import PierDetailContent from '../../pages/port/PierDetailContent';
@@ -446,6 +448,14 @@ function getPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap
           </span>
         );
       }
+      if (fn === 'coordinates' || fn === 'Tọa độ GIS' || fn === 'Tọa độ GPS') {
+        const formattedCoordinates = formatPortHistoryCoordinates(rawV);
+        return formattedCoordinates ? (
+          <span style={{ whiteSpace: 'pre-line', wordBreak: 'normal', lineHeight: '20px' }}>
+            {formattedCoordinates}
+          </span>
+        ) : '';
+      }
       if ((fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') && rawV) {
         const files = String(rawV)
           .split(/\s*,\s*/)
@@ -563,7 +573,7 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
       </div>
     );
   }
-  return cards;
+  return <PaginatedHistoryList items={cards} renderItems={(pageCards) => pageCards} />;
 }
 
 // ── Helper: format date ─────────────────────────────────────────────
@@ -1171,8 +1181,15 @@ export default function PortListPage() {
   }, [filteredHistory, orgMap, symbolMap, symbolImageMap]);
 
   const handleFilterApply = useCallback(() => {
-    setFilterName((filterValues.portName || '').trim());
-    setFilterCode((filterValues.portCode || '').trim());
+    const portName = String(filterValues.portName || '').trim();
+    const portCode = String(filterValues.portCode || '').trim();
+    setFilterValues((previous) => (
+      previous.portName === portName && previous.portCode === portCode
+        ? previous
+        : { ...previous, portName, portCode }
+    ));
+    setFilterName(portName);
+    setFilterCode(portCode);
     setFilterOrgUnitId(filterValues.orgUnitId === '__all__' ? undefined : filterValues.orgUnitId || undefined);
     setFilterPortClass(filterValues.portClass ? Number(filterValues.portClass) : undefined);
     setFilterPortGroup(filterValues.portGroup ? Number(filterValues.portGroup) : undefined);
@@ -1242,8 +1259,9 @@ export default function PortListPage() {
       (async () => {
         try {
           setIsLoading(true);
-          const cached = (window.parent as any)?.kchtDetailCache?.[id];
-          const data = cached || await fetchCangBienById(id);
+          // Bản ghi cache từ danh sách/GIS có thể là DTO rút gọn. Luôn lấy DTO chi tiết
+          // trước khi sửa để không ghi đè null vào tỉnh, phân cấp hoặc biểu tượng.
+          const data = await fetchCangBienById(id);
           setSelectedRecord(data);
           if (action === 'detail') {
             const rows = await fetchPortAttachmentList(id);
@@ -1261,26 +1279,23 @@ export default function PortListPage() {
               mapSymbolId: data.mapSymbolId || undefined,
               detailedLocation: data.detailedLocation || undefined,
               portClass: data.portClass != null ? data.portClass : undefined,
-              heQuyChieu: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-              quyTacHienThi: data.displayRule != null ? data.displayRule : undefined,
-              phamViVungNuoc: data.waterAreaScope || undefined,
-              tongSoBenCang: data.totalBerths != null ? data.totalBerths : undefined,
-              tongSoKhuNeoDauChuyenTai: data.totalAnchoragesTransshipment != null ? data.totalAnchoragesTransshipment : undefined,
-              tongSoTuyenLuongCongCong: data.totalPublicChannels != null ? data.totalPublicChannels : undefined,
-              tongSoTuyenLuongChuyenDung: data.totalDedicatedChannels != null ? data.totalDedicatedChannels : undefined,
-              tongChieuDaiLuongCongCong: normalizeSafeNumber(data.totalPublicChannelLength),
-              tongChieuDaiLuongChuyenDung: normalizeSafeNumber(data.totalDedicatedChannelLength),
-              tongSoPhaoTieuBaoHieu: data.totalBuoysBeacons != null ? data.totalBuoysBeacons : undefined,
-              tongSoDeKe: data.totalDikes != null ? data.totalDikes : undefined,
-              tongChieuDaiDeKe: normalizeSafeNumber(data.totalDikeLength),
-              tongSoDenBienDangTieu: data.totalLighthouses != null ? data.totalLighthouses : undefined,
-              quantityBenPhao: data.buoyBerthCount != null ? data.buoyBerthCount : undefined,
-              quantityKhuNeoDau: data.anchorageCount != null ? data.anchorageCount : undefined,
-              quantityKhuChuyenTai: data.transshipmentCount != null ? data.transshipmentCount : undefined,
-              cacKhuNuocKhac: data.otherWaterAreas || undefined,
               coordinateSystem: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-              displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
+              displayRule: data.displayRule != null ? data.displayRule : undefined,
               waterAreaScope: data.waterAreaScope || undefined,
+              totalBerths: data.totalBerths != null ? data.totalBerths : undefined,
+              totalAnchoragesTransshipment: data.totalAnchoragesTransshipment != null ? data.totalAnchoragesTransshipment : undefined,
+              totalPublicChannels: data.totalPublicChannels != null ? data.totalPublicChannels : undefined,
+              totalDedicatedChannels: data.totalDedicatedChannels != null ? data.totalDedicatedChannels : undefined,
+              totalPublicChannelLength: normalizeSafeNumber(data.totalPublicChannelLength),
+              totalDedicatedChannelLength: normalizeSafeNumber(data.totalDedicatedChannelLength),
+              totalBuoysBeacons: data.totalBuoysBeacons != null ? data.totalBuoysBeacons : undefined,
+              totalDikes: data.totalDikes != null ? data.totalDikes : undefined,
+              totalDikeLength: normalizeSafeNumber(data.totalDikeLength),
+              totalLighthouses: data.totalLighthouses != null ? data.totalLighthouses : undefined,
+              buoyBerthCount: data.buoyBerthCount != null ? data.buoyBerthCount : undefined,
+              anchorageCount: data.anchorageCount != null ? data.anchorageCount : undefined,
+              transshipmentCount: data.transshipmentCount != null ? data.transshipmentCount : undefined,
+              otherWaterAreas: data.otherWaterAreas || undefined,
               remarks: data.remarks || undefined,
             });
             // Load infrastructure & attachments for edit
@@ -1741,7 +1756,7 @@ export default function PortListPage() {
       // Delete removed attachments (tuần tự tránh race condition trong DB)
       if (selectedRecord?.id && pendingDeletedAttachmentIds.length > 0) {
         for (const attId of pendingDeletedAttachmentIds) {
-          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`).catch(() => {});
+          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`);
         }
       }
       // Upload files after port updated
@@ -1799,7 +1814,7 @@ export default function PortListPage() {
   }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus, filterIsDeleted]);
 
   const fetchTabCounts = useCallback(async () => {
-    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1'];
+    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'];
     const counts: Record<string, number> = {};
     await Promise.all([
       ...statuses.map(async (status) => {
@@ -1809,8 +1824,8 @@ export default function PortListPage() {
         } catch { counts[status] = 0; }
       }),
       fetchCangBienList({ isDeleted: true, page: 0, size: 1, orgUnitId: filterOrgUnitId })
-        .then(res => { counts['DELETED'] = res?.totalElements ?? 0; })
-        .catch(() => { counts['DELETED'] = 0; }),
+        .then(res => { counts.ARCHIVED = res?.totalElements ?? 0; })
+        .catch(() => { counts.ARCHIVED = 0; }),
     ]);
     const subTotal = Object.entries(counts).filter(([k]) => k !== 'all').reduce((sum, [, v]) => sum + v, 0);
     setTotalAll(subTotal);
@@ -1987,6 +2002,19 @@ export default function PortListPage() {
             // Giống Bến cảng: mở modal NGAY với dòng hiện tại, fetch dữ liệu ở nền —
             // KHÔNG bật setIsLoading để tránh load lại/remount danh sách
             setSelectedRecord(record);
+            updateForm.setFieldsValue({
+              portCode: record.portCode,
+              portName: record.portName,
+              province: record.province || undefined,
+              orgUnitId: record.orgUnitId || undefined,
+              portGroup: record.portGroup ?? undefined,
+              detailedLocation: record.detailedLocation || undefined,
+              portClass: record.portClass ?? undefined,
+              geometryType: record.geometryType || undefined,
+              mapSymbolId: record.mapSymbolId || undefined,
+              coordinateSystem: record.coordinateSystem ?? undefined,
+              displayRule: record.geometryType || record.coordinates ? 'Độ, phút, giây (DMS)' : undefined,
+            });
             setUpdateModalVisible(true);
             setInfraList(((record as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
             setWharfAreaList(((record as any).wharfAreas || []).map((w: any) => ({ ...w })));
@@ -2196,6 +2224,8 @@ export default function PortListPage() {
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'province',
         width: 250,
+        sortable: true,
+        sortOrder: sortField === 'province' ? sortOrder : null,
         ellipsis: false,
         render: (v: string | null) => v || '',
       },
@@ -2452,6 +2482,7 @@ export default function PortListPage() {
                 <Input placeholder="Tìm theo tên cảng biển" allowClear
                   value={filterValues.portName || ''}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value }))}
+                  onBlur={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value.trim() }))}
                   onPressEnter={handleFilterApply}
                   style={{ borderRadius: radiusPill, height: 40 }} />
               </div>
@@ -2477,6 +2508,7 @@ export default function PortListPage() {
                   <Input placeholder="Tìm theo mã cảng biển..." allowClear
                     value={filterValues.portCode || ''}
                     onChange={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value }))}
+                    onBlur={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value.trim() }))}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </div>
@@ -2503,17 +2535,17 @@ export default function PortListPage() {
             statusTabs={[
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
               { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
-              { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: statusAttention, active: activeStatusTab === 'PENDING_APPROVAL' },
-              { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: '#0284C7', active: activeStatusTab === 'APPROVED_LEVEL1' },
+              { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: actionPrimary, active: activeStatusTab === 'PENDING_APPROVAL' },
+              { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: statusAttention, active: activeStatusTab === 'APPROVED_LEVEL1' },
               { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
-              { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
-              { key: 'DELETED', label: 'Đã xóa', count: tabCounts['DELETED'] ?? 0, color: statusCritical, active: activeStatusTab === 'DELETED' },
+              { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
+              { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', count: tabCounts['REJECTED_LEVEL2'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL2' },
+              { key: 'ARCHIVED', label: 'Đã xóa', count: tabCounts.ARCHIVED ?? 0, color: statusCritical, active: activeStatusTab === 'ARCHIVED' },
             ]}
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
-              setFilterApprovalStatus(key === 'all' || key === 'DELETED' ? undefined : key);
-              setFilterIsDeleted(key === 'DELETED' ? true : (key === 'all' ? undefined : false));
-              if (key === 'all') { setFilterStatus(undefined); setFilterTinh(''); setFilterName(''); setFilterCode(''); }
+              setFilterApprovalStatus(key === 'all' || key === 'ARCHIVED' ? undefined : key);
+              setFilterIsDeleted(key === 'ARCHIVED' ? true : (key === 'all' ? undefined : false));
               setPage(1);
             }}
           >

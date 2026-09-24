@@ -1343,16 +1343,16 @@ export default function AnchorageListPage() {
       },
       {
         label: 'Thuộc luồng hàng hải', dataIndex: 'navigationChannelId', key: 'navigationChannelId', width: 280, ellipsis: true, sortable: true,
-        cellTitle: (record: Anchorage) => (record as any).navigationChannelName || waterwayMap.get(record.navigationChannelId) || (record.navigationChannelId && !record.navigationChannelId.includes('-') ? record.navigationChannelId : '') || '',
+        cellTitle: (record: Anchorage) => (record as any).navigationChannelName || (record.navigationChannelId ? waterwayMap.get(record.navigationChannelId) : undefined) || (record.navigationChannelId && !record.navigationChannelId.includes('-') ? record.navigationChannelId : '') || '',
         render: (v: string) => renderCellWithTooltip(v ? (waterwayMap.get(v) || (v.includes('-') ? '-' : v)) : null),
       },
       {
         label: 'Thuộc bến phao', dataIndex: 'buoyStationId', key: 'buoyStationId', width: 220, sortable: true,
-        cellTitle: (record: Anchorage) => record.buoyStationName || buoyStationMap.get(record.buoyStationId) || (record.buoyStationId && !record.buoyStationId.includes('-') ? record.buoyStationId : '') || '',
+        cellTitle: (record: Anchorage) => record.buoyStationName || (record.buoyStationId ? buoyStationMap.get(record.buoyStationId) : undefined) || (record.buoyStationId && !record.buoyStationId.includes('-') ? record.buoyStationId : '') || '',
         render: (v: string, r: Anchorage) => renderCellWithTooltip(r.buoyStationName || (v ? buoyStationMap.get(v) || (v.includes('-') ? '-' : v) : null)),
       },
       {
-        label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230,
+        label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', key: 'provinceId', width: 230, sortable: true,
         cellTitle: (record: Anchorage) => record.provinceId ? (VIETNAM_PROVINCES[Number(record.provinceId) - 1] || '') : '',
         render: (v: number) => renderCellWithTooltip(v ? (VIETNAM_PROVINCES[Number(v) - 1] || String(v)) : null),
       },

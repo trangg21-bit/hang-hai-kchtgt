@@ -5,16 +5,17 @@ import {
   Button, Space, DatePicker, Modal,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import type { UploadFile, InputNumberProps } from 'antd';
+import type { UploadFile } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
   BankOutlined, SlidersOutlined, FileTextOutlined,
 } from '@ant-design/icons';
 import {
   colors, DRAWER_TABLE_SCROLL_Y,
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
@@ -46,21 +47,6 @@ const labelProps = (text: string) => ({
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberInputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Xem chi tiết
 const sectionBoxStyle: React.CSSProperties = {

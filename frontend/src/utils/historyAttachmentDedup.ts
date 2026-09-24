@@ -104,3 +104,29 @@ export function deduplicateAttachmentHistoryChanges<T extends HistoryAttachmentC
     return !duplicate;
   });
 }
+
+/**
+ * Collapses the attachment rows of one update session into one full snapshot.
+ *
+ * History APIs return newest rows first. Attachment endpoints can still create
+ * several rows for one form save (for example, deleting three files). The UI
+ * must show that as one transition: the oldest "before" snapshot to the newest
+ * "after" snapshot.
+ */
+export function mergeAttachmentHistoryChanges<T extends HistoryAttachmentChange>(changes: T[]): T[] {
+  const attachmentChanges = deduplicateAttachmentHistoryChanges(
+    changes.filter((change) => isAttachmentField(change.field)),
+  );
+  if (attachmentChanges.length <= 1) return attachmentChanges;
+
+  const newest = attachmentChanges[0];
+  const oldest = attachmentChanges[attachmentChanges.length - 1];
+  const oldFiles = parseAttachmentValues(oldest.oldValue);
+  const newFiles = parseAttachmentValues(newest.newValue);
+
+  return [{
+    ...newest,
+    oldValue: oldFiles.join(', '),
+    newValue: newFiles.join(', '),
+  }];
+}

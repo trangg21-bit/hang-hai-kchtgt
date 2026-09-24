@@ -45,7 +45,7 @@ import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 
 import { colors, fontWeightBold, fontSizeLg, spaceFormField, radiusLg, radiusPill, borderDefault, textTertiary, textPrimary, surfaceCard, outlineButtonStyle, primaryButtonStyle, statusBadgeStyle, statusDraft, statusAttention, statusOperational, statusCritical, statusInfo, inputStyle, selectStyle, readonlyInputStyle } from '../../themetokenchk';
 import * as themeTokenChk from '../../themetokenchk';
@@ -159,7 +159,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const handleBeforeUpload = useCallback((file: File): false => {
     if (file.size > 20 * 1024 * 1024) { toast.error('File vượt quá 20MB'); return false; }
     if (uploadedFiles.length >= 10) { toast.error('Tối đa 10 file đính kèm'); return false; }
-    setUploadedFiles((p) => [...p, { uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`, name: file.name, status: 'done' as const, originFileObj: file as unknown as File }]);
+    setUploadedFiles((p) => [...p, {
+      uid: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      name: file.name,
+      status: 'done' as const,
+      originFileObj: file as UploadFile['originFileObj'],
+    }]);
     return false;
   }, [uploadedFiles]);
 
@@ -187,6 +192,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     });
     return seaportOptions.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
   }, [orgOptions, seaportOptions, selectedOrgUnitId]);
+  const filteredVtsOperationCenterOptions = useMemo(
+    () => vtsOperationCenterOptions.filter((center) => (
+      !selectedVtsSystemId || center.vtsSystemId === selectedVtsSystemId
+    )),
+    [selectedVtsSystemId, vtsOperationCenterOptions],
+  );
 
   useEffect(() => {
     (async () => {
@@ -219,10 +230,11 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
         const opRes = await api.get('/common/options/vts-operation-centers');
         const opCenters = opRes.data?.data || opRes.data || [];
         setVtsOperationCenterOptions(
-          (Array.isArray(opCenters) ? opCenters : []).map((item: { id: string; code?: string; name?: string }) => ({
+          (Array.isArray(opCenters) ? opCenters : []).map((item: { id: string; code?: string; name?: string; vtsSystemId?: string }) => ({
             id: item.id,
             code: item.code,
             name: item.name,
+            vtsSystemId: item.vtsSystemId,
           })),
         );
       } catch (err) {
@@ -861,7 +873,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 const seaportId = form.getFieldValue('seaportId');
                 if (!orgUnitId) {
                   form.setFieldValue('seaportId', undefined);
-                  if (!isEdit) {
+                  if (!isEditMode) {
                     form.setFieldValue('code', undefined);
                   }
                 } else if (seaportId) {
@@ -875,7 +887,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                   );
                   if (!isValidSeaport) {
                     form.setFieldValue('seaportId', undefined);
-                    if (!isEdit) {
+                    if (!isEditMode) {
                       form.setFieldValue('code', undefined);
                     }
                   }

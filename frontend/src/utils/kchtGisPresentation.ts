@@ -1,6 +1,73 @@
-export const getKchtOperationalStatusText = (status?: string | boolean | null): string => {
+const NUMERIC_OPERATIONAL_STATUS_BY_TYPE: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  RADAR_STATION: {
+    '0': 'Chưa khai thác/vận hành',
+    '1': 'Đang khai thác/vận hành',
+    '2': 'Dừng khai thác/vận hành',
+  },
+  RADAR_STATION_LEGACY: {
+    '0': 'Chưa khai thác/vận hành',
+    '1': 'Đang khai thác/vận hành',
+    '2': 'Dừng khai thác/vận hành',
+  },
+  LIGHTHOUSE: {
+    '0': 'Chưa khai thác/vận hành',
+    '1': 'Đang khai thác/vận hành',
+    '2': 'Dừng khai thác/vận hành',
+  },
+  DIKE_REVETMENT: {
+    '1': 'Chưa khai thác/vận hành',
+    '2': 'Đang khai thác/vận hành',
+    '3': 'Dừng khai thác/vận hành',
+  },
+};
+
+const UNIT_OF_MEASURE_LABELS: Readonly<Record<string, string>> = {
+  '1': 'Bộ',
+  '2': 'Bến',
+  '3': 'Bản quyền',
+  '4': 'Chiếc',
+  '5': 'Cổng',
+  '6': 'Cái',
+  '7': 'Cột',
+  '8': 'Cầu',
+  '9': 'Đường truyền',
+  '10': 'Héc-ta',
+  '11': 'Hạng mục',
+  '12': 'Hệ thống',
+  '13': 'Kho',
+  '14': 'Khu',
+  '15': 'Ki-lô-mét',
+  '16': 'Mét',
+  '17': 'Mét vuông',
+  '18': 'Nhà',
+  '19': 'Phòng',
+  '20': 'Phân hệ',
+  '21': 'Quả',
+  '22': 'Tuyến',
+  '23': 'Tấn',
+  '24': 'Trạm',
+  '25': 'Tháp',
+  '26': 'Trụ',
+  '27': 'VNĐ',
+};
+
+export const getKchtUnitOfMeasureText = (value?: string | number | null): string => {
+  if (value === undefined || value === null) return '—';
+  const normalized = String(value).trim();
+  if (!normalized || normalized === '(null)' || normalized.toLowerCase() === 'null') return '—';
+  return UNIT_OF_MEASURE_LABELS[normalized] || normalized;
+};
+
+export const getKchtOperationalStatusText = (
+  status?: string | boolean | null,
+  infrastructureType?: string | null,
+): string => {
   if (status === undefined || status === null || status === '') return '—';
   const normalized = String(status).toUpperCase();
+  const numericLabel = infrastructureType
+    ? NUMERIC_OPERATIONAL_STATUS_BY_TYPE[infrastructureType.toUpperCase()]?.[normalized]
+    : undefined;
+  if (numericLabel) return numericLabel;
   const labels: Record<string, string> = {
     HIEN_HANH: 'Đang khai thác/vận hành',
     ACTIVE: 'Đang khai thác/vận hành',

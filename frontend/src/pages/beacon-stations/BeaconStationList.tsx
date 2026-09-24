@@ -46,7 +46,9 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { PaginatedHistoryList } from '../../components/shared/HistoryPagination';
 import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import api from '../../services/api';
 import {
@@ -59,6 +61,7 @@ import type { Organization } from '../../services/organizationService';
 import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
+import { mergeAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     DRAWER_TABLE_SCROLL_Y,
@@ -374,6 +377,13 @@ const tabBarStyle: React.CSSProperties = {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function BeaconStationList() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
+  const embeddedOpenedRef = useRef<string | null>(null);
   const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   // "Lưu và phê duyệt" (duyệt thẳng cấp Cục) chỉ hiện khi tài khoản có quyền duyệt C2
@@ -776,6 +786,22 @@ export default function BeaconStationList() {
     }
   }, [hasPerm]);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    const requestKey = `${embeddedAction}:${embeddedRecordId}`;
+    if (embeddedOpenedRef.current === requestKey) return;
+    embeddedOpenedRef.current = requestKey;
+    void beaconStationCRUD.findById(embeddedRecordId)
+      .then((record) => {
+        if (embeddedAction === 'edit') openEditDrawer(record);
+        else void openDetailDrawer(record);
+      })
+      .catch(() => {
+        embeddedOpenedRef.current = null;
+        toast.error('Không thể tải thông tin chi tiết đèn biển');
+      });
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction, openDetailDrawer, openEditDrawer]);
+
   const closeDrawer = useCallback(() => {
     setDrawerVisible(false);
     setCreateDrawerVisible(false);
@@ -785,7 +811,8 @@ export default function BeaconStationList() {
     createForm.resetFields();
     updateForm.resetFields();
     setDetailFiles([]);
-  }, [createForm, updateForm]);
+    closeEmbeddedAction();
+  }, [closeEmbeddedAction, createForm, updateForm]);
 
   // Tải xuống file đính kèm (tab chi tiết)
   const handleDownloadAttachment = useCallback(async (attachmentId: string, name: string) => {
@@ -1068,6 +1095,7 @@ export default function BeaconStationList() {
     },
     {
       key: 'provinceId', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceId', width: 230,
+      sortable: true,
       sortOrder: sortOrderFor('provinceId'),
       cellTitle: (record: BeaconStation) => getProvinceNameById(record.provinceId != null ? Number(record.provinceId) : undefined) || '',
       render: (v: number) => renderCellWithTooltip(getProvinceNameById(v != null ? Number(v) : undefined) || null),
@@ -2222,10 +2250,11 @@ export default function BeaconStationList() {
     } catch { /* ignore */ } finally { setLoadingMoreHistory(false); }
   };
 
-  const handleHistoryScroll = (e: any) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
-  };
+  useEffect(() => {
+    if (!historyOpen || !hasMoreHistory || historyLoading || loadingMoreHistory) return;
+    void loadMoreHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen, hasMoreHistory, historyLoading, loadingMoreHistory, historyRecords.length]);
 
   const isMeaningfulChange = useCallback((field: string, rawOld: any, rawNew: any): boolean => {
     const f = (field || '').trim();
@@ -2304,7 +2333,7 @@ export default function BeaconStationList() {
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActorName(r);
       const prev = rawGroups[rawGroups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      if (prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor) prev.items.push(r);
       else rawGroups.push({ tsSec: sec, ts, actor, items: [r] });
     }
 
@@ -2329,28 +2358,10 @@ export default function BeaconStationList() {
           seenDisplayFields.add(displayLabel);
           dedupedNonAttachmentChanges.push(c);
         }
-        const finalChanges: any[] = [...dedupedNonAttachmentChanges];
-        if (attachmentChanges.length > 0) {
-          const allNewFiles: string[] = [];
-          const allOldFiles: string[] = [];
-          attachmentChanges.forEach((ac: any) => {
-            splitAttachmentNames(ac.newValue).forEach((fn) => {
-              if (!allNewFiles.includes(fn)) allNewFiles.push(fn);
-            });
-            splitAttachmentNames(ac.oldValue).forEach((fn) => {
-              if (!allOldFiles.includes(fn)) allOldFiles.push(fn);
-            });
-          });
-          const mergedOld = allOldFiles.length > 0 ? allOldFiles.join('; ') : 'Chưa có';
-          const mergedNew = allNewFiles.length > 0 ? allNewFiles.join('; ') : '—';
-          if (isMeaningfulChange('Tài liệu đính kèm', mergedOld, mergedNew)) {
-            finalChanges.push({
-              field: 'Tài liệu đính kèm',
-              oldValue: mergedOld,
-              newValue: mergedNew,
-            });
-          }
-        }
+        const finalChanges: any[] = [
+          ...dedupedNonAttachmentChanges,
+          ...mergeAttachmentHistoryChanges(attachmentChanges),
+        ];
         if (finalChanges.length === 0) return null;
 
         const orderedChanges = [...finalChanges].sort((a: any, b: any) => {
@@ -2462,8 +2473,11 @@ export default function BeaconStationList() {
       return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
     };
     return (
+      <PaginatedHistoryList
+        items={validHistoryGroups}
+        renderItems={(pageGroups) => (
       <div>
-        {validHistoryGroups.map((g, gi) => {
+        {pageGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const actionMeta = resolveHistoryActionMeta(g, g.changes);
           // Đơn vị của user thực hiện cập nhật (chuẩn /vts-operation-center) — KHÔNG lấy unitId của tài sản
@@ -2475,7 +2489,7 @@ export default function BeaconStationList() {
           const orderedChanges = g.orderedChanges;
 
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < pageGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -2555,6 +2569,8 @@ export default function BeaconStationList() {
           );
         })}
       </div>
+        )}
+      />
     );
   }
 
@@ -3138,7 +3154,7 @@ export default function BeaconStationList() {
             </Button>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {historyLoading && historyRecords.length === 0 ? (
             <LoadingSkeleton rows={5} />
           ) : validHistoryGroups.length === 0 ? (

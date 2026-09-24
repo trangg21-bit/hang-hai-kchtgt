@@ -808,7 +808,7 @@ public class RadarStationService {
             case "vtssystemid", "hệ thống vts", "he thong vts" -> "vtsSystemId";
             case "vtsoperationcenterid", "trung tâm điều hành vts", "trung tam dieu hanh vts" -> "vtsOperationCenterId";
             case "operatingunitid", "đơn vị khai thác", "don vi khai thac", "đơn vị vận hành", "don vi van hanh" -> "operatingUnitId";
-            case "provinceid", "province", "tỉnh/thành phố", "tinh/thanh pho", "tỉnh / thành phố", "tinh / thanh pho", "địa điểm (tỉnh/tp)", "dia diem (tinh/tp)", "địa điểm (tỉnh / tp)", "dia diem (tinh / tp)", "địa điểm (tỉnh/thành phố)", "dia diem (tinh/thanh pho)" -> "provinceId";
+            case "provinceid", "provincename", "province", "tỉnh/thành phố", "tinh/thanh pho", "tỉnh / thành phố", "tinh / thanh pho", "địa điểm (tỉnh/tp)", "dia diem (tinh/tp)", "địa điểm (tỉnh / tp)", "dia diem (tinh / tp)", "địa điểm (tỉnh/thành phố)", "dia diem (tinh/thanh pho)" -> "provinceId";
             case "location", "detailedlocation", "địa điểm chi tiết", "dia diem chi tiet" -> "location";
             case "unitofmeasure", "đơn vị tính", "don vi tinh" -> "unitOfMeasure";
             case "quantity", "số lượng", "so luong" -> "quantity";

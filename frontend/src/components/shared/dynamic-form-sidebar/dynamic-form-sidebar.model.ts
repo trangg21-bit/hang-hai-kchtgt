@@ -78,6 +78,12 @@ export interface FormFieldConfig<T extends Record<string, unknown> = Record<stri
   min?: number;
   /** Giá trị lớn nhất (cho type = 'number') */
   max?: number;
+  /** Bước nhảy (cho type = 'number', mặc định 1 cho số nguyên, 0.01 cho số thập phân) */
+  step?: number;
+  /** Cho phép nhập số thập phân (cho type = 'number') */
+  allowDecimal?: boolean;
+  /** Cho phép nhập số âm (cho type = 'number') */
+  allowNegative?: boolean;
   /** Hàm định dạng số hiển thị */
   formatter?: (value: unknown) => string;
   /** Hàm parse số từ chuỗi nhập vào */

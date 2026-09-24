@@ -209,7 +209,7 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
@@ -432,10 +432,16 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         setCoordinateList(loadedCoords);
 
         let geomType = data.geometryType;
+        if (geomType) {
+          const upper = String(geomType).trim().toUpperCase();
+          if (upper === 'LINESTRING' || upper === 'LINE' || upper === 'MULTILINESTRING') geomType = 'LINE';
+          else if (upper === 'MULTIPOINT' || upper === 'POINT') geomType = 'POINT';
+          else if (upper === 'MULTIPOLYGON' || upper === 'POLYGON') geomType = 'POLYGON';
+        }
         if (!geomType && data.coordinates) {
           const wktUpper = String(data.coordinates).trim().toUpperCase();
           if (wktUpper.startsWith('POLYGON')) geomType = 'POLYGON';
-          else if (wktUpper.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (wktUpper.startsWith('LINESTRING') || wktUpper.startsWith('LINE')) geomType = 'LINE';
           else if (wktUpper.startsWith('POINT')) geomType = 'POINT';
         }
         if (!geomType && (data.latitude != null || data.longitude != null || loadedCoords.length > 0)) {
@@ -561,7 +567,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
-    const vals = form.getFieldsValue();
+    const vals = { ...form.getFieldsValue(true), ...form.getFieldsValue() };
     try {
       await form.validateFields();
     } catch (e: any) {
@@ -586,7 +592,18 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       return false;
     }
 
-    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
+    let currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
+    if (currentGeometryType) {
+      const upper = String(currentGeometryType).trim().toUpperCase();
+      if (upper === 'LINESTRING' || upper === 'LINE' || upper === 'MULTILINESTRING') currentGeometryType = 'LINE';
+      else if (upper === 'MULTIPOINT' || upper === 'POINT') currentGeometryType = 'POINT';
+      else if (upper === 'MULTIPOLYGON' || upper === 'POLYGON') currentGeometryType = 'POLYGON';
+    }
+    if (hasCoordinates && !currentGeometryType) {
+      currentGeometryType = coordinateList.length > 2 ? 'POLYGON' : coordinateList.length === 2 ? 'LINE' : 'POINT';
+      form.setFieldsValue({ geometryType: currentGeometryType });
+    }
+    vals.geometryType = currentGeometryType;
     const symbolIdVal = vals.mapSymbolId || (vals as any).symbolId || form.getFieldValue('mapSymbolId');
     const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
     const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
@@ -614,7 +631,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     }
     const validCoords = coordResult.validCoords;
     const wktCoordinates = vals.geometryType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, vals.geometryType) : undefined;
-
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
@@ -699,7 +715,8 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general',
+    {
+      key: 'general',
       label: 'Thông tin chung',
       forceRender: true,
       children: (<div style={drawerFormScrollStyle}>

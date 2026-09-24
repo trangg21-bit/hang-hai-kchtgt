@@ -35,6 +35,7 @@ import {
   resolveMaritimeServiceLabel,
   parseMaritimeServiceTokens,
 } from '../constants/maritimeServices';
+import { PaginatedHistoryList } from '../components/shared/HistoryPagination';
 
 export const isBlankOrDash = (v: unknown): boolean => {
   if (v === null || v === undefined) return true;
@@ -546,6 +547,8 @@ export function renderWharfAreaHistory(rawV: unknown): React.ReactNode {
     </span>
   );
 }
+
+export { formatPortHistoryCoordinates } from './portHistoryCoordinates';
 
 export interface RawHistoryRecord {
   id?: string;
@@ -1106,17 +1109,40 @@ export function countStandardHistoryCards(options: ChangeHistoryRendererOptions)
   return getStandardHistoryCards(options).length;
 }
 
-export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactNode {
-  const { emptyMessage = 'Chưa có thay đổi nào được ghi nhận' } = options;
+export const STANDARD_HISTORY_PAGE_SIZE = 10;
+
+function getHistoryPaginationKey(records: RawHistoryRecord[]): string {
+  const first = records[0];
+  const last = records[records.length - 1];
+  const recordKey = (record: RawHistoryRecord | undefined) =>
+    record?.id || record?.entityId || record?.refId || record?.changedAt || record?.createdAt || '';
+  return `${records.length}:${recordKey(first)}:${recordKey(last)}`;
+}
+
+function renderPaginatedStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactNode {
   const cards = getStandardHistoryCards(options);
 
   if (cards.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
         <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
-        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{emptyMessage}</div>
+        <div style={{ color: textTertiary, fontSize: fontSizeMd }}>
+          {options.emptyMessage || 'Chưa có thay đổi nào được ghi nhận'}
+        </div>
       </div>
     );
   }
-  return cards;
+
+  return (
+    <PaginatedHistoryList
+      items={cards}
+      pageSize={STANDARD_HISTORY_PAGE_SIZE}
+      resetKey={getHistoryPaginationKey(options.records)}
+      renderItems={(pageCards) => pageCards}
+    />
+  );
+}
+
+export function renderStandardHistoryCards(options: ChangeHistoryRendererOptions): React.ReactNode {
+  return renderPaginatedStandardHistoryCards(options);
 }

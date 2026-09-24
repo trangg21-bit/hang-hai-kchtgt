@@ -438,6 +438,7 @@ public class TransferAreaService {
             case "portId":
                 return "portId";
             case "provinceId":
+            case "province":
                 return "provinceId";
             case "operationalFunctions":
                 return "operationalFunctions";
