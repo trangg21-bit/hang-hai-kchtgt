@@ -49,6 +49,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.text.Normalizer;
 
 @Slf4j
 @Service
@@ -196,6 +197,15 @@ public class KchtGis155Service {
     return null;
   }
 
+  static String normalizeUnaccentedSearch(String search) {
+    if (search == null || search.isBlank()) {
+      return null;
+    }
+    return Normalizer.normalize(search.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
+        .replaceAll("\\p{M}+", "")
+        .replace('đ', 'd');
+  }
+
   static double[] representativeCoordinate(String wkt, String geometryType) {
     if (wkt == null || wkt.trim().isEmpty()) {
       return null;
@@ -230,6 +240,17 @@ public class KchtGis155Service {
     if (coordinate != null) {
       result.setLatitude(coordinate[0]);
       result.setLongitude(coordinate[1]);
+    }
+  }
+
+  private UUID parseMapSymbolId(String rawValue) {
+    if (rawValue == null || rawValue.isBlank()) {
+      return null;
+    }
+    try {
+      return UUID.fromString(rawValue.trim());
+    } catch (IllegalArgumentException ignored) {
+      return null;
     }
   }
 
@@ -325,7 +346,10 @@ public class KchtGis155Service {
             .build();
       }
     }
-    String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
+    String searchLower = (search == null || search.trim().isEmpty())
+        ? null
+        : search.toLowerCase(Locale.ROOT).trim();
+    String unaccentedSearch = normalizeUnaccentedSearch(search);
     String provinceLocal = null;
 
     Map<UUID, String> orgNameMap = new HashMap<>(orgUnitCacheService.getDirectory());
@@ -1492,7 +1516,9 @@ public class KchtGis155Service {
 
         case RADAR_STATION:
         case RADAR_STATION_LEGACY:
-          String radarSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+          // RadarRepository applies immutable_unaccent() to database columns only,
+          // therefore the parameter must be normalized too for Vietnamese names.
+          String radarSearchParam = (unaccentedSearch == null) ? null : "%" + unaccentedSearch + "%";
           List<RadarStation> radarList = radarStationRepository.searchFiltered(orgUnitId, radarSearchParam)
               .stream().toList();
           Map<UUID, GisSpatialObject> radarSpatialMap = new HashMap<>();
@@ -1515,6 +1541,7 @@ public class KchtGis155Service {
                 .orgName(getOrgName(rs.getOrgUnitId(), orgNameMap))
                 .infrastructureType(type)
                 .kchtTypeLabel("Trạm radar")
+                .mapSymbolId(parseMapSymbolId(rs.getMapIcon()))
                 .provinceId(rs.getProvinceId())
                 .location("")
                 .diaChiChiTiet("Vị trí: " + (rs.getLocation() != null ? rs.getLocation() : "")
@@ -1998,4 +2025,3 @@ public class KchtGis155Service {
     return scopedIds;
   }
 }
-

@@ -603,8 +603,8 @@ class DikeRevetmentServiceTest {
         }
 
         @Test
-        @DisplayName("searchPaged without approvalStatus should pass isDeleted=false to repository to exclude deleted records in All tab")
-        void searchPaged_withoutApprovalStatus_shouldPassIsDeletedFalseToRepository() {
+        @DisplayName("searchPaged without approvalStatus should pass isDeleted=null to repository to include all records in All tab")
+        void searchPaged_withoutApprovalStatus_shouldPassIsDeletedNullToRepository() {
             org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
             when(repo.searchPaged(any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(testEntity)));
@@ -618,7 +618,7 @@ class DikeRevetmentServiceTest {
                     any(), any(), any(), any(),
                     eq(pageable));
 
-            assertThat(isDeletedCaptor.getValue()).isFalse();
+            assertThat(isDeletedCaptor.getValue()).isNull();
         }
 
         @Test
@@ -641,25 +641,32 @@ class DikeRevetmentServiceTest {
         }
 
         @Test
-        @DisplayName("getTabCounts should exclude ARCHIVED from total count")
-        void getTabCounts_shouldExcludeArchivedFromTotal() {
+        @DisplayName("getTabCounts should include ARCHIVED in total count and map legacy statuses properly")
+        void getTabCounts_shouldIncludeArchivedInTotalAndMapLegacyStatuses() {
             when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
             List<Object[]> mockCounts = List.of(
-                    new Object[]{ApprovalStatus.DRAFT, 5L},
+                    new Object[]{ApprovalStatus.DRAFT, 2L},
                     new Object[]{ApprovalStatus.PENDING_APPROVAL, 3L},
-                    new Object[]{ApprovalStatus.APPROVED, 10L},
-                    new Object[]{ApprovalStatus.ARCHIVED, 2L}
+                    new Object[]{ApprovalStatus.PROPOSED, 2L},
+                    new Object[]{ApprovalStatus.APPROVED_LEVEL1, 3L},
+                    new Object[]{ApprovalStatus.APPROVED, 69L},
+                    new Object[]{ApprovalStatus.APPROVED_LEVEL2, 1L},
+                    new Object[]{ApprovalStatus.REJECTED_LEVEL1, 0L},
+                    new Object[]{ApprovalStatus.REJECTED, 2L},
+                    new Object[]{ApprovalStatus.ARCHIVED, 1L}
             );
             when(repo.countByApprovalStatus(anyBoolean(), any(), any(), any(), any())).thenReturn(mockCounts);
 
             java.util.Map<String, Long> counts = service.getTabCounts(null, null, null, null);
 
-            assertThat(counts.get("DRAFT")).isEqualTo(5L);
-            assertThat(counts.get("PENDING_APPROVAL")).isEqualTo(3L);
-            assertThat(counts.get("APPROVED")).isEqualTo(10L);
-            assertThat(counts.get("ARCHIVED")).isEqualTo(2L);
-            // Total should be 5 + 3 + 10 = 18, NOT 20 (excluding ARCHIVED)
-            assertThat(counts.get("")).isEqualTo(18L);
+            assertThat(counts.get("DRAFT")).isEqualTo(2L);
+            assertThat(counts.get("PENDING_APPROVAL")).isEqualTo(5L); // 3 + 2 (PROPOSED)
+            assertThat(counts.get("APPROVED_LEVEL1")).isEqualTo(3L);
+            assertThat(counts.get("APPROVED")).isEqualTo(70L); // 69 + 1 (APPROVED_LEVEL2)
+            assertThat(counts.get("REJECTED_LEVEL1")).isEqualTo(2L); // 0 + 2 (REJECTED)
+            assertThat(counts.get("ARCHIVED")).isEqualTo(1L);
+            // Total should be 2 + 5 + 3 + 70 + 2 + 1 = 83 (all records including ARCHIVED per AGENTS.md)
+            assertThat(counts.get("")).isEqualTo(83L);
         }
 
         @Test

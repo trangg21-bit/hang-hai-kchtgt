@@ -847,8 +847,15 @@ const SPECIFIC_LABEL_KEYS: Record<string, string[]> = {
   'thuoc ben phao': ['buoyStationName', 'buoyBerthName', 'buoyStationId', 'buoyBerthId'],
   'thuoc nha tram': ['buoyStationName', 'buoyStationId'],
   'thuoc trung tam dieu hanh vts': ['vtsCenterName', 'vtsOperationCenterName', 'name'],
-  'dia diem (tinh/ thanh pho)': ['provinceId', 'province', 'location', 'tinhThanh'],
-  'dia diem (tinh/thanh pho)': ['provinceId', 'province', 'location', 'tinhThanh'],
+  'dia diem (tinh/ thanh pho)': ['provinceId', 'provinceName', 'province', 'tinhThanh'],
+  'dia diem (tinh/thanh pho)': ['provinceId', 'provinceName', 'province', 'tinhThanh'],
+  'dia diem chi tiet': ['detailedLocation', 'locationDetail', 'locationAddress', 'diaChiChiTiet', 'diaDiemChiTiet', 'address', 'location'],
+  'don vi khai thac': ['operatingUnitName', 'operatingOrgName', 'operator', 'operatingUnitId', 'operatingOrgId', 'operatorId'],
+  'thuoc he thong vts': ['vtsSystemName', 'systemName', 'vtsSystemId'],
+  'don vi tinh': ['unitOfMeasureLabel', 'unitOfMeasure'],
+  'so luong': ['quantity', 'soLuong'],
+  'chieu cao thap radar': ['towerHeight', 'chieuCaoThapRadar'],
+  'tam hieu luc thap radar': ['radarRange', 'tamHieuLucRadar'],
   'tinh trang': ['operationalStatus', 'conditionStatus', 'condition', 'tinhTrang', 'isActive'],
   'trang thai': ['approvalStatus', 'trangThai', 'status'],
   'thoi diem cong bo mo, dua vao su dung': ['openingAnnouncementDate', 'thoiDiemCongBoMo', 'thoiDiemCongBo'],
@@ -935,6 +942,46 @@ const PRIMARY_CODE_NAME_KEYS_BY_TYPE: Record<string, { codeKeys: string[]; nameK
     codeKeys: ['stationCode', 'radarCode', 'code'],
     nameKeys: ['stationName', 'radarName', 'name'],
   },
+  AIS_SYSTEM: {
+    codeKeys: ['code', 'deviceCode'],
+    nameKeys: ['name', 'deviceName'],
+  },
+  CCTV: {
+    codeKeys: ['deviceCode', 'code'],
+    nameKeys: ['deviceName', 'name'],
+  },
+  SCADA: {
+    codeKeys: ['deviceCode', 'code'],
+    nameKeys: ['deviceName', 'name'],
+  },
+  TRANSMISSION: {
+    codeKeys: ['deviceCode', 'code'],
+    nameKeys: ['deviceName', 'name'],
+  },
+  VTS_ASSIST: {
+    codeKeys: ['deviceCode', 'code'],
+    nameKeys: ['deviceName', 'name'],
+  },
+  COASTAL_RADIO_STATION: {
+    codeKeys: ['stationCode', 'deviceCode', 'code'],
+    nameKeys: ['stationName', 'name'],
+  },
+  INMARSAT_STATION: {
+    codeKeys: ['stationCode', 'deviceCode', 'code'],
+    nameKeys: ['stationName', 'name'],
+  },
+  COSPAS_SARSAT_STATION: {
+    codeKeys: ['stationCode', 'code'],
+    nameKeys: ['stationName', 'name'],
+  },
+  LRIT_STATION: {
+    codeKeys: ['stationCode', 'code'],
+    nameKeys: ['stationName', 'name'],
+  },
+  HANOI_STATION: {
+    codeKeys: ['stationCode', 'code'],
+    nameKeys: ['stationName', 'name'],
+  },
   DIKE_REVETMENT: {
     codeKeys: ['dikeCode', 'code'],
     nameKeys: ['dikeName', 'name'],
@@ -959,14 +1006,14 @@ export const resolveVmdPopupFields = (
   const primaryKeys = PRIMARY_CODE_NAME_KEYS_BY_TYPE[infrastructureType];
   const specificCodeKeys = primaryKeys?.codeKeys || [];
   const specificNameKeys = primaryKeys?.nameKeys || [];
-  const genericCodeKeys = ['code', 'portCode', 'berthCode', 'pierCode', 'dryPortCode', 'waterZoneCode', 'buoyBerthCode', 'anchorageCode', 'transferAreaCode', 'stormShelterCode', 'facilityCode', 'beaconCode', 'systemCode'];
-  const genericNameKeys = ['name', 'anchorageName', 'transferAreaName', 'stormShelterName', 'buoyBerthName', 'pierName', 'berthName', 'dryPortName', 'portName', 'waterZoneName', 'facilityName', 'beaconName', 'systemName'];
+  const genericCodeKeys = ['code', 'deviceCode', 'stationCode', 'radarCode', 'portCode', 'berthCode', 'pierCode', 'dryPortCode', 'waterZoneCode', 'buoyBerthCode', 'anchorageCode', 'transferAreaCode', 'stormShelterCode', 'facilityCode', 'beaconCode', 'systemCode'];
+  const genericNameKeys = ['name', 'deviceName', 'stationName', 'radarName', 'anchorageName', 'transferAreaName', 'stormShelterName', 'buoyBerthName', 'pierName', 'berthName', 'dryPortName', 'portName', 'waterZoneName', 'facilityName', 'beaconName', 'systemName'];
   const commonAliases: Record<string, string[]> = {
     // Basic / Org / User
     fkDonViQl: ['orgUnitId', 'unitId', 'donViQuanLy', 'orgUnitName', 'unitName', 'orgName'],
     updatedDate: ['updatedAt', 'updatedDate'],
     updatedUser: ['updatedByName', 'updatedBy', 'updatedUser'],
-    diaDiemChiTiet: ['detailedLocation', 'locationDetail', 'diaChiChiTiet', 'diaDiemChiTiet', 'address'],
+    diaDiemChiTiet: ['detailedLocation', 'locationDetail', 'locationAddress', 'diaChiChiTiet', 'diaDiemChiTiet', 'address', 'location'],
     // Parents
     fkCangBien: ['portName', 'tenCangBien', 'portId'],
     fkLuongHh: ['waterway', 'waterwayName', 'navigationChannelName', 'channelName', 'navigationChannelId', 'waterwayId'],
@@ -974,11 +1021,13 @@ export const resolveVmdPopupFields = (
     fkNhaTram: ['buoyStationName', 'buoyStationId'],
     fkCauCang: ['pierName', 'pierId', 'cauCangId'],
     fkBenCang: ['berthName', 'tenBenCang', 'berthId'],
-    fkDonViKt: ['operator', 'operatingOrgName', 'operatingOrgId', 'operatorId'],
-    fkDonViVh: ['operator', 'operatingOrgName', 'operatingOrgId', 'operatorId'],
+    fkDonViKt: ['operatingUnitName', 'operatingOrgName', 'operator', 'operatingUnitId', 'operatingOrgId', 'operatorId'],
+    fkDonViVh: ['operatingUnitName', 'operatingOrgName', 'operator', 'operatingUnitId', 'operatingOrgId', 'operatorId'],
+    fkHtVts: ['vtsSystemName', 'systemName', 'vtsSystemId'],
+    fkTtDhVts: ['vtsOperationCenterName', 'vtsCenterName', 'vtsOperationCenterId', 'vtsCenterId'],
     // Location / Province
-    'zobjDataSub.diaDiemText': ['provinceId', 'province', 'location', 'tinhThanh'],
-    diaDiemText: ['provinceId', 'province', 'location', 'tinhThanh'],
+    'zobjDataSub.diaDiemText': ['provinceId', 'provinceName', 'province', 'tinhThanh'],
+    diaDiemText: ['provinceId', 'provinceName', 'province', 'tinhThanh'],
     // Status
     'zobjDataSub.tinhTrangText': ['operationalStatus', 'conditionStatus', 'condition', 'tinhTrang', 'isActive'],
     tinhTrangText: ['operationalStatus', 'conditionStatus', 'condition', 'tinhTrang', 'isActive'],
@@ -1014,6 +1063,27 @@ export const resolveVmdPopupFields = (
     dienTich: ['area', 'dienTich', 'totalArea'],
     'zobjDataSub.doSauKhuNuocTheoThietKe': ['designWaterDepth', 'doSauKhuNuocTheoThietKe'],
     doSauKhuNuocTheoThietKe: ['designWaterDepth', 'doSauKhuNuocTheoThietKe'],
+    'zobjDataSub.donViTinhText': ['unitOfMeasureLabel', 'unitOfMeasure'],
+    donViTinhText: ['unitOfMeasureLabel', 'unitOfMeasure'],
+    soLuong: ['quantity', 'soLuong'],
+    'zobjDataSub.chieuCaoThapRadar': ['towerHeight', 'chieuCaoThapRadar'],
+    chieuCaoThapRadar: ['towerHeight', 'chieuCaoThapRadar'],
+    'zobjDataSub.tamHieuLucRadar': ['radarRange', 'tamHieuLucRadar'],
+    tamHieuLucRadar: ['radarRange', 'tamHieuLucRadar'],
+    'zobjDataSub.thongSoKyThuat': ['specifications', 'technicalSpecifications', 'thongSoKyThuat'],
+    thongSoKyThuat: ['specifications', 'technicalSpecifications', 'thongSoKyThuat'],
+    'zobjDataSub.thongTinBaoTri': ['maintenanceInformation', 'maintenanceInfo', 'thongTinBaoTri'],
+    thongTinBaoTri: ['maintenanceInformation', 'maintenanceInfo', 'thongTinBaoTri'],
+    namDuaVaoSuDung: ['yearOfUse', 'commissioningYear', 'namDuaVaoSuDung'],
+    hangSanXuat: ['manufacturer', 'hangSanXuat'],
+    'zobjDataSub.vungPhuSong': ['coverageArea', 'coverageZone', 'coverage', 'vungPhuSong'],
+    vungPhuSong: ['coverageArea', 'coverageZone', 'coverage', 'vungPhuSong'],
+    'zobjDataSub.phamViApDung': ['scope', 'phamViApDung'],
+    phamViApDung: ['scope', 'phamViApDung'],
+    'zobjDataSub.thongBaoHangHai': ['maritimeNotice', 'thongBaoHangHai'],
+    thongBaoHangHai: ['maritimeNotice', 'thongBaoHangHai'],
+    'zobjDataSub.dichVuCungCapText': ['servicesProvided', 'services', 'dichVuCungCapText'],
+    dichVuCungCapText: ['servicesProvided', 'services', 'dichVuCungCapText'],
     // Counts
     'zobjDataSub.soLuongKhuNeoDauDangKhaiThac': ['activeAnchorageCount', 'soLuongKhuNeoDauDangKhaiThac'],
     soLuongKhuNeoDauDangKhaiThac: ['activeAnchorageCount', 'soLuongKhuNeoDauDangKhaiThac'],

@@ -35,6 +35,7 @@ const isImageFile = (fileName?: string): boolean => {
 import type { Pier } from '../../types/port';
 import { fmtNum } from '../../utils/numFmt';
 import { formatOperationalFunction } from '../../constants/operationalFunction';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 
 interface AttachmentFile {
   id: string;
@@ -146,36 +147,14 @@ const PIER_INFRA_TYPE_OPTIONS = [{ value: 'COSO_SUACHUA', label: 'Cơ sở sửa
 // Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
 // fallback sang latitude/longitude (backend chỉ parse được cho POINT).
 const parseGisCoordinates = (record: PierDetail): Array<{ lat: number; lng: number }> => {
-  const wkt = record?.coordinates;
-  const out: Array<{ lat: number; lng: number }> = [];
-  if (wkt && typeof wkt === 'string' && wkt.trim()) {
-    try {
-      if (wkt.startsWith('LINESTRING(')) {
-        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
-        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
-        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
-        if (m) {
-          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
-          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
-          pts.forEach(p => { out.push(p); });
-        }
-      }
-      if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/);
-        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
-      }
-    } catch { /* ignore */ }
+  const pts = parseWktToCoordinates(record?.coordinates);
+  if (pts.length > 0) {
+    return pts.map(p => ({ lat: p.latitude, lng: p.longitude }));
   }
-  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
-    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  if (record?.latitude != null && record?.longitude != null) {
+    return [{ lat: Number(record.latitude), lng: Number(record.longitude) }];
   }
-  return out;
+  return [];
 };
 
 export default function PierDetailContent({

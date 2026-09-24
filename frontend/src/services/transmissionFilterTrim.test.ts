@@ -49,4 +49,41 @@ describe('Transmission API Query Trim (/transmission)', () => {
     expect(urlObj.searchParams.get('deviceName')).toBeNull();
     expect(urlObj.searchParams.get('search')).toBeNull();
   });
+
+  it('trims leading and trailing spaces for deviceName and deviceCode on search submit and enter key', () => {
+    let inputDeviceName = '   Thiết bị truyền dẫn A   ';
+    let inputDeviceCode = '   TRANS-001   ';
+    let filterDeviceName = '';
+    let filterDeviceCode = '';
+
+    const handleFilterApply = (overrides?: { deviceName?: string; deviceCode?: string }) => {
+      const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+      const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+      inputDeviceName = nextName;
+      inputDeviceCode = nextCode;
+      filterDeviceName = nextName;
+      filterDeviceCode = nextCode;
+    };
+
+    // Khi người dùng nhấn nút "Tìm kiếm"
+    handleFilterApply();
+    expect(inputDeviceName).toBe('Thiết bị truyền dẫn A');
+    expect(inputDeviceCode).toBe('TRANS-001');
+    expect(filterDeviceName).toBe('Thiết bị truyền dẫn A');
+    expect(filterDeviceCode).toBe('TRANS-001');
+
+    // Khi người dùng nhấn phím Enter trên ô "Tên thiết bị"
+    inputDeviceName = '   Thiết bị mới   ';
+    const enterNameVal = inputDeviceName.trim();
+    handleFilterApply({ deviceName: enterNameVal });
+    expect(inputDeviceName).toBe('Thiết bị mới');
+    expect(filterDeviceName).toBe('Thiết bị mới');
+
+    // Khi người dùng nhấn phím Enter trên ô "Mã thiết bị"
+    inputDeviceCode = '   TB-NEW-02   ';
+    const enterCodeVal = inputDeviceCode.trim();
+    handleFilterApply({ deviceCode: enterCodeVal });
+    expect(inputDeviceCode).toBe('TB-NEW-02');
+    expect(filterDeviceCode).toBe('TB-NEW-02');
+  });
 });

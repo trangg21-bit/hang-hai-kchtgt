@@ -98,7 +98,7 @@ describe('numberInputGuards — luật nhập số của NumberInputWithCount', 
       expect(sanitizeNumberInput('12.5')).toBe('125');
     });
 
-    it('bật allowDecimal thì cho 1 dấu "." và tối đa 4 chữ số thập phân', () => {
+    it('bật allowDecimal thì cho 1 dấu "." hoặc "," và tối đa 4 chữ số thập phân', () => {
       expect(
         decideKeyInput({
           key: '.',
@@ -108,13 +108,42 @@ describe('numberInputGuards — luật nhập số của NumberInputWithCount', 
           allowDecimal: true,
         }),
       ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12',
+          selectionStart: 2,
+          selectionEnd: 2,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '1.234',
+          selectionStart: 5,
+          selectionEnd: 5,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
       expect(sanitizeNumberInput('12.5', { allowDecimal: true })).toBe('12.5');
+      expect(sanitizeNumberInput('12,5', { allowDecimal: true })).toBe('12,5');
       expect(sanitizeNumberInput('12.123456', { allowDecimal: true })).toBe('12.1234');
-      // dấu '.' thứ hai bị chặn
+      expect(sanitizeNumberInput('12,123456', { allowDecimal: true })).toBe('12,1234');
+      // dấu '.' hoặc ',' thứ hai bị chặn
       expect(
         decideKeyInput({
           key: '.',
           currentValue: '12.5',
+          selectionStart: 4,
+          selectionEnd: 4,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12,5',
           selectionStart: 4,
           selectionEnd: 4,
           allowDecimal: true,
@@ -182,6 +211,202 @@ describe('numberInputGuards — luật nhập số của NumberInputWithCount', 
     it('kết hợp allowNegative + allowDecimal cho số âm thập phân', () => {
       expect(sanitizeNumberInput('-12.5', { allowNegative: true, allowDecimal: true })).toBe('-12.5');
       expect(sanitizeNumberInput('-12.5', { allowDecimal: true })).toBe('12.5');
+    });
+
+    it('hỗ trợ đầy đủ dấu phẩy "," làm dấu thập phân chuẩn vi-VN khi bật allowDecimal', () => {
+      // Cho phép gõ dấu phẩy ',' vào ô số
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12',
+          selectionStart: 2,
+          selectionEnd: 2,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+
+      // Chặn dấu phẩy thứ hai
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12,5',
+          selectionStart: 4,
+          selectionEnd: 4,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+
+      // Chặn dấu '.' khi đã có dấu ',' và ngược lại
+      expect(
+        decideKeyInput({
+          key: '.',
+          currentValue: '12,5',
+          selectionStart: 4,
+          selectionEnd: 4,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+      // Cho phép gõ dấu phẩy ',' khi giá trị đang hiển thị có 4, 5, 6 chữ số
+      // (được formatter định dạng hàng nghìn vi-VN có 1 dấu chấm: 1.234, 12.345, 123.456)
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '1.234',
+          selectionStart: 5,
+          selectionEnd: 5,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12.345',
+          selectionStart: 6,
+          selectionEnd: 6,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '123.456',
+          selectionStart: 7,
+          selectionEnd: 7,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '-1.234',
+          selectionStart: 6,
+          selectionEnd: 6,
+          allowDecimal: true,
+          allowNegative: true,
+        }),
+      ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '-12.345',
+          selectionStart: 7,
+          selectionEnd: 7,
+          allowDecimal: true,
+          allowNegative: true,
+        }),
+      ).toBe('allow');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '-123.456',
+          selectionStart: 8,
+          selectionEnd: 8,
+          allowDecimal: true,
+          allowNegative: true,
+        }),
+      ).toBe('allow');
+
+      // Vẫn chặn dấu ',' khi giá trị đã có dấu thập phân thực sự
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12.5',
+          selectionStart: 4,
+          selectionEnd: 4,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '1.234,',
+          selectionStart: 6,
+          selectionEnd: 6,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '1.234,5',
+          selectionStart: 7,
+          selectionEnd: 7,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+
+      // Cho phép thay thế dấu ',' khi bôi đen
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '12,5',
+          selectionStart: 2,
+          selectionEnd: 3,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+
+      // Chặn dấu ',' khi phần nguyên đang có > 16 chữ số
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '99999999999999999999',
+          selectionStart: 20,
+          selectionEnd: 20,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+
+      // Cho phép dấu ',' khi phần nguyên đúng 16 chữ số
+      expect(
+        decideKeyInput({
+          key: ',',
+          currentValue: '9999999999999999',
+          selectionStart: 16,
+          selectionEnd: 16,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+
+      // Chặn thêm chữ số vào phần nguyên khi đã có 16 chữ số kèm dấu ','
+      expect(
+        decideKeyInput({
+          key: '7',
+          currentValue: '1234567890123456,5',
+          selectionStart: 16,
+          selectionEnd: 16,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+
+      // Chặn vượt quá 4 chữ số phần thập phân sau dấu ','
+      expect(
+        decideKeyInput({
+          key: '5',
+          currentValue: '12,1234',
+          selectionStart: 7,
+          selectionEnd: 7,
+          allowDecimal: true,
+        }),
+      ).toBe('block');
+      expect(
+        decideKeyInput({
+          key: '4',
+          currentValue: '12,123',
+          selectionStart: 6,
+          selectionEnd: 6,
+          allowDecimal: true,
+        }),
+      ).toBe('allow');
+
+      // Chuẩn hóa và dán chuỗi với dấu phẩy ','
+      expect(sanitizeNumberInput('12,5', { allowDecimal: true })).toBe('12,5');
+      expect(sanitizeNumberInput('12,123456', { allowDecimal: true })).toBe('12,1234');
+      expect(sanitizeNumberInput('1234567890123456,123456', { allowDecimal: true })).toBe(
+        '1234567890123456,1234',
+      );
+      expect(sanitizeNumberInput('-12,5', { allowNegative: true, allowDecimal: true })).toBe('-12,5');
+      expect(sanitizeNumberInput('1.234,56', { allowDecimal: true })).toBe('1234,56');
     });
   });
 

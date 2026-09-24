@@ -375,6 +375,21 @@ public class AisSystemService {
             }
         }
 
+        // Các cột NOT NULL: nếu client gửi null/blank TƯỜNG MINH (đã presence-track) thì trả 400
+        // tiếng Việt thay vì để saveAndFlush vi phạm ràng buộc rồi ROLLBACK cả lượt lưu — khi đó
+        // mọi thay đổi hợp lệ khác trong cùng request cũng mất và người dùng thấy "lưu xong nhưng
+        // không có gì thay đổi".
+        if (request.isFieldPresent("code") && (request.getCode() == null || request.getCode().isBlank()))
+            throw new IllegalArgumentException("Mã thiết bị AIS không được để trống");
+        if (request.isFieldPresent("name") && (request.getName() == null || request.getName().isBlank()))
+            throw new IllegalArgumentException("Tên hệ thống AIS không được để trống");
+        if (request.isFieldPresent("unitOfMeasure") && request.getUnitOfMeasure() == null)
+            throw new IllegalArgumentException("Đơn vị tính không được để trống");
+        if (request.isFieldPresent("quantity") && request.getQuantity() == null)
+            throw new IllegalArgumentException("Số lượng không được để trống");
+        if (request.isFieldPresent("conditionStatus") && request.getConditionStatus() == null)
+            throw new IllegalArgumentException("Tình trạng không được để trống");
+
         EntityUpdateUtils.copyPropertiesIfPresent(request, entity, previousValues,
                 AisSystemRequest.Fields.geometryType,
                 AisSystemRequest.Fields.coordinates,
@@ -426,10 +441,31 @@ public class AisSystemService {
             previousValues.put(AisSystemRequest.Fields.geometryType, oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
         }
 
-        if (request.isFieldPresent("coordinates")) {
-            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+        if (request.isFieldPresent("coordinates") || request.getCoordinates() != null) {
+            GisGeometryType geomType = request.getGeometryType();
+            if (geomType == null && request.getCoordinates() != null && !request.getCoordinates().isBlank()) {
+                String clean = request.getCoordinates().trim().toUpperCase();
+                if (clean.startsWith("POLYGON")) {
+                    geomType = GisGeometryType.POLYGON;
+                } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                    geomType = GisGeometryType.LINE;
+                } else {
+                    geomType = GisGeometryType.POINT;
+                }
+            }
+            if (geomType == null) {
+                geomType = GisGeometryType.POINT;
+            }
+
+            UUID currentSpatialId = entity.getSpatialId();
+            if (currentSpatialId == null && entity.getId() != null) {
+                currentSpatialId = gisSpatialObjectService.findByRef(entity.getId(), InfrastructureType.AIS_SYSTEM)
+                        .map(GisSpatialObject::getId)
+                        .orElse(null);
+            }
+
             UUID spatialId = gisSpatialObjectService.syncSpatialObject(
-                    entity.getSpatialId(),
+                    currentSpatialId,
                     "Thiết bị AIS " + (request.getName() != null ? request.getName() : entity.getName()),
                     "AIS_" + entity.getId(),
                     geomType,
@@ -1407,6 +1443,19 @@ public class AisSystemService {
                 GisSpatialObject spatial = spatialOpt.get();
                 coordinates = spatial.getCoordinates();
                 geometryType = spatial.getGeometryType();
+                if (entity.getSpatialId() == null) {
+                    entity.setSpatialId(spatial.getId());
+                }
+            }
+        }
+        if (geometryType == null && coordinates != null && !coordinates.isBlank()) {
+            String clean = coordinates.trim().toUpperCase();
+            if (clean.startsWith("POLYGON")) {
+                geometryType = GisGeometryType.POLYGON;
+            } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                geometryType = GisGeometryType.LINE;
+            } else if (clean.startsWith("POINT")) {
+                geometryType = GisGeometryType.POINT;
             }
         }
         String symbolId = entity.getSymbolId() != null ? entity.getSymbolId().toString() : null;

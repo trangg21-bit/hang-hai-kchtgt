@@ -1121,12 +1121,17 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       };
 
       const payload: Record<string, unknown> = {
-        orgUnitId: vals.orgUnitId,
-        portId: vals.portId,
+        // 3 khoá dưới đây PHẢI theo đúng hợp đồng presence của backend
+        // (UpdateAnchorageRequest.markFieldPresent): CÓ MẶT + null = "người dùng đã xóa trắng" ->
+        // service mới thực sự xóa; VẮNG MẶT = "không gửi trường" -> service giữ nguyên giá trị cũ
+        // rồi vẫn trả về thành công. Ghi thẳng `vals.x` mà thiếu nhánh `?? (isEdit ? null : undefined)`
+        // sẽ khiến thao tác xóa bị bỏ qua âm thầm.
+        orgUnitId: vals.orgUnitId ?? (isEdit ? null : undefined),
+        portId: vals.portId ?? (isEdit ? null : undefined),
         navigationChannelId: vals.navigationChannelId || (isEdit ? null : undefined),
         buoyStationId: vals.buoyStationId || (isEdit ? null : undefined),
         anchorageCode: vals.anchorageCode?.trim() || undefined,
-        anchorageName: vals.anchorageName?.trim(),
+        anchorageName: cleanString(vals.anchorageName),
         provinceId: provinceNumber != null ? provinceNumber : (isEdit ? null : undefined),
         detailedLocation: cleanString(vals.detailedLocation),
         operationalStatus: vals.operationalStatus || (isEdit ? null : undefined),

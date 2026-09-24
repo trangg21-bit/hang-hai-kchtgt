@@ -161,8 +161,15 @@ public class StormShelterAreaService {
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
         //     entity.setSecurityLevel(request.getSecurityLevel());
         // }
-        if (request.getStormShelterName() != null)
-            entity.setStormShelterName(request.getStormShelterName());
+        // stormShelterName là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng,
+        // TUYỆT ĐỐI không được âm thầm giữ giá trị cũ hoặc ghi chuỗi rỗng vào CSDL rồi vẫn trả
+        // về thành công — đó chính là lỗi "xóa trường mà dữ liệu không hề thay đổi".
+        if (request.getStormShelterName() != null) {
+            if (request.getStormShelterName().isBlank()) {
+                throw new IllegalArgumentException("Tên khu tránh, trú bão không được để trống");
+            }
+            entity.setStormShelterName(request.getStormShelterName().trim());
+        }
         if (request.getPortId() != null) {
             Port parent = portRepository.findById(request.getPortId())
                     .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
@@ -176,6 +183,8 @@ public class StormShelterAreaService {
         entity.setClassification(request.getClassification());
         entity.setProvinceId(request.getProvinceId());
         entity.setDetailedLocation(request.getDetailedLocation());
+        // operationalStatus: frontend đã chặn xóa trắng trường này (rule required ở Form.Item) nên khi
+        // request không gửi giá trị thì giữ nguyên giá trị cũ.
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         entity.setShapeDescription(request.getShapeDescription());
@@ -847,6 +856,16 @@ public class StormShelterAreaService {
                     InfrastructureType.STORM_SHELTER_AREA);
             saved.setSpatialId(spatialObj.getId());
             stormShelterAreaRepository.saveAndFlush(saved);
+        } else if (coordinates != null) {
+            // coordinates = '' (có mặt nhưng rỗng) = người dùng đã XÓA TRẮNG vị trí ⇒ phải xóa
+            // spatial object cũ, nếu không tọa độ cũ vẫn còn nguyên — đúng lỗi "xóa triệt để mà
+            // kiểm tra không có gì thay đổi".
+            // coordinates = null (trường không được gửi) ⇒ giữ nguyên hành vi cũ, KHÔNG xóa.
+            if (saved.getSpatialId() != null) {
+                gisSpatialObjectService.delete(saved.getSpatialId());
+                saved.setSpatialId(null);
+                stormShelterAreaRepository.saveAndFlush(saved);
+            }
         }
         replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
     }

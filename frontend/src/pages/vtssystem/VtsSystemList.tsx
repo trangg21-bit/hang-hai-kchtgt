@@ -28,6 +28,7 @@ import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/commo
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 import { useAuthStore } from '../../store/authStore';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 
 const fontSizeMd = 13.5;
 
@@ -194,6 +195,12 @@ const VtsSystemGlobalStyles = React.memo(() => (
 ));
 
 export default function VtsSystemList() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
   const kchtPerms = useKchtPermissions('vts');
 
   const customVtsTokens = useMemo(() => ({
@@ -234,6 +241,14 @@ export default function VtsSystemList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<VtsSystemResponse | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    setEditingId(embeddedRecordId);
+    setSelectedRecord(null);
+    setModalMode(embeddedAction);
+    setIsModalOpen(true);
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction]);
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
@@ -1118,8 +1133,8 @@ export default function VtsSystemList() {
           initialData={selectedRecord}
           mode={modalMode}
           orgUnits={orgUnitOptions}
-          onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); }}
-          onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); }}
+          onCancel={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); closeEmbeddedAction(); }}
+          onSuccess={() => { setIsModalOpen(false); setEditingId(null); setSelectedRecord(null); refreshList(); closeEmbeddedAction(); }}
         />
       )}
 

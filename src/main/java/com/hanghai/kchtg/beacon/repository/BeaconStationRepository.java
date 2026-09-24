@@ -24,6 +24,28 @@ public interface BeaconStationRepository extends JpaRepository<BeaconStation, UU
     @Query("SELECT MAX(b.code) FROM BeaconStation b WHERE b.code IS NOT NULL")
     String findMaxCode();
 
+    /**
+     * Số thứ tự lớn nhất trong mã đèn biển dạng DBNT-<số> — tính trên MỌI bản ghi
+     * (kể cả bản ghi đã xóa mềm và không bị hạn chế bởi Hibernate orgUnitFilter).
+     * So sánh theo SỐ nguyên (CAST AS INTEGER), tránh lỗi so sánh chuỗi từ điển ('DBNT-000010' < 'DBNT-000002').
+     */
+    @Query(value = "SELECT MAX(CAST(SUBSTRING(code FROM 6) AS INTEGER)) " +
+            "FROM beacon_light WHERE code SIMILAR TO 'DBNT-[0-9]+'", nativeQuery = true)
+    Optional<Integer> findMaxBeaconStationCodeSequence();
+
+    /**
+     * Kiểm tra mã đèn biển đã tồn tại — quét toàn bảng kể cả bản ghi đã xóa mềm
+     * và bỏ qua bộ lọc Hibernate Session.
+     */
+    @Query(value = "SELECT EXISTS (SELECT 1 FROM beacon_light WHERE code = :code)", nativeQuery = true)
+    boolean existsCodeAnyState(@Param("code") String code);
+
+    /**
+     * Lấy toàn bộ mã có tiền tố DBNT- để làm fallback an toàn.
+     */
+    @Query(value = "SELECT code FROM beacon_light WHERE code LIKE 'DBNT-%'", nativeQuery = true)
+    List<String> findAllCodesWithBeaconPrefix();
+
     Page<BeaconStation> findByStatus(String status, Pageable pageable);
     Page<BeaconStation> findByType(String type, Pageable pageable);
     List<BeaconStation> findByNameContainingIgnoreCase(String name);

@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Input, DatePicker, Button, Typography, Space, Skeleton } from 'antd';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Input, DatePicker, Button, Typography, Space, Skeleton, Pagination } from 'antd';
 import {
   HistoryOutlined,
   SearchOutlined,
@@ -43,6 +43,7 @@ import {
   historyMetaRowStyle,
   historyInfoCardStyle,
   historyAccentBarStyle,
+  historyInfoTitleStyle,
   historyChangeRowStyle,
   historyCreateRowStyle,
   historyFieldLabelStyle,
@@ -53,6 +54,7 @@ import {
 import {
   deduplicateAttachmentHistoryChanges,
   isAttachmentField,
+  mergeAttachmentHistoryChanges,
   parseAttachmentValues,
   normalizeAttachmentName,
 } from '../../utils/historyAttachmentDedup';
@@ -121,6 +123,8 @@ export interface CommonHistoryDrawerProps {
   loadingMore?: boolean;
 }
 
+const HISTORY_CARD_PAGE_SIZE = 10;
+
 const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: string }> = {
   CREATE: { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}15` },
   CREATED: { label: 'Tạo mới', color: statusOperational, bg: `${statusOperational}15` },
@@ -181,15 +185,18 @@ const DEFAULT_ACTION_MAP: Record<string, { label: string; color: string; bg: str
   EXTEND: { label: 'Gia hạn', color: '#2563eb', bg: '#2563eb15' },
 };
 
-export function formatFallbackFieldLabel(field: string, combinedMap: Record<string, string> = {}): string {
+export function formatFallbackFieldLabel(field: string, combinedMap?: Record<string, string>): string {
   if (!field) return '—';
-  if (combinedMap[field]) return combinedMap[field];
+  if (combinedMap && combinedMap[field]) return combinedMap[field];
   if (field.includes(',')) {
+    const map = combinedMap ? { ...DEFAULT_FIELD_MAP, ...combinedMap } : DEFAULT_FIELD_MAP;
     return field.split(',').map((f) => {
       const trimmed = f.trim();
-      return combinedMap[trimmed] || formatSingleField(trimmed);
+      return map[trimmed] || formatSingleField(trimmed);
     }).join(', ');
   }
+  const map = combinedMap ? { ...DEFAULT_FIELD_MAP, ...combinedMap } : DEFAULT_FIELD_MAP;
+  if (map[field]) return map[field];
   return formatSingleField(field);
 }
 
@@ -203,7 +210,7 @@ function formatSingleField(field: string): string {
   return res.charAt(0).toUpperCase() + res.slice(1);
 }
 
-const DEFAULT_FIELD_MAP: Record<string, string> = {
+export const DEFAULT_FIELD_MAP: Record<string, string> = {
   // Văn bản & Định danh
   documentName: 'Tên văn bản',
   documentNumber: 'Số hiệu văn bản',
@@ -312,19 +319,26 @@ const DEFAULT_FIELD_MAP: Record<string, string> = {
   'Vùng VTS': 'Vùng VTS',
   fileName: 'Tên tệp tin',
   fileSize: 'Kích thước tệp',
-  coordinates: 'Tọa độ GIS',
-  geometryType: 'Loại đối tượng GIS',
-  objectType: 'Loại đối tượng GIS',
-  'Loại đối tượng GIS': 'Loại đối tượng GIS',
-  'Tọa độ GIS': 'Tọa độ GIS',
-  'Biểu tượng bản đồ': 'Biểu tượng bản đồ',
+  coordinates: 'Tọa độ GPS',
+  geometryType: 'Loại đối tượng',
+  objectType: 'Loại đối tượng',
+  'Loại đối tượng': 'Loại đối tượng',
+  'Tọa độ GPS': 'Tọa độ GPS',
+  'Biểu tượng': 'Biểu tượng',
+  'Biểu tượng bản đồ': 'Biểu tượng',
+  'Mã đối tượng': 'Mã đối tượng',
+  'Tên đối tượng': 'Tên đối tượng',
+  'Loại hình học': 'Loại đối tượng',
+  'File đính kèm': 'File đính kèm',
+  'Quy tắc hiển thị': 'Quy tắc hiển thị',
   'Mã vùng': 'Mã vùng',
   'Tên vùng': 'Tên vùng',
   'Thông tin vùng VTS': 'Thông tin vùng VTS',
-  symbol: 'Biểu tượng bản đồ',
-  symbolId: 'Biểu tượng bản đồ',
-  mapSymbolId: 'Biểu tượng bản đồ',
-  mapIcon: 'Biểu tượng bản đồ',
+  symbol: 'Biểu tượng',
+  symbolId: 'Biểu tượng',
+  iconId: 'Biểu tượng',
+  mapSymbolId: 'Biểu tượng',
+  mapIcon: 'Biểu tượng',
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
   displayFormat: 'Định dạng hiển thị',
@@ -596,7 +610,7 @@ export function renderCommonHistoryValueTag(field: string, val: string, isOld: b
     return <span style={{ color: textTertiary }}>—</span>;
   }
   const normKey = field.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
-  
+
   // Dịch vụ cung cấp viễn thông hàng hải: dịch 100% sang tên tiếng Việt đầy đủ từng dòng, không viền màu
   if (isServicesProvidedHistoryField(field) || normKey.includes('services') || normKey.includes('dich vu') || normKey.includes('dichvu')) {
     const tokens = parseMaritimeServiceTokens(val);
@@ -1402,7 +1416,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   fieldLabelMap = {},
   formatValue,
   width,
-  variant = 'default',
+  variant = 'berth',
   userMap,
   serverFiltered = false,
   onFilterChange,
@@ -1414,6 +1428,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
   const [keyword, setKeyword] = useState('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
+  const [paginationState, setPaginationState] = useState({ resetKey: '', page: 1 });
 
   // Ở chế độ lọc phía server, mỗi lần điều kiện đổi thì đẩy ra ngoài để màn cha
   // nạp lại từ trang đầu.
@@ -1423,13 +1438,15 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverFiltered, keyword, dateFrom, dateTo]);
 
-  const handleBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    if (!onLoadMore) return;
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
-      onLoadMore();
-    }
-  };
+  // Các màn legacy chỉ nạp từng trang từ API. Tự động nạp hết phần còn lại để
+  // phân trang theo số phiên cập nhật, không phân trang theo số dòng diff thô.
+  useEffect(() => {
+    if (!open || !onLoadMore || loading || loadingMore) return;
+    onLoadMore();
+    // onLoadMore thường được tạo lại ở màn cha; records.length/loadingMore là
+    // tín hiệu đủ để tiếp tục chuỗi nạp trang mà không tạo vòng lặp render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, records.length, loading, loadingMore]);
   const [symbols, setSymbols] = useState<SymbolOption[]>([]);
 
   useEffect(() => {
@@ -1503,14 +1520,14 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     );
   };
 
-  useEffect(() => {
-    if (!open) {
-      setSearchInput('');
-      setKeyword('');
-      setDateFrom('');
-      setDateTo('');
-    }
-  }, [open]);
+  const handleClose = () => {
+    setSearchInput('');
+    setKeyword('');
+    setDateFrom('');
+    setDateTo('');
+    setPaginationState({ resetKey: '', page: 1 });
+    onClose();
+  };
 
   const combinedFieldMap = useMemo(() => ({
     ...DEFAULT_FIELD_MAP,
@@ -1528,7 +1545,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     return r.changedAt || r.createdAt || r.timestamp || r.approvedDate || '';
   };
 
-  const getRecordActor = (r: CommonHistoryEntry): string => {
+  const getRecordActor = useCallback((r: CommonHistoryEntry): string => {
     const raw = r.changedByName || r.actor || r.approvedByName || r.changedBy || r.approvedBy || '';
     if (raw && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw.trim())) {
       if (userMap) {
@@ -1538,7 +1555,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       return 'Quản trị viên';
     }
     return raw || 'Quản trị viên';
-  };
+  }, [userMap]);
 
   const getRecordAction = (r: CommonHistoryEntry): string => {
     return (r.action || r.status || r.actionType || '').toUpperCase();
@@ -1548,7 +1565,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     if (!ts) return '';
     const d = dayjs(ts);
     if (!d.isValid()) return ts;
-    return `${d.format('HH:mm:ss')} ${d.format('DD/MM/YYYY')}`;
+    return `${d.format('HH:mm')} ${d.format('DD/MM/YYYY')}`;
   };
 
   const resolveFieldValue = (field: string, val: any): string => {
@@ -1558,6 +1575,17 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       custom = formatValue(field, val);
     }
     const fLower = (field || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    if (fLower.includes('geometrytype') || fLower.includes('objecttype') || fLower.includes('loai doi tuong') || fLower.includes('loai hinh hoc')) {
+      const s = String(val).trim().toUpperCase();
+      if (s === '1' || s === 'POINT' || s === 'ĐIỂM' || s === 'ĐỐI TƯỢNG ĐIỂM') return 'Đối tượng điểm';
+      if (s === '2' || s === 'LINE' || s === 'LINESTRING' || s === 'ĐƯỜNG' || s === 'ĐỐI TƯỢNG ĐƯỜNG') return 'Đối tượng đường';
+      if (s === '3' || s === 'POLYGON' || s === 'VÙNG' || s === 'ĐỐI TƯỢNG VÙNG') return 'Đối tượng vùng';
+    }
+    if (fLower === 'status' || fLower === 'trang thai') {
+      const s = String(val).trim().toUpperCase();
+      if (s === '1' || s === 'ACTIVE') return 'Sử dụng';
+      if (s === '0' || s === 'INACTIVE' || s === 'LOCKED') return 'Khóa';
+    }
     if (isServicesProvidedHistoryField(field) || fLower.includes('services') || fLower.includes('dich vu') || fLower.includes('dichvu')) {
       const formatted = formatMaritimeServicesDisplay(custom !== undefined ? custom : val);
       return formatted === '—' ? '' : formatted;
@@ -1704,7 +1732,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
         prev.action === action &&
         prev.tsSec > 0 &&
         tsMs > 0 &&
-        prev.tsSec === tsSec &&
+        Math.abs(prev.tsSec - tsSec) <= 10 &&
         !hasDuplicateField
       );
 
@@ -1725,7 +1753,17 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
     }
 
     return { filteredGroups: groups, totalCount: groups.length };
-  }, [records, keyword, dateFrom, dateTo, combinedFieldMap, serverFiltered]);
+  }, [records, keyword, dateFrom, dateTo, combinedFieldMap, serverFiltered, getRecordActor]);
+
+  const paginationResetKey = `${effectiveEntityName || ''}:${keyword}:${dateFrom}:${dateTo}`;
+  const requestedHistoryPage = paginationState.resetKey === paginationResetKey ? paginationState.page : 1;
+  const lastHistoryPage = Math.max(1, Math.ceil(totalCount / HISTORY_CARD_PAGE_SIZE));
+  const historyPage = Math.min(requestedHistoryPage, lastHistoryPage);
+
+  const pagedGroups = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_CARD_PAGE_SIZE;
+    return filteredGroups.slice(start, start + HISTORY_CARD_PAGE_SIZE);
+  }, [filteredGroups, historyPage]);
 
   return (
     <AppDrawer
@@ -1734,7 +1772,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       width={width || DRAWER_WIDTH}
       mask
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       footer={null}
       styles={{
         header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1832,7 +1870,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
       </div>
 
       {/* ── Timeline Body ─────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: variant === 'berth' ? 0 : 4 }} onScroll={handleBodyScroll}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingRight: variant === 'berth' ? 0 : 4 }}>
         {loading ? (
           <div style={{ padding: spaceMd }}>
             <Skeleton active paragraph={{ rows: 6 }} />
@@ -1849,7 +1887,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
         ) : (
           <div style={{ position: 'relative', paddingLeft: variant === 'berth' ? 0 : 8 }}>
             {/* Trục Timeline dọc kết nối các mốc */}
-            {variant !== 'berth' && filteredGroups.length > 1 && (
+            {variant !== 'berth' && pagedGroups.length > 1 && (
               <div
                 style={{
                   position: 'absolute',
@@ -1862,7 +1900,7 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                 }}
               />
             )}
-            {filteredGroups.map((group, gIdx) => {
+            {pagedGroups.map((group, gIdx) => {
               // Extract all changes from items in the group
               const groupChanges: HistoryChangeItem[] = [];
               const groupNotes: string[] = [];
@@ -1883,9 +1921,16 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
               const actionMeta = resolveAction(primaryAction);
               const isCreate = primaryAction.toUpperCase().includes('CREATE') || primaryAction.toUpperCase().includes('ADD');
               const rawUnit = group.unitName;
-              const unitName = rawUnit && rawUnit !== '—' ? rawUnit : '';
+              const unitName = rawUnit && rawUnit !== '—' ? rawUnit : 'Bộ Giao thông Vận tải';
 
-              const validChanges = deduplicateAttachmentHistoryChanges(groupChanges).filter((change) => {
+              const deduplicatedChanges = deduplicateAttachmentHistoryChanges(groupChanges);
+              const attachmentChanges = mergeAttachmentHistoryChanges(
+                deduplicatedChanges.filter((change) => isAttachmentField(change.field)),
+              );
+              const validChanges = [
+                ...deduplicatedChanges.filter((change) => !isAttachmentField(change.field)),
+                ...attachmentChanges,
+              ].filter((change) => {
                 const ov = resolveFieldValue(change.field, change.oldValue);
                 const nv = resolveFieldValue(change.field, change.newValue);
                 if (ov !== '—' && nv !== '—' && String(ov).trim() === String(nv).trim()) {
@@ -1901,13 +1946,13 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                   key={gIdx}
                   style={variant === 'berth' ? {
                     ...historyGroupGridStyle,
-                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceSm : 0,
+                    marginBottom: gIdx < pagedGroups.length - 1 ? spaceSm : 0,
                   } : {
                     display: 'grid',
                     gridTemplateColumns: '240px minmax(0, 1fr)',
                     gap: spaceLg,
                     alignItems: 'start',
-                    marginBottom: gIdx < filteredGroups.length - 1 ? spaceLg : 0,
+                    marginBottom: gIdx < pagedGroups.length - 1 ? spaceLg : 0,
                     position: 'relative',
                   }}
                 >
@@ -2038,6 +2083,9 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
                     {/* Change list */}
                     {orderedChanges.length > 0 ? (
                       <div>
+                        <Typography.Text style={historyInfoTitleStyle}>
+                          {isCreate ? 'Thông tin thêm mới:' : 'Thông tin thay đổi:'}
+                        </Typography.Text>
                         {orderedChanges.map((change, cIdx) => {
                           const label = combinedFieldMap[change.field] || formatFallbackFieldLabel(change.field, combinedFieldMap);
                           const prevChange = cIdx > 0 ? orderedChanges[cIdx - 1] : null;
@@ -2342,6 +2390,17 @@ export const CommonHistoryDrawer: React.FC<CommonHistoryDrawerProps> = ({
           </div>
         )}
       </div>
+      {totalCount > HISTORY_CARD_PAGE_SIZE && (
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', paddingTop: spaceMd }}>
+          <Pagination
+            current={historyPage}
+            pageSize={HISTORY_CARD_PAGE_SIZE}
+            total={totalCount}
+            showSizeChanger={false}
+            onChange={(page) => setPaginationState({ resetKey: paginationResetKey, page })}
+          />
+        </div>
+      )}
     </AppDrawer>
   );
 };

@@ -30,6 +30,7 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import { normalizeClearedFields } from './transferAreaPayload';
 import {
   decimalNumberRule,
   parseNumber20,
@@ -39,7 +40,13 @@ import {
   getValueFromEvent5,
 } from '../../utils/numberRuleHelper';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import {
+  GEOMETRY_POINT_COUNT,
+  serializeCoordinatesToWkt,
+  parseWktToCoordinates,
+  validateDmsCoordinates,
+  ddToDms,
+} from '../../utils/gisGeometry';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import { buildTransferAreaGisFormPatch } from './transferAreaFormUtils';
 import {
@@ -125,41 +132,8 @@ const COORD_SYS_OPTIONS = [
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
   if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    const trimmed = wkt.trim();
-    if (trimmed.toUpperCase().startsWith('LINESTRING')) {
-      const m = trimmed.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/i);
-      if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    }
-    if (trimmed.toUpperCase().startsWith('POLYGON')) {
-      const m = trimmed.match(/POLYGON\s*\(\s*\(\s*([^)]+)\s*\)\s*\)/i);
-      if (m) {
-        const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) pts.pop();
-        return pts;
-      }
-    }
-    const mm = trimmed.match(/MULTIPOINT\s*\(\s*((?:\([^)]*\),?)+)\s*\)/i);
-    if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-    if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
+  return parseWktToCoordinates(wkt);
 };
-
-function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
-  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  const abs = Math.abs(dd);
-  let d = Math.floor(abs);
-  let mFloat = (abs - d) * 60;
-  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
-  let m = Math.floor(mFloat);
-  let sFloat = (mFloat - m) * 60;
-  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
-  let s = Math.round(sFloat * 100) / 100;
-  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d, m, s };
-}
 
 function renderDmsText(dd: number | null | undefined, isLat: boolean): string {
   if (dd == null || isNaN(Number(dd))) return '';
@@ -438,6 +412,8 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
   const isInitialLoadDoneRef = useRef(false);
+  const initialRecordRef = useRef<any>(null);
+  const initialCoordinatesRef = useRef<string | null>(null);
 
   // Load organizations
   useEffect(() => {
@@ -562,38 +538,40 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
     (async () => {
       try {
         const d: any = await transferAreaCRUD.findById(id);
+        initialRecordRef.current = d;
+        initialCoordinatesRef.current = d.coordinates || null;
         editPortIdRef.current = d.portId;
         initialApprovalStatusRef.current = d.approvalStatus;
 
         let geomType = d.geometryType;
         if (!geomType && d.coordinates) {
-          const upperWkt = d.coordinates.trim().toUpperCase();
+          const upperWkt = d.coordinates.trim().replace(/^SRID=\d+\s*;/i, '').trim().toUpperCase();
           if (upperWkt.startsWith('POLYGON')) geomType = 'POLYGON';
-          else if (upperWkt.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (upperWkt.startsWith('LINESTRING') || upperWkt.startsWith('LINE')) geomType = 'LINE';
           else geomType = 'POINT';
         } else if (!geomType && d.latitude != null && d.longitude != null) {
           geomType = 'POINT';
         }
 
         // Parse coordinates
-        const ec = d.coordinates ? parseGisCoordinates({ geometryType: geomType, coordinates: d.coordinates }) : [];
+        const ec = d.coordinates ? parseWktToCoordinates(d.coordinates) : [];
         if (ec.length > 0) {
           if (!geomType) {
             geomType = ec.length > 2 ? 'POLYGON' : ec.length === 2 ? 'LINE' : 'POINT';
           }
-          setCoordinateList(ec.map(c => {
+          setCoordinateList(ec.map((c, idx) => {
             const latDms = ddToDms(c.latitude);
             const lngDms = ddToDms(c.longitude);
-            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+            return { _idx: idx, latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
           }));
         } else if (d.latitude != null && d.longitude != null) {
           if (!geomType) geomType = 'POINT';
           const latDms = ddToDms(Number(d.latitude));
           const lngDms = ddToDms(Number(d.longitude));
-          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
+          setCoordinateList([{ _idx: 0, latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
         } else if (geomType) {
           const count = GEOMETRY_POINT_COUNT[geomType] ?? 1;
-          setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
+          setCoordinateList(Array.from({ length: count }, (_, idx) => ({ _idx: idx, latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
         } else {
           setCoordinateList([]);
         }
@@ -972,79 +950,59 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       return false;
     }
 
-    if (vals.geometryType) {
-      if (!vals.mapSymbolId) {
+    const allVals = { ...form.getFieldsValue(true), ...vals };
+    const geomType = allVals.geometryType || form.getFieldValue('geometryType') || initialRecordRef.current?.geometryType || undefined;
+    const mapSymbolId = allVals.mapSymbolId ?? form.getFieldValue('mapSymbolId') ?? initialRecordRef.current?.mapSymbolId ?? null;
+    const coordinateSystem = allVals.coordinateSystem != null ? Number(allVals.coordinateSystem) : (initialRecordRef.current?.coordinateSystem ?? 1);
+
+    let wktCoordinates: string | null = null;
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    if (geomType) {
+      if (!mapSymbolId) {
         setActiveTabKey('location');
         form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
         toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
         return false;
       }
 
-      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType as string] ?? 1;
-      const validCoords = coordinateList.filter(
-        (c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
-      );
-
-      if (validCoords.length < minCount) {
+      const hasAnyCoordInput = coordinateList.some((c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null);
+      if (hasAnyCoordInput) {
+        const coordResult = validateDmsCoordinates(coordinateList, geomType);
+        if (!coordResult.valid) {
+          setActiveTabKey('location');
+          toast.error(coordResult.errorMessage || 'Tọa độ GPS không hợp lệ');
+          return false;
+        }
+        const validCoords = coordResult.validCoords;
+        wktCoordinates = validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : null;
+        if (validCoords.length > 0) {
+          lat = validCoords[0].latitude;
+          lng = validCoords[0].longitude;
+        }
+      } else if (isEdit && initialCoordinatesRef.current) {
+        wktCoordinates = initialCoordinatesRef.current;
+        const pts = parseWktToCoordinates(wktCoordinates);
+        if (pts.length > 0) {
+          lat = pts[0].latitude;
+          lng = pts[0].longitude;
+        } else if (initialRecordRef.current?.latitude != null && initialRecordRef.current?.longitude != null) {
+          lat = Number(initialRecordRef.current.latitude);
+          lng = Number(initialRecordRef.current.longitude);
+        }
+      } else {
         setActiveTabKey('location');
         const msg =
-          vals.geometryType === 'POLYGON'
+          geomType === 'POLYGON'
             ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
-            : vals.geometryType === 'LINE'
+            : geomType === 'LINE'
             ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
             : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
         toast.error(msg);
         return false;
       }
-
-      if (vals.geometryType === 'POINT' && validCoords.length > 1) {
-        setActiveTabKey('location');
-        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
-        return false;
-      }
-
-      const partial = coordinateList.find((c) => {
-        const latSet = c.latD != null || c.latM != null || c.latS != null;
-        const lngSet = c.lngD != null || c.lngM != null || c.lngS != null;
-        const latFull = c.latD != null && c.latM != null && c.latS != null;
-        const lngFull = c.lngD != null && c.lngM != null && c.lngS != null;
-        return (latSet && !latFull) || (lngSet && !lngFull);
-      });
-      if (partial) {
-        setActiveTabKey('location');
-        toast.error('Chưa nhập đủ Độ/Phút/Giây cho một tọa độ GPS trong tab Thông tin vị trí');
-        return false;
-      }
-
-      const invalidRange = coordinateList.find((c) => {
-        if (c.latD != null && (c.latD < 0 || c.latD > 90)) return true;
-        if (c.latM != null && (c.latM < 0 || c.latM > 59)) return true;
-        if (c.latS != null && (c.latS < 0 || c.latS >= 60)) return true;
-        if (c.lngD != null && (c.lngD < 0 || c.lngD > 180)) return true;
-        if (c.lngM != null && (c.lngM < 0 || c.lngM > 59)) return true;
-        if (c.lngS != null && (c.lngS < 0 || c.lngS >= 60)) return true;
-        return false;
-      });
-      if (invalidRange) {
-        setActiveTabKey('location');
-        toast.error('Tọa độ GPS nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
-        return false;
-      }
     }
-
-    const hasGeom = !!vals.geometryType;
-    const validCoords = hasGeom
-      ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
-      : [];
-    const wktCoordinates = hasGeom && validCoords.length > 0
-      ? serializeCoordinatesToWkt(
-          validCoords.map((c) => ({
-            latitude: dmToDd(c.latD, c.latM, c.latS),
-            longitude: dmToDd(c.lngD, c.lngM, c.lngS),
-          })),
-          vals.geometryType || 'POINT'
-        )
-      : null;
 
     onSubmittingChange?.(true);
     try {
@@ -1114,27 +1072,30 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         investmentAgreement: cleanString(vals.investmentAgreement),
         activityStartDate: cleanDate(vals.activityStartDate),
         activityEndDate: cleanDate(vals.activityEndDate),
-        geometryType: hasGeom ? vals.geometryType : (isEdit ? null : null),
-        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : (isEdit ? null : null),
-        coordinateSystem: hasGeom ? (vals.coordinateSystem != null ? Number(vals.coordinateSystem) : null) : (isEdit ? null : null),
-        displayRule: hasGeom ? 1 : (isEdit ? null : null),
-        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : (isEdit ? null : null),
-        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : (isEdit ? null : null),
-        coordinates: hasGeom ? (wktCoordinates || null) : (isEdit ? null : null),
+        geometryType: geomType || (isEdit ? null : undefined),
+        mapSymbolId: geomType ? (mapSymbolId || null) : (isEdit ? null : undefined),
+        coordinateSystem: geomType ? coordinateSystem : (isEdit ? null : undefined),
+        displayRule: geomType ? 1 : (isEdit ? null : undefined),
+        latitude: geomType ? lat : (isEdit ? null : undefined),
+        longitude: geomType ? lng : (isEdit ? null : undefined),
+        coordinates: geomType ? (wktCoordinates || (isEdit && initialCoordinatesRef.current ? initialCoordinatesRef.current : null)) : (isEdit ? null : undefined),
         mooringWaterAreas: mooringPayload,
       };
 
       if (saveAction !== 'UPDATE') {
         payload.saveAction = saveAction;
       }
-      Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+      // Không bỏ hẳn key khi giá trị rỗng: ở chế độ sửa, trường bị xóa trắng được gửi
+      // tường minh `null` (server phân biệt "đã xóa trắng" với "không gửi" bằng
+      // isFieldPresent — xem transferAreaPayload.ts).
+      const normalizedPayload = normalizeClearedFields(payload, { isEdit });
 
       let createdId: string | undefined;
       if (isEdit && id) {
-        await transferAreaCRUD.update({ ...payload, id } as any);
+        await transferAreaCRUD.update({ ...normalizedPayload, id } as any);
         createdId = id;
       } else {
-        const res: any = await transferAreaCRUD.create(payload as any);
+        const res: any = await transferAreaCRUD.create(normalizedPayload as any);
         createdId = res?.id ?? res?.data?.id;
       }
 
@@ -1319,26 +1280,26 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                   </Col>
                   <Col span={12}>
                     <Form.Item name="area" {...labelProps('Diện tích (ha)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="designWaterDepth" {...labelProps('Độ sâu khu nước theo thiết kế (m)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
@@ -1624,6 +1585,10 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                     style={selectStyle}
                     onChange={(val) => {
                       if (!val) {
+                        initialCoordinatesRef.current = null;
+                        if (initialRecordRef.current) {
+                          initialRecordRef.current.geometryType = null;
+                        }
                         form.setFieldsValue({
                           mapSymbolId: undefined,
                           coordinateSystem: undefined,

@@ -48,8 +48,8 @@ describe('Ánh xạ trường và giá trị lịch sử Cầu cảng (Pier)', (
 
   it('formatPierHistoryValue vẫn định dạng đúng các trường số thuần túy', () => {
     expect(formatPierHistoryValue('length', '150')).toBe('150');
-    expect(formatPierHistoryValue('width', '25.5')).toBe('25.5');
-    expect(formatPierHistoryValue('cargoThroughput', '1000000')).toBe('1,000,000');
+    expect(formatPierHistoryValue('width', '25.5')).toBe('25,5');
+    expect(formatPierHistoryValue('cargoThroughput', '1000000')).toBe('1.000.000');
   });
 
   it('dịch phân cấp công trình và tình trạng hoạt động chính xác', () => {

@@ -6,6 +6,7 @@ import com.hanghai.kchtg.cctv.dto.UpdateCctvRequest;
 import com.hanghai.kchtg.cctv.entity.Cctv;
 import com.hanghai.kchtg.cctv.repository.CctvRepository;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
@@ -21,6 +22,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,7 +34,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.web.MockMultipartFile;
 
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -84,6 +91,9 @@ class CctvServiceTest {
     @InjectMocks
     private CctvService service;
 
+    @TempDir
+    Path uploadDirectory;
+
     private Cctv entity;
     private User principal;
 
@@ -92,6 +102,7 @@ class CctvServiceTest {
         InfrastructureApprovalService approvalService =
                 new InfrastructureApprovalService(historyRepository, userRepository);
         ReflectionTestUtils.setField(service, "approvalService", approvalService);
+        ReflectionTestUtils.setField(service, "uploadPath", uploadDirectory.toString());
 
         principal = mock(User.class);
         when(principal.getId()).thenReturn(USER_ID);
@@ -508,9 +519,32 @@ class CctvServiceTest {
     }
 
     @Test
-    void findAll_whenApprovalStatusNull_shouldPassIsDeletedFalse() {
+    void uploadAttachment_onRecentlyApprovedEntity_shouldRecordFullSnapshot() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setCreatedAt(LocalDateTime.now());
+        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
+
+        com.hanghai.kchtg.port.entity.Attachment existing = new com.hanghai.kchtg.port.entity.Attachment();
+        existing.setFileName("existing.pdf");
+        when(attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("CCTV", ID))
+                .thenReturn(List.of(existing));
+        when(attachmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        MockMultipartFile upload = new MockMultipartFile(
+                "files", "new.pdf", "application/pdf", "test".getBytes());
+
+        service.uploadAttachments(ID, List.of(upload), USER_ID);
+
+        ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
+        verify(historyRepository).save(historyCaptor.capture());
+        assertEquals("existing.pdf", historyCaptor.getValue().getPreviousValue());
+        assertEquals("existing.pdf, new.pdf", historyCaptor.getValue().getNewValue());
+    }
+
+    @Test
+    void findAll_whenApprovalStatusNull_shouldPassIsDeletedNull() {
         when(cctvRepository.searchCctv(
-                org.mockito.ArgumentMatchers.eq(Boolean.FALSE),
+                org.mockito.ArgumentMatchers.isNull(),
                 any(Boolean.class), any(), any(Boolean.class), any(),
                 any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any()
         )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entity)));
@@ -520,7 +554,7 @@ class CctvServiceTest {
 
         assertEquals(1, page.getTotalElements());
         verify(cctvRepository).searchCctv(
-                org.mockito.ArgumentMatchers.eq(Boolean.FALSE),
+                org.mockito.ArgumentMatchers.isNull(),
                 any(Boolean.class), any(), any(Boolean.class), any(),
                 any(), any(), any(), org.mockito.ArgumentMatchers.isNull(), any(), any(), any(), any(), any(), any(), any(), any());
     }
@@ -678,5 +712,96 @@ class CctvServiceTest {
         assertNull(entity.getNote());
         assertNull(entity.getSpecifications());
         assertNull(result.getDetailedLocation());
+    }
+
+    @Test
+    void findAll_withSortAttachedInfrastructureName_buildsCorrectSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+
+        when(cctvRepository.searchCctv(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                pageableCaptor.capture()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "attachedInfrastructureName", "asc");
+
+        org.springframework.data.domain.Sort sort = pageableCaptor.getValue().getSort();
+        org.junit.jupiter.api.Assertions.assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primaryOrder = sort.iterator().next();
+        assertEquals(org.springframework.data.domain.Sort.Direction.ASC, primaryOrder.getDirection());
+        assertEquals("COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')", primaryOrder.getProperty());
+    }
+
+    @Test
+    void findAll_withSortOperatingUnitName_buildsCorrectSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+
+        when(cctvRepository.searchCctv(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                pageableCaptor.capture()
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "operatingUnitName", "desc");
+
+        org.springframework.data.domain.Sort sort = pageableCaptor.getValue().getSort();
+        org.junit.jupiter.api.Assertions.assertNotNull(sort);
+        org.springframework.data.domain.Sort.Order primaryOrder = sort.iterator().next();
+        assertEquals(org.springframework.data.domain.Sort.Direction.DESC, primaryOrder.getDirection());
+        assertEquals("COALESCE(LOWER(opo.name), LOWER(opu.name), '')", primaryOrder.getProperty());
+    }
+
+    @Test
+    void findAll_withNullApprovalStatus_passesNullIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(cctvRepository.searchCctv(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertNull(isDeletedCaptor.getValue(), "Tab Tất cả (approvalStatus == null) bắt buộc isDeleted == null để bao gồm bản ghi đã xóa");
+    }
+
+    @Test
+    void findAll_withArchivedStatus_passesTrueIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(cctvRepository.searchCctv(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, "ARCHIVED", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.TRUE, isDeletedCaptor.getValue(), "Tab Đã xóa bắt buộc isDeleted == true");
+    }
+
+    @Test
+    void findAll_withDraftStatus_passesFalseIsDeleted() {
+        org.mockito.ArgumentCaptor<Boolean> isDeletedCaptor = org.mockito.ArgumentCaptor.forClass(Boolean.class);
+        when(cctvRepository.searchCctv(
+                isDeletedCaptor.capture(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+        service.findAll(0, 20, null, null, null, null, null, "DRAFT", null, null, null, null, null, null, null, "updatedAt", "desc");
+
+        assertEquals(Boolean.FALSE, isDeletedCaptor.getValue(), "Tab trạng thái cụ thể bắt buộc isDeleted == false");
+    }
+
+    @Test
+    void toResponse_whenEntityIsDeleted_returnsArchivedApprovalStatus() {
+        entity.setDeletedAt(java.time.LocalDateTime.now());
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        CctvResponse response = service.toResponse(entity);
+
+        assertEquals(ApprovalStatus.ARCHIVED, response.getApprovalStatus(),
+                "Bản ghi đã xóa mềm khi chuyển sang DTO bắt buộc có approvalStatus = ARCHIVED");
     }
 }

@@ -1,186 +1,163 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import api from './api';
+
+const putMock = vi.fn(() => Promise.resolve({ data: { data: {} } }));
+
+vi.mock('./api', () => ({
+  default: {
+    put: (...args: unknown[]) => putMock(...args),
+    post: vi.fn(() => Promise.resolve({ data: { data: {} } })),
+    get: vi.fn(() => Promise.resolve({ data: { data: {} } })),
+    delete: vi.fn(() => Promise.resolve({ data: { data: {} } })),
+  },
+}));
+
 import { updateDryPort } from '../pages/port/dry-port/api';
-import { safeDecimal } from '../utils/numberRuleHelper';
+import {
+  DRY_PORT_REQUIRED_FIELDS,
+  mapPortStatusToOperationalStatus,
+  normalizeDryPortPayload,
+} from '../pages/port/dry-port/payload';
 
-describe('Dry Port Clear Field & Null Handling (/dry-port)', () => {
+/**
+ * Test THẬT cho code THẬT của màn Cảng cạn (`/dry-port`).
+ *
+ * Bản trước của file này có case 01 là TEST GIẢ: nó chép lại `cleanString`/`cleanNumber`/
+ * `cleanDecimal` và cả object payload vào thân test rồi assert lên bản sao của chính nó —
+ * không import dòng code production nào. Vì vậy lỗi "xóa trắng trường không lưu được" đã lọt.
+ * Bản này import trực tiếp module đang chạy (`dry-port/payload.ts`) và lớp `updateDryPort` thật.
+ */
+describe('Cảng cạn — xóa trắng trường phải đi kèm null tường minh', () => {
+  const CLEARED_EDIT_FORM = {
+    saveAction: 'draft',
+    dryPortCode: undefined,
+    dryPortName: 'Cảng cạn A',
+    orgUnitId: 'ou-1',
+    provinceId: 1,
+    portStatus: 1,
+    region: undefined,
+    transportCorridor: undefined,
+    connectionMode: undefined,
+    detailedLocation: undefined,
+    remarks: undefined,
+    area: undefined,
+    teuCapacity: undefined,
+    warehouseArea: undefined,
+    yardArea: undefined,
+    openingAnnouncementDate: undefined,
+    openingDecision: undefined,
+    investmentAgreementDoc: undefined,
+    mapSymbolId: undefined,
+    coordinates: undefined,
+  };
+
   beforeEach(() => {
-    vi.clearAllMocks();
-    vi.spyOn(api, 'put').mockResolvedValue({
-      data: {
-        id: '55555555-5555-5555-5555-555555555555',
-        dryPortCode: 'CC-000001',
-        dryPortName: 'Cảng cạn Đình Vũ',
-        detailedLocation: null,
-        region: null,
-        operatingUnit: null,
-        transportCorridor: null,
-        area: null,
-        warehouseArea: null,
-        yardArea: null,
-        teuCapacity: null,
-        portStatus: null,
-        connectionMode: null,
-        remarks: null,
-        announcementDecisionNumber: null,
-        announcementOrg: null,
-        openingDecision: null,
-        investmentAgreementDoc: null,
-        geometryType: null,
-        coordinates: null,
-        mapSymbolId: null,
-      },
+    putMock.mockClear();
+  });
+
+  it('TC-DRYPORT-CLEAR-01: chế độ SỬA — trường rỗng thành null TƯỜNG MINH, key vẫn còn trong body', () => {
+    const out = normalizeDryPortPayload(CLEARED_EDIT_FORM, { isEdit: true });
+
+    [
+      'region',
+      'transportCorridor',
+      'connectionMode',
+      'detailedLocation',
+      'remarks',
+      'area',
+      'teuCapacity',
+      'warehouseArea',
+      'yardArea',
+      'openingAnnouncementDate',
+      'openingDecision',
+      'investmentAgreementDoc',
+      'mapSymbolId',
+      'coordinates',
+    ].forEach((field) => {
+      expect(Object.keys(out), `${field} phải có mặt trong body`).toContain(field);
+      expect(out[field], `${field} phải là null`).toBeNull();
     });
+
+    // JSON.stringify giữ nguyên key null ⇒ BE isFieldPresent() = true ⇒ ghi null xuống DB.
+    const body = JSON.parse(JSON.stringify(out)) as Record<string, unknown>;
+    expect(Object.keys(body)).toContain('remarks');
+    expect(body.remarks).toBeNull();
   });
 
-  it('TC-DRYPORT-CLEAR-01: sends null instead of undefined when user clears fields in edit mode', () => {
-    const isEdit = true;
-    const cleanString = (val: unknown) => {
-      if (val === null || val === undefined) return isEdit ? null : undefined;
-      const s = String(val).trim();
-      return s === '' ? (isEdit ? null : undefined) : s;
-    };
-    const cleanNumber = (val: unknown) => {
-      if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
-      const num = Number(val);
-      return isNaN(num) ? (isEdit ? null : undefined) : num;
-    };
-    const cleanDecimal = (val: unknown) => {
-      const res = safeDecimal(val);
-      return res !== undefined ? res : (isEdit ? null : undefined);
-    };
+  it('TC-DRYPORT-CLEAR-02: KHÔNG null hoá trường định danh/bắt buộc (chống mất dữ liệu)', () => {
+    // Trường bắt buộc/định danh thiếu giá trị ⇒ BỎ key (không gửi null), khác hẳn trường
+    // nghiệp vụ bị xóa trắng (⇒ null tường minh).
+    const out = normalizeDryPortPayload(
+      {
+        saveAction: 'draft',
+        dryPortCode: undefined,
+        dryPortName: undefined,
+        orgUnitId: undefined,
+        provinceId: undefined,
+        portStatus: undefined,
+        remarks: undefined,
+      },
+      { isEdit: true },
+    );
 
-    const vals = {
-      orgUnitId: '11111111-1111-1111-1111-111111111111',
-      dryPortCode: 'CC-000001',
-      dryPortName: 'Cảng cạn Đình Vũ',
-      provinceId: undefined,
-      detailedLocation: '   ',
-      region: '',
-      operatingOrgId: undefined,
-      operatingUnit: '  ',
-      transportCorridor: '',
-      area: '',
-      warehouseArea: '',
-      yardArea: '  ',
-      teuCapacity: '',
-      portStatus: '',
-      connectionMode: ' ',
-      remarks: '  ',
-      announcementTime: undefined,
-      announcementDecisionNumber: '',
-      announcementDecisionDate: undefined,
-      announcementOrg: '  ',
-      openingAnnouncementDate: undefined,
-      openingDecision: '',
-      investmentAgreementDoc: '  ',
-      geometryType: undefined,
-      mapSymbolId: undefined,
-      coordinateSystem: undefined,
-      displayRule: undefined,
-    };
+    ['dryPortCode', 'dryPortName', 'orgUnitId', 'provinceId', 'portStatus'].forEach((field) => {
+      expect(Object.keys(out), `${field} phải bị bỏ khỏi body`).not.toContain(field);
+    });
+    expect(out.remarks).toBeNull();
 
-    const payload: Record<string, unknown> = {
-      dryPortCode: vals.dryPortCode?.trim() || undefined,
-      dryPortName: vals.dryPortName?.trim(),
-      orgUnitId: vals.orgUnitId,
-      provinceId: isEdit ? null : undefined,
-      detailedLocation: cleanString(vals.detailedLocation),
-      region: cleanString(vals.region),
-      operatingOrgId: vals.operatingOrgId || (isEdit ? null : undefined),
-      operatingUnit: cleanString(vals.operatingUnit),
-      transportCorridor: cleanString(vals.transportCorridor),
-      area: cleanDecimal(vals.area),
-      warehouseArea: cleanDecimal(vals.warehouseArea),
-      yardArea: cleanDecimal(vals.yardArea),
-      teuCapacity: cleanDecimal(vals.teuCapacity),
-      portStatus: cleanNumber(vals.portStatus),
-      connectionMode: cleanString(vals.connectionMode),
-      remarks: cleanString(vals.remarks),
-      announcementTime: isEdit ? null : undefined,
-      announcementDecisionNumber: cleanString(vals.announcementDecisionNumber),
-      announcementDecisionDate: isEdit ? null : undefined,
-      announcementOrg: cleanString(vals.announcementOrg),
-      openingAnnouncementDate: isEdit ? null : undefined,
-      openingDecision: cleanString(vals.openingDecision),
-      investmentAgreementDoc: cleanString(vals.investmentAgreementDoc),
-      geometryType: isEdit ? null : null,
-      mapSymbolId: isEdit ? null : null,
-      coordinateSystem: isEdit ? null : null,
-      displayRule: isEdit ? null : null,
-      latitude: isEdit ? null : null,
-      longitude: isEdit ? null : null,
-      coordinates: isEdit ? null : null,
-    };
-
-    const jsonStr = JSON.stringify(payload);
-    const parsed = JSON.parse(jsonStr);
-
-    expect(parsed).toHaveProperty('detailedLocation', null);
-    expect(parsed).toHaveProperty('region', null);
-    expect(parsed).toHaveProperty('operatingUnit', null);
-    expect(parsed).toHaveProperty('transportCorridor', null);
-    expect(parsed).toHaveProperty('area', null);
-    expect(parsed).toHaveProperty('warehouseArea', null);
-    expect(parsed).toHaveProperty('yardArea', null);
-    expect(parsed).toHaveProperty('teuCapacity', null);
-    expect(parsed).toHaveProperty('portStatus', null);
-    expect(parsed).toHaveProperty('connectionMode', null);
-    expect(parsed).toHaveProperty('remarks', null);
-    expect(parsed).toHaveProperty('announcementDecisionNumber', null);
-    expect(parsed).toHaveProperty('announcementOrg', null);
-    expect(parsed).toHaveProperty('openingDecision', null);
-    expect(parsed).toHaveProperty('investmentAgreementDoc', null);
-    expect(parsed).toHaveProperty('geometryType', null);
-    expect(parsed).toHaveProperty('coordinates', null);
+    // Và trường bắt buộc ĐANG có giá trị thì được giữ nguyên.
+    const kept = normalizeDryPortPayload(
+      { orgUnitId: 'ou-1', provinceId: 1, portStatus: 1, dryPortName: 'Cảng cạn A' },
+      { isEdit: true },
+    );
+    expect(kept.orgUnitId).toBe('ou-1');
+    expect(kept.provinceId).toBe(1);
+    expect(kept.portStatus).toBe(1);
+    expect(kept.dryPortName).toBe('Cảng cạn A');
   });
 
-  it('TC-DRYPORT-CLEAR-02: updateDryPort passes null fields in PUT body', async () => {
-    const putSpy = vi.spyOn(api, 'put');
+  it('TC-DRYPORT-CLEAR-03: chế độ TẠO MỚI — giữ nguyên hành vi cũ (bỏ key undefined)', () => {
+    const out = normalizeDryPortPayload(CLEARED_EDIT_FORM, { isEdit: false });
+    expect(Object.keys(out).sort()).toEqual(
+      ['dryPortName', 'orgUnitId', 'portStatus', 'provinceId', 'saveAction'].sort(),
+    );
+  });
 
-    const updateData = {
-      id: '55555555-5555-5555-5555-555555555555',
-      dryPortName: 'Cảng cạn Đình Vũ',
-      detailedLocation: null,
-      region: null,
-      operatingUnit: null,
-      transportCorridor: null,
-      area: null,
-      warehouseArea: null,
-      yardArea: null,
-      teuCapacity: null,
-      portStatus: null,
-      connectionMode: null,
-      remarks: null,
-      announcementDecisionNumber: null,
-      announcementOrg: null,
-      openingDecision: null,
-      investmentAgreementDoc: null,
-      geometryType: null,
-      coordinates: null,
-      mapSymbolId: null,
-    };
+  it('TC-DRYPORT-CLEAR-04: giá trị đang có (kể cả 0 và chuỗi rỗng) không bị biến thành null', () => {
+    const out = normalizeDryPortPayload(
+      { remarks: 'ghi chú', area: '0', teuCapacity: 0, connectionMode: '' },
+      { isEdit: true },
+    );
+    expect(out.remarks).toBe('ghi chú');
+    expect(out.area).toBe('0');
+    expect(out.teuCapacity).toBe(0);
+    expect(out.connectionMode).toBe('');
+  });
 
-    await updateDryPort(updateData as unknown as Parameters<typeof updateDryPort>[0]);
+  it('TC-DRYPORT-STATUS-01: operationalStatus giữ đồng bộ với portStatus (badge ưu tiên operationalStatus)', () => {
+    expect(mapPortStatusToOperationalStatus(1)).toBe('OPERATIONAL');
+    expect(mapPortStatusToOperationalStatus(2)).toBe('SUSPENDED');
+    expect(mapPortStatusToOperationalStatus(0)).toBe('NOT_YET_OPERATIONAL');
+    expect(mapPortStatusToOperationalStatus('1')).toBe('OPERATIONAL');
+    expect(mapPortStatusToOperationalStatus(null)).toBeNull();
+    expect(mapPortStatusToOperationalStatus(undefined)).toBeNull();
+  });
 
-    expect(putSpy).toHaveBeenCalledTimes(1);
-    const calledBody = putSpy.mock.calls[0][1] as Record<string, unknown>;
-    expect(calledBody.detailedLocation).toBeNull();
-    expect(calledBody.region).toBeNull();
-    expect(calledBody.operatingUnit).toBeNull();
-    expect(calledBody.transportCorridor).toBeNull();
-    expect(calledBody.area).toBeNull();
-    expect(calledBody.warehouseArea).toBeNull();
-    expect(calledBody.yardArea).toBeNull();
-    expect(calledBody.teuCapacity).toBeNull();
-    expect(calledBody.portStatus).toBeNull();
-    expect(calledBody.connectionMode).toBeNull();
-    expect(calledBody.remarks).toBeNull();
-    expect(calledBody.announcementDecisionNumber).toBeNull();
-    expect(calledBody.announcementOrg).toBeNull();
-    expect(calledBody.openingDecision).toBeNull();
-    expect(calledBody.investmentAgreementDoc).toBeNull();
-    expect(calledBody.geometryType).toBeNull();
-    expect(calledBody.coordinates).toBeNull();
+  it('TC-DRYPORT-CLEAR-05: PUT /v1/dry-ports nhận đúng body đã chuẩn hoá', async () => {
+    const body = normalizeDryPortPayload(CLEARED_EDIT_FORM, { isEdit: true });
+    await updateDryPort({ ...body, id: 'dp-1' } as never);
+
+    expect(putMock).toHaveBeenCalledTimes(1);
+    const [url, sent] = putMock.mock.calls[0] as [string, Record<string, unknown>];
+    expect(url).toBe('/v1/dry-ports');
+    expect(sent.id).toBe('dp-1');
+    expect(sent).toHaveProperty('remarks', null);
+    expect(sent).toHaveProperty('detailedLocation', null);
+    expect(sent).toHaveProperty('dryPortName', 'Cảng cạn A');
+  });
+
+  it('TC-DRYPORT-CLEAR-06: danh sách trường bắt buộc không lọt vào nhánh null hoá', () => {
+    ['dryPortCode', 'orgUnitId', 'provinceId', 'portStatus', 'dryPortName'].forEach((f) => {
+      expect(DRY_PORT_REQUIRED_FIELDS.has(f), `${f} phải nằm trong nhóm bắt buộc`).toBe(true);
+    });
   });
 });

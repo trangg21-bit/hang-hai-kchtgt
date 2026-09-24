@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
-import { Row, Col, Form, Input, Select, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance, type InputNumberProps } from 'antd';
+import { Row, Col, Form, Input, Select, Tabs, Button, Space, Modal, Tooltip, Drawer, type FormInstance } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 import { PlusOutlined, DeleteOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, DownOutlined, RightOutlined, EyeOutlined, EditOutlined, FileTextOutlined } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import api from '../../services/api';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
-  colors, textPrimary, textSecondary, textTertiary, borderDefault, statusCritical,
-  fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
+  colors, textTertiary, borderDefault, statusCritical,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField, surfaceCard,
   readonlyInputStyle, actionPrimary, sidebarBg, textAreaStyle,
   drawerTabBarStyle, drawerFormScrollStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle,
@@ -27,9 +28,6 @@ import { useAuthStore } from '../../store/authStore';
 import type { PortWharfAreaItem } from './types';
 
 // ── Styles ──────────────────────────────────────────────────────────
-// Đồng bộ cỡ chữ 13.5px cho form Cảng biển (giống chuẩn VTS CHK/cols dùng ở Bến cảng).
-// Không lấy fontSizeMd mặc định (=13) từ themetokenchk để mọi tựa đề/span trong tab hiển thị 13.5.
-const fontSizeMd = 13.5;
 // Style cho thẻ phân nhóm (Section Card) đồng bộ với màn Xem chi tiết & màn Bến cảng
 const sectionBoxStyle: React.CSSProperties = {
   background: '#ffffff',
@@ -52,7 +50,7 @@ const sectionHeaderStyle: React.CSSProperties = {
 const sectionTitleStyle: React.CSSProperties = {
   color: colors.sidebarBg,
   fontWeight: fontWeightBold,
-  fontSize: fontSizeMd + 0.5,
+  fontSize: fontSizeLg,
   display: 'flex',
   alignItems: 'center',
   gap: 8,
@@ -63,22 +61,6 @@ const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40,
 const numberInputStyle: React.CSSProperties = { width: '100%', borderRadius: radiusPill, height: 40 };
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeMd, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeMd, color: textTertiary };
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-/** Hiển thị số ký tự đã nhập để giới hạn 5/20 chữ số của các chỉ số tổng hợp dễ nhận biết. */
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 /**
  * Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px).
@@ -297,7 +279,6 @@ export default function PortForm({
   form,
   mode,
   geometryType,
-  atMax,
   activeTabKey,
   onTabChange,
   portCodeLoading,
@@ -542,7 +523,9 @@ export default function PortForm({
               {...labelProps('Tên cảng biển')}
               style={{ marginBottom: spaceFormField }}
               rules={[
-                { required: true, message: 'Tên cảng không được để trống' },
+                // `whitespace: true`: chặn cả chuỗi chỉ gồm khoảng trắng — antd coi '   '
+                // là KHÔNG rỗng nên trước đây lọt qua validate rồi bị server bỏ qua âm thầm.
+                { required: true, whitespace: true, message: 'Tên cảng không được để trống' },
                 { max: 255, message: 'Tên cảng tối đa 255 ký tự' },
               ]}
             >
@@ -1302,13 +1285,13 @@ export default function PortForm({
                   <NumberInputWithCount
                     value={record.quantity}
                     maxLength={5}
-                    onChange={(v) => updateInfraQty(record._idx, v)}
+                    onChange={(value) => updateInfraQty(record._idx, value == null ? null : Number(value))}
                     min={0}
                     max={99999}
                     step={1}
                     precision={0}
                     placeholder="0"
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: 13.5 }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
                   />
                 ),
               },
@@ -1386,31 +1369,14 @@ export default function PortForm({
                 // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
                 const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
                 if (points.length > 0) {
-                  const current = Array.isArray(gpsCoordList) ? (gpsCoordList as Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>) : [];
-                  const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
-                    c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
-                  const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                  const existingKeys = new Set(current
-                    .filter(isFilled)
-                    .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                  const fresh = points.filter(p => !existingKeys.has(key(p)));
                   const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>) => ps.map(p => {
                     const latDms = ddToDms(p.latitude);
                     const lngDms = ddToDms(p.longitude);
                     return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
                   });
-                  // 1) Điền điểm vào các hàng còn TRỐNG ở đầu/cuối (giữ nguyên vị trí), số điểm thừa mới thêm xuống dưới.
-                  let fi = 0;
-                  const merged = current.map((row) => {
-                    if (isFilled(row)) return row;
-                    if (fi >= fresh.length) return row;
-                    const p = fresh[fi];
-                    fi += 1;
-                    const rows = toDmsRows([p]);
-                    return rows[0];
-                  });
-                  merged.push(...toDmsRows(fresh.slice(fi)));
-                  setGpsCoordList(merged);
+                  // Tập điểm trên modal là nguồn dữ liệu vừa được xác nhận; thay thế danh sách
+                  // cũ để các hàng DMS phía sau luôn khớp chính xác với vị trí trên bản đồ.
+                  setGpsCoordList(toDmsRows(points));
                 }
               }
             }}

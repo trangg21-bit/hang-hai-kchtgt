@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallba
 import dayjs from 'dayjs';
 import {
   Row, Col, Form, Input, Select, Tabs,
-  Button, Space, DatePicker, Modal, type InputNumberProps,
+  Button, Space, DatePicker, Modal,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
+import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
 import type { UploadFile } from 'antd';
 import {
   PlusOutlined, DeleteOutlined, EnvironmentOutlined,
@@ -15,7 +16,7 @@ import { DRAWER_TABLE_SCROLL_Y, getDatePickerProps } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
@@ -73,23 +74,6 @@ const sectionTitleStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
 const selectStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
 const numberStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-/** Cùng hiển thị bộ đếm số (0/n) và giới hạn như các chỉ số ở form Cầu cảng / Cảng biển. */
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span aria-label={`${count} trên ${maxLength} ký tự`} style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 const LOCATION_TAB_FIELD_NAMES = new Set([
   'geometryType',
@@ -202,7 +186,7 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
@@ -275,6 +259,26 @@ export interface BuoyBerthFormProps {
   onFinish: (saved: boolean) => void;
   /** Báo trạng thái đang lưu cho nút submit bên ngoài (hiển thị loading tròn trên nút được bấm) */
   onSubmittingChange?: (submitting: boolean) => void;
+}
+
+/**
+ * Chuẩn hóa payload trước khi gửi API: MỌI ô rỗng đi kèm request dưới dạng `null`
+ * TƯỜNG MINH — key vẫn còn trong JSON.
+ *
+ * Lý do: nếu xóa hẳn key khỏi body thì server không phân biệt được "người dùng đã xóa
+ * trắng trường" với "client không gửi trường" — trường bị xóa bị bỏ qua âm thầm và giữ
+ * nguyên giá trị cũ dù API vẫn trả về thành công.
+ *
+ * Cùng chuẩn đã áp cho Cảng biển (`/port`), Bến cảng (`/berth`), Cầu cảng (`/pier`) —
+ * xem docs/JOURNAL.md mục 2026-09-23. Hồi quy: BuoyBerthFormClearFields.test.tsx.
+ */
+export function finalizePayloadForSubmit(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  Object.keys(payload).forEach((k) => {
+    if (payload[k] === undefined) payload[k] = null;
+  });
+  return payload;
 }
 
 export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmittingChange }: BuoyBerthFormProps, ref) {
@@ -726,15 +730,15 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         openingAnnouncementDate: values.openingAnnouncementDate ? (typeof values.openingAnnouncementDate === 'string' ? values.openingAnnouncementDate : values.openingAnnouncementDate.format('YYYY-MM-DD') + 'T00:00:00') : undefined,
         publicDecision: values.publicDecision || undefined, investmentAgreement: values.investmentAgreement || undefined,
         mooringWaterAreaScope: values.mooringWaterAreaScope || undefined,
-        latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
-        longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
+        latitude: validCoords.length > 0 ? ((validCoords[0].latD ?? 0) + (validCoords[0].latM ?? 0) / 60 + (validCoords[0].latS ?? 0) / 3600) : undefined,
+        longitude: validCoords.length > 0 ? ((validCoords[0].lngD ?? 0) + (validCoords[0].lngM ?? 0) / 60 + (validCoords[0].lngS ?? 0) / 3600) : undefined,
         coordinates: wktCoordinates || undefined,
         geometryType: currentGeometryType || undefined, mapSymbolId: currentMapSymbolId || undefined,
         coordinateSystem: (values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) != null && !isNaN(Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem'))) ? Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) : (currentGeometryType ? 1 : undefined),
         displayRule: (values.displayRule ?? form.getFieldValue('displayRule')) != null && !isNaN(Number(values.displayRule ?? form.getFieldValue('displayRule'))) ? Number(values.displayRule ?? form.getFieldValue('displayRule')) : (currentGeometryType ? 1 : undefined),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
-      Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+      finalizePayloadForSubmit(payload);
       let createdBuoyBerthId: string | undefined;
       if (isEdit && id) { await buoyBerthCRUD.update({ ...payload, id } as any); createdBuoyBerthId = id; }
       else { const res: any = await buoyBerthCRUD.create(payload as any); createdBuoyBerthId = res?.id ?? res?.data?.id; }
@@ -825,7 +829,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           </Col>
           <Col span={12}>
             <Form.Item name="buoyBerthName" {...labelProps('Tên bến phao')} required style={{ marginBottom: spaceFormField }}
-              rules={[{ required: true, message: 'Tên bến phao không được để trống' }, { max: 255 }]}>
+              rules={[{ required: true, whitespace: true, message: 'Tên bến phao không được để trống' }, { max: 255 }]}>
               <Input placeholder="Nhập tên bến phao" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
           </Col>

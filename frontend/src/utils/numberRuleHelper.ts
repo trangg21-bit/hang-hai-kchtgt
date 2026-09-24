@@ -45,7 +45,13 @@ export const normalizeDecimal20_4 = (val: unknown): string => {
 
 export const parseNumber20 = (value: unknown): string => {
   if (value === null || value === undefined || value === '') return '';
-  return normalizeDecimal20_4(parseDotNumber(String(value)));
+  const s = String(value).trim();
+  const lastDot = s.lastIndexOf('.');
+  const lastComma = s.lastIndexOf(',');
+  if (lastDot !== -1 && lastComma !== -1 && lastDot > lastComma) {
+    return normalizeDecimal20_4(s);
+  }
+  return normalizeDecimal20_4(parseDotNumber(s));
 };
 
 export const getValueFromEvent20 = (val: unknown): string | null => {
@@ -62,32 +68,50 @@ export const normalizeDecimal20_4Signed = (val: unknown): string => {
   return negative ? `-${normalized}` : normalized;
 };
 
-export const parseNumber20Signed = (value: unknown): string => normalizeDecimal20_4Signed(value);
+export const parseNumber20Signed = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '';
+  const s = String(value).trim();
+  if (s === '-') return '-';
+  const negative = s.startsWith('-');
+  const unsigned = negative ? s.slice(1) : s;
+  const parsed = parseNumber20(unsigned);
+  if (!parsed) return negative ? '-' : '';
+  return negative ? `-${parsed}` : parsed;
+};
 
 export const getValueFromEvent20Signed = (val: unknown): string | null => {
   if (val === null || val === undefined || val === '') return null;
-  return normalizeDecimal20_4Signed(val) || null;
+  const s = String(val).trim();
+  if (s === '-') return '-';
+  const negative = s.startsWith('-');
+  const unsigned = negative ? s.slice(1) : s;
+  const normalized = getValueFromEvent20(unsigned);
+  if (!normalized) return negative ? '-' : null;
+  return negative ? `-${normalized}` : normalized;
 };
 
 /** Kiểm tra phần thân của một số thập phân (đã bỏ dấu '-') — dùng chung cho 2 rule bên dưới. */
 const checkDecimalBody = (s: string): string | null => {
-  if (!/^\d+(\.\d+)?$/.test(s) && !/^\d+\.$/.test(s) && !/^\.\d+$/.test(s)) {
-    return 'Chỉ chấp nhận chữ số và dấu "."';
+  if (!/^\d+([.,]\d+)?$/.test(s) && !/^\d+[.,]$/.test(s) && !/^[.,]\d+$/.test(s)) {
+    return 'Chỉ chấp nhận chữ số và dấu "." hoặc ","';
   }
-  const dotIdx = s.indexOf('.');
+  const norm = s.replace(',', '.');
+  const dotIdx = norm.indexOf('.');
   if (dotIdx !== -1) {
-    const intPart = s.slice(0, dotIdx);
-    const decPart = s.slice(dotIdx + 1);
+    const intPart = norm.slice(0, dotIdx);
+    const decPart = norm.slice(dotIdx + 1);
+
     if (intPart.length > 16) {
-      return 'Giới hạn chữ số khi có dấu "." là 16';
+      return 'Giới hạn phần nguyên là 16 chữ số (Giới hạn chữ số khi có dấu "." là 16)';
     }
     if (decPart.length > 4) {
-      return 'Số sau dấu "." tối đa 4 chữ số';
+      return 'Phần thập phân tối đa 4 chữ số (Số sau dấu "." tối đa 4 chữ số)';
     }
-    if (s.replace(/\./g, '').length > 20) {
+    if (norm.replace(/\./g, '').length > 20) {
+
       return 'Giới hạn tối đa 20 chữ số';
     }
-  } else if (s.length > 20) {
+  } else if (norm.length > 20) {
     return 'Giới hạn tối đa 20 chữ số';
   }
   return null;
@@ -144,8 +168,11 @@ export const safeDecimalSigned = (v: unknown): string | undefined => {
   if (v === null || v === undefined || v === '') return undefined;
   const raw = String(v).trim().replace(/\.$/, '');
   if (!raw || raw === '-' || raw === '.') return undefined;
-  const normalized = normalizeDecimal20_4Signed(raw);
-  return normalized && normalized !== '-' ? normalized : undefined;
+  const negative = raw.startsWith('-');
+  const unsigned = negative ? raw.slice(1) : raw;
+  const normalized = safeDecimal(unsigned);
+  if (!normalized) return undefined;
+  return negative ? `-${normalized}` : normalized;
 };
 
 /**

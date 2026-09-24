@@ -22,10 +22,9 @@ import {
   spaceXl,
   textTertiary,
 } from '../../themetokenchk';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber, isYearField, formatYearValue } from '../../utils/numFmt';
 import {
-  EXCLUDED_CHANGE_FIELDS,
   NUMERIC_HISTORY_FIELDS,
   TRANSMISSION_ASSET_FIELD_LABELS as VTS_ASSIST_ASSET_FIELD_LABELS,
   histVal,
@@ -144,6 +143,11 @@ export function useVtsAssistHistory(_options: UseVtsAssistHistoryOptions) {
     }
   }, [target, loading, loadingMore, hasMore, page, applied, normalizeRecords]);
 
+  useEffect(() => {
+    if (!open || !hasMore || loading || loadingMore) return;
+    void loadMore();
+  }, [open, hasMore, loading, loadingMore, records.length, loadMore]);
+
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
       const el = e.currentTarget;
@@ -199,7 +203,7 @@ interface VtsAssistAssetHistoryProps {
 
 export default function VtsAssistAssetHistory({
   open, target, records, loading, loadingMore, filters, hasActiveFilter,
-  orgName, transmissionMap, onClose, onFiltersChange, onSearch, onScroll,
+  orgName, transmissionMap, onClose, onFiltersChange, onSearch,
 }: VtsAssistAssetHistoryProps) {
   const renderTimeline = (data: Record<string, unknown>[]) =>
     renderStandardHistoryCards({
@@ -303,7 +307,7 @@ export default function VtsAssistAssetHistory({
           </div>
         )}
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={onScroll}>
+      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {loading ? (
           <LoadingSkeleton />
         ) : records.length === 0 ? (

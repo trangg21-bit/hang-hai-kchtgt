@@ -140,6 +140,9 @@ function renderFormField<T extends Record<string, unknown>>(
             maxLength={field.maxLength}
             min={field.min}
             max={field.max}
+            step={field.step}
+            allowDecimal={field.allowDecimal}
+            allowNegative={field.allowNegative}
             formatter={resolvedFormatter}
             parser={resolvedParser}
             placeholder={numberPlaceholder}
@@ -151,6 +154,7 @@ function renderFormField<T extends Record<string, unknown>>(
           <InputNumber
             min={field.min}
             max={field.max}
+            step={field.step}
             formatter={resolvedFormatter}
             parser={resolvedParser}
             placeholder={numberPlaceholder}

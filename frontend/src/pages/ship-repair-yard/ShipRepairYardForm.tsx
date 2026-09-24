@@ -209,7 +209,7 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
@@ -283,6 +283,9 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
   const isInitialLoadDoneRef = useRef(false);
+  // Chỉ nạp dữ liệu bản ghi MỘT LẦN cho mỗi id — effect prefill bên dưới phụ thuộc `symbols`
+  // (nạp bất đồng bộ) nên nếu không có chốt này nó sẽ chạy lại và ghi đè form.
+  const prefilledIdRef = useRef<string | null>(null);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
@@ -409,6 +412,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   // Edit mode: load existing
   useEffect(() => {
     if (!isEdit || !id) return;
+    // `symbols` (danh sách biểu tượng) nạp BẤT ĐỒNG BỘ nên effect này sẽ chạy lại khi nó về muộn.
+    // Không có chốt dưới đây, lần chạy lại sẽ findById() lần nữa rồi setFieldsValue() ghi đè giá trị
+    // CŨ của bản ghi lên đúng những ô người dùng vừa sửa/xóa ⇒ trường bị xóa trắng "không hề có gì
+    // thay đổi" khi lưu (lỗi phụ thuộc timing nên lúc tái hiện được, lúc không).
+    if (prefilledIdRef.current === id) return;
+    prefilledIdRef.current = id;
     isInitialLoadDoneRef.current = false;
     (async () => {
       try {
@@ -423,10 +432,16 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         setCoordinateList(loadedCoords);
 
         let geomType = data.geometryType;
+        if (geomType) {
+          const upper = String(geomType).trim().toUpperCase();
+          if (upper === 'LINESTRING' || upper === 'LINE' || upper === 'MULTILINESTRING') geomType = 'LINE';
+          else if (upper === 'MULTIPOINT' || upper === 'POINT') geomType = 'POINT';
+          else if (upper === 'MULTIPOLYGON' || upper === 'POLYGON') geomType = 'POLYGON';
+        }
         if (!geomType && data.coordinates) {
           const wktUpper = String(data.coordinates).trim().toUpperCase();
           if (wktUpper.startsWith('POLYGON')) geomType = 'POLYGON';
-          else if (wktUpper.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (wktUpper.startsWith('LINESTRING') || wktUpper.startsWith('LINE')) geomType = 'LINE';
           else if (wktUpper.startsWith('POINT')) geomType = 'POINT';
         }
         if (!geomType && (data.latitude != null || data.longitude != null || loadedCoords.length > 0)) {
@@ -552,7 +567,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   };
 
   const handleSave = useCallback(async (saveAction: SaveAction) => {
-    const vals = form.getFieldsValue();
+    const vals = { ...form.getFieldsValue(true), ...form.getFieldsValue() };
     try {
       await form.validateFields();
     } catch (e: any) {
@@ -577,7 +592,18 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       return false;
     }
 
-    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
+    let currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
+    if (currentGeometryType) {
+      const upper = String(currentGeometryType).trim().toUpperCase();
+      if (upper === 'LINESTRING' || upper === 'LINE' || upper === 'MULTILINESTRING') currentGeometryType = 'LINE';
+      else if (upper === 'MULTIPOINT' || upper === 'POINT') currentGeometryType = 'POINT';
+      else if (upper === 'MULTIPOLYGON' || upper === 'POLYGON') currentGeometryType = 'POLYGON';
+    }
+    if (hasCoordinates && !currentGeometryType) {
+      currentGeometryType = coordinateList.length > 2 ? 'POLYGON' : coordinateList.length === 2 ? 'LINE' : 'POINT';
+      form.setFieldsValue({ geometryType: currentGeometryType });
+    }
+    vals.geometryType = currentGeometryType;
     const symbolIdVal = vals.mapSymbolId || (vals as any).symbolId || form.getFieldValue('mapSymbolId');
     const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
     const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
@@ -605,7 +631,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     }
     const validCoords = coordResult.validCoords;
     const wktCoordinates = vals.geometryType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, vals.geometryType) : undefined;
-
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
@@ -690,7 +715,8 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general',
+    {
+      key: 'general',
       label: 'Thông tin chung',
       forceRender: true,
       children: (<div style={drawerFormScrollStyle}>
@@ -732,7 +758,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         <Row gutter={[24, 0]}>
           <Col span={12}>
             <Form.Item name="shipRepairYardName" {...labelProps('Tên cơ sở sửa chữa, đóng tàu')} style={{ marginBottom: spaceFormField }}
-              rules={[{ required: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+              rules={[{ required: true, whitespace: true, message: 'Tên cơ sở sửa chữa, đóng tàu không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
               <Input placeholder="Nhập tên cơ sở sửa chữa, đóng tàu" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
           </Col>
@@ -746,7 +772,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}>
-            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Địa điểm chi tiết không được để trống' }]}>
+            <Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, whitespace: true, message: 'Địa điểm chi tiết không được để trống' }]}>
               <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
             </Form.Item>
           </Col>

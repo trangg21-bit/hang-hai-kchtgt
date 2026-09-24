@@ -45,6 +45,7 @@ import type { Buoy, ChangeHistory, CreateBuoyRequest } from './types';
 import { documentApi } from '../../app/document/api';
 import DocumentUploadModal from '../../app/document/DocumentUploadModal';
 import BuoyFormContent from './BuoyFormContent';
+import { resolveGisFieldValue } from './resolveGisFields';
 import BuoyDetailContent from './BuoyDetailContent';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import { VIETNAM_PROVINCES, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
@@ -757,7 +758,12 @@ export default function BuoyListPage() {
     setPendingDeletedAttachmentIds((prev) => [...prev, uid]);
   }, []);
 
+  // Người dùng đã mở tab GIS trong phiên chỉnh sửa này chưa — dùng để phân biệt
+  // "chưa mount Form.Item" với "đã xóa trắng" (xem resolveGisFieldValue).
+  const gisTabTouchedRef = useRef(false);
+
   const openEditDrawer = useCallback(async (record: Buoy) => {
+    gisTabTouchedRef.current = false;
     setEditingRecord(record);
     setCreateDrawerOpen(true);
     setUploadFileList([]);
@@ -1030,12 +1036,13 @@ export default function BuoyListPage() {
     const manualCoords = createCoords
       .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
       .map((c) => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
-    // Form.Item ở tab GIS có thể chưa mount khi người dùng chỉ thêm file đính kèm.
-    // Giữ nguyên dữ liệu GIS hiện tại thay vì hiểu nhầm là người dùng đã xóa chúng.
-    const resolvedGeometryType = values.geometryType || editingRecord.geometryType;
-    const resolvedMapSymbolId = values.mapSymbolId || editingRecord.mapSymbolId;
-    const resolvedCoordinateSystem = values.coordinateSystem ?? editingRecord.coordinateSystem;
-    const resolvedDisplayRule = values.displayRule || editingRecord.displayRule;
+    // Tab GIS chỉ mount 4 Form.Item dưới đây khi người dùng mở tab, nên `values.x` rỗng có hai
+    // nghĩa. Trước đây luôn fallback về `editingRecord` nên xóa trắng 1 trong 4 trường này bị
+    // khôi phục âm thầm về giá trị cũ — đúng lỗi "xóa trường mà dữ liệu không hề thay đổi".
+    const resolvedGeometryType = resolveGisFieldValue(values.geometryType, editingRecord.geometryType, gisTabTouchedRef.current);
+    const resolvedMapSymbolId = resolveGisFieldValue(values.mapSymbolId, editingRecord.mapSymbolId, gisTabTouchedRef.current);
+    const resolvedCoordinateSystem = resolveGisFieldValue(values.coordinateSystem, editingRecord.coordinateSystem, gisTabTouchedRef.current);
+    const resolvedDisplayRule = resolveGisFieldValue(values.displayRule, editingRecord.displayRule, gisTabTouchedRef.current);
     if (manualCoords.length > 0) {
       if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
         toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
@@ -2126,7 +2133,10 @@ export default function BuoyListPage() {
             currentStationId={editingRecord?.buoyStationId ?? null}
             codeLoading={codeLoading}
             activeTabKey={createTabKey}
-            onTabChange={setCreateTabKey}
+            onTabChange={(k) => {
+              if (k === 'gis') gisTabTouchedRef.current = true;
+              setCreateTabKey(k);
+            }}
             orgUnits={organizations}
             selectedUnitId={createUnitId}
             buoyStations={createStations.map((s) => ({ id: s.id, name: s.name, code: s.code }))}

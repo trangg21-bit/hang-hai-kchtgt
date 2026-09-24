@@ -20,6 +20,7 @@ import {
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
 import { userService } from '../../services/userService';
@@ -194,6 +195,13 @@ function stationFieldLabel(fn: string): string {
 
 // ── History helpers (chuẩn VTS CHK) ───────────────────────────────
 export default function BuoyStationListPage() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
+  const embeddedOpenedRef = useRef<string | null>(null);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
 
@@ -568,7 +576,13 @@ export default function BuoyStationListPage() {
     finally { setDetailLoading(false); }
   }, []);
 
-  const closeDetail = useCallback(() => { setDetailOpen(false); setDetailRecord(null); setDetailFiles([]); setDetailBuoys([]); }, []);
+  const closeDetail = useCallback(() => {
+    setDetailOpen(false);
+    setDetailRecord(null);
+    setDetailFiles([]);
+    setDetailBuoys([]);
+    closeEmbeddedAction();
+  }, [closeEmbeddedAction]);
 
   const openBuoyDetail = useCallback(async (buoyId: string) => {
     setViewBuoyOpen(true);
@@ -864,6 +878,22 @@ export default function BuoyStationListPage() {
     } catch { toast.error('Không thể tải thông tin'); }
   }, [createForm]);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    const requestKey = `${embeddedAction}:${embeddedRecordId}`;
+    if (embeddedOpenedRef.current === requestKey) return;
+    embeddedOpenedRef.current = requestKey;
+    void fetchBuoyStationById(embeddedRecordId)
+      .then((record) => {
+        if (embeddedAction === 'edit') void openEdit(record);
+        else void openDetail(record);
+      })
+      .catch(() => {
+        embeddedOpenedRef.current = null;
+        toast.error('Không thể tải thông tin nhà trạm phao tiêu');
+      });
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction, openDetail, openEdit]);
+
   // ── Columns ───────────────────────────────────────────────────────
   const columns = useMemo<DataTableColumn[]>(() => [
     {
@@ -927,7 +957,7 @@ export default function BuoyStationListPage() {
       render: (v: string) => (v ? (waterwayMap.get(v) || (!isUuidString(v) ? v : '')) : ''),
     },
     {
-      key: 'province', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', width: 250,
+      key: 'province', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'province', width: 250, sortable: true,
       render: (v: string) => (v || ''),
     },
     {
@@ -1471,7 +1501,7 @@ export default function BuoyStationListPage() {
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editRecord ? `Chỉnh sửa thông tin nhà trạm quản lý vận hành phao, tiêu — ${editRecord.name || ''}` : 'Thêm mới thông tin nhà trạm quản lý vận hành phao, tiêu'}</span>}
         open={createOpen}
         destroyOnHidden
-        onClose={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); }}
+        onClose={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); closeEmbeddedAction(); }}
         afterOpenChange={(open) => { if (!open) { setEditRecord(null); } }}
         footer={
           <div style={drawerFooterStyle}>
@@ -1557,6 +1587,7 @@ export default function BuoyStationListPage() {
               setSortOrder('descend');
               setPage(1);
               void fetchData();
+              closeEmbeddedAction();
             }}
           />
         </Form>

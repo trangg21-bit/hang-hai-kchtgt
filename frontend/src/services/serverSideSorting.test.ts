@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Regression fixtures intentionally model heterogeneous list-screen columns. */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import api from './api';
 import { pierCRUD, berthCRUD, stormShelterCRUD, buoyBerthCRUD, daiTtdhCRUD } from './portService';
@@ -119,7 +120,7 @@ describe('Server-Side Sorting Standard (Issue #163)', () => {
   });
 });
 
-import { isStatusOrConditionColumn } from '../components/list-view/DataTable';
+import { isStatusOrConditionColumn } from '../components/list-view/columnUtils';
 
 describe('Status and Condition Column Sort Suppression', () => {
   it('identifies status and condition columns correctly', () => {
@@ -141,4 +142,3 @@ describe('Status and Condition Column Sort Suppression', () => {
     expect(isStatusOrConditionColumn({ key: 'submittedForApprovalAt', label: 'Thời gian gửi duyệt' })).toBe(false);
   });
 });
-

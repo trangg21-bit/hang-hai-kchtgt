@@ -12,6 +12,7 @@ import {
     Select,
     Space,
     Tooltip,
+    Pagination as AntPagination,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,6 +38,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -49,6 +51,7 @@ import {
     drawerTitleStyle,
     fontSizeLg,
     fontSizeMd,
+    fontSizeSm,
     fontWeightBold,
     formatUserDisplayName,
     getRangePickerProps,
@@ -61,6 +64,7 @@ import {
     spaceFormField,
     spaceMd,
     spaceSm,
+    spaceXs,
     spaceXl,
     statusAttention,
     statusBadgeStyle,
@@ -71,11 +75,12 @@ import {
     textSecondary,
     textTertiary,
 } from '../../themetokenchk';
+import { gisCoordinatesToLines } from '../../utils/historyGisFormat';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { ShipRepairYard } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, getStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards, type ChangeHistoryRendererOptions } from '../../utils/changeHistoryRenderer';
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import ShipRepairYardForm from './ShipRepairYardForm';
 
@@ -118,6 +123,8 @@ const TAB_QUERY_MAP: Record<string, string | undefined> = {
   REJECTED_LEVEL2: 'REJECTED_LEVEL2',
   DELETED: 'DELETED',
 };
+
+const HISTORY_CARD_PAGE_SIZE = 10;
 
 // ── Helper: format date ──────────────────────────────────────────────
 
@@ -222,7 +229,9 @@ export const historyFieldLabels: Record<string, string> = {
   coordinateSystem: 'Hệ quy chiếu',
   displayRule: 'Quy tắc hiển thị',
   spatialId: 'Vị trí không gian',
-  'Trạng thái': 'Trạng thái',
+  coordinates: 'Tọa độ GPS',
+  gisCoordinates: 'Tọa độ GPS',
+  'Tọa độ': 'Tọa độ GPS',
   'Tọa độ GIS': 'Tọa độ GPS',
   'Tọa độ GPS': 'Tọa độ GPS',
   'Loại đối tượng GIS': 'Loại đối tượng',
@@ -291,6 +300,22 @@ export function historyFieldValue(
     const m: Record<string, string> = { '1': 'WGS-84', '2': 'VN-2000' };
     return m[v] || v;
   }
+  const upperRaw = v.toUpperCase();
+  if (
+    fn === 'Tọa độ GPS' ||
+    fn === 'Tọa độ GIS' ||
+    fn === 'coordinates' ||
+    fn === 'gisCoordinates' ||
+    fn === 'Tọa độ' ||
+    upperRaw.startsWith('POINT') ||
+    upperRaw.startsWith('LINESTRING') ||
+    upperRaw.startsWith('LINE') ||
+    upperRaw.startsWith('POLYGON') ||
+    upperRaw.startsWith('MULTIPOINT')
+  ) {
+    const formatted = gisCoordinatesToLines(v);
+    if (formatted) return formatted;
+  }
   if (fn.endsWith('At') || fn.endsWith('Date') || fn.includes('Thời điểm') || fn.includes('Ngày')) {
     try {
       let d = dayjs(v);
@@ -299,6 +324,112 @@ export function historyFieldValue(
     } catch { return v; }
   }
   return v;
+}
+
+function formatCoordPointDms(xStr: string, yStr?: string): string {
+  const x = Number(xStr);
+  const y = yStr !== undefined && yStr !== '' ? Number(yStr) : NaN;
+
+  const toDmsString = (val: number, isLat: boolean) => {
+    if (isNaN(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const minFloat = (abs - d) * 60;
+    const m = Math.floor(minFloat);
+    const s = Math.round((minFloat - m) * 60 * 10) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}° ${m}' ${s.toFixed(1)}" ${dir}`;
+  };
+
+  if (!isNaN(x) && !isNaN(y)) {
+    let lat = y;
+    let lng = x;
+    if (x < 35 && y > 50) {
+      lat = x;
+      lng = y;
+    }
+    const latDms = toDmsString(lat, true);
+    const lngDms = toDmsString(lng, false);
+    return `${latDms}, ${lngDms}`;
+  }
+
+  if (!isNaN(x)) {
+    const isLat = x <= 35 && x >= -35;
+    return toDmsString(x, isLat);
+  }
+
+  return xStr;
+}
+
+function parseCoordinatesPoints(raw: string | null): { typeName?: string; points: Array<{ x: string; y: string; index: number }> } | null {
+  if (!raw || raw === '—' || raw === 'Chưa có' || raw === '(null)' || raw === '(trống)') return null;
+  const str = raw.trim();
+
+  if (/^(Đường|Vùng|Điểm)\s+bản\s+đồ\s*\(\d+\s+điểm/i.test(str)) {
+    return { typeName: str, points: [] };
+  }
+
+  let typeName = '';
+  let inner = str;
+
+  if (/^POINT\s*\(/i.test(str)) {
+    typeName = 'Điểm';
+    inner = str.replace(/^POINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINESTRING\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINESTRING\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINE\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINE\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^POLYGON\s*\(\(/i.test(str)) {
+    typeName = 'Vùng';
+    inner = str.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
+  } else if (/^MULTIPOINT\s*\(/i.test(str)) {
+    typeName = 'Tập hợp điểm';
+    inner = str.replace(/^MULTIPOINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (str.startsWith('(') && str.endsWith(')')) {
+    inner = str.slice(1, -1);
+  }
+
+  const pointStrings = inner.split(',').map((s) => s.trim()).filter(Boolean);
+  if (pointStrings.length === 0) return null;
+
+  const points = pointStrings.map((ps, idx) => {
+    const clean = ps.replace(/[()]/g, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return { x: parts[0], y: parts[1], index: idx + 1 };
+    }
+    return { x: clean, y: '', index: idx + 1 };
+  });
+
+  return { typeName, points };
+}
+
+function renderCoordinatesDisplay(val: string | null) {
+  if (!val || val === '—' || val === 'Chưa có' || val === '(null)' || val === '(trống)') {
+    return <span style={{ color: textTertiary }}>{val === 'Chưa có' ? 'Chưa có' : '—'}</span>;
+  }
+  const parsed = parseCoordinatesPoints(val);
+  if (!parsed || parsed.points.length === 0) {
+    return <span style={{ color: textPrimary }}>{parsed?.typeName || val}</span>;
+  }
+  const { typeName, points } = parsed;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
+      {typeName && (
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: actionPrimary }}>
+          {typeName} ({points.length} điểm)
+        </span>
+      )}
+      {points.map((pt) => (
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: textPrimary, lineHeight: 1.5 }}>
+          {points.length > 1 && <span style={{ color: textSecondary, marginRight: spaceXs }}>#{pt.index}:</span>}
+          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export const HISTORY_FIELD_ORDER = [
@@ -319,12 +450,25 @@ export const HISTORY_FIELD_ORDER = [
 // ── Component ────────────────────────────────────────────────────────
 
 export default function ShipRepairYardList() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
+  const embeddedOpenedRef = useRef<string | null>(null);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const authUser = useAuthStore((s) => s.user);
   const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
   const canSaveAndApprove =
     checkCanSaveAndApprove('shiprepairyard', hasPerm, authUser) ||
     checkCanSaveAndApprove('shiprepairfacility', hasPerm, authUser) ||
+    checkCanSaveAndApprove('shipprepairfacility', hasPerm, authUser) ||
+    hasPerm?.('shiprepairyard:approvec2') ||
+    hasPerm?.('shiprepairfacility:approvec2') ||
+    hasPerm?.('shipprepairfacility:approve2') ||
+    hasPerm?.('shiprepairfacility:approve2') ||
+    hasPerm?.('shiprepairyard:approve2') ||
     (isAdmin && isCucLevelUser(authUser));
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
@@ -346,13 +490,30 @@ export default function ShipRepairYardList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
 
-  // ── Data ─────────────────────────────────────────────────────────
+  // ── Data & Sorting ───────────────────────────────────────────────
   const [dataSource, setDataSource] = useState<ShipRepairYard[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [sortField, setSortField] = useState<string | null>('updatedAt');
-  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>('descend');
+  const [sortField, setSortField] = useState<string | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+
+  const handleSort = useCallback((field: string, order: 'asc' | 'desc' | null) => {
+    if (!order) {
+      setSortField(undefined);
+      setSortOrder(null);
+    } else {
+      setSortField(field);
+      setSortOrder(order);
+    }
+    setPage(1);
+  }, []);
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
+    [sortField, sortOrder]
+  );
 
 
   // ── Organizations + Users for lookup ────────────────────────────
@@ -472,6 +633,7 @@ export default function ShipRepairYardList() {
   const [historyMode, setHistoryMode] = useState<'current' | 'all'>('current');
   const [historyEntityNames, setHistoryEntityNames] = useState<Record<string, string>>({});
   const [historyEntityFilter, setHistoryEntityFilter] = useState('');
+  const [historyPage, setHistoryPage] = useState(1);
 
   const filteredHistory = useMemo(() => {
     const q = historySearch.toLowerCase().trim();
@@ -523,6 +685,20 @@ export default function ShipRepairYardList() {
             </span>
           );
         }
+        const rawUpper = String(raw || '').trim().toUpperCase();
+        if (
+          fn === 'Tọa độ GPS' ||
+          fn === 'Tọa độ GIS' ||
+          fn === 'coordinates' ||
+          fn === 'Tọa độ' ||
+          rawUpper.startsWith('POINT') ||
+          rawUpper.startsWith('LINESTRING') ||
+          rawUpper.startsWith('LINE') ||
+          rawUpper.startsWith('POLYGON') ||
+          rawUpper.startsWith('MULTIPOINT')
+        ) {
+          return renderCoordinatesDisplay(raw);
+        }
         const formatted = historyFieldValue(fn, raw, orgMap, symbolMap, portMap, pierMap);
         return isBlankOrDash(formatted) ? '' : formatted;
       },
@@ -553,6 +729,7 @@ export default function ShipRepairYardList() {
     setHistoryTarget(r); setHistoryOpen(true); setHistoryRecords([]);
     setHistorySearchInput(''); setHistorySearch(''); setHistoryFrom(''); setHistoryTo('');
     setHistoryMode('current');
+    setHistoryPage(1);
     if (r.approvalStatus === 'DRAFT' || (r as any).status === 'DRAFT') {
       setHistoryLoading(false);
       return;
@@ -569,12 +746,12 @@ export default function ShipRepairYardList() {
     finally { setHistoryLoading(false); }
   }, []);
 
-  const renderShipRepairYardHistoryTimeline = (records: any[]) => {
+  const renderShipRepairYardHistoryTimeline = (records: any[], page: number) => {
     const q = historySearch.toLowerCase().trim();
     const from = historyFrom ? historyFrom.trim() : '';
     const to = historyTo ? historyTo.trim() : '';
 
-    return renderStandardHistoryCards({
+    const options: ChangeHistoryRendererOptions = {
       records,
       fieldLabels: historyFieldLabels,
       groupOrder: HISTORY_FIELD_ORDER,
@@ -588,6 +765,20 @@ export default function ShipRepairYardList() {
               {name}
             </span>
           );
+        }
+        const rawUpper = String(raw || '').trim().toUpperCase();
+        if (
+          fn === 'Tọa độ GPS' ||
+          fn === 'Tọa độ GIS' ||
+          fn === 'coordinates' ||
+          fn === 'Tọa độ' ||
+          rawUpper.startsWith('POINT') ||
+          rawUpper.startsWith('LINESTRING') ||
+          rawUpper.startsWith('LINE') ||
+          rawUpper.startsWith('POLYGON') ||
+          rawUpper.startsWith('MULTIPOINT')
+        ) {
+          return renderCoordinatesDisplay(raw);
         }
         const formatted = historyFieldValue(fn, raw, orgMap, symbolMap, portMap, pierMap);
         return isBlankOrDash(formatted) ? '' : formatted;
@@ -613,8 +804,16 @@ export default function ShipRepairYardList() {
         return (orgName ? (orgName.split(' - ').pop() || orgName) : (rec.orgUnitName || rec.unitName)) || '';
       },
       emptyMessage: q || from || to ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận',
-    });
+    };
+    const cards = getStandardHistoryCards(options);
+    if (cards.length === 0) return renderStandardHistoryCards(options);
+    const start = (page - 1) * HISTORY_CARD_PAGE_SIZE;
+    return cards.slice(start, start + HISTORY_CARD_PAGE_SIZE);
   };
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historyOpen, historySearch, historyFrom, historyTo, historyMode, historyEntityFilter]);
 
   // ── Load organizations ──────────────────────────────────────────
   useEffect(() => {
@@ -788,7 +987,7 @@ export default function ShipRepairYardList() {
         page,
         pageSize,
         sortBy: (sortField && sortField !== 'stt' && sortField !== 'sequenceNo') ? sortField : 'updatedAt',
-        sortDir: sortOrder === 'ascend' ? 'ASC' : (sortOrder === 'descend' ? 'DESC' : (sortField ? 'DESC' : undefined)),
+        sortDir: sortOrder === 'asc' ? 'ASC' : (sortOrder === 'desc' ? 'DESC' : 'DESC'),
       });
       setDataSource(res.data); setTotal(res.total);
     } catch {
@@ -841,6 +1040,28 @@ export default function ShipRepairYardList() {
     finally { setDetailLoading(false); }
   }, []);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    const requestKey = `${embeddedAction}:${embeddedRecordId}`;
+    if (embeddedOpenedRef.current === requestKey) return;
+    embeddedOpenedRef.current = requestKey;
+    void shipRepairYardCRUD.findById(embeddedRecordId)
+      .then((record) => {
+        if (embeddedAction === 'detail') {
+          void openDetailDrawer(record);
+          return;
+        }
+        setEditShipRepairYardId(record.id);
+        setEditShipRepairYardName(record.shipRepairYardName || '');
+        setEditBaseStatus(record.approvalStatus);
+        setCreateDrawerVisible(true);
+      })
+      .catch(() => {
+        embeddedOpenedRef.current = null;
+        toast.error('Không tải được chi tiết cơ sở sửa chữa, đóng tàu');
+      });
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction, openDetailDrawer]);
+
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: ShipRepairYard) => {
     setDeletingRecord(record);
@@ -855,8 +1076,8 @@ export default function ShipRepairYardList() {
       toast.success('Đã xóa cơ sở sửa chữa, đóng tàu');
       setDeleteModalOpen(false);
       setDeletingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortField(undefined);
+      setSortOrder(null);
       setPage(1);
       void fetchData();
       void fetchCounts(managingUnitId);
@@ -878,8 +1099,8 @@ export default function ShipRepairYardList() {
       }
       toast.success('Đã phê duyệt cơ sở sửa chữa, đóng tàu');
       setApproveModalOpen(false); setApprovingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortField(undefined);
+      setSortOrder(null);
       setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại'); }
@@ -891,8 +1112,8 @@ export default function ShipRepairYardList() {
       await shipRepairYardCRUD.submit(submittingRecord.id);
       toast.success('Đã gửi phê duyệt cơ sở sửa chữa, đóng tàu');
       setSubmitModalOpen(false); setSubmittingRecord(null);
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortField(undefined);
+      setSortOrder(null);
       setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại'); }
@@ -917,8 +1138,8 @@ export default function ShipRepairYardList() {
       }
       toast.success('Đã từ chối phê duyệt');
       setRejectModalOpen(false); setRejectingRecord(null); setRejectReason('');
-      setSortField('updatedAt');
-      setSortOrder('descend');
+      setSortField(undefined);
+      setSortOrder(null);
       setPage(1);
       void fetchData(); void fetchCounts(managingUnitId);
     } catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Từ chối thất bại'); }
@@ -1213,9 +1434,9 @@ export default function ShipRepairYardList() {
       },
       {
         key: 'shipRepairYardName',
-        label: <span>Tên/Mã cơ sở<br />sửa chữa, đóng tàu</span>,
+        label: <span>Tên / Mã cơ sở sửa chữa, đóng tàu</span>,
         dataIndex: 'shipRepairYardName',
-        width: 260,
+        width: 250,
         fixed: 'left' as const,
         sortable: true,
         ellipsis: false,
@@ -1276,6 +1497,7 @@ export default function ShipRepairYardList() {
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'provinceId',
         width: 250,
+        sortable: true,
         cellTitle: (record: ShipRepairYard) => (record?.provinceId ? VIETNAM_PROVINCES[record.provinceId - 1] : '') || '',
         render: (v: number | null) => renderCellWithTooltip(v ? VIETNAM_PROVINCES[v - 1] : null),
       },
@@ -1404,7 +1626,7 @@ export default function ShipRepairYardList() {
     const allColumns = [...baseColumns, ...tailColumns, ...auditColumns];
     return allColumns.map((col) => ({
       ...col,
-      sortOrder: col.sortable ? ((col.key === sortField || col.dataIndex === sortField) ? sortOrder : null) : undefined,
+      sortOrder: col.sortable ? sortOrderFor(col.key || col.dataIndex) : undefined,
     }));
   }, [
     openDetailDrawer,
@@ -1415,8 +1637,7 @@ export default function ShipRepairYardList() {
     pageSize,
     portMap,
     pierOptions,
-    sortField,
-    sortOrder,
+    sortOrderFor,
   ]);
 
   // ── Detail drawer content ────────────────────────────────────────
@@ -1547,16 +1768,7 @@ export default function ShipRepairYardList() {
           rowKey="id"
           rowActions={rowActions}
           loading={isLoading}
-          onSort={(k: string, o: 'asc' | 'desc' | null) => {
-            setPage(1);
-            if (!o) {
-              setSortField('updatedAt');
-              setSortOrder('descend');
-            } else {
-              setSortField(k);
-              setSortOrder(o === 'asc' ? 'ascend' : 'descend');
-            }
-          }}
+          onSort={handleSort}
           scroll={{ x: 'max-content' }}
         />
         <Pagination total={total} current={page} pageSize={pageSize}
@@ -1575,12 +1787,14 @@ export default function ShipRepairYardList() {
         onClose={() => {
           setCreateDrawerVisible(false);
           createForm.resetFields();
+          closeEmbeddedAction();
         }}
         footer={
           <div style={drawerFooterStyle}>
             {(() => {
-              const st = !editShipRepairYardId ? 'DRAFT' : (editBaseStatus ? String(editBaseStatus).toUpperCase() : 'DRAFT');
-              if (st === 'APPROVED') {
+              const isCreate = !editShipRepairYardId;
+              const st = isCreate ? 'DRAFT' : (editBaseStatus ? String(editBaseStatus).toUpperCase() : 'DRAFT');
+              if (!isCreate && st === 'APPROVED') {
                 return canSaveAndApprove ? (
                   <Button
                     htmlType="button"
@@ -1593,7 +1807,7 @@ export default function ShipRepairYardList() {
                   </Button>
                 ) : null;
               }
-              if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'TU_CHOI') {
+              if (!isCreate && (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'TU_CHOI')) {
                 return (
                   <Button
                     htmlType="button"
@@ -1625,7 +1839,7 @@ export default function ShipRepairYardList() {
                   >
                     Lưu và gửi phê duyệt
                   </Button>
-                  {canSaveAndApprove && (
+                  {(isCreate || canSaveAndApprove) && (
                     <Button
                       htmlType="button"
                       type="primary"
@@ -1662,11 +1876,12 @@ export default function ShipRepairYardList() {
             id={editShipRepairYardId}
             onFinish={() => {
               setCreateDrawerVisible(false);
-              setSortField('updatedAt');
-              setSortOrder('descend');
+              setSortField(undefined);
+              setSortOrder(null);
               setPage(1);
               void fetchData();
               void fetchCounts(managingUnitId);
+              closeEmbeddedAction();
             }}
             onSubmittingChange={setSubmitting}
           />
@@ -1680,7 +1895,7 @@ export default function ShipRepairYardList() {
         className="ship-repair-yard-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết cơ sở sửa chữa, đóng tàu{detailRecord ? ` - ${detailRecord.shipRepairYardName}` : ''}</span>}
         open={detailDrawerVisible}
-        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); }}
+        onClose={() => { setDetailDrawerVisible(false); setDetailRecord(null); closeEmbeddedAction(); }}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px', overflow: 'hidden' },
@@ -1848,8 +2063,19 @@ export default function ShipRepairYardList() {
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {historyLoading ? <LoadingSkeleton rows={5} /> : historyRecords.length === 0 ? (
           <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa có thay đổi nào được ghi nhận</div></div>
-        ) : renderShipRepairYardHistoryTimeline(historyRecords)}
+        ) : renderShipRepairYardHistoryTimeline(filteredHistory, historyPage)}
         </div>
+        {historyUpdateCount > HISTORY_CARD_PAGE_SIZE && (
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', paddingTop: spaceMd }}>
+            <AntPagination
+              current={historyPage}
+              pageSize={HISTORY_CARD_PAGE_SIZE}
+              total={historyUpdateCount}
+              showSizeChanger={false}
+              onChange={setHistoryPage}
+            />
+          </div>
+        )}
       </AppDrawer>
     </div>
     </ThemeTokenProvider>

@@ -68,6 +68,7 @@ import {
   serializeCoordinatesToWkt,
   GEOMETRY_POINT_COUNT,
   validateDmsCoordinates,
+  ddToDms,
   dmsToDd,
 } from '../../utils/gisGeometry';
 
@@ -122,20 +123,6 @@ const sectionTitleStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: 8,
 };
-
-function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
-  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  const abs = Math.abs(dd);
-  let d = Math.floor(abs);
-  let mFloat = (abs - d) * 60;
-  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
-  let m = Math.floor(mFloat);
-  let sFloat = (mFloat - m) * 60;
-  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
-  let s = Math.round(sFloat * 100) / 100;
-  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
-}
 
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
@@ -404,6 +391,14 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     return list;
   }, [internalOrgUnits, operatingOrganizations, record?.operatingOrgId, record?.operatingOrgName]);
 
+  // Chốt chống ghi đè: effect nạp dữ liệu bên dưới phụ thuộc `initialData` — prop mà List thay bằng
+  // OBJECT MỚI tại nhiều chỗ gọi setSelectedRecord — nên nó sẽ chạy lại, gọi getById() lần nữa rồi
+  // setFieldsValue() ghi đè giá trị server lên đúng những ô người dùng vừa xóa ⇒ xóa trắng trường
+  // "không hề có gì thay đổi" khi lưu. Ref dưới đây bảo đảm mỗi lượt mở chỉ nạp đúng một lần.
+  const prefilledKeyRef = useRef<string | null>(null);
+  const isInitialLoadDoneRef = useRef(false);
+  const prevGeometryTypeRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     actionTypeRef.current = isCreateMode ? 'draft' : 'update';
     setActionType(isCreateMode ? 'draft' : 'update');
@@ -416,15 +411,23 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       setPendingDeletedAttachments([]);
       setCoordinateList([]);
       setGpsError(null);
+      prefilledKeyRef.current = null;
+      isInitialLoadDoneRef.current = false;
+      prevGeometryTypeRef.current = undefined;
       return;
     }
 
     setTabKey('general');
 
     const targetId = editId || initialData?.id;
+    // Chỉ nạp lại khi THẬT SỰ mở bản ghi khác/khác lượt mở (xem chú thích ở khai báo prefilledKeyRef).
+    const prefillKey = String(targetId ?? 'create');
+    if (prefilledKeyRef.current === prefillKey) return;
+    prefilledKeyRef.current = prefillKey;
 
     if (targetId) {
       setIsLoading(true);
+      isInitialLoadDoneRef.current = false;
       aisSystemService.getById(targetId)
         .then((full) => {
           setRecord(full);
@@ -457,6 +460,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           }
           const initialLocId = full.vtsOperationCenterId ? `op_${full.vtsOperationCenterId}` : full.radarStationId ? `radar_${full.radarStationId}` : undefined;
           const geom = full.geometryType || undefined;
+          prevGeometryTypeRef.current = geom;
           form.setFieldsValue({
             code: full.code,
             name: full.name,
@@ -493,13 +497,17 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             setCoordinateList([]);
           }
           setGpsError(null);
+          isInitialLoadDoneRef.current = true;
         })
         .catch(() => {
           toast.error('Không thể tải thông tin hệ thống AIS');
+          isInitialLoadDoneRef.current = true;
         })
         .finally(() => setIsLoading(false));
     } else {
       // Create mode
+      isInitialLoadDoneRef.current = true;
+      prevGeometryTypeRef.current = undefined;
       form.resetFields();
       form.setFieldsValue({
         conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
@@ -531,20 +539,31 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   }, [open, editId, initialData, form]);
 
   const handleGeometryTypeChange = (val: string | undefined) => {
-    form.setFieldValue('geometryType', val);
-    if (!val) {
+    form.setFieldsValue({ geometryType: val });
+  };
+
+  // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
+  useEffect(() => {
+    // Nếu chưa hoàn tất nạp dữ liệu ban đầu, không can thiệp để tránh reset tọa độ
+    if (!isInitialLoadDoneRef.current) return;
+
+    // Nếu loại hình học không thay đổi, bỏ qua
+    if (prevGeometryTypeRef.current === watchedGeometryType) return;
+    prevGeometryTypeRef.current = watchedGeometryType;
+
+    if (!watchedGeometryType) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
       setGpsError(null);
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
+    const count = (watchedGeometryType && GEOMETRY_POINT_COUNT[watchedGeometryType as keyof typeof GEOMETRY_POINT_COUNT]) ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (val === 'POINT' && prev.length > 1) {
+      if (watchedGeometryType === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -554,7 +573,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       return prev;
     });
     setGpsError(null);
-  };
+  }, [watchedGeometryType, form]);
 
   const effectiveOrgUnitId = watchedOrgUnitId || record?.orgUnitId;
 
@@ -675,31 +694,33 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
 
-    const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
-    const currentSymbolId = (values.symbolId !== undefined)
-      ? values.symbolId
-      : (form.getFieldValue('symbolId') ?? record?.symbolId ?? (record as any)?.symbol);
-
-    // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-    const geomType = currentGeometryType || undefined;
+    // Lấy toàn bộ giá trị từ form (kể cả các trường ở tab chưa focus nhờ forceRender)
+    const allValues = { ...form.getFieldsValue(true), ...values };
+    const geomType = allValues.geometryType || form.getFieldValue('geometryType') || record?.geometryType || undefined;
+    const symId = allValues.symbolId ?? form.getFieldValue('symbolId') ?? (record?.symbolId ? String(record.symbolId) : null);
     let wkt: string | undefined = undefined;
 
     if (geomType) {
-      const coordResult = validateDmsCoordinates(coordinateList, geomType);
-      if (!coordResult.valid) {
-        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-        toast.error(errMsg);
-        setGpsError(errMsg);
-        setTabKey('gis');
-        return;
+      const hasAnyInput = coordinateList.some((c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null);
+      if (hasAnyInput) {
+        const coordResult = validateDmsCoordinates(coordinateList, geomType);
+        if (!coordResult.valid) {
+          const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+          toast.error(errMsg);
+          setGpsError(errMsg);
+          setTabKey('gis');
+          return;
+        }
+        const validCoords = coordResult.validCoords;
+        wkt = validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
+      } else if (!isCreateMode && record?.coordinates) {
+        wkt = record.coordinates;
       }
-      const validCoords = coordResult.validCoords;
-      wkt = validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : undefined;
     }
 
     setIsSubmitting(true);
     try {
-      const locationVal = values.locationId;
+      const locationVal = allValues.locationId ?? values.locationId;
       let vtsCenterId: string | undefined = undefined;
       let radarId: string | undefined = undefined;
 
@@ -716,27 +737,25 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       }
 
       const payload = {
-        code: values.code?.trim(),
-        name: values.name?.trim(),
+        code: (allValues.code ?? values.code)?.trim() ?? null,
+        name: (allValues.name ?? values.name)?.trim() ?? null,
         vtsOperationCenterId: vtsCenterId ?? null,
         radarStationId: radarId ?? null,
-        operatingOrgId: values.operatingOrgId,
-        orgUnitId: values.orgUnitId,
-        provinceId: values.provinceId != null ? Number(values.provinceId) : null,
-        unitOfMeasure: values.unitOfMeasure,
-        quantity: values.quantity,
-        model: values.model?.trim() ?? null,
-        manufacturer: values.manufacturer?.trim() ?? null,
-        commissioningYear: values.commissioningYear ? (dayjs.isDayjs(values.commissioningYear) ? values.commissioningYear.year() : Number(values.commissioningYear)) : null,
-        conditionStatus: values.conditionStatus,
-        detailedLocation: values.detailedLocation?.trim() ?? null,
-        specifications: values.specifications?.trim() ?? null,
-        maintenanceInfo: values.maintenanceInfo?.trim() ?? null,
-        note: values.note?.trim() ?? null,
+        operatingOrgId: (allValues.operatingOrgId ?? values.operatingOrgId) ?? null,
+        orgUnitId: (allValues.orgUnitId ?? values.orgUnitId) ?? null,
+        provinceId: (allValues.provinceId ?? values.provinceId) != null ? Number(allValues.provinceId ?? values.provinceId) : null,
+        unitOfMeasure: (allValues.unitOfMeasure ?? values.unitOfMeasure) ?? null,
+        quantity: (allValues.quantity ?? values.quantity) ?? null,
+        model: (allValues.model ?? values.model)?.trim() ?? null,
+        manufacturer: (allValues.manufacturer ?? values.manufacturer)?.trim() ?? null,
+        commissioningYear: (allValues.commissioningYear ?? values.commissioningYear) ? (dayjs.isDayjs(allValues.commissioningYear ?? values.commissioningYear) ? (allValues.commissioningYear ?? values.commissioningYear).year() : Number(allValues.commissioningYear ?? values.commissioningYear)) : null,
+        conditionStatus: (allValues.conditionStatus ?? values.conditionStatus) ?? null,
+        detailedLocation: (allValues.detailedLocation ?? values.detailedLocation)?.trim() ?? null,
+        specifications: (allValues.specifications ?? values.specifications)?.trim() ?? null,
+        maintenanceInfo: (allValues.maintenanceInfo ?? values.maintenanceInfo)?.trim() ?? null,
+        note: (allValues.note ?? values.note)?.trim() ?? null,
         geometryType: geomType ?? null,
-        symbolId: currentSymbolId ?? null,
-        coordinateSystem: geomType ? (values.coordinateSystem || form.getFieldValue('coordinateSystem') || 1) : null,
-        displayRule: geomType ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
+        symbolId: symId ?? null,
         coordinates: wkt ?? null,
       };
 

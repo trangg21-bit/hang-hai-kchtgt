@@ -331,12 +331,18 @@ public class VtsAssistService {
         : List.of();
 
     OperationalStatus opStatus = parseOperationalStatus(operationalStatus);
-    Boolean isDeleted = Boolean.FALSE;
+    // Quy chuẩn AGENTS.md: Tab "Tất cả" (approvalStatus == null/blank/ALL) bắt buộc hiển thị cả bản ghi đã xóa (isDeleted = null)
+    // để khớp chính xác tổng số bản ghi trên badge tab Tất cả và "Tổng cộng" ở footer bảng.
+    // Khi chọn tab "Đã xóa", isDeleted = Boolean.TRUE.
+    // Khi chọn các tab trạng thái cụ thể khác (DRAFT, PENDING...), isDeleted = Boolean.FALSE.
+    Boolean isDeleted = null;
     ApprovalStatus apprStatus = null;
     if (approvalStatus != null && !approvalStatus.isBlank()) {
       String upper = approvalStatus.trim().toUpperCase();
       if ("DELETED".equals(upper) || "ARCHIVED".equals(upper) || "DA_XOA".equals(upper)) {
         isDeleted = Boolean.TRUE;
+      } else if ("ALL".equals(upper) || "TAT_CA".equals(upper)) {
+        isDeleted = null;
       } else {
         isDeleted = Boolean.FALSE;
         apprStatus = parseApprovalStatus(approvalStatus);
@@ -704,7 +710,7 @@ public class VtsAssistService {
         if (jdbcTemplate != null) {
           List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
-          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_station WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
         }
         return rawValue;
@@ -863,6 +869,9 @@ public class VtsAssistService {
       }
     }
 
+    boolean isDeletedEntity = entity.getDeletedAt() != null || entity.getDeletedBy() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED;
+    ApprovalStatus effectiveApprovalStatus = isDeletedEntity ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus();
+
     return VtsAssistResponse.builder()
       .id(entity.getId())
       .deviceCode(entity.getDeviceCode())
@@ -882,7 +891,7 @@ public class VtsAssistService {
       .unitOfMeasure(entity.getUnitOfMeasure())
       .yearOfUse(entity.getYearOfUse())
       .operationalStatus(entity.getOperationalStatus())
-      .approvalStatus(entity.getApprovalStatus())
+      .approvalStatus(effectiveApprovalStatus)
       .approverLevel1(entity.getApproverLevel1())
       .approverLevel1Name(resolveUserName(entity.getApproverLevel1()))
       .approvedDateLevel1(entity.getApprovedDateLevel1())
@@ -999,6 +1008,9 @@ public class VtsAssistService {
       }
       if ("REJECTED_LEVEL2".equals(upper) || "REJECTED_L2".equals(upper)) {
         return ApprovalStatus.REJECTED_LEVEL2;
+      }
+      if ("ARCHIVED".equals(upper) || "DELETED".equals(upper) || "DA_XOA".equals(upper)) {
+        return ApprovalStatus.ARCHIVED;
       }
       return null;
     } catch (Exception e) {

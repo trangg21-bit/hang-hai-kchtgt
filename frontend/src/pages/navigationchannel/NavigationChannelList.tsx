@@ -9,18 +9,17 @@ import { userService } from '../../services/userService';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
 import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { usePermissionStore } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import type { NavigationChannelResponse, ListParams, ApprovalStatus } from '../../types/navigationChannel';
 import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
 import { CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } from '../../types/navigationChannel';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { symbolService, type Symbol as MapSymbol } from '../../services/symbolService';
 import { gisCoordinatesToLines, gisGeometryTypeLabel } from '../../utils/historyGisFormat';
-import { fmtNum } from '../../utils/numFmt';
 import {
   statusOperational,
   statusCritical,
@@ -33,7 +32,6 @@ import {
   borderDefault,
   DRAWER_WIDTH,
   fontSizeLg,
-  fontWeightMedium,
   fontWeightBold,
   radiusPill,
   spaceSm,
@@ -134,6 +132,13 @@ const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | nu
   from || to ? [from ? dayjs(from) : null, to ? dayjs(to) : null] : null;
 
 export default function NavigationChannelList() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
+  const embeddedOpenedRef = useRef<string | null>(null);
   const isInIframe = window.self !== window.top;
   const authUser = useAuthStore((s) => s.user);
   const hasPerm = useCallback((key: string) => usePermissionStore.getState().hasPermission(key), []);
@@ -401,6 +406,29 @@ export default function NavigationChannelList() {
       // Fallback giữ nguyên summary record nếu API getById lỗi
     }
   }, []);
+
+  const closeDetail = useCallback(() => {
+    setDetailOpen(false);
+    setDetailRecord(null);
+    closeEmbeddedAction();
+  }, [closeEmbeddedAction]);
+
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    const requestKey = `${embeddedAction}:${embeddedRecordId}`;
+    if (embeddedOpenedRef.current === requestKey) return;
+    embeddedOpenedRef.current = requestKey;
+    if (embeddedAction === 'edit') {
+      openModal('edit', embeddedRecordId);
+      return;
+    }
+    void navigationChannelCRUD.getById(embeddedRecordId)
+      .then((record) => void openDetail(record))
+      .catch(() => {
+        embeddedOpenedRef.current = null;
+        message.error('Không tải được chi tiết luồng hàng hải');
+      });
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction, openDetail, openModal]);
 
   // Map user id → tên hiển thị cho các cột cán bộ (backend NavigationChannel chưa trả name như các module khác)
   const userMap = useMemo(() => {
@@ -713,7 +741,7 @@ export default function NavigationChannelList() {
         return dayjs(sValue).format('DD/MM/YYYY');
       }
     }
-    return undefined;
+    return sValue;
   }, [seaportMap, orgMap, symbols]);
 
   // ── Helper render text cell with Tooltip (chuẩn /beacon-stations) ───
@@ -1522,7 +1550,7 @@ export default function NavigationChannelList() {
         open={isModalOpen}
         editId={editingId}
         mode={modalMode}
-        onCancel={() => { setIsModalOpen(false); setEditingId(null); }}
+        onCancel={() => { setIsModalOpen(false); setEditingId(null); closeEmbeddedAction(); }}
         onSuccess={(savedRecord) => {
           setIsModalOpen(false);
           setEditingId(null);
@@ -1542,6 +1570,7 @@ export default function NavigationChannelList() {
             });
           }
           refreshAfterMutation();
+          closeEmbeddedAction();
         }}
       />
 
@@ -1556,7 +1585,7 @@ export default function NavigationChannelList() {
         }
         open={detailOpen}
         destroyOnHidden
-        onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
+        onClose={closeDetail}
         width={DRAWER_WIDTH}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1572,7 +1601,7 @@ export default function NavigationChannelList() {
             seaportMap={seaportMap}
             seaportOptions={seaportOptions}
             symbols={symbols}
-            onClose={() => { setDetailOpen(false); setDetailRecord(null); }}
+            onClose={closeDetail}
           />
         )}
       </AppDrawer>
@@ -1660,7 +1689,7 @@ export default function NavigationChannelList() {
           setHistoryTarget(null);
           setHistoryRecords([]);
         }}
-        entityName={historyTarget?.channelName || historyTarget?.code}
+        entityName={historyTarget?.channelName || historyTarget?.channelCode}
         records={historyRecords}
         loading={loadingHistory}
         serverFiltered

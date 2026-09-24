@@ -20,6 +20,7 @@ import {
   Typography,
   Drawer,
   Tooltip,
+  Pagination as AntPagination,
 } from "antd";
 import { OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, normalizeSearchText } from "../../components/org-unit";
 import { organizationService } from "../organizationService";
@@ -60,7 +61,7 @@ import AppDrawer from "../../components/shared/AppDrawer";
 import CctvForm, { type CctvFormRef } from "./CctvForm";
 import { DetailTable } from "../../components/shared/DetailTable";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
-import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
+import { isAttachmentField, mergeAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
@@ -178,6 +179,7 @@ const APPROVAL_STATUS_MAP: Record<string, string> = {
   REJECTED_LEVEL1: 'Từ chối cấp Cảng vụ/Chi cục',
   REJECTED_LEVEL2: 'Từ chối cấp Cục',
   DELETED: 'Đã xóa',
+  ARCHIVED: 'Đã xóa',
 };
 
 const APPROVAL_COLOR: Record<string, string> = {
@@ -188,7 +190,18 @@ const APPROVAL_COLOR: Record<string, string> = {
   REJECTED_LEVEL1: statusCritical,
   REJECTED_LEVEL2: statusCritical,
   DELETED: statusCritical,
+  ARCHIVED: statusCritical,
 };
+
+export function isCctvDeleted(record?: Partial<CctvResponse> | null): boolean {
+  if (!record) return false;
+  return Boolean(
+    record.deletedAt ||
+    record.deletedBy ||
+    record.approvalStatus === 'DELETED' ||
+    record.approvalStatus === 'ARCHIVED'
+  );
+}
 
 // ── Card/section trong Drawer Xem chi tiết — đồng bộ chuẩn /berth (BerthDetailContent) ──
 const cctvDetailSectionBoxStyle: React.CSSProperties = {
@@ -590,13 +603,11 @@ const CctvListPage = () => {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [historyEntityName, setHistoryEntityName] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
   const [historySearch, setHistorySearch] = useState('');
   const [historySearchInput, setHistorySearchInput] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState<string>('');
   const [historyDateTo, setHistoryDateTo] = useState<string>('');
-  const [historyPage, setHistoryPage] = useState(0);
+  const [historyPage, setHistoryPage] = useState(1);
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
 
   // ── History map helpers ────────────────────────────────────────
@@ -763,11 +774,11 @@ const CctvListPage = () => {
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
-        key: "vtsSystemName",
+        key: "attachedInfrastructureName",
         label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        sortable: false,
+        sortOrder: sortOrderFor("attachedInfrastructureName"),
         cellTitle: (record: CctvResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -776,7 +787,7 @@ const CctvListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        sortable: false,
+        sortOrder: sortOrderFor("operatingUnitName"),
         cellTitle: (record: CctvResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -786,6 +797,7 @@ const CctvListPage = () => {
         dataIndex: "provinceName",
         width: 250,
         ellipsis: false,
+        sortable: true,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: CctvResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
@@ -858,7 +870,7 @@ const CctvListPage = () => {
         width: 300,
         type: "status" as const,
                 render: (val: string, record: CctvResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          const isDeleted = isCctvDeleted(record) || val === 'DELETED' || val === 'ARCHIVED';
           return renderApprovalBadge(val, isDeleted);
         },
       },
@@ -1019,7 +1031,7 @@ const CctvListPage = () => {
     return val;
   }
 
-  const HISTORY_PAGE_SIZE = 20;
+  const HISTORY_CARD_PAGE_SIZE = 10;
 
   const historyTimestamp = (item: any): string =>
     item.approvedDate || item.changedAt || item.createdAt || '';
@@ -1105,19 +1117,15 @@ const CctvListPage = () => {
     if (selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') {
       setHistoryRecords([]);
       setLoadingHistory(false);
-      setLoadingMoreHistory(false);
-      setHasMoreHistory(false);
       return;
     }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setLoadingHistory(true);
-      setLoadingMoreHistory(false);
-      setHasMoreHistory(true);
       setHistoryRecords([]);
-      setHistoryPage(0);
+      setHistoryPage(1);
       try {
-        const history = await fetchCctvHistory(selectedRecord.id, 0, HISTORY_PAGE_SIZE, {
+        const history = await fetchCctvHistory(selectedRecord.id, undefined, undefined, {
           keyword: historySearch,
           fromDate: historyDateFrom,
           toDate: historyDateTo,
@@ -1125,7 +1133,6 @@ const CctvListPage = () => {
         if (cancelled) return;
         const items = history || [];
         setHistoryRecords(items);
-        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
       } catch {
         if (!cancelled) toast.error('Không thể tải lịch sử');
       } finally {
@@ -1137,35 +1144,6 @@ const CctvListPage = () => {
       window.clearTimeout(timer);
     };
   }, [historyModalVisible, selectedRecord, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
-
-  const loadMoreHistory = async () => {
-    if (!selectedRecord || loadingHistory || loadingMoreHistory || !hasMoreHistory || selectedRecord.approvalStatus === 'DRAFT' || (selectedRecord as any).status === 'DRAFT') return;
-    setLoadingMoreHistory(true);
-    try {
-      const nextPage = historyPage + 1;
-      const history = await fetchCctvHistory(selectedRecord.id, nextPage, HISTORY_PAGE_SIZE, {
-        keyword: historySearch,
-        fromDate: historyDateFrom,
-        toDate: historyDateTo,
-      });
-      if (history && history.length > 0) {
-        setHistoryRecords((prev) => [...prev, ...history]);
-      }
-      setHistoryPage(nextPage);
-      setHasMoreHistory((history || []).length === HISTORY_PAGE_SIZE);
-    } catch {
-      /* ignore */
-    } finally {
-      setLoadingMoreHistory(false);
-    }
-  };
-
-  const handleHistoryScroll = (e: any) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) {
-      loadMoreHistory();
-    }
-  };
 
   const HISTORY_FIELD_ORDER = [
     'orgUnitId', 'Đơn vị quản lý',
@@ -1267,7 +1245,7 @@ const CctvListPage = () => {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup)
         prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, status: r.status, approvalLevel: r.approvalLevel, items: [r] });
@@ -1283,7 +1261,9 @@ const CctvListPage = () => {
         return [{ field: fn, oldValue: ov, newValue: nv }];
       });
 
-      const attachmentChanges = deduplicateAttachmentHistoryChanges(allChanges.filter((c: any) => isAttachmentField(c.field)));
+      const attachmentChanges = mergeAttachmentHistoryChanges(
+        allChanges.filter((c: any) => isAttachmentField(c.field)),
+      );
       const seenDisplayFields = new Set<string>();
       const nonAttachmentChanges: typeof allChanges = [];
       for (const c of allChanges.filter((c: any) => !isAttachmentField(c.field))) {
@@ -1330,11 +1310,15 @@ const CctvListPage = () => {
   }, [historyRecords]);
 
   const historyFieldCount = validHistoryGroups.length;
+  const pagedHistoryGroups = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_CARD_PAGE_SIZE;
+    return validHistoryGroups.slice(start, start + HISTORY_CARD_PAGE_SIZE);
+  }, [historyPage, validHistoryGroups]);
 
-  const renderCctvHistoryTimeline = () => {
+  const renderCctvHistoryTimeline = (groups = validHistoryGroups) => {
     const q = historySearch.toLowerCase().trim();
 
-    if (validHistoryGroups.length === 0)
+    if (groups.length === 0)
       return (
         <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
           <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
@@ -1349,7 +1333,7 @@ const CctvListPage = () => {
 
     return (
       <div>
-        {validHistoryGroups.map((g, gi) => {
+        {groups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : '';
@@ -1403,7 +1387,7 @@ const CctvListPage = () => {
                 gridTemplateColumns: 'minmax(310px, 0.38fr) minmax(0, 1fr)',
                 gap: spaceLg,
                 alignItems: 'start',
-                marginBottom: gi < validHistoryGroups.length - 1 ? spaceMd : 0,
+                marginBottom: gi < groups.length - 1 ? spaceMd : 0,
               }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
@@ -1542,7 +1526,7 @@ const CctvListPage = () => {
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
     (record: CctvResponse) => {
-      const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+      const isDeleted = isCctvDeleted(record);
       if (isDeleted) {
         const actions: Array<{ key: string; label: string; icon?: React.ReactNode; danger?: boolean; disabled?: boolean; onClick: () => void }> = [];
         if (hasPerm?.("cctv:read")) {
@@ -1564,13 +1548,11 @@ const CctvListPage = () => {
               setHistoryModalVisible(true);
               setHistoryRecords([]);
               setLoadingHistory(false);
-              setLoadingMoreHistory(false);
-              setHasMoreHistory(true);
               setHistorySearch('');
               setHistorySearchInput('');
               setHistoryDateFrom('');
               setHistoryDateTo('');
-              setHistoryPage(0);
+              setHistoryPage(1);
             },
           });
         }
@@ -1612,13 +1594,11 @@ const CctvListPage = () => {
             setHistoryModalVisible(true);
             setHistoryRecords([]);
             setLoadingHistory(false);
-            setLoadingMoreHistory(false);
-            setHasMoreHistory(record.approvalStatus !== 'DRAFT' && (record as any).status !== 'DRAFT');
             setHistorySearch('');
             setHistorySearchInput('');
             setHistoryDateFrom('');
             setHistoryDateTo('');
-            setHistoryPage(0);
+            setHistoryPage(1);
           },
         });
       }
@@ -1820,14 +1800,18 @@ const CctvListPage = () => {
     fetchTabCounts();
   }, [orgUnitReady, fetchData, fetchTabCounts]);
 
-  const handleFilterApply = useCallback(() => {
+  const handleFilterApply = useCallback((overrides?: { deviceName?: string; deviceCode?: string }) => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
     if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
-    setFilterDeviceName(inputDeviceName);
-    setFilterDeviceCode(inputDeviceCode);
+    const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+    const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+    setInputDeviceName(nextName);
+    setInputDeviceCode(nextCode);
+    setFilterDeviceName(nextName);
+    setFilterDeviceCode(nextCode);
     setPage(0);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
@@ -2325,21 +2309,37 @@ const CctvListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị" allowClear
+              <Input
+                placeholder="Tìm theo tên thiết bị"
+                allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
+                onBlur={() => setInputDeviceName((prev) => (prev ? prev.trim() : ""))}
+                onPressEnter={(e) => {
+                  const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceName).trim();
+                  setInputDeviceName(val);
+                  handleFilterApply({ deviceName: val });
+                }}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
             </SidebarFilterField>
 
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị" allowClear
+                  <Input
+                    placeholder="Tìm theo mã thiết bị"
+                    allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
-                    onPressEnter={handleFilterApply}
-                    style={{ borderRadius: radiusPill, height: 40 }} />
+                    onBlur={() => setInputDeviceCode((prev) => (prev ? prev.trim() : ""))}
+                    onPressEnter={(e) => {
+                      const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceCode).trim();
+                      setInputDeviceCode(val);
+                      handleFilterApply({ deviceCode: val });
+                    }}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
@@ -2720,7 +2720,7 @@ const CctvListPage = () => {
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
-                              {renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy))}
+                              {renderApprovalBadge(selectedRecord.approvalStatus, isCctvDeleted(selectedRecord))}
                             </span>
                           </div>
                           <div className="chk-detail-row">
@@ -3576,16 +3576,26 @@ const CctvListPage = () => {
             Tìm kiếm
           </Button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {loadingHistory && historyRecords.length === 0 ? <LoadingSkeleton rows={5} /> : validHistoryGroups.length === 0 ? (
             <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}><HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} /><div style={{ color: textTertiary, fontSize: fontSizeMd }}>{historySearch || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div></div>
           ) : (
             <>
-              {renderCctvHistoryTimeline()}
-              {loadingMoreHistory && <div style={{ textAlign: 'center', padding: `${spaceMd}px 0`, color: textTertiary, fontSize: fontSizeMd }}>Đang tải thêm...</div>}
+              {renderCctvHistoryTimeline(pagedHistoryGroups)}
             </>
           )}
         </div>
+        {historyFieldCount > HISTORY_CARD_PAGE_SIZE && (
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', paddingTop: spaceMd }}>
+            <AntPagination
+              current={historyPage}
+              pageSize={HISTORY_CARD_PAGE_SIZE}
+              total={historyFieldCount}
+              showSizeChanger={false}
+              onChange={setHistoryPage}
+            />
+          </div>
+        )}
       </Drawer>
     </ThemeTokenProvider>
   );

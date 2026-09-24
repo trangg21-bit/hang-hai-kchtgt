@@ -64,6 +64,7 @@ import {
     submitScada,
 } from "./api";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
+import { PaginatedHistoryList } from "../../components/shared/HistoryPagination";
 import { OPERATIONAL_STATUS_OPTIONS } from "./schema";
 import type { ApprovalRequest, ScadaResponse } from "./types";
 
@@ -107,7 +108,7 @@ function formatUnitOfMeasure(code: number | null | undefined): string {
 
 import dayjs from "dayjs";
 import GisLocationSelector from "../../components/gis/GisLocationSelector";
-import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
+import { deduplicateAttachmentHistoryChanges, isAttachmentField, mergeAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { AppDrawer } from "../../components/shared/AppDrawer";
 import { DetailTable } from "../../components/shared/DetailTable";
 import InfrastructureAttachmentTab from "../../components/shared/InfrastructureAttachmentTab";
@@ -764,11 +765,11 @@ const ScadaListPage = () => {
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
-        key: "vtsSystemName",
+        key: "attachedInfrastructureName",
         label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        sortable: false,
+        sortOrder: sortOrderFor("attachedInfrastructureName"),
         cellTitle: (record: ScadaResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -777,7 +778,7 @@ const ScadaListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        sortable: false,
+        sortOrder: sortOrderFor("operatingUnitName"),
         cellTitle: (record: ScadaResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -787,6 +788,7 @@ const ScadaListPage = () => {
         dataIndex: "provinceName",
         width: 250,
         ellipsis: false,
+        sortable: true,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: ScadaResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
@@ -859,7 +861,7 @@ const ScadaListPage = () => {
         width: 300,
         type: "status" as const,
                 render: (val: string, record: ScadaResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          const isDeleted = isScadaDeleted(record);
           return renderApprovalBadge(val, isDeleted);
         },
       },
@@ -1299,7 +1301,7 @@ const ScadaListPage = () => {
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      if (prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
 
@@ -1317,7 +1319,7 @@ const ScadaListPage = () => {
         seenLabels.add(displayLabel);
         nonAttachmentChanges.push({ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) });
       }
-      const attachmentChanges = deduplicateAttachmentHistoryChanges(
+      const attachmentChanges = mergeAttachmentHistoryChanges(deduplicateAttachmentHistoryChanges(
         g.items
           .filter((item: any) => isAttachmentField(historyField(item)))
           .flatMap((item: any) => {
@@ -1325,7 +1327,7 @@ const ScadaListPage = () => {
             const fn = historyField(item);
             return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
           })
-      );
+      ));
       const changes = [...nonAttachmentChanges, ...attachmentChanges];
       const orderedChanges = [...changes]
         .filter(
@@ -1355,7 +1357,7 @@ const ScadaListPage = () => {
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      if (prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
     if (groups.length === 0)
@@ -1372,8 +1374,11 @@ const ScadaListPage = () => {
     };
 
     return (
+      <PaginatedHistoryList
+        items={groups}
+        renderItems={(pageGroups) => (
       <div>
-        {groups.map((g, gi) => {
+        {pageGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
@@ -1395,7 +1400,7 @@ const ScadaListPage = () => {
             seenLabels.add(displayLabel);
             nonAttachmentChanges.push({ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) });
           }
-          const attachmentChanges = deduplicateAttachmentHistoryChanges(
+          const attachmentChanges = mergeAttachmentHistoryChanges(deduplicateAttachmentHistoryChanges(
             g.items
               .filter((item: any) => isAttachmentField(historyField(item)))
               .flatMap((item: any) => {
@@ -1403,7 +1408,7 @@ const ScadaListPage = () => {
                 const fn = historyField(item);
                 return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
               })
-          );
+          ));
           const changes = [...nonAttachmentChanges, ...attachmentChanges];
           const barColor = actionPrimary;
           const isCreate = changes.every(
@@ -1449,7 +1454,7 @@ const ScadaListPage = () => {
           return (
             <div
               key={gi}
-              style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}
+              style={{ ...historyGroupGridStyle, marginBottom: gi < pageGroups.length - 1 ? spaceSm : 0 }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -1570,6 +1575,8 @@ const ScadaListPage = () => {
           );
         })}
       </div>
+        )}
+      />
     );
   };
 
@@ -1870,14 +1877,18 @@ const ScadaListPage = () => {
     fetchTabCounts();
   }, [orgUnitReady, fetchData, fetchTabCounts]);
 
-  const handleFilterApply = useCallback(() => {
+  const handleFilterApply = useCallback((overrides?: { deviceName?: string; deviceCode?: string }) => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
     if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
-    setFilterDeviceName(inputDeviceName);
-    setFilterDeviceCode(inputDeviceCode);
+    const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+    const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+    setInputDeviceName(nextName);
+    setInputDeviceCode(nextCode);
+    setFilterDeviceName(nextName);
+    setFilterDeviceCode(nextCode);
     setPage(0);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
@@ -2309,21 +2320,37 @@ const ScadaListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị" allowClear
+              <Input
+                placeholder="Tìm theo tên thiết bị"
+                allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
+                onBlur={() => setInputDeviceName((prev) => (prev ? prev.trim() : ""))}
+                onPressEnter={(e) => {
+                  const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceName).trim();
+                  setInputDeviceName(val);
+                  handleFilterApply({ deviceName: val });
+                }}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
             </SidebarFilterField>
 
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị" allowClear
+                  <Input
+                    placeholder="Tìm theo mã thiết bị"
+                    allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
-                    onPressEnter={handleFilterApply}
-                    style={{ borderRadius: radiusPill, height: 40 }} />
+                    onBlur={() => setInputDeviceCode((prev) => (prev ? prev.trim() : ""))}
+                    onPressEnter={(e) => {
+                      const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceCode).trim();
+                      setInputDeviceCode(val);
+                      handleFilterApply({ deviceCode: val });
+                    }}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
@@ -2698,7 +2725,7 @@ const ScadaListPage = () => {
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
-                              {renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy))}
+                              {renderApprovalBadge(selectedRecord.approvalStatus, isScadaDeleted(selectedRecord))}
                             </span>
                           </div>
                           <div className="chk-detail-row">

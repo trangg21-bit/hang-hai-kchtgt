@@ -176,8 +176,15 @@ public class ShipRepairYardService {
         //             SecurityUtils.getCurrentUserPermissions(), SecurityUtils.isElevatedAdministrator());
         //     entity.setSecurityLevel(request.getSecurityLevel());
         // }
-        if (request.isFieldPresent("shipRepairYardName"))
-            entity.setShipRepairYardName(trimToNull(request.getShipRepairYardName()));
+        // ship_repair_yard_name là cột NOT NULL: xóa trắng phải trả lỗi rõ ràng thay vì gán null
+        // rồi để CSDL chặn ở saveAndFlush — vi phạm ràng buộc sẽ ROLLBACK cả request, khiến người
+        // dùng thấy "lưu xong nhưng không có gì thay đổi" (mọi thay đổi khác cùng lượt cũng mất).
+        if (request.isFieldPresent("shipRepairYardName")) {
+            String yardName = trimToNull(request.getShipRepairYardName());
+            if (yardName == null)
+                throw new IllegalArgumentException("Tên cơ sở sửa chữa, đóng tàu không được để trống");
+            entity.setShipRepairYardName(yardName);
+        }
         if (request.isFieldPresent("portId")) {
             if (request.getPortId() != null) {
                 Port parent = portRepository.findById(request.getPortId())
@@ -185,7 +192,8 @@ public class ShipRepairYardService {
                 entity.setPortId(request.getPortId());
                 entity.setOrgUnitId(parent.getOrgUnitId());
             } else {
-                entity.setPortId(null);
+                // port_id cũng là cột NOT NULL — cùng lý do trên, không được gán null.
+                throw new IllegalArgumentException("Thuộc cảng biển không được để trống");
             }
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> entity.setOrgUnitId(p.getOrgUnitId()));

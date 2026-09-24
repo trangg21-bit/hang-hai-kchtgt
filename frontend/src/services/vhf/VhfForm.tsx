@@ -690,7 +690,12 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   }));
 
   const handleSave = useCallback(async (saveAction: VhfSaveAction) => {
-    const values = form.getFieldsValue(true);
+    if (!isEdit && deviceCodeLoading) {
+      toast.error('Mã thiết bị VHF đang được sinh, vui lòng chờ');
+      setActiveTabKey('general');
+      return;
+    }
+
     try {
       await form.validateFields();
     } catch (e: unknown) {
@@ -705,6 +710,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       }
       return;
     }
+    const values = form.getFieldsValue(true);
 
     if (values.operationalStatus === undefined || values.operationalStatus === null) {
       toast.error('Tình trạng hoạt động là bắt buộc');
@@ -799,7 +805,14 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           await submitVhf(id);
         }
       } else {
+        const rawCode = String(values.deviceCode || form.getFieldValue('deviceCode') || '').trim();
+        const finalDeviceCode = rawCode || (await generateVhfCode());
+        if (!rawCode && finalDeviceCode) {
+          form.setFieldValue('deviceCode', finalDeviceCode);
+        }
+
         const createPayload: CreateVhfRequest = {
+          deviceCode: finalDeviceCode,
           deviceName: String(values.deviceName || '').trim(),
           detailedLocation: trimOrNull(values.detailedLocation),
           manufacturer: trimOrNull(values.manufacturer),
@@ -855,7 +868,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish, deviceCodeLoading]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (3 Section Cards chuẩn /cctv, /berth)
@@ -955,6 +968,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
                   {...labelProps('Mã thiết bị')}
                   style={{ marginBottom: spaceFormField }}
                   tooltip="Mã thiết bị được sinh tự động"
+                  rules={[{ required: !isEdit, message: 'Mã thiết bị VHF chưa được sinh' }]}
                 >
                   <Input
                     disabled

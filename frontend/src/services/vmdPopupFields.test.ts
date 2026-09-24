@@ -156,4 +156,106 @@ describe('resolveVmdPopupFields and getPopupValueByPath', () => {
     expect(nameField).toBeDefined();
     expect(getPopupValueByPath(mockPierData, nameField!.key)).toBe('Cầu cảng A1');
   });
+
+  it('maps every Radar popup field to the current RadarStationResponse DTO', async () => {
+    const { resolveVmdPopupFields, getPopupValueByPath } = await import('../pages/gis/vmdPopupFields');
+    const radarData = {
+      code: 'RADAR-000044',
+      stationName: 'Tên trạm radar trên bản đồ',
+      orgUnitName: 'Cảng vụ hàng hải Hà Tĩnh',
+      provinceId: 77,
+      location: 'Địa điểm chi tiết 123@',
+      updatedAt: '2026-09-24T10:14:41',
+      updatedByName: 'Nguyễn Văn An',
+      note: 'Ghi chú',
+      conditionStatus: '0',
+      approvalStatus: 'APPROVED',
+      operatingUnitName: 'Ban Quản lý Cảng Bến Đầm',
+      vtsSystemName: 'Tên hệ thống VTS',
+      vtsOperationCenterName: 'Tên trung tâm điều hành VTS',
+      unitOfMeasure: 'Bến',
+      quantity: 77777,
+      towerHeight: 5555.557,
+      radarRange: 9999,
+    };
+    const fields = resolveVmdPopupFields('RADAR_STATION_LEGACY', 'Trạm radar', radarData);
+    const valueByLabel = (label: string) => {
+      const field = fields.find((candidate) => candidate.label === label);
+      expect(field, label).toBeDefined();
+      return getPopupValueByPath(radarData, field!.key);
+    };
+
+    expect(valueByLabel('Địa điểm chi tiết')).toBe('Địa điểm chi tiết 123@');
+    expect(valueByLabel('Tình trạng')).toBe('0');
+    expect(valueByLabel('Đơn vị khai thác')).toBe('Ban Quản lý Cảng Bến Đầm');
+    expect(valueByLabel('Thuộc hệ thống VTS')).toBe('Tên hệ thống VTS');
+    expect(valueByLabel('Thuộc trung tâm điều hành VTS')).toBe('Tên trung tâm điều hành VTS');
+    expect(valueByLabel('Đơn vị tính')).toBe('Bến');
+    expect(valueByLabel('Số lượng')).toBe(77777);
+    expect(valueByLabel('Chiều cao tháp radar')).toBe(5555.557);
+    expect(valueByLabel('Tầm hiệu lực tháp radar')).toBe(9999);
+  });
+
+  it.each([
+    ['CCTV', 'Hệ thống CCTV'],
+    ['SCADA', 'Hệ thống SCADA'],
+    ['TRANSMISSION', 'Hệ thống truyền dẫn'],
+    ['VTS_ASSIST', 'Hệ thống phụ trợ VTS'],
+  ])('maps shared device DTO aliases for %s', async (infrastructureType, displayType) => {
+    const { resolveVmdPopupFields, getPopupValueByPath } = await import('../pages/gis/vmdPopupFields');
+    const deviceData = {
+      deviceCode: 'DEVICE-01',
+      deviceName: 'Thiết bị 01',
+      detailedLocation: 'Phòng điều hành',
+      operatingUnitName: 'Đơn vị khai thác',
+      unitOfMeasure: 1,
+      quantity: 2,
+      yearOfUse: 2025,
+      specifications: 'Thông số kỹ thuật',
+      manufacturer: 'Nhà sản xuất',
+      maintenanceInformation: 'Thông tin bảo trì',
+    };
+    const fields = resolveVmdPopupFields(infrastructureType, displayType, deviceData);
+    const valueByLabel = (label: string) => {
+      const field = fields.find((candidate) => candidate.label === label);
+      expect(field, `${infrastructureType}: ${label}`).toBeDefined();
+      return getPopupValueByPath(deviceData, field!.key);
+    };
+
+    expect(valueByLabel('Mã thiết bị')).toBe('DEVICE-01');
+    expect(valueByLabel('Tên thiết bị')).toBe('Thiết bị 01');
+    expect(valueByLabel('Đơn vị khai thác')).toBe('Đơn vị khai thác');
+    expect(valueByLabel('Đơn vị tính')).toBe(1);
+    expect(valueByLabel('Số lượng')).toBe(2);
+    expect(valueByLabel('Năm đưa vào sử dụng')).toBe(2025);
+    expect(valueByLabel('Thông số kỹ thuật')).toBe('Thông số kỹ thuật');
+    expect(valueByLabel('Hãng sản xuất')).toBe('Nhà sản xuất');
+    expect(valueByLabel('Thông tin bảo trì')).toBe('Thông tin bảo trì');
+  });
+
+  it.each([
+    ['INMARSAT_STATION', 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng'],
+    ['COSPAS_SARSAT_STATION', 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam'],
+    ['LRIT_STATION', 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)'],
+  ])('maps shared station DTO aliases for %s', async (infrastructureType, displayType) => {
+    const { resolveVmdPopupFields, getPopupValueByPath } = await import('../pages/gis/vmdPopupFields');
+    const stationData = {
+      stationCode: 'STATION-01',
+      stationName: 'Đài thông tin 01',
+      locationAddress: 'Số 1 đường biển',
+      coverageArea: 'Biển Đông',
+      servicesProvided: 'Thông tin an toàn hàng hải',
+    };
+    const fields = resolveVmdPopupFields(infrastructureType, displayType, stationData);
+    const valueByLabel = (label: string) => {
+      const field = fields.find((candidate) => candidate.label === label);
+      expect(field, `${infrastructureType}: ${label}`).toBeDefined();
+      return getPopupValueByPath(stationData, field!.key);
+    };
+
+    expect(valueByLabel('Mã đài')).toBe('STATION-01');
+    expect(valueByLabel('Tên đài')).toBe('Đài thông tin 01');
+    expect(valueByLabel('Địa điểm chi tiết')).toBe('Số 1 đường biển');
+    expect(valueByLabel('Dịch vụ cung cấp')).toBe('Thông tin an toàn hàng hải');
+  });
 });

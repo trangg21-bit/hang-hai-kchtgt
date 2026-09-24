@@ -555,11 +555,26 @@ public class PortService {
                 .build();
 
         // Update mutable fields — code (portCode) is immutable
-        if (request.getPortName() != null && !request.getPortName().isBlank()) entity.setPortName(request.getPortName());
-        entity.setProvince(request.getProvince());
+        // portName là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng,
+        // TUYỆT ĐỐI không được âm thầm giữ lại giá trị cũ rồi vẫn trả về thành công —
+        // đó chính là lỗi "xóa trường mà dữ liệu không hề thay đổi".
+        if (request.getPortName() != null) {
+            if (request.getPortName().isBlank()) {
+                throw new IllegalArgumentException("Tên cảng biển không được để trống");
+            }
+            entity.setPortName(request.getPortName().trim());
+        }
+        // Các DTO rút gọn (danh sách/GIS) có thể không gửi lại toàn bộ trường bắt buộc.
+        // Không cho payload thiếu ghi đè null lên dữ liệu đã duyệt qua nhiều lần chỉnh sửa.
+        if (request.getProvince() != null && !request.getProvince().isBlank()) {
+            entity.setProvince(request.getProvince().trim());
+        }
 
         entity.setArea(request.getArea());
         entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
+        // UpdatePortRequest hiện không theo dõi field presence, vì vậy null cũng là trạng thái
+        // của payload rút gọn không gửi orgUnitId. Giữ nguyên đơn vị cũ trong trường hợp này;
+        // validation bắt buộc được thực hiện ở form đầy đủ trước khi gửi.
         if (request.getOrgUnitId() != null) {
             UUID oldOrgUnitId = entity.getOrgUnitId();
             entity.setOrgUnitId(request.getOrgUnitId());
@@ -578,8 +593,14 @@ public class PortService {
                 });
             }
         }
-        entity.setPortGroup(request.getPortGroup());
-        entity.setMapSymbolId(request.getMapSymbolId());
+        if (request.getPortGroup() != null) {
+            entity.setPortGroup(request.getPortGroup());
+        }
+        if (request.getMapSymbolId() != null) {
+            entity.setMapSymbolId(request.getMapSymbolId());
+        }
+        // operationalStatus: màn Cảng biển không có ô nhập cho trường này nên frontend
+        // không thể xóa trắng; giữ nguyên giá trị cũ khi request không gửi giá trị.
         if (request.getOperationalStatus() != null) {
             entity.setOperationalStatus(request.getOperationalStatus());
         }
@@ -595,9 +616,15 @@ public class PortService {
 
         // Update extended fields
         entity.setDetailedLocation(request.getDetailedLocation());
-        entity.setPortClass(request.getPortClass());
-        entity.setCoordinateSystem(request.getCoordinateSystem());
-        entity.setDisplayRule(request.getDisplayRule());
+        if (request.getPortClass() != null) {
+            entity.setPortClass(request.getPortClass());
+        }
+        if (request.getCoordinateSystem() != null) {
+            entity.setCoordinateSystem(request.getCoordinateSystem());
+        }
+        if (request.getDisplayRule() != null) {
+            entity.setDisplayRule(request.getDisplayRule());
+        }
 
         // Update zobjDataSub fields
         entity.setWaterAreaScope(request.getWaterAreaScope());
@@ -903,9 +930,9 @@ public class PortService {
                                     String preResolvedSubmitterName, String preResolvedApproverLevel1Name,
                                     String preResolvedApproverLevel2Name,
                                     boolean includeChildCollections) {
-        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName 
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName
                 : userResolverService.resolveName(entity.getCreatedBy());
-        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName 
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName
                 : userResolverService.resolveName(entity.getUpdatedBy());
         // Fallback to UUID substring if name resolution returns null
         if (createdBy == null && entity.getCreatedBy() != null) createdBy = entity.getCreatedBy().toString().substring(0, 8);
@@ -1345,14 +1372,6 @@ public class PortService {
                 || port.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2;
         if (!approved) return;
 
-        // Guard: Thêm mới cảng biển không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát updatedAt)
-        if (port.getCreatedAt() != null && port.getUpdatedAt() != null) {
-            long diffSec = Math.abs(java.time.Duration.between(port.getCreatedAt(), port.getUpdatedAt()).toSeconds());
-            if (diffSec <= 5 && !Boolean.FALSE.equals(skipHistory)) {
-                return;
-            }
-        }
-
         String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
         String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
         if (java.util.Objects.equals(oldVal, newVal)) {
@@ -1367,6 +1386,7 @@ public class PortService {
                 .approvedBy(userId)
                 .approvedDate(java.time.LocalDateTime.now())
                 .changedField("File đính kèm")
+                .reason((uploaded ? "Tải lên tệp đính kèm: " : "Xóa tệp đính kèm: ") + affectedFileName)
                 .previousValue(oldVal)
                 .newValue(newVal)
                 .build());

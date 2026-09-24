@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- DataTable is the adapter for heterogeneous Ant Design records and column renderers. */
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Table, Dropdown, Button, Empty } from 'antd';
 import { MoreOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import type { MenuProps } from 'antd';
 import { layout } from '../../theme';
+import { tableSortIcon as defaultTableSortIcon } from '../../themetokenchk';
 import { useThemeToken, THEME_SCOPE_CLASS, type ThemeToken } from '../../context/ThemeTokenContext';
 import EmptyState from '../EmptyState';
+import { extractHeaderLabel, isStatusOrConditionColumn } from './columnUtils';
 import { getNextSortOrder, resolveSortField, type TableSortOrder } from './sortUtils';
 
 const ACTION_COLUMN_WIDTH = 60;
@@ -24,55 +26,6 @@ const ACTION_COLUMN_WIDTH = 60;
 const HEADER_CHAR_WIDTH = 8.8;
 const HEADER_HORIZONTAL_PADDING = 24;
 const HEADER_SORTER_WIDTH = 22;
-
-function extractHeaderLabel(val: any): string {
-  if (!val) return '';
-  if (typeof val === 'string') return val;
-  if (typeof val === 'number') return String(val);
-  if (React.isValidElement(val)) {
-    if ((val as any).type === 'br') return '\n';
-    return extractHeaderLabel((val.props as any)?.children);
-  }
-  if (Array.isArray(val)) return val.map(extractHeaderLabel).join('');
-  return '';
-}
-
-export function isStatusOrConditionColumn(column: any): boolean {
-  if (!column) return false;
-  if (column.type === 'status') return true;
-  const key = String(column.key || '').trim().toLowerCase();
-  const dataKey = String(column.dataIndex || '').trim().toLowerCase();
-  const statusKeys = [
-    'status',
-    'approvalstatus',
-    'approval_status',
-    'condition',
-    'conditionstatus',
-    'condition_status',
-    'operationalstatus',
-    'operational_status',
-    'assetcondition',
-    'portstatus',
-    'port_status',
-    'statusoperation',
-    'status_operation',
-    'operatingstatus',
-    'operating_status',
-    'validitystatus',
-  ];
-  if (statusKeys.includes(key) || statusKeys.includes(dataKey)) return true;
-
-  const rawTitle = extractHeaderLabel(column.title ?? column.label).trim().toLowerCase();
-  if (
-    rawTitle.includes('trạng thái') ||
-    rawTitle.includes('tình trạng') ||
-    rawTitle === 'status' ||
-    rawTitle === 'condition'
-  ) {
-    return true;
-  }
-  return false;
-}
 
 function headerMinWidth(column: any): number {
   const label = extractHeaderLabel(column?.label ?? column?.title);
@@ -200,10 +153,9 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   const tableShellRef = useRef<HTMLDivElement>(null);
   const isSortingRef = useRef(false);
-  // AntD does not reliably emit `null` as the third value when supplied in
-  // sortDirections. Keep the last server-side state so the three-click cycle
-  // remains deterministic even when its internal sorter loops back to ascend.
-  const lastServerSortRef = useRef<{ field?: string; order: TableSortOrder }>({ order: null });
+  // Uncontrolled server-side sort state: holds active sort field & direction
+  // when the list page supplies `onSort` but does not pass `sortOrder` on columns.
+  const [serverSort, setServerSort] = useState<{ field?: string; order: TableSortOrder }>({ order: null });
   // Pages without an `onSort` callback use AntD's local comparator. Keep its
   // order controlled as well; otherwise AntD only cycles between two states
   // and never gives us a reliable third "clear sort" action.
@@ -258,28 +210,32 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   // Nới bề rộng cột cho vừa tiêu đề TRƯỚC mọi phép tính bề rộng phía dưới, để tổng bề
   // rộng bảng và scroll ngang khớp với bề rộng cột thực tế.
-  const columns = (rawColumns as any[] | undefined)
-    ?.filter((column) => !column?.hidden)
-    .map(withHeaderSafeWidth) as typeof rawColumns;
+  const columns = useMemo(
+    () => (rawColumns as any[] | undefined)
+      ?.filter((column) => !column?.hidden)
+      .map(withHeaderSafeWidth) as typeof rawColumns,
+    [rawColumns],
+  );
 
-  useEffect(() => {
-    // `columnKey` is the stable identity supplied by the list page. AntD's
-    // `sorter.field` may instead be a derived dataIndex (and can be stale
-    // while a controlled table is re-rendering). Keep the last state keyed by
-    // that stable identity so a click on "Cán bộ cập nhật" cannot be applied
-    // to the preceding Name/Code column.
+  // Trạng thái sort do page truyền vào là dữ liệu dẫn xuất, không đồng bộ ngược
+  // bằng effect. Việc setState trong effect ở đây từng tạo vòng lặp render vô hạn
+  // khi `rawColumns` được tạo lại, làm các màn quản lý KCHT không thể mở.
+  const controlledServerSort = useMemo(() => {
     const activeColumn = (columns as DataTableColumn[] | undefined)?.find(
       (column) => !isStatusOrConditionColumn(column) && (column.sortOrder === 'ascend' || column.sortOrder === 'descend'),
     );
     if (activeColumn) {
-      lastServerSortRef.current = {
+      return {
         field: activeColumn.key ?? activeColumn.dataIndex,
         order: activeColumn.sortOrder,
       };
-    } else if (onSort) {
-      lastServerSortRef.current = { order: null };
     }
-  }, [columns, onSort]);
+    const hasExplicitNull = (columns as DataTableColumn[] | undefined)?.some(
+      (column) => column.sortOrder === null,
+    );
+    return hasExplicitNull ? { order: null as TableSortOrder } : undefined;
+  }, [columns]);
+  const effectiveServerSort = controlledServerSort ?? serverSort;
 
   const hasFixedColumns = Boolean(columns?.some((c: any) => c.fixed));
   const hasGeneratedActionColumn = Boolean(
@@ -337,7 +293,8 @@ export const DataTable: React.FC<DataTableProps> = ({
     );
   }
 
-  const cols = (columns as any[]) || [];
+  // Không mutate mảng `columns` đã memoize khi cần chèn cột giả cố định.
+  const cols = [...((columns as any[]) || [])];
 
   if (rest.rowSelection?.fixed && !hasFixedColumns) {
     cols.unshift({
@@ -353,7 +310,25 @@ export const DataTable: React.FC<DataTableProps> = ({
   const widthlessStretchColumns = shouldStretchColumns
     ? cols.filter((column) => column.width == null && !column.fixed && column.key !== 'actions')
     : [];
-  const explicitStretchColumn = shouldStretchColumns && widthlessStretchColumns.length === 0
+  const candidateStretchColumns = shouldStretchColumns && widthlessStretchColumns.length === 0
+    ? cols.filter((column) =>
+        !column.fixed &&
+        column.key !== 'actions' &&
+        column.key !== 'status' &&
+        column.key !== 'stt' &&
+        column.key !== 'icon' &&
+        column.key !== 'image' &&
+        column.type !== 'mono' &&
+        !isStatusOrConditionColumn(column) &&
+        typeof column.width === 'number' &&
+        column.width > 0,
+      )
+    : [];
+  const candidateTotalWidth = candidateStretchColumns.reduce(
+    (sum, column) => sum + (typeof column.width === 'number' ? column.width : 0),
+    0,
+  );
+  const explicitStretchColumn = shouldStretchColumns && widthlessStretchColumns.length === 0 && candidateStretchColumns.length === 0
     ? cols
       .filter((column) => !column.fixed && column.key !== 'actions' && column.key !== 'status')
       .reduce<any>((widestColumn, column) => {
@@ -372,6 +347,25 @@ export const DataTable: React.FC<DataTableProps> = ({
   const explicitStretchColumnWidth = explicitStretchColumn && remainingViewportWidth !== undefined
     ? (typeof explicitStretchColumn.width === 'number' ? explicitStretchColumn.width : 0) + remainingViewportWidth
     : undefined;
+
+  const computeColumnWidth = (column: any) => {
+    if (widthlessStretchColumns.some((c) => c.key === column.key)) {
+      return widthlessStretchColumnWidth;
+    }
+    if (candidateStretchColumns.length > 0 && remainingViewportWidth !== undefined && remainingViewportWidth > 0 && candidateTotalWidth > 0) {
+      const isCandidate = candidateStretchColumns.some((c) => c.key === column.key);
+      if (isCandidate) {
+        const ratio = (typeof column.width === 'number' ? column.width : 0) / candidateTotalWidth;
+        const extra = Math.floor(remainingViewportWidth * ratio);
+        return (typeof column.width === 'number' ? column.width : 0) + extra;
+      }
+      return column.width;
+    }
+    if (column.key === explicitStretchColumn?.key) {
+      return explicitStretchColumnWidth;
+    }
+    return column.width;
+  };
 
   const antdColumns: ColumnsType<any> | undefined = cols.map((col: any) => {
     const dataKey = col.dataIndex || col.key;
@@ -399,15 +393,13 @@ export const DataTable: React.FC<DataTableProps> = ({
     const colObj: any = {
       key: col.key,
       dataIndex: dataKey,
-      width: widthlessStretchColumns.some((column) => column.key === col.key)
-        ? widthlessStretchColumnWidth
-        : (col.key === explicitStretchColumn?.key ? explicitStretchColumnWidth : col.width),
+      width: computeColumnWidth(col),
       sorter: isSortable ? sorterFn : undefined,
       // AntD supplies the standard sorter affordance. Server-side columns
       // intercept the click below, because AntD itself has only two concrete
       // directions and cannot reliably represent the third cleared state.
       sortDirections: isSortable ? ['ascend', 'descend'] : undefined,
-      ...(isSortable && tableSortIcon ? { sortIcon: tableSortIcon } : null),
+      ...(isSortable ? { sortIcon: tableSortIcon || defaultTableSortIcon } : null),
       showSorterTooltip: false,
       align: col.align,
       fixed: col.fixed,
@@ -455,14 +447,13 @@ userSelect: 'none',
           const field = col.key ?? dataKey;
           const currentOrder = col.sortOrder !== undefined
             ? col.sortOrder
-            : lastServerSortRef.current.field === field
-              ? lastServerSortRef.current.order
-              : null;
+            : (effectiveServerSort.field === field ? effectiveServerSort.order : null);
           const nextOrder = getNextSortOrder(currentOrder);
-          lastServerSortRef.current = {
-            field,
-            order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null,
-          };
+          const nextTableOrder: TableSortOrder = nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null;
+          setServerSort({
+            field: nextTableOrder ? field : undefined,
+            order: nextTableOrder,
+          });
           isSortingRef.current = true;
           onSort(field, nextOrder);
         } : undefined,
@@ -505,10 +496,11 @@ userSelect: 'none',
       },
     };
 
-if (col.sortOrder !== undefined) {
+    if (col.sortOrder !== undefined) {
       colObj.sortOrder = col.sortOrder;
     } else if (onSort && isSortable) {
-      colObj.sortOrder = null;
+      const field = col.key ?? dataKey;
+      colObj.sortOrder = effectiveServerSort.field === field ? effectiveServerSort.order ?? null : null;
     } else if (isSortable) {
       colObj.sortOrder = localSort.field === dataKey ? localSort.order ?? null : null;
     }
@@ -563,7 +555,7 @@ if (col.sortOrder !== undefined) {
       // jump to Name/Code on columns rendered from composite data.
       const field =
         resolveSortField(activeSorter, columns as DataTableColumn[] | undefined) ??
-        (!onSort ? localSort.field : lastServerSortRef.current.field);
+        (!onSort ? localSort.field : effectiveServerSort.field);
       const sourceColumn = field
         ? (columns as DataTableColumn[] | undefined)?.find(
             (column) => column.key === field || column.dataIndex === field,
@@ -574,13 +566,16 @@ if (col.sortOrder !== undefined) {
           ? sourceColumn.sortOrder
           : !onSort && localSort.field === field
             ? localSort.order
-            : lastServerSortRef.current.field === field
-              ? lastServerSortRef.current.order
+            : effectiveServerSort.field === field
+              ? effectiveServerSort.order
               : null;
         const nextOrder = getNextSortOrder(currentOrder);
-        lastServerSortRef.current = { field, order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null };
         if (onSort) {
           isSortingRef.current = true;
+          setServerSort({
+            field: nextOrder ? field : undefined,
+            order: nextOrder === 'asc' ? 'ascend' : nextOrder === 'desc' ? 'descend' : null,
+          });
           onSort(field, nextOrder);
         } else {
           setLocalSort({

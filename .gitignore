@@ -57,4 +57,4 @@ data.rar
 backups/
 src/main/java/com/hanghai/kchtg/seeder/UatDataSeeder.java
 
-
+.pnpm-store/

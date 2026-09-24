@@ -24,6 +24,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
+import { PaginatedHistoryList } from "../../components/shared/HistoryPagination";
+import { isAttachmentField, mergeAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import toast from "../../components/ToastNotification";
@@ -898,11 +900,11 @@ const TransmissionListPage = () => {
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
-        key: "vtsSystemName",
+        key: "attachedInfrastructureName",
         label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        sortable: false,
+        sortOrder: sortOrderFor("attachedInfrastructureName"),
         cellTitle: (record: TransmissionResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -911,7 +913,7 @@ const TransmissionListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        sortable: false,
+        sortOrder: sortOrderFor("operatingUnitName"),
         cellTitle: (record: TransmissionResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -921,6 +923,7 @@ const TransmissionListPage = () => {
         dataIndex: "provinceName",
         width: 250,
         ellipsis: false,
+        sortable: true,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: TransmissionResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
@@ -1370,7 +1373,7 @@ const TransmissionListPage = () => {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1407,35 +1410,13 @@ const TransmissionListPage = () => {
           return [{ field: fn, oldValue: ov, newValue: nv }];
         });
 
-      let attachmentChange: { field: string; oldValue: string | null; newValue: string | null } | null = null;
-      if (attachmentItems.length > 0) {
-        const addedFiles: string[] = [];
-        const deletedFiles: string[] = [];
-        for (const it of attachmentItems) {
-          const ov = historyOldValue(it);
-          const nv = historyNewValue(it);
-          const st = String(it.status || '').toUpperCase();
-          if (st === 'ATTACHMENT_UPLOADED' || (isBlank(ov) && !isBlank(nv))) {
-            if (nv && !isBlank(nv) && !addedFiles.includes(nv.trim())) {
-              addedFiles.push(nv.trim());
-            }
-          } else if (st === 'ATTACHMENT_DELETED' || (!isBlank(ov) && isBlank(nv))) {
-            if (ov && !isBlank(ov) && !deletedFiles.includes(ov.trim())) {
-              deletedFiles.push(ov.trim());
-            }
-          } else if (nv && ov && nv !== ov) {
-            if (!addedFiles.includes(nv.trim())) addedFiles.push(nv.trim());
-            if (!deletedFiles.includes(ov.trim())) deletedFiles.push(ov.trim());
-          }
-        }
-        if (addedFiles.length > 0 || deletedFiles.length > 0) {
-          attachmentChange = {
-            field: 'Tài liệu đính kèm',
-            oldValue: deletedFiles.length > 0 ? deletedFiles.join(', ') : 'Chưa có',
-            newValue: addedFiles.length > 0 ? addedFiles.join(', ') : 'Chưa có',
-          };
-        }
-      }
+      const attachmentChanges = mergeAttachmentHistoryChanges(
+        attachmentItems.map((item: any) => ({
+          field: historyField(item) || 'Tài liệu đính kèm',
+          oldValue: historyOldValue(item),
+          newValue: historyNewValue(item),
+        })),
+      );
 
       const seenDisplayFields = new Set<string>();
       const dedupedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
@@ -1458,7 +1439,7 @@ const TransmissionListPage = () => {
 
       const changes = [
         ...dedupedChanges,
-        ...(attachmentChange ? [attachmentChange] : []),
+        ...attachmentChanges,
       ];
 
       const orderedChanges = [...changes]
@@ -1516,8 +1497,11 @@ const TransmissionListPage = () => {
     };
 
     return (
+      <PaginatedHistoryList
+        items={validHistoryGroups}
+        renderItems={(pageGroups) => (
       <div>
-        {validHistoryGroups.map((g, gi) => {
+        {pageGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
@@ -1564,7 +1548,7 @@ const TransmissionListPage = () => {
           const barColor = am.color;
 
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < pageGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -1668,6 +1652,8 @@ const TransmissionListPage = () => {
           );
         })}
       </div>
+        )}
+      />
     );
   };
 
@@ -1973,14 +1959,18 @@ const TransmissionListPage = () => {
     fetchTabCounts();
   }, [orgUnitReady, fetchData, fetchTabCounts]);
 
-  const handleFilterApply = useCallback(() => {
+  const handleFilterApply = useCallback((overrides?: { deviceName?: string; deviceCode?: string }) => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
     if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
-    setFilterDeviceName(inputDeviceName);
-    setFilterDeviceCode(inputDeviceCode);
+    const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+    const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+    setInputDeviceName(nextName);
+    setInputDeviceCode(nextCode);
+    setFilterDeviceName(nextName);
+    setFilterDeviceCode(nextCode);
     setPage(0);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
@@ -2436,21 +2426,37 @@ const TransmissionListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị" allowClear
+              <Input
+                placeholder="Tìm theo tên thiết bị"
+                allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
+                onBlur={() => setInputDeviceName((prev) => (prev ? prev.trim() : ""))}
+                onPressEnter={(e) => {
+                  const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceName).trim();
+                  setInputDeviceName(val);
+                  handleFilterApply({ deviceName: val });
+                }}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
             </SidebarFilterField>
 
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị" allowClear
+                  <Input
+                    placeholder="Tìm theo mã thiết bị"
+                    allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
-                    onPressEnter={handleFilterApply}
-                    style={{ borderRadius: radiusPill, height: 40 }} />
+                    onBlur={() => setInputDeviceCode((prev) => (prev ? prev.trim() : ""))}
+                    onPressEnter={(e) => {
+                      const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceCode).trim();
+                      setInputDeviceCode(val);
+                      handleFilterApply({ deviceCode: val });
+                    }}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
@@ -2678,7 +2684,6 @@ const TransmissionListPage = () => {
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống truyền dẫn{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -3544,16 +3549,6 @@ const TransmissionListPage = () => {
         }}
         footer={
           <div style={drawerFooterStyle}>
-            <Button
-              onClick={() => {
-                setUpdateModalOpen(false);
-                setUpdateTarget(null);
-                updateForm.resetFields();
-              }}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Hủy
-            </Button>
             {updateTarget && ['APPROVED', 'APPROVED_L2', 'APPROVED_LEVEL2', 'PUBLISHED'].includes(updateTarget.approvalStatus || '') ? (
               canSaveAndApprove && (
                 <Button

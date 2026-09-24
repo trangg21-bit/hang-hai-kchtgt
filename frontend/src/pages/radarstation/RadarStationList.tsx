@@ -12,6 +12,7 @@ import {
   Col,
   Tabs,
   Tooltip,
+  Pagination as AntPagination,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
 import toast from '../../components/ToastNotification';
@@ -59,6 +60,7 @@ import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, reso
 import { symbolService } from '../../services/symbolService';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceLabel } from '../../types/common';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
@@ -78,7 +80,7 @@ import {
   GEOMETRY_POINT_COUNT,
   type DmsCoordinateItem,
 } from '../../utils/gisGeometry';
-import { deduplicateAttachmentHistoryChanges, isAttachmentField } from '../../utils/historyAttachmentDedup';
+import { deduplicateAttachmentHistoryChanges, isAttachmentField, mergeAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
 import { fmtNum, fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import {
@@ -415,8 +417,8 @@ const tabBarStyle: React.CSSProperties = {
 
 // ── History helpers (chuẩn /vts-operation-center) ───────────────────
 
-/** Số bản ghi nhật ký mỗi lần cuộn tải thêm trong drawer lịch sử. */
-const HISTORY_PAGE_SIZE = 20;
+/** Số phiên cập nhật hiển thị trên mỗi trang trong Drawer lịch sử. */
+const HISTORY_CARD_PAGE_SIZE = 10;
 
 /** Thứ tự hiển thị các trường thay đổi trong một nhóm lịch sử (khớp thứ tự form radar). */
 const HISTORY_FIELD_ORDER = [
@@ -919,6 +921,8 @@ function renderCoordinatesDisplay(val: string | null) {
 // ── Component ────────────────────────────────────────────────────────
 
 export default function RadarStationList() {
+  const { action: embeddedAction, recordId: embeddedRecordId, isEmbeddedAction } = useGisEmbeddedAction();
+  const embeddedOpenedRef = useRef<string | null>(null);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
@@ -1170,9 +1174,7 @@ export default function RadarStationList() {
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFrom, setHistoryDateFrom] = useState('');
   const [historyDateTo, setHistoryDateTo] = useState('');
-  const [loadingMoreHistory, setLoadingMoreHistory] = useState(false);
-  const [hasMoreHistory, setHasMoreHistory] = useState(true);
-  const [historyPage, setHistoryPage] = useState(0);
+  const [historyPage, setHistoryPage] = useState(1);
   const [historyReloadToken, setHistoryReloadToken] = useState(0);
   const [symbolOptions, setSymbolOptions] = useState<{ value: string; label: string }[]>([]);
   const [symbols, setSymbols] = useState<{ id: string; name: string; code?: string; image: string }[]>([]);
@@ -1196,7 +1198,7 @@ export default function RadarStationList() {
       const prev = rawGroups[rawGroups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1251,7 +1253,7 @@ export default function RadarStationList() {
       Array.from(uniqueChangesMap.values()).forEach((c) => {
         if (!isMeaningfulChange(c.field, c.oldValue, c.newValue)) return;
         const normField = normalizeHistoryKey(c.field || '');
-        if (normField === 'attachments' || normField === 'tailieudinhkem' || normField === 'filedinhkem') {
+        if (isAttachmentField(c.field) || isListDeltaField(c.field) || normField === 'attachments' || normField === 'tailieudinhkem' || normField === 'filedinhkem') {
           attachmentChanges.push(c);
         } else {
           const label = historyFieldName(c.field).trim().toLowerCase();
@@ -1262,7 +1264,10 @@ export default function RadarStationList() {
         }
       });
 
-      const validChanges = [...nonAttachmentChanges, ...attachmentChanges];
+      const validChanges = [
+        ...nonAttachmentChanges,
+        ...mergeAttachmentHistoryChanges(attachmentChanges),
+      ];
 
       const reasons = g.items.map((i) => i.reason || i.note).filter(Boolean);
 
@@ -1288,6 +1293,10 @@ export default function RadarStationList() {
   }, [historyRecords]);
 
   const historyUpdateCount = validHistoryGroups.length;
+  const pagedHistoryGroups = useMemo(() => {
+    const start = (historyPage - 1) * HISTORY_CARD_PAGE_SIZE;
+    return validHistoryGroups.slice(start, start + HISTORY_CARD_PAGE_SIZE);
+  }, [historyPage, validHistoryGroups]);
 
   // Trạng thái cho phép gửi duyệt lại / gửi tiếp sau lưu (áp cho nút phụ trong drawer Cập nhật)
   const editingCanResubmit = !!editingRecord && !isDetailMode
@@ -1534,9 +1543,13 @@ export default function RadarStationList() {
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
-  const handleFilterApply = useCallback(() => {
-    setFilterStationName(inputStationName.trim());
-    setFilterCode(inputCode.trim());
+  const handleFilterApply = useCallback((overrides?: { stationName?: string; code?: string }) => {
+    const nextStationName = (overrides?.stationName !== undefined ? overrides.stationName : inputStationName).trim();
+    const nextCode = (overrides?.code !== undefined ? overrides.code : inputCode).trim();
+    setInputStationName(nextStationName);
+    setInputCode(nextCode);
+    setFilterStationName(nextStationName);
+    setFilterCode(nextCode);
     setPage(1);
   }, [inputStationName, inputCode]);
   const handleFilterReset = useCallback(() => {
@@ -1749,18 +1762,41 @@ export default function RadarStationList() {
     }
   }, [hasPerm]);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    const requestKey = `${embeddedAction}:${embeddedRecordId}`;
+    if (embeddedOpenedRef.current === requestKey) return;
+    embeddedOpenedRef.current = requestKey;
+    void radarStationCRUD.getById(embeddedRecordId)
+      .then((record) => {
+        if (embeddedAction === 'edit') openEditDrawer(record);
+        else void openDetailDrawer(record);
+      })
+      .catch(() => {
+        embeddedOpenedRef.current = null;
+        toast.error('Không tải được chi tiết trạm radar');
+      });
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction, openDetailDrawer, openEditDrawer]);
+
   const closeDrawer = useCallback(() => {
     setDrawerVisible(false);
+    if (isInIframe) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, [isInIframe]);
+
+  // Giữ nguyên mode create/edit/detail trong suốt animation đóng Drawer.
+  // Nếu xóa editingRecord ngay khi open=false, footer sẽ render thoáng qua
+  // bộ nút Thêm mới trước khi Drawer biến mất hoàn toàn.
+  const handleDrawerAfterOpenChange = useCallback((open: boolean) => {
+    if (open) return;
     setEditingRecord(null);
     setDetailRecord(null);
     setIsDetailMode(false);
     createForm.resetFields();
     setUploadedFiles([]);
     setDetailFiles([]);
-    if (isInIframe) {
-      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
-    }
-  }, [createForm, isInIframe]);
+  }, [createForm]);
 
   // ── File đính kèm (InfrastructureAttachmentTab — chuẩn /vts-operation-center) ──
   const handleAddAttachmentFile = useCallback((file: File) => {
@@ -1836,9 +1872,7 @@ export default function RadarStationList() {
     setHistoryDateTo('');
     setHistoryLoading(false);
     setHistoryRecords([]);
-    setLoadingMoreHistory(false);
-    setHasMoreHistory(r.approvalStatus !== 'DRAFT' && (r as any).status !== 'DRAFT');
-    setHistoryPage(0);
+    setHistoryPage(1);
   }, []);
 
   // ── Delete handlers (chuẩn /berth) ──────────────────────────────
@@ -2070,10 +2104,6 @@ export default function RadarStationList() {
         }
       }
       setDrawerVisible(false);
-      setEditingRecord(null);
-      setDetailRecord(null);
-      setIsDetailMode(false);
-      createForm.resetFields();
       void fetchData();
       void fetchCounts();
     } catch (err: any) {
@@ -2264,6 +2294,7 @@ export default function RadarStationList() {
     },
     {
       key: 'provinceName', label: 'Địa điểm (Tỉnh/TP)', dataIndex: 'provinceName', width: 220, ellipsis: true,
+      sortable: true,
       sortOrder: sortOrderFor('provinceName'),
       cellTitle: (record: RadarStationResponse) => record.provinceName || getProvinceLabel(record.provinceId) || '',
       render: (v: string | undefined, record: RadarStationResponse) => {
@@ -2421,21 +2452,39 @@ export default function RadarStationList() {
       </div>
       <div style={{ marginBottom: spaceFormField }}>
         <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Tên trạm radar</div>
-        <Input placeholder="Nhập tên trạm radar" allowClear value={inputStationName}
+        <Input
+          placeholder="Nhập tên trạm radar"
+          allowClear
+          value={inputStationName}
           onChange={(e) => setInputStationName(e.target.value)}
-          onBlur={() => setInputStationName((prev) => prev.trim())}
-          onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
+          onBlur={() => setInputStationName((prev) => (prev ? prev.trim() : ''))}
+          onPressEnter={(e) => {
+            const val = ((e.target as HTMLInputElement)?.value ?? inputStationName).trim();
+            setInputStationName(val);
+            handleFilterApply({ stationName: val });
+          }}
+          style={{ ...inputStyle, width: '100%' }}
+        />
       </div>
 
       {/* ── Bộ lọc nâng cao (ẩn, hiện khi bấm nút Filter) ── */}
       {filterCollapsed && (
         <>
           <div style={{ marginBottom: spaceFormField }}>
-            <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Mã radar</div>
-        <Input placeholder="Nhập mã radar" allowClear value={inputCode}
-          onChange={(e) => setInputCode(e.target.value)}
-          onBlur={() => setInputCode((prev) => prev.trim())}
-          onPressEnter={handleFilterApply} style={{ ...inputStyle, width: '100%' }} />
+            <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Mã trạm radar</div>
+            <Input
+              placeholder="Nhập mã trạm radar"
+              allowClear
+              value={inputCode}
+              onChange={(e) => setInputCode(e.target.value)}
+              onBlur={() => setInputCode((prev) => (prev ? prev.trim() : ''))}
+              onPressEnter={(e) => {
+                const val = ((e.target as HTMLInputElement)?.value ?? inputCode).trim();
+                setInputCode(val);
+                handleFilterApply({ code: val });
+              }}
+              style={{ ...inputStyle, width: '100%' }}
+            />
           </div>
           <div style={{ marginBottom: spaceFormField }}>
             <div style={{ ...filterLabelStyle, fontSize: 13.5, marginBottom: spaceSm }}>Hệ thống VTS</div>
@@ -2472,8 +2521,8 @@ export default function RadarStationList() {
               {...getRangePickerProps({
                 value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
                 onChange: (range: any) => {
-                  setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : '');
-                  setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : '');
+                  setFilterUpdatedFrom(range && range[0] ? `${range[0].format('YYYY-MM-DD')} 00:00:00.000` : '');
+                  setFilterUpdatedTo(range && range[1] ? `${range[1].format('YYYY-MM-DD')} 23:59:59.999` : '');
                   setPage(1);
                 },
               })}
@@ -2745,9 +2794,9 @@ export default function RadarStationList() {
             <style>{`
               .gis-meta-detail .chk-detail-row { display: flex !important; align-items: flex-start !important; min-height: 36px !important; padding: 7px 0 !important; border-bottom: 1px solid #f1f5f9 !important; line-height: 1.5 !important; gap: 10px !important; }
               .gis-meta-detail .chk-detail-row:last-child { border-bottom: none !important; }
-              .gis-meta-detail .chk-detail-label { width: 215px !important; min-width: 215px !important; max-width: 215px !important; flex-shrink: 0 !important; color: ${colors.sidebarBg} !important; font-weight: 600 !important; font-size: 13.5px !important; text-align: left !important; line-height: 1.5 !important; }
+              .gis-meta-detail .chk-detail-label { width: 220px !important; min-width: 220px !important; max-width: 220px !important; flex-shrink: 0 !important; color: ${colors.sidebarBg} !important; font-weight: 600 !important; font-size: 13.5px !important; text-align: left !important; line-height: 1.5 !important; }
               .gis-meta-detail .chk-detail-label::after { content: ':' !important; margin-left: 1px !important; margin-right: 4px !important; }
-              .gis-meta-detail .sec-col2-label { width: 250px !important; min-width: 250px !important; max-width: 250px !important; flex-shrink: 0 !important; }
+              .gis-meta-detail .sec-col2-label { width: 220px !important; min-width: 220px !important; max-width: 220px !important; flex-shrink: 0 !important; }
               .gis-meta-detail .chk-detail-value { color: #1e293b !important; font-size: 13.5px !important; flex: 1 !important; min-width: 0 !important; text-align: left !important; line-height: 1.5 !important; word-break: break-word !important; }
             `}</style>
             <div className="chk-detail-grid gis-meta-detail">
@@ -3271,8 +3320,6 @@ export default function RadarStationList() {
     if (historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') {
       setHistoryRecords([]);
       setHistoryLoading(false);
-      setLoadingMoreHistory(false);
-      setHasMoreHistory(false);
       return;
     }
     // historyReloadToken: nút "Tìm kiếm" làm token đổi → effect chạy lại để tải lại lịch sử theo bộ lọc
@@ -3280,12 +3327,10 @@ export default function RadarStationList() {
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       setHistoryLoading(true);
-      setLoadingMoreHistory(false);
-      setHasMoreHistory(true);
       setHistoryRecords([]);
-      setHistoryPage(0);
+      setHistoryPage(1);
       try {
-        const hist = await radarStationApproval.getHistory(historyTarget.id, 0, HISTORY_PAGE_SIZE, {
+        const hist = await radarStationApproval.getHistory(historyTarget.id, undefined, undefined, {
           keyword: historySearch,
           fromDate: historyDateFrom,
           toDate: historyDateTo,
@@ -3293,37 +3338,15 @@ export default function RadarStationList() {
         if (cancelled) return;
         const items = hist || [];
         setHistoryRecords(items);
-        setHasMoreHistory(items.length === HISTORY_PAGE_SIZE);
       } catch { if (!cancelled) toast.error('Không thể tải lịch sử'); } finally { if (!cancelled) setHistoryLoading(false); }
     }, historySearch.trim() ? 300 : 0);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [historyOpen, historyTarget, historySearch, historyDateFrom, historyDateTo, historyReloadToken]);
 
-  const loadMoreHistory = async () => {
-    if (!historyTarget || historyLoading || loadingMoreHistory || !hasMoreHistory || historyTarget.approvalStatus === 'DRAFT' || (historyTarget as any).status === 'DRAFT') return;
-    setLoadingMoreHistory(true);
-    try {
-      const nextPage = historyPage + 1;
-      const hist = await radarStationApproval.getHistory(historyTarget.id, nextPage, HISTORY_PAGE_SIZE, {
-        keyword: historySearch,
-        fromDate: historyDateFrom,
-        toDate: historyDateTo,
-      });
-      if (hist && hist.length > 0) setHistoryRecords((prev) => [...prev, ...hist]);
-      setHistoryPage(nextPage);
-      setHasMoreHistory((hist || []).length === HISTORY_PAGE_SIZE);
-    } catch { /* ignore */ } finally { setLoadingMoreHistory(false); }
-  };
-
-  const handleHistoryScroll = (e: any) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
-  };
-
-  const renderHistoryTimeline = () => {
+  const renderHistoryTimeline = (groups = validHistoryGroups) => {
     const q = historySearch.toLowerCase().trim();
 
-    if (validHistoryGroups.length === 0) return (
+    if (groups.length === 0) return (
       <div style={{ textAlign: 'center', padding: `${spaceXl}px 0` }}>
         <HistoryOutlined style={{ fontSize: 40, color: textTertiary, marginBottom: spaceMd }} />
         <div style={{ color: textTertiary, fontSize: fontSizeMd }}>{q || historyDateFrom || historyDateTo ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có thay đổi nào được ghi nhận'}</div>
@@ -3331,7 +3354,7 @@ export default function RadarStationList() {
     );
 
     return (
-      <div>{validHistoryGroups.map((g, gi) => {
+      <div>{groups.map((g, gi) => {
         const changes = g.validChanges;
         const reasons = g.reasons;
         const rec0: any = g.items[0] || {};
@@ -3363,7 +3386,7 @@ export default function RadarStationList() {
         return (
           <div
             key={gi}
-            style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}
+            style={{ ...historyGroupGridStyle, marginBottom: gi < groups.length - 1 ? spaceSm : 0 }}
           >
             <div style={{ minWidth: 0, paddingTop: spaceXs }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -3409,13 +3432,13 @@ export default function RadarStationList() {
                     return renderCoordinatesDisplay(val);
                   }
                   const str = String(val).trim();
-                  if (str.includes(',') && str.length > 25) {
+                  if (str.includes(',') && (isListDeltaField(field) || isAttachmentField(field) || str.length > 25)) {
                     const items = str.split(',').map((s) => s.trim()).filter(Boolean);
                     if (items.length > 1) {
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
                           {items.map((item, idx) => (
-                            <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word' }}>
+                            <div key={idx} style={{ color: textPrimary, fontWeight: fontWeightMedium, lineHeight: '20px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                               {item}
                             </div>
                           ))}
@@ -3434,6 +3457,22 @@ export default function RadarStationList() {
                         const ov = formatHistoryValue(fn, change.oldValue);
                         const nv = formatHistoryValue(fn, change.newValue);
 
+                        if (isAttachmentField(fn)) {
+                          return isCreate ? (
+                            <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                              <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <span style={historyNewValueStyle}>{renderHistoryContent(fn, nv)}</span>
+                            </div>
+                          ) : (
+                            <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
+                              <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : '—'}</div>
+                              <span style={historyOldValueStyle}>{renderHistoryContent(fn, ov)}</span>
+                              <span style={historyArrowStyle}>→</span>
+                              <span style={historyNewValueStyle}>{renderHistoryContent(fn, nv)}</span>
+                            </div>
+                          );
+                        }
+
                         if (isListDeltaField(fn)) {
                           const delta = parseListDelta(ov, nv);
                           const rows: Array<{ label: string; oldVal: React.ReactNode; arrow: boolean; newVal: React.ReactNode }> = [];
@@ -3447,12 +3486,16 @@ export default function RadarStationList() {
                             });
                           });
 
+                          const remainingVal = (nv && nv !== '—' && nv !== 'Không có' && nv !== '(null)' && nv !== '(trống)' && nv !== 'Chưa có' && nv !== 'null')
+                            ? renderHistoryContent(fn, nv)
+                            : <span style={{ color: textTertiary }}>—</span>;
+
                           delta.removed.forEach((r) => {
                             rows.push({
                               label: rows.length === 0 ? (fn ? `${historyFieldName(fn)}:` : '—') : '',
                               oldVal: r,
                               arrow: true,
-                              newVal: <span style={{ color: textTertiary }}>—</span>,
+                              newVal: remainingVal,
                             });
                           });
 
@@ -3617,6 +3660,10 @@ export default function RadarStationList() {
           grid-column: 1 / -1 !important;
         }
         .radar-drawer-scope .chk-detail-label {
+          width: 220px !important;
+          min-width: 220px !important;
+          max-width: 220px !important;
+          flex-shrink: 0 !important;
           color: ${colors.sidebarBg} !important;
           font-weight: 600 !important;
           font-size: 13.5px !important;
@@ -3624,22 +3671,19 @@ export default function RadarStationList() {
           text-align: left !important;
         }
         .radar-drawer-scope .sec-col1-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
+          width: 220px !important;
+          min-width: 220px !important;
+          max-width: 220px !important;
         }
         .radar-drawer-scope .sec-col2-label {
-          width: 250px !important;
-          min-width: 250px !important;
-          max-width: 250px !important;
-          flex-shrink: 0 !important;
+          width: 220px !important;
+          min-width: 220px !important;
+          max-width: 220px !important;
         }
         .radar-drawer-scope .sec-full-label {
-          width: 215px !important;
-          min-width: 215px !important;
-          max-width: 215px !important;
-          flex-shrink: 0 !important;
+          width: 220px !important;
+          min-width: 220px !important;
+          max-width: 220px !important;
         }
         .radar-drawer-scope .chk-detail-label::after {
           content: ':' !important;
@@ -3773,6 +3817,7 @@ export default function RadarStationList() {
         className="radar-drawer-scope"
         destroyOnHidden
         onClose={closeDrawer}
+        afterOpenChange={handleDrawerAfterOpenChange}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -4486,8 +4531,7 @@ export default function RadarStationList() {
 
       {/* ── Detail Drawer riêng (đọc-only, chuẩn /berth: BerthDetailContent) ── */}
       <AppDrawer
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        width={DRAWER_WIDTH}
         title={
           <span style={drawerTitleStyle}>
             Chi tiết trạm radar{detailRecord ? ` - ${detailRecord.stationName}` : ''}
@@ -4498,6 +4542,7 @@ export default function RadarStationList() {
         className="radar-drawer-scope"
         destroyOnHidden
         onClose={closeDrawer}
+        afterOpenChange={handleDrawerAfterOpenChange}
       >
         <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle} items={detailTabItems} />
       </AppDrawer>
@@ -4717,7 +4762,7 @@ export default function RadarStationList() {
               placeholder="Từ ngày"
               classNames={{ popup: { root: 'history-dt-popup' } }}
               value={historyDateFrom ? dayjs(historyDateFrom) : null}
-              onChange={(d) => setHistoryDateFrom(d ? d.startOf('day').format('YYYY-MM-DDTHH:mm:ss') : '')}
+              onChange={(d) => setHistoryDateFrom(d ? `${d.format('YYYY-MM-DD')} 00:00:00.000` : '')}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }}
               format="DD/MM/YYYY"
             />
@@ -4725,7 +4770,7 @@ export default function RadarStationList() {
               placeholder="Đến ngày"
               classNames={{ popup: { root: 'history-dt-popup' } }}
               value={historyDateTo ? dayjs(historyDateTo) : null}
-              onChange={(d) => setHistoryDateTo(d ? d.endOf('day').format('YYYY-MM-DDTHH:mm:ss') : '')}
+              onChange={(d) => setHistoryDateTo(d ? `${d.format('YYYY-MM-DD')} 23:59:59.999` : '')}
               style={{ width: 140, borderRadius: radiusPill, height: 40 }}
               format="DD/MM/YYYY"
             />
@@ -4743,8 +4788,7 @@ export default function RadarStationList() {
             </Button>
           </div>
         </div>
-        {/* Cuộn tới đáy thì tải thêm một trang nhật ký */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {historyLoading && historyRecords.length === 0 ? (
             <LoadingSkeleton rows={5} />
           ) : validHistoryGroups.length === 0 ? (
@@ -4756,15 +4800,21 @@ export default function RadarStationList() {
             </div>
           ) : (
             <>
-              {renderHistoryTimeline()}
-              {loadingMoreHistory && (
-                <div style={{ padding: spaceMd, textAlign: 'center', color: textTertiary, fontSize: fontSizeMd }}>
-                  Đang tải thêm…
-                </div>
-              )}
+              {renderHistoryTimeline(pagedHistoryGroups)}
             </>
           )}
         </div>
+        {historyUpdateCount > HISTORY_CARD_PAGE_SIZE && (
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', paddingTop: spaceMd }}>
+            <AntPagination
+              current={historyPage}
+              pageSize={HISTORY_CARD_PAGE_SIZE}
+              total={historyUpdateCount}
+              showSizeChanger={false}
+              onChange={setHistoryPage}
+            />
+          </div>
+        )}
       </AppDrawer>
 
       {/* ── Approval Modal (CHK standard) ─────────────────────── */}

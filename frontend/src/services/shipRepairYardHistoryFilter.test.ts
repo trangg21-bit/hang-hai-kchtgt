@@ -169,4 +169,21 @@ describe('ShipRepairYard History Filter and Helpers', () => {
 
     expect(cards).toBeTruthy();
   });
+
+  it('maps coordinates field names to Tọa độ GPS in historyFieldLabels', () => {
+    expect(historyFieldLabels.coordinates).toBe('Tọa độ GPS');
+    expect(historyFieldLabels.gisCoordinates).toBe('Tọa độ GPS');
+    expect(historyFieldLabels['Tọa độ']).toBe('Tọa độ GPS');
+    expect(historyFieldName('coordinates')).toBe('Tọa độ GPS');
+    expect(historyFieldName('gisCoordinates')).toBe('Tọa độ GPS');
+  });
+
+  it('formats WKT coordinates in historyFieldValue nicely', () => {
+    const wkt = 'LINESTRING (110.939944 18.906278, 110.94025 18.906389, 110.940417 18.906472)';
+    const formatted = historyFieldValue('coordinates', wkt);
+    expect(formatted).toBeTruthy();
+    expect(formatted).not.toContain('LINESTRING');
+    expect(formatted).toContain('18° 54\'');
+    expect(formatted).toContain('110° 56\'');
+  });
 });

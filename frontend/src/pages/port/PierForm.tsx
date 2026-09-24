@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, forwardRef, useImperativeHandle, useCallback, useRef } from 'react';
-import { Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, type InputNumberProps } from 'antd';
+import { Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 import DetailTable from '../../components/shared/DetailTable';
-import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
   PlusOutlined,
   DeleteOutlined,
@@ -17,10 +18,10 @@ import dayjs from 'dayjs';
 import { pierCRUD, portCRUD, berthCRUD } from '../../services/portService';
 import type { Pier } from '../../types/port';
 import { organizationService } from '../../services/organizationService';
+import { userService } from '../../services/userService';
 import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -30,7 +31,7 @@ import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
@@ -90,7 +91,13 @@ const CONSTRUCTION_GRADE_OPTIONS = [
 ];
 const GEOMETRY_TYPE_OPTIONS = [{ value: 'POINT', label: 'Đối tượng điểm' }, { value: 'LINE', label: 'Đối tượng đường' }, { value: 'POLYGON', label: 'Đối tượng vùng' }];
 const COORD_SYS_OPTIONS = [{ value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }];
-import { GEOMETRY_POINT_COUNT, validateDmsCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import {
+  GEOMETRY_POINT_COUNT,
+  serializeCoordinatesToWkt,
+  parseWktToCoordinates,
+  ddToDms,
+  dmsToDd,
+} from '../../utils/gisGeometry';
 
 // Helper chuyển đổi giữa chuỗi "MM/YYYY" (lưu DB) và dayjs (DatePicker month)
 const parseMonthYear = (s?: string | null) => {
@@ -104,49 +111,6 @@ const parseMonthYear = (s?: string | null) => {
 };
 const fmtMonthYear = (d: any) => (d ? dayjs(d).format('MM/YYYY') : undefined);
 const numberStyle: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-/** Cùng hiển thị bộ đếm số (0/n) và giới hạn như các chỉ số ở form Cảng biển. */
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
-
-// Parse WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON (chuẩn VTS CHK)
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length-1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.\-]+)\s+([\d.\-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
-
-function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
-  if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
-  const abs = Math.abs(dd);
-  let d = Math.floor(abs);
-  let mFloat = (abs - d) * 60;
-  if (mFloat > 59.999999999) { d += 1; mFloat = 0; }
-  let m = Math.floor(mFloat);
-  let sFloat = (mFloat - m) * 60;
-  if (sFloat > 59.999999999) { m += 1; sFloat = 0; if (m >= 60) { m = 0; d += 1; } }
-  let s = Math.round(sFloat * 100) / 100;
-  if (s >= 60) { s = 0; m += 1; if (m >= 60) { m = 0; d += 1; } }
-  return { d: d === 0 ? null : d, m: m === 0 ? null : m, s: s === 0 ? null : s };
-}
 
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
@@ -187,9 +151,9 @@ const renderDmsGroup = (
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
     {
-      key: 's', base: 'Giây', value: sVal, max: 59.99,
+      key: 's', base: 'Giây', value: sVal, max: 59.9999,
       radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
-      step: 0.01, formatter: fmtInputNumber,
+      step: 0.0001, formatter: fmtInputNumber,
       msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
@@ -205,7 +169,7 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
@@ -265,16 +229,26 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
   const [mooringScopeOpen, setMooringScopeOpen] = useState(true);
 
   const currentUser = useAuthStore((s) => s.user);
-  const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedPortId = Form.useWatch('portId', form);
   const watchedBerthId = Form.useWatch('berthId', form);
   const watchedGeometryType = Form.useWatch('geometryType', form);
-  const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const watchedOperationalFunction = Form.useWatch('operationalFunction', form);
+
+  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await userService.list({ pageSize: 1000 });
+        const users = resp.data || (resp as any).content || [];
+        const map = new Map<string, string>();
+        users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
+        setUserMap(map);
+      } catch { /* silent */ }
+    })();
+  }, []);
 
   // Hiển thị trường hợp bản ghi cũ chưa chuẩn hóa (token giá trị tự do không nằm trong option)
   // → vẫn hiển thị tag của token đó; phần lựa chọn MỚI bị giới hạn bởi OPERATIONAL_FUNCTION_OPTIONS.
@@ -297,36 +271,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
 
 
   useEffect(() => { (async () => { setLoadingOrgs(true); try { const r = await organizationService.list({ pageSize: 1000 }); setOrgUnits(r.data || []); } catch {} finally { setLoadingOrgs(false); } })(); }, []);
-  const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
-  useEffect(() => {
-    (async () => {
-      try {
-        const resp = await userService.list({ pageSize: 1000 });
-        const users = resp.data || (resp as any).content || [];
-        const map = new Map<string, string>();
-        users.forEach((u: any) => map.set(u.id, u.fullName || u.username || u.id));
-        setUserMap(map);
-      } catch { /* silent */ }
-    })();
-  }, []);
-  const mappedAttachments = useMemo<InfrastructureAttachmentItem[]>(() =>
-    uploadedFiles.map((file) => {
-      const attachment = file as typeof file & Record<string, unknown>;
-      const uploadedBy = typeof attachment.uploadedBy === 'string' ? attachment.uploadedBy : undefined;
-      const uploadedByName = typeof attachment.uploadedByName === 'string'
-        ? attachment.uploadedByName
-        : uploadedBy ? userMap.get(uploadedBy) : undefined;
-      return {
-        ...attachment,
-        id: file.uid,
-        fileName: file.name,
-        fileSize: file.size,
-        file: file.originFileObj,
-        ...(uploadedByName ? { uploadedByName } : {}),
-      };
-    }),
-    [uploadedFiles, userMap],
-  );
+
   // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt thuộc đơn vị quản lý
   const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
     if (!orgUnitId) {
@@ -403,13 +348,17 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     }
   };
   useEffect(() => { if (!isEdit || !id) return; (async () => { try { const d: Pier = await pierCRUD.findById(id); initialApprovalStatusRef.current = d.approvalStatus; if (d.orgUnitId) loadWaterwayOptions(d.orgUnitId); form.setFieldsValue({ orgUnitId: d.orgUnitId, portId: d.portId, berthId: d.berthId, navigationChannelId: d.navigationChannelId, pierCode: d.pierCode, pierName: d.pierName, length: normalizeSafeNumber(d.length), width: normalizeSafeNumber(d.width), operationalFunction: splitOperationalFunctionCodes(d.operationalFunction), operationalStatus: d.operationalStatus, province: d.province, detailedLocation: d.detailedLocation, constructionGrade: d.constructionGrade, structureType: d.structureType, currentWaterDepth: normalizeSafeNumber(d.currentWaterDepth), designBedElevation: normalizeSafeNumber(d.designBedElevation), publishedVesselDWT: normalizeSafeNumber(d.publishedVesselDWT), maintenanceApprovalDate: parseMonthYear(d.maintenanceApprovalDate), safetyAssessmentDate: parseMonthYear(d.safetyAssessmentDate), lastInspectionDate: parseMonthYear(d.lastInspectionDate), operatingPierCount: d.operatingPierCount, publishedPierCount: d.publishedPierCount, investmentAgreementPierCount: d.investmentAgreementPierCount, cargoThroughput: normalizeSafeNumber(d.cargoThroughput), receivesLargeVessel: d.receivesLargeVessel, documentNumber: d.documentNumber, documentDate: d.documentDate ? dayjs(d.documentDate) : undefined, openingAnnouncementDate: d.openingAnnouncementDate ? dayjs(d.openingAnnouncementDate) : undefined, openingDecision: d.openingDecision, investmentAgreementDoc: d.investmentAgreementDoc, waterAreaNeutralScope: d.waterAreaNeutralScope, geometryType: d.geometryType || undefined, mapSymbolId: d.mapSymbolId || d.bieuTuongId, coordinateSystem: d.geometryType ? (d as any).coordinateSystem : undefined, displayRule: (d as any).displayRule });
-        const pts = d.coordinates ? parseGisCoordinates({ geometryType: d.geometryType, coordinates: d.coordinates }) : [];
+        const pts = parseWktToCoordinates(d.coordinates);
         if (pts.length > 0) {
           setCoordinateList(pts.map(c => {
             const latDms = ddToDms(c.latitude);
             const lngDms = ddToDms(c.longitude);
             return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
           }));
+        } else if (d.latitude != null && d.longitude != null) {
+          const latDms = ddToDms(Number(d.latitude));
+          const lngDms = ddToDms(Number(d.longitude));
+          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
         }
         try {
           const fr = await api.get(`/v1/piers/${id}/attachments`);
@@ -614,8 +563,8 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
     const wktCoordinates = currentGeometryType && validCoords.length > 0
       ? serializeCoordinatesToWkt(
           validCoords.map((c) => ({
-            latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600,
-            longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600,
+            latitude: dmsToDd(c.latD, c.latM, c.latS),
+            longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
           })),
           currentGeometryType || 'POINT'
         )
@@ -627,11 +576,16 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       // Process GPS coordinates into WKT format (chuẩn VTS CHK — serializeCoordinatesToWkt)
       if (validCoords.length > 0) {
         const first = validCoords[0];
-        (payload as any).latitude = (first.latD ?? 0) + (first.latM ?? 0) / 60 + (first.latS ?? 0) / 3600;
-        (payload as any).longitude = (first.lngD ?? 0) + (first.lngM ?? 0) / 60 + (first.lngS ?? 0) / 3600;
+        (payload as any).latitude = dmsToDd(first.latD, first.latM, first.latS);
+        (payload as any).longitude = dmsToDd(first.lngD, first.lngM, first.lngS);
       }
-      (payload as any).coordinates = wktCoordinates || undefined;
+      // Gửi chuỗi rỗng TƯỜNG MINH khi không có tọa độ (thay vì `undefined` bị dòng dọn key bên
+      // dưới xóa mất): server dùng '' = "người dùng đã xóa trắng vị trí" để chạy nhánh xóa
+      // spatial object. Nếu key bị xóa, server nhận null và nhánh else sẽ TÁI TẠO hình học cũ.
+      (payload as any).coordinates = wktCoordinates || '';
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
+      // Lưu ý: dòng dưới chỉ dọn key `undefined` (trường không gửi). Ô người dùng XÓA TRẮNG phải
+      // được gửi dạng null/'' tường minh ở trên, nếu không thao tác xóa bị bỏ qua âm thầm.
       Object.keys(payload).forEach((k) => { if (payload[k] === undefined) delete payload[k]; });
       let createdId: string | undefined;
       if (isEdit && id) {
@@ -685,7 +639,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
         </div>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><OrgUnitTreeSelect organizations={orgUnits} placeholder="Chọn đơn vị quản lý" loading={loadingOrgs} disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={handleOrgUnitChange} /></Form.Item></Col><Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} required rules={[{ required: true, message: 'Cảng biển là bắt buộc' }]} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" notFoundContent="Không có cảng biển thuộc đơn vị quản lý" onChange={handlePortChange} style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="berthId" {...labelProps('Thuộc bến cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Bến cảng là bắt buộc' }]}><Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : berthOptions.length === 0 && !loadingBerths ? 'Không có bến cảng thuộc cảng biển' : 'Chọn bến cảng...'} loading={loadingBerths} disabled={!watchedPortId || (berthOptions.length === 0 && !loadingBerths)} options={berthOptions} showSearch optionFilterProp="label" notFoundContent="Không có bến cảng thuộc cảng biển" style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải...'} options={waterwayOptions} loading={loadingWaterways} disabled={!watchedOrgUnitId} showSearch allowClear optionFilterProp="label" notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc đơn vị quản lý'} style={selectStyle} /></Form.Item></Col></Row>
-      <Row gutter={[24, 0]}><Col span={12}><Form.Item name="pierCode" {...labelProps('Mã cầu cảng')} style={{ marginBottom: spaceFormField }} tooltip="Mã được sinh tự động"><Input disabled placeholder={pierCodeLoading ? 'Đang sinh mã...' : watchedBerthId ? 'Mã tự động' : 'Chọn Bến để sinh mã'} style={readonlyInputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="pierName" {...labelProps('Tên cầu cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên cầu cảng không được để trống' }, { max: 255 }]}><Input placeholder="Nhập tên cầu cảng" maxLength={255} showCount style={inputStyle} /></Form.Item></Col></Row>
+      <Row gutter={[24, 0]}><Col span={12}><Form.Item name="pierCode" {...labelProps('Mã cầu cảng')} style={{ marginBottom: spaceFormField }} tooltip="Mã được sinh tự động"><Input disabled placeholder={pierCodeLoading ? 'Đang sinh mã...' : watchedBerthId ? 'Mã tự động' : 'Chọn Bến để sinh mã'} style={readonlyInputStyle} /></Form.Item></Col><Col span={12}><Form.Item name="pierName" {...labelProps('Tên cầu cảng')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, whitespace: true, message: 'Tên cầu cảng không được để trống' }, { max: 255 }]}><Input placeholder="Nhập tên cầu cảng" maxLength={255} showCount style={inputStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="province" {...labelProps('Địa điểm (Tỉnh/Thành Phố)')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}><Select showSearch placeholder="Chọn địa điểm" filterOption={(i, o) => (o?.label ?? '').toLowerCase().includes(i.toLowerCase())} options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="detailedLocation" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}><Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="constructionGrade" {...labelProps('Phân cấp công trình')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn phân cấp công trình" allowClear options={CONSTRUCTION_GRADE_OPTIONS} style={selectStyle} /></Form.Item></Col><Col span={12}><Form.Item name="structureType" {...labelProps('Loại kết cấu cầu cảng')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn loại kết cấu" options={STRUCTURE_TYPE_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
       <Row gutter={[24, 0]}><Col span={12}><Form.Item name="operationalFunction" {...labelProps('Công năng khai thác')} style={{ marginBottom: spaceFormField }}><Select mode="multiple" showSearch allowClear placeholder="Công năng khai thác" optionFilterProp="label" options={operationalFnOptions} style={{ borderRadius: radiusPill }} maxTagCount="responsive" /></Form.Item></Col><Col span={12}><Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} initialValue="NOT_YET_OPERATIONAL" rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}><Select placeholder="Chọn tình trạng" options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} /></Form.Item></Col></Row>
@@ -878,6 +832,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
         <DetailTable
           size="small"
           scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+          scroll={{ x: 880 }}
           dataSource={coordinateList.map((c, i) => ({ ...c, _idx: i }))}
           rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
           emptyText="Chưa có tọa độ GPS nào"
@@ -892,12 +847,14 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
             {
               title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
               key: 'lat',
+              width: 380,
               onCell: () => ({ style: { verticalAlign: 'middle' } }),
               render: (_v: any, record: any) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx, 'lat', d, m, s)),
             },
             {
               title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
               key: 'lng',
+              width: 380,
               onCell: () => ({ style: { verticalAlign: 'middle' } }),
               render: (_v: any, record: any) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx, 'lng', d, m, s)),
             },
@@ -973,7 +930,10 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
           <Button
             key="ok"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
+            onClick={() => {
+              setGisModalOpen(false);
+              toast.success('Đã xác nhận vị trí từ bản đồ');
+            }}
             style={{ ...primaryButtonStyle, height: 36 }}
           >
             Xác nhận tọa độ
@@ -985,39 +945,44 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
             inline={true}
             defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
             height={520}
+            value={{
+              geometryType: (watchedGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                coordinateList
+                  .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+                  .map((c) => ({
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                watchedGeometryType || 'POINT',
+              ),
+              symbolId: form.getFieldValue('mapSymbolId') || form.getFieldValue('symbolId'),
+            }}
             onChange={(val) => {
               if (val?.coordinates) {
                 // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ
-                const points = parseGisCoordinates({ geometryType: val.geometryType, coordinates: val.coordinates });
+                const points = parseWktToCoordinates(val.coordinates);
                 if (points.length > 0) {
-                  setCoordinateList((prev) => {
-                    const current = Array.isArray(prev) ? prev : [];
-                    const isFilled = (c: { latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }) =>
-                      c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null;
-                    const key = (p: { latitude: number; longitude: number }) => `${Math.round(p.latitude * 1e5)}_${Math.round(p.longitude * 1e5)}`;
-                    const existingKeys = new Set(current
-                      .filter(isFilled)
-                      .map(c => key({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 })));
-                    const fresh = points.filter(p => !existingKeys.has(key(p)));
-                    const toDmsRows = (ps: Array<{ latitude: number; longitude: number }>) => ps.map(p => {
-                      const latDms = ddToDms(p.latitude);
-                      const lngDms = ddToDms(p.longitude);
-                      return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                    });
-                    // 1) Điền điểm vào các hàng còn TRỐNG ở đầu/cuối (giữ nguyên vị trí), số điểm thừa mới thêm xuống dưới.
-                    let fi = 0;
-                    const merged = current.map((row) => {
-                      if (isFilled(row)) return row;
-                      if (fi >= fresh.length) return row;
-                      const p = fresh[fi];
-                      fi += 1;
-                      const rows = toDmsRows([p]);
-                      return rows[0];
-                    });
-                    merged.push(...toDmsRows(fresh.slice(fi)));
-                    return merged;
+                  const geom = ((val?.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+                  const newPoints = points.map((p) => {
+                    const latDms = ddToDms(p.latitude);
+                    const lngDms = ddToDms(p.longitude);
+                    return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
                   });
+
+                  if (geom === 'POINT') {
+                    setCoordinateList([newPoints[0]]);
+                  } else {
+                    setCoordinateList(newPoints);
+                  }
                 }
+              }
+              if (val?.geometryType) {
+                form.setFieldValue('geometryType', val.geometryType);
+              }
+              if (val?.symbolId) {
+                form.setFieldValue('mapSymbolId', val.symbolId);
               }
             }}
           />

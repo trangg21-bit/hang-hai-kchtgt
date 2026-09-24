@@ -60,7 +60,7 @@ export interface VhfResponse {
 // ── CreateVhfRequest (matches CreateVhfRequest.java) ────────────────
 
 export interface CreateVhfRequest {
-  deviceCode?: string;
+  deviceCode: string;
   deviceName: string;
   detailedLocation?: string | null;
   manufacturer?: string | null;
@@ -91,7 +91,7 @@ export interface CreateVhfRequest {
 
 // ── UpdateVhfRequest (matches UpdateVhfRequest.java) ────────────────
 
-export interface UpdateVhfRequest extends CreateVhfRequest {
+export interface UpdateVhfRequest extends Omit<CreateVhfRequest, 'deviceCode' | 'action'> {
   id: string;
 }
 

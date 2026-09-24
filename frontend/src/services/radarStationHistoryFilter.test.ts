@@ -181,4 +181,130 @@ describe('RadarStation History Filter Logic (/radar-station)', () => {
     const shouldLoadHistory = record.approvalStatus !== 'DRAFT';
     expect(shouldLoadHistory).toBe(false);
   });
+
+  describe('Attachment history list delta logic (Issue: File 2 deleted displays remaining files File 1, File 3)', () => {
+    const normalizeHistoryKey = (value: string): string =>
+      value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+
+    const isListDeltaField = (fn: string): boolean => {
+      const norm = normalizeHistoryKey(fn);
+      return norm.includes('dinh kem') || norm.includes('attachment');
+    };
+
+    const parseListDelta = (oldVal: string | null, newVal: string | null) => {
+      const removed: string[] = [];
+      const added: string[] = [];
+      const modifiedOld: string[] = [];
+      const modifiedNew: string[] = [];
+
+      const splitParts = (val: string | null) => {
+        if (!val || val === '—' || val === '(null)' || val === '(trống)' || val === 'Chưa có' || val === 'null' || val === 'undefined') return [];
+        return val.split(',').map((s) => s.trim()).filter((s) => s && s !== '—' && s !== '(null)' && s !== '(trống)' && s !== 'Chưa có' && s !== 'null' && s !== 'undefined');
+      };
+
+      const oldParts = splitParts(oldVal);
+      const newParts = splitParts(newVal);
+
+      const normalizeListItem = (value: string) => normalizeHistoryKey(value).replace(/\s+/g, ' ');
+      const oldPlain = oldParts.filter((part) => !part.startsWith('Xóa ') && !part.startsWith('Cũ: '));
+      const newPlain = newParts.filter((part) => !part.startsWith('Thêm ') && !part.startsWith('Mới: '));
+      const oldPlainKeys = new Set(oldPlain.map(normalizeListItem));
+      const newPlainKeys = new Set(newPlain.map(normalizeListItem));
+
+      oldParts.forEach((part) => {
+        if (part.startsWith('Xóa ')) {
+          removed.push(part.replace('Xóa ', '').trim());
+        } else if (part.startsWith('Cũ: ')) {
+          modifiedOld.push(part.replace('Cũ: ', '').trim());
+        } else if (part !== '—' && !newPlainKeys.has(normalizeListItem(part))) {
+          removed.push(part);
+        }
+      });
+
+      newParts.forEach((part) => {
+        if (part.startsWith('Thêm ')) {
+          added.push(part.replace('Thêm ', '').trim());
+        } else if (part.startsWith('Mới: ')) {
+          modifiedNew.push(part.replace('Mới: ', '').trim());
+        } else if (part !== '—' && !oldPlainKeys.has(normalizeListItem(part))) {
+          added.push(part);
+        }
+      });
+
+      return { removed, added };
+    };
+
+    const buildAttachmentHistoryRows = (fn: string, ov: string | null, nv: string | null) => {
+      const delta = parseListDelta(ov, nv);
+      const rows: Array<{ oldVal: string; newVal: string }> = [];
+
+      const remainingVal = (nv && nv !== '—' && nv !== 'Không có' && nv !== '(null)' && nv !== '(trống)' && nv !== 'Chưa có' && nv !== 'null')
+        ? nv
+        : '—';
+
+      delta.removed.forEach((r) => {
+        rows.push({
+          oldVal: r,
+          newVal: remainingVal,
+        });
+      });
+
+      delta.added.forEach((a) => {
+        rows.push({
+          oldVal: '—',
+          newVal: a,
+        });
+      });
+
+      return rows;
+    };
+
+    it('identifies Tài liệu đính kèm as list delta field', () => {
+      expect(isListDeltaField('Tài liệu đính kèm')).toBe(true);
+      expect(isListDeltaField('attachments')).toBe(true);
+      expect(isListDeltaField('File đính kèm')).toBe(true);
+      expect(isListDeltaField('Tên trạm radar')).toBe(false);
+    });
+
+    it('TC-RADAR-ATTACH-01: Deleting File 2 from [File 1, File 2, File 3] displays File 2 -> File 1, File 3', () => {
+      const ov = 'File 1, File 2, File 3';
+      const nv = 'File 1, File 3';
+
+      const rows = buildAttachmentHistoryRows('Tài liệu đính kèm', ov, nv);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].oldVal).toBe('File 2');
+      expect(rows[0].newVal).toBe('File 1, File 3');
+    });
+
+    it('TC-RADAR-ATTACH-02: Deleting Giao_Dich...xlsx displays remaining files on the right', () => {
+      const ov = 'Giao_Dich_Chua_Dieu_Chinh_03092026_140036 (1) (1).xlsx, image1.png, doc2.pdf';
+      const nv = 'image1.png, doc2.pdf';
+
+      const rows = buildAttachmentHistoryRows('Tài liệu đính kèm', ov, nv);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].oldVal).toBe('Giao_Dich_Chua_Dieu_Chinh_03092026_140036 (1) (1).xlsx');
+      expect(rows[0].newVal).toBe('image1.png, doc2.pdf');
+    });
+
+    it('TC-RADAR-ATTACH-03: Deleting the last file leaves newVal as dash —', () => {
+      const ov = 'Tóm tắt họp 20.7 (1) (1).docx';
+      const nv = '—';
+
+      const rows = buildAttachmentHistoryRows('Tài liệu đính kèm', ov, nv);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].oldVal).toBe('Tóm tắt họp 20.7 (1) (1).docx');
+      expect(rows[0].newVal).toBe('—');
+    });
+
+    it('TC-RADAR-ATTACH-04: Uploading a file shows — -> new file', () => {
+      const ov = 'File 1, File 2';
+      const nv = 'File 1, File 2, images new1 (1).jpg';
+
+      const rows = buildAttachmentHistoryRows('Tài liệu đính kèm', ov, nv);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].oldVal).toBe('—');
+      expect(rows[0].newVal).toBe('images new1 (1).jpg');
+    });
+  });
 });
+

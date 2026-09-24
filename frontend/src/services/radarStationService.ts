@@ -75,6 +75,8 @@ export const radarStationCRUD = {
       status: params?.status,
       approvalStatus: params?.approvalStatus,
       updatedBy: params?.updatedBy,
+      commissionedFrom: params?.commissionedFrom,
+      commissionedTo: params?.commissionedTo,
       updatedFrom: params?.updatedFrom,
       updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? Math.max(0, params.page > 0 ? params.page - 1 : 0) : 0,

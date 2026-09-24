@@ -24,6 +24,8 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { formatHistoryNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { renderWharfAreaHistory } from '../../utils/changeHistoryRenderer';
+import { formatPortHistoryCoordinates } from '../../utils/portHistoryCoordinates';
+import { PaginatedHistoryList } from '../../components/shared/HistoryPagination';
 import { berthCRUD, waterZoneCRUD, pierCRUD } from '../../services/portService';
 import BerthDetailContent from '../../pages/port/BerthDetailContent';
 import PierDetailContent from '../../pages/port/PierDetailContent';
@@ -141,6 +143,34 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import PortForm from './PortForm';
 import PortDetailContent from './PortDetailContent';
+
+/**
+ * Chuẩn gửi dữ liệu khi LƯU (tạo mới & chỉnh sửa): ô bị xóa trắng BẮT BUỘC đi kèm
+ * request dưới dạng `null` tường minh.
+ *
+ * Lý do: `JSON.stringify` loại bỏ hoàn toàn key có giá trị `undefined` khỏi body, nên
+ * server không phân biệt được "người dùng đã xóa trắng trường" với "trường không được
+ * gửi". Với các trường có guard ở server, thao tác xóa bị bỏ qua âm thầm mà API vẫn
+ * trả về thành công — đúng lỗi "xóa trường mà dữ liệu không hề thay đổi".
+ */
+const clearableText = (v: unknown): string | null => {
+  if (v == null) return null;
+  const s = String(v).trim();
+  return s === '' ? null : s;
+};
+
+/** Số: rỗng hoặc không hợp lệ -> null (KHÔNG trả 0, KHÔNG trả NaN). */
+const clearableNumber = (v: unknown): number | null => {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** UUID hợp lệ -> chính nó; rỗng hoặc không hợp lệ -> null. */
+const clearableUuid = (v: unknown): string | null => {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ? s : null;
+};
 
 // ── Render lịch sử thay đổi (giống màn Bến cảng) ─────────────────────
 // Nhóm các thay đổi theo cùng thời điểm (đến giây) + người thao tác thành 1 card,
@@ -418,6 +448,14 @@ function getPortHistCards(records: any[], orgMap: Map<string, string>, symbolMap
           </span>
         );
       }
+      if (fn === 'coordinates' || fn === 'Tọa độ GIS' || fn === 'Tọa độ GPS') {
+        const formattedCoordinates = formatPortHistoryCoordinates(rawV);
+        return formattedCoordinates ? (
+          <span style={{ whiteSpace: 'pre-line', wordBreak: 'normal', lineHeight: '20px' }}>
+            {formattedCoordinates}
+          </span>
+        ) : '';
+      }
       if ((fn === 'attachments' || fn === 'Tài liệu đính kèm' || fn === 'File đính kèm') && rawV) {
         const files = String(rawV)
           .split(/\s*,\s*/)
@@ -535,7 +573,7 @@ function renderPortHistCards(records: any[], orgMap: Map<string, string>, symbol
       </div>
     );
   }
-  return cards;
+  return <PaginatedHistoryList items={cards} renderItems={(pageCards) => pageCards} />;
 }
 
 // ── Helper: format date ─────────────────────────────────────────────
@@ -1143,8 +1181,15 @@ export default function PortListPage() {
   }, [filteredHistory, orgMap, symbolMap, symbolImageMap]);
 
   const handleFilterApply = useCallback(() => {
-    setFilterName((filterValues.portName || '').trim());
-    setFilterCode((filterValues.portCode || '').trim());
+    const portName = String(filterValues.portName || '').trim();
+    const portCode = String(filterValues.portCode || '').trim();
+    setFilterValues((previous) => (
+      previous.portName === portName && previous.portCode === portCode
+        ? previous
+        : { ...previous, portName, portCode }
+    ));
+    setFilterName(portName);
+    setFilterCode(portCode);
     setFilterOrgUnitId(filterValues.orgUnitId === '__all__' ? undefined : filterValues.orgUnitId || undefined);
     setFilterPortClass(filterValues.portClass ? Number(filterValues.portClass) : undefined);
     setFilterPortGroup(filterValues.portGroup ? Number(filterValues.portGroup) : undefined);
@@ -1214,8 +1259,9 @@ export default function PortListPage() {
       (async () => {
         try {
           setIsLoading(true);
-          const cached = (window.parent as any)?.kchtDetailCache?.[id];
-          const data = cached || await fetchCangBienById(id);
+          // Bản ghi cache từ danh sách/GIS có thể là DTO rút gọn. Luôn lấy DTO chi tiết
+          // trước khi sửa để không ghi đè null vào tỉnh, phân cấp hoặc biểu tượng.
+          const data = await fetchCangBienById(id);
           setSelectedRecord(data);
           if (action === 'detail') {
             const rows = await fetchPortAttachmentList(id);
@@ -1233,26 +1279,23 @@ export default function PortListPage() {
               mapSymbolId: data.mapSymbolId || undefined,
               detailedLocation: data.detailedLocation || undefined,
               portClass: data.portClass != null ? data.portClass : undefined,
-              heQuyChieu: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-              quyTacHienThi: data.displayRule != null ? data.displayRule : undefined,
-              phamViVungNuoc: data.waterAreaScope || undefined,
-              tongSoBenCang: data.totalBerths != null ? data.totalBerths : undefined,
-              tongSoKhuNeoDauChuyenTai: data.totalAnchoragesTransshipment != null ? data.totalAnchoragesTransshipment : undefined,
-              tongSoTuyenLuongCongCong: data.totalPublicChannels != null ? data.totalPublicChannels : undefined,
-              tongSoTuyenLuongChuyenDung: data.totalDedicatedChannels != null ? data.totalDedicatedChannels : undefined,
-              tongChieuDaiLuongCongCong: normalizeSafeNumber(data.totalPublicChannelLength),
-              tongChieuDaiLuongChuyenDung: normalizeSafeNumber(data.totalDedicatedChannelLength),
-              tongSoPhaoTieuBaoHieu: data.totalBuoysBeacons != null ? data.totalBuoysBeacons : undefined,
-              tongSoDeKe: data.totalDikes != null ? data.totalDikes : undefined,
-              tongChieuDaiDeKe: normalizeSafeNumber(data.totalDikeLength),
-              tongSoDenBienDangTieu: data.totalLighthouses != null ? data.totalLighthouses : undefined,
-              quantityBenPhao: data.buoyBerthCount != null ? data.buoyBerthCount : undefined,
-              quantityKhuNeoDau: data.anchorageCount != null ? data.anchorageCount : undefined,
-              quantityKhuChuyenTai: data.transshipmentCount != null ? data.transshipmentCount : undefined,
-              cacKhuNuocKhac: data.otherWaterAreas || undefined,
               coordinateSystem: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-              displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
+              displayRule: data.displayRule != null ? data.displayRule : undefined,
               waterAreaScope: data.waterAreaScope || undefined,
+              totalBerths: data.totalBerths != null ? data.totalBerths : undefined,
+              totalAnchoragesTransshipment: data.totalAnchoragesTransshipment != null ? data.totalAnchoragesTransshipment : undefined,
+              totalPublicChannels: data.totalPublicChannels != null ? data.totalPublicChannels : undefined,
+              totalDedicatedChannels: data.totalDedicatedChannels != null ? data.totalDedicatedChannels : undefined,
+              totalPublicChannelLength: normalizeSafeNumber(data.totalPublicChannelLength),
+              totalDedicatedChannelLength: normalizeSafeNumber(data.totalDedicatedChannelLength),
+              totalBuoysBeacons: data.totalBuoysBeacons != null ? data.totalBuoysBeacons : undefined,
+              totalDikes: data.totalDikes != null ? data.totalDikes : undefined,
+              totalDikeLength: normalizeSafeNumber(data.totalDikeLength),
+              totalLighthouses: data.totalLighthouses != null ? data.totalLighthouses : undefined,
+              buoyBerthCount: data.buoyBerthCount != null ? data.buoyBerthCount : undefined,
+              anchorageCount: data.anchorageCount != null ? data.anchorageCount : undefined,
+              transshipmentCount: data.transshipmentCount != null ? data.transshipmentCount : undefined,
+              otherWaterAreas: data.otherWaterAreas || undefined,
               remarks: data.remarks || undefined,
             });
             // Load infrastructure & attachments for edit
@@ -1524,50 +1567,34 @@ export default function PortListPage() {
       const payload = {
         portCode,
         portName,
-        province: (values.province as string) || undefined,
-        area: values.area as number | undefined,
-        maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
-        operationalStatus: (values.operationalStatus as string) || undefined,
+        province: clearableText(values.province),
+        area: clearableNumber(values.area),
+        maxVesselCapacity: clearableNumber(values.khaNangTiepNhan),
+        operationalStatus: clearableText(values.operationalStatus),
         approvalStatus: currentAction === 'draft' ? 'DRAFT' : currentAction === 'submit' ? 'PENDING' : 'APPROVED',
-        orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
-        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
-        mapSymbolId: (values.mapSymbolId as string) || undefined,
+        orgUnitId: clearableUuid(values.orgUnitId),
+        portGroup: clearableNumber(values.portGroup),
+        mapSymbolId: clearableText(values.mapSymbolId),
         geometryType: values.geometryType as string,
-        detailedLocation: (values.detailedLocation as string) || undefined,
-        portClass: values.portClass != null && !Number.isNaN(values.portClass as number)
-          ? Number(values.portClass) : undefined,
-        coordinateSystem: values.coordinateSystem != null && !Number.isNaN(values.coordinateSystem as number)
-          ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null && !Number.isNaN(values.displayRule as number)
-          ? Number(values.displayRule) : undefined,
-        waterAreaScope: (values.waterAreaScope as string) || undefined,
-        totalBerths: values.totalBerths != null && !Number.isNaN(values.totalBerths as number)
-          ? Number(values.totalBerths) : undefined,
-        totalAnchoragesTransshipment: values.totalAnchoragesTransshipment != null && !Number.isNaN(values.totalAnchoragesTransshipment as number)
-          ? Number(values.totalAnchoragesTransshipment) : undefined,
-        totalPublicChannels: values.totalPublicChannels != null && !Number.isNaN(values.totalPublicChannels as number)
-          ? Number(values.totalPublicChannels) : undefined,
-        totalDedicatedChannels: values.totalDedicatedChannels != null && !Number.isNaN(values.totalDedicatedChannels as number)
-          ? Number(values.totalDedicatedChannels) : undefined,
-        totalPublicChannelLength: values.totalPublicChannelLength != null && !Number.isNaN(values.totalPublicChannelLength as number)
-          ? Number(values.totalPublicChannelLength) : undefined,
-        totalDedicatedChannelLength: values.totalDedicatedChannelLength != null && !Number.isNaN(values.totalDedicatedChannelLength as number)
-          ? Number(values.totalDedicatedChannelLength) : undefined,
-        totalBuoysBeacons: values.totalBuoysBeacons != null && !Number.isNaN(values.totalBuoysBeacons as number)
-          ? Number(values.totalBuoysBeacons) : undefined,
-        totalDikes: values.totalDikes != null && !Number.isNaN(values.totalDikes as number)
-          ? Number(values.totalDikes) : undefined,
-        totalDikeLength: values.totalDikeLength != null && !Number.isNaN(values.totalDikeLength as number)
-          ? Number(values.totalDikeLength) : undefined,
-        totalLighthouses: values.totalLighthouses != null && !Number.isNaN(values.totalLighthouses as number)
-          ? Number(values.totalLighthouses) : undefined,
-        buoyBerthCount: values.buoyBerthCount != null && !Number.isNaN(values.buoyBerthCount as number)
-          ? Number(values.buoyBerthCount) : undefined,
-        anchorageCount: values.anchorageCount != null && !Number.isNaN(values.anchorageCount as number)
-          ? Number(values.anchorageCount) : undefined,
-        transshipmentCount: values.transshipmentCount != null && !Number.isNaN(values.transshipmentCount as number)
-          ? Number(values.transshipmentCount) : undefined,
-        otherWaterAreas: (values.otherWaterAreas as string) || undefined,
+        detailedLocation: clearableText(values.detailedLocation),
+        portClass: clearableNumber(values.portClass),
+        coordinateSystem: clearableNumber(values.coordinateSystem),
+        displayRule: clearableNumber(values.displayRule),
+        waterAreaScope: clearableText(values.waterAreaScope),
+        totalBerths: clearableNumber(values.totalBerths),
+        totalAnchoragesTransshipment: clearableNumber(values.totalAnchoragesTransshipment),
+        totalPublicChannels: clearableNumber(values.totalPublicChannels),
+        totalDedicatedChannels: clearableNumber(values.totalDedicatedChannels),
+        totalPublicChannelLength: clearableNumber(values.totalPublicChannelLength),
+        totalDedicatedChannelLength: clearableNumber(values.totalDedicatedChannelLength),
+        totalBuoysBeacons: clearableNumber(values.totalBuoysBeacons),
+        totalDikes: clearableNumber(values.totalDikes),
+        totalDikeLength: clearableNumber(values.totalDikeLength),
+        totalLighthouses: clearableNumber(values.totalLighthouses),
+        buoyBerthCount: clearableNumber(values.buoyBerthCount),
+        anchorageCount: clearableNumber(values.anchorageCount),
+        transshipmentCount: clearableNumber(values.transshipmentCount),
+        otherWaterAreas: clearableText(values.otherWaterAreas),
         coordinateList,
         wharfAreas: wharfAreaList,
         infrastructureList: infraList
@@ -1677,49 +1704,43 @@ export default function PortListPage() {
 
     setSubmitting(true);
     try {
-      const n = (v: unknown): number | undefined =>
-        v != null && !Number.isNaN(v as number) ? Number(v) : undefined;
-
       const coordinateList: Array<{ latitude: number; longitude: number }> = gpsCoordList
         .filter(c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
         .map(c => ({ latitude: dmToDd(c.latD, c.latM, c.latS), longitude: dmToDd(c.lngD, c.lngM, c.lngS) }));
 
       const payload = {
         id: selectedRecord.id,
-        portCode: (values.portCode as string) || undefined,
-        portName: (values.portName as string) || undefined,
-        province: (values.province as string) || undefined,
-        area: values.area as number | undefined,
-        maxVesselCapacity: values.khaNangTiepNhan as number | undefined,
-        operationalStatus: (values.operationalStatus as string) || undefined,
+        portCode: clearableText(values.portCode),
+        portName: clearableText(values.portName),
+        province: clearableText(values.province),
+        area: clearableNumber(values.area),
+        maxVesselCapacity: clearableNumber(values.khaNangTiepNhan),
+        operationalStatus: clearableText(values.operationalStatus),
         approvalStatus: editActionRef.current === 'draft' ? 'DRAFT' : 'APPROVED',
-        orgUnitId: (values.orgUnitId as string) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.orgUnitId as string) ? (values.orgUnitId as string) : undefined,
-        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
-        mapSymbolId: (values.gisLocation as any)?.mapSymbolId || (values.mapSymbolId as string) || undefined,
+        orgUnitId: clearableUuid(values.orgUnitId),
+        portGroup: clearableNumber(values.portGroup),
+        mapSymbolId: clearableText((values.gisLocation as any)?.mapSymbolId || values.mapSymbolId),
         geometryType: values.geometryType as string,
-        coordinates: (values.gisLocation as any)?.coordinates || undefined,
-        detailedLocation: (values.detailedLocation as string) || undefined,
-        portClass: values.portClass != null && !Number.isNaN(values.portClass as number)
-          ? Number(values.portClass) : undefined,
-        coordinateSystem: values.coordinateSystem != null && !Number.isNaN(values.coordinateSystem as number)
-          ? Number(values.coordinateSystem) : undefined,
-        displayRule: values.displayRule != null && !Number.isNaN(values.displayRule as number)
-          ? Number(values.displayRule) : undefined,
-        waterAreaScope: (values.waterAreaScope as string) || null,
-        totalBerths: n(values.totalBerths),
-        totalAnchoragesTransshipment: n(values.totalAnchoragesTransshipment),
-        totalPublicChannels: n(values.totalPublicChannels),
-        totalDedicatedChannels: n(values.totalDedicatedChannels),
-        totalPublicChannelLength: n(values.totalPublicChannelLength),
-        totalDedicatedChannelLength: n(values.totalDedicatedChannelLength),
-        totalBuoysBeacons: n(values.totalBuoysBeacons),
-        totalDikes: n(values.totalDikes),
-        totalDikeLength: n(values.totalDikeLength),
-        totalLighthouses: n(values.totalLighthouses),
-        buoyBerthCount: n(values.buoyBerthCount),
-        anchorageCount: n(values.anchorageCount),
-        transshipmentCount: n(values.transshipmentCount),
-        otherWaterAreas: (values.otherWaterAreas as string) || null,
+        coordinates: clearableText((values.gisLocation as any)?.coordinates),
+        detailedLocation: clearableText(values.detailedLocation),
+        portClass: clearableNumber(values.portClass),
+        coordinateSystem: clearableNumber(values.coordinateSystem),
+        displayRule: clearableNumber(values.displayRule),
+        waterAreaScope: clearableText(values.waterAreaScope),
+        totalBerths: clearableNumber(values.totalBerths),
+        totalAnchoragesTransshipment: clearableNumber(values.totalAnchoragesTransshipment),
+        totalPublicChannels: clearableNumber(values.totalPublicChannels),
+        totalDedicatedChannels: clearableNumber(values.totalDedicatedChannels),
+        totalPublicChannelLength: clearableNumber(values.totalPublicChannelLength),
+        totalDedicatedChannelLength: clearableNumber(values.totalDedicatedChannelLength),
+        totalBuoysBeacons: clearableNumber(values.totalBuoysBeacons),
+        totalDikes: clearableNumber(values.totalDikes),
+        totalDikeLength: clearableNumber(values.totalDikeLength),
+        totalLighthouses: clearableNumber(values.totalLighthouses),
+        buoyBerthCount: clearableNumber(values.buoyBerthCount),
+        anchorageCount: clearableNumber(values.anchorageCount),
+        transshipmentCount: clearableNumber(values.transshipmentCount),
+        otherWaterAreas: clearableText(values.otherWaterAreas),
         coordinateList,
         wharfAreas: wharfAreaList,
         infrastructureList: infraList
@@ -1735,7 +1756,7 @@ export default function PortListPage() {
       // Delete removed attachments (tuần tự tránh race condition trong DB)
       if (selectedRecord?.id && pendingDeletedAttachmentIds.length > 0) {
         for (const attId of pendingDeletedAttachmentIds) {
-          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`).catch(() => {});
+          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`);
         }
       }
       // Upload files after port updated
@@ -1793,7 +1814,7 @@ export default function PortListPage() {
   }, [page, pageSize, debouncedName, debouncedCode, filterTinh, filterOrgUnitId, filterPortGroup, filterPortClass, filterUpdatedFrom, filterUpdatedTo, filterStatus, filterApprovalStatus, filterIsDeleted]);
 
   const fetchTabCounts = useCallback(async () => {
-    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1'];
+    const statuses = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED_LEVEL1', 'APPROVED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'];
     const counts: Record<string, number> = {};
     await Promise.all([
       ...statuses.map(async (status) => {
@@ -1803,8 +1824,8 @@ export default function PortListPage() {
         } catch { counts[status] = 0; }
       }),
       fetchCangBienList({ isDeleted: true, page: 0, size: 1, orgUnitId: filterOrgUnitId })
-        .then(res => { counts['DELETED'] = res?.totalElements ?? 0; })
-        .catch(() => { counts['DELETED'] = 0; }),
+        .then(res => { counts.ARCHIVED = res?.totalElements ?? 0; })
+        .catch(() => { counts.ARCHIVED = 0; }),
     ]);
     const subTotal = Object.entries(counts).filter(([k]) => k !== 'all').reduce((sum, [, v]) => sum + v, 0);
     setTotalAll(subTotal);
@@ -1981,6 +2002,19 @@ export default function PortListPage() {
             // Giống Bến cảng: mở modal NGAY với dòng hiện tại, fetch dữ liệu ở nền —
             // KHÔNG bật setIsLoading để tránh load lại/remount danh sách
             setSelectedRecord(record);
+            updateForm.setFieldsValue({
+              portCode: record.portCode,
+              portName: record.portName,
+              province: record.province || undefined,
+              orgUnitId: record.orgUnitId || undefined,
+              portGroup: record.portGroup ?? undefined,
+              detailedLocation: record.detailedLocation || undefined,
+              portClass: record.portClass ?? undefined,
+              geometryType: record.geometryType || undefined,
+              mapSymbolId: record.mapSymbolId || undefined,
+              coordinateSystem: record.coordinateSystem ?? undefined,
+              displayRule: record.geometryType || record.coordinates ? 'Độ, phút, giây (DMS)' : undefined,
+            });
             setUpdateModalVisible(true);
             setInfraList(((record as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
             setWharfAreaList(((record as any).wharfAreas || []).map((w: any) => ({ ...w })));
@@ -2190,6 +2224,8 @@ export default function PortListPage() {
         label: 'Địa điểm (Tỉnh/Thành phố)',
         dataIndex: 'province',
         width: 250,
+        sortable: true,
+        sortOrder: sortField === 'province' ? sortOrder : null,
         ellipsis: false,
         render: (v: string | null) => v || '',
       },
@@ -2446,6 +2482,7 @@ export default function PortListPage() {
                 <Input placeholder="Tìm theo tên cảng biển" allowClear
                   value={filterValues.portName || ''}
                   onChange={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value }))}
+                  onBlur={(e) => setFilterValues((prev) => ({ ...prev, portName: e.target.value.trim() }))}
                   onPressEnter={handleFilterApply}
                   style={{ borderRadius: radiusPill, height: 40 }} />
               </div>
@@ -2471,6 +2508,7 @@ export default function PortListPage() {
                   <Input placeholder="Tìm theo mã cảng biển..." allowClear
                     value={filterValues.portCode || ''}
                     onChange={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value }))}
+                    onBlur={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value.trim() }))}
                     onPressEnter={handleFilterApply}
                     style={{ borderRadius: radiusPill, height: 40 }} />
                 </div>
@@ -2497,17 +2535,17 @@ export default function PortListPage() {
             statusTabs={[
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
               { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
-              { key: 'PENDING_APPROVAL', label: 'Chờ Cảng vụ duyệt', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: statusAttention, active: activeStatusTab === 'PENDING_APPROVAL' },
-              { key: 'APPROVED_LEVEL1', label: 'Chờ Cục duyệt', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: '#0284C7', active: activeStatusTab === 'APPROVED_LEVEL1' },
+              { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: actionPrimary, active: activeStatusTab === 'PENDING_APPROVAL' },
+              { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: statusAttention, active: activeStatusTab === 'APPROVED_LEVEL1' },
               { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
-              { key: 'REJECTED_LEVEL1', label: 'Từ chối', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
-              { key: 'DELETED', label: 'Đã xóa', count: tabCounts['DELETED'] ?? 0, color: statusCritical, active: activeStatusTab === 'DELETED' },
+              { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
+              { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', count: tabCounts['REJECTED_LEVEL2'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL2' },
+              { key: 'ARCHIVED', label: 'Đã xóa', count: tabCounts.ARCHIVED ?? 0, color: statusCritical, active: activeStatusTab === 'ARCHIVED' },
             ]}
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
-              setFilterApprovalStatus(key === 'all' || key === 'DELETED' ? undefined : key);
-              setFilterIsDeleted(key === 'DELETED' ? true : (key === 'all' ? undefined : false));
-              if (key === 'all') { setFilterStatus(undefined); setFilterTinh(''); setFilterName(''); setFilterCode(''); }
+              setFilterApprovalStatus(key === 'all' || key === 'ARCHIVED' ? undefined : key);
+              setFilterIsDeleted(key === 'ARCHIVED' ? true : (key === 'all' ? undefined : false));
               setPage(1);
             }}
           >

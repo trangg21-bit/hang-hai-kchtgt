@@ -401,8 +401,15 @@ public class PierService {
                 .departmentApprovalContent(entity.getDepartmentApprovalContent())
                 .build();
 
-        if (request.getPierName() != null)
-            entity.setPierName(request.getPierName());
+        // pierName là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng, TUYỆT ĐỐI
+        // không được âm thầm giữ giá trị cũ hoặc ghi chuỗi rỗng vào CSDL rồi vẫn trả về thành
+        // công — đó chính là lỗi "xóa trường mà dữ liệu không hề thay đổi".
+        if (request.getPierName() != null) {
+            if (request.getPierName().isBlank()) {
+                throw new IllegalArgumentException("Tên cầu cảng không được để trống");
+            }
+            entity.setPierName(request.getPierName().trim());
+        }
         if (request.getBerthId() != null) {
             entity.setBerthId(request.getBerthId());
             Berth parent = berthRepository.findById(request.getBerthId())
@@ -418,6 +425,8 @@ public class PierService {
         entity.setDesignLoad(request.getDesignLoad());
         entity.setPierType(request.getPierType());
         entity.setOperationalFunction(request.getOperationalFunction());
+        // operationalStatus: frontend đã chặn xóa trắng trường này (validate + toast) nên khi
+        // request không gửi giá trị thì giữ nguyên giá trị cũ.
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         entity.setMapSymbolId(request.getMapSymbolId());
@@ -429,6 +438,9 @@ public class PierService {
         entity.setDetailedLocation(request.getDetailedLocation());
         entity.setConstructionGrade(request.getConstructionGrade());
         entity.setStructureType(request.getStructureType());
+        // conditionStatus: Drawer Chỉnh sửa KHÔNG có ô nhập cho trường này nên frontend không bao
+        // giờ gửi giá trị — giữ nguyên giá trị cũ thay vì ghi null (muốn xóa được phải bổ sung ô
+        // nhập theo ma trận trường của BA/SA).
         if (request.getConditionStatus() != null)
             entity.setConditionStatus(request.getConditionStatus());
         entity.setWidth(request.getWidth());

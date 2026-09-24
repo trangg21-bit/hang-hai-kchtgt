@@ -40,6 +40,29 @@ class AisSystemRepositoryTest {
      * truy vấn thì test này phải đỏ chứ không để lọt thành lỗi 500 ở giao diện.
      */
     @Test
+    void testResolveListSort_CreatedAt() {
+        var pageable = PageRequest.of(0, 20, AisSystemController.resolveListSort("createdAt", "DESC", null));
+        assertDoesNotThrow(() -> repository.search(false, List.of(), null, null, null, null, null, null, null,
+                null, null, null, null, null, null, pageable));
+    }
+
+    @Test
+    void testResolveListSort_AllFields() {
+        List<String> fields = List.of("name", "code", "orgUnitName", "operatingOrgName",
+                "vtsOperationCenterName", "province", "updatedByName", "submittedByName",
+                "approverLevel1Name", "approverLevel2Name", "rejectionReason",
+                "detailedLocation", "conditionStatus", "approvalStatus", "commissioningYear",
+                "createdAt", "updatedAt");
+        for (String field : fields) {
+            for (String dir : List.of("ASC", "DESC")) {
+                var pageable = PageRequest.of(0, 20, AisSystemController.resolveListSort(field, dir, null));
+                assertDoesNotThrow(() -> repository.search(false, List.of(), null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, pageable), "Sort failed for field: " + field + " " + dir);
+            }
+        }
+    }
+
+    @Test
     void testSearch_EverySortablePropertyResolves() {
         repository.save(createAisSystem("AIS-S1", "Trạm A"));
         entityManager.flush();
@@ -161,6 +184,10 @@ class AisSystemRepositoryTest {
 
     @Test
     void testSearch_ProvinceAlphabeticalSort() {
+        entityManager.getEntityManager().createNativeQuery(
+                "MERGE INTO provinces (id, name, sort_order) KEY(id) VALUES (89, 'An Giang', 1), (48, 'Đà Nẵng', 15), (79, 'TP. Hồ Chí Minh', 58)")
+                .executeUpdate();
+
         AisSystem hcm = createAisSystem("AIS-HCM", "Trạm HCM");
         hcm.setProvinceId(79); // TP. Hồ Chí Minh
         AisSystem ag = createAisSystem("AIS-AG", "Trạm An Giang");

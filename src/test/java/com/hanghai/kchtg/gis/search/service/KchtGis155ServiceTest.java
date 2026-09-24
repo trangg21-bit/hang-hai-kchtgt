@@ -20,6 +20,7 @@ import com.hanghai.kchtg.port.repository.DryPortRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.scada.entity.Scada;
 import com.hanghai.kchtg.scada.repository.ScadaRepository;
@@ -149,6 +150,46 @@ class KchtGis155ServiceTest {
     void representativeCoordinateDoesNotInventMissingGeometry() {
         assertThat(KchtGis155Service.representativeCoordinate(null, "POINT")).isNull();
         assertThat(KchtGis155Service.representativeCoordinate("", "POINT")).isNull();
+    }
+
+    @Test
+    void radarSearchReturnsTheConfiguredMapSymbol() {
+        UUID orgUnitId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
+        RadarStation radar = new RadarStation();
+        radar.setId(UUID.randomUUID());
+        radar.setCode("RADAR-000044");
+        radar.setStationName("Tên trạm radar trên bản đồ");
+        radar.setOrgUnitId(orgUnitId);
+        radar.setMapIcon(mapSymbolId.toString());
+        radar.setApprovalStatus(ApprovalStatus.APPROVED);
+
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(radarStationRepository.searchFiltered(null, null)).thenReturn(List.of(radar));
+
+        KchtGisSearchPage result = service.search(
+                null, List.of(InfrastructureType.RADAR_STATION_LEGACY),
+                null, null, null, null, 0, 20);
+
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getMapSymbolId()).isEqualTo(mapSymbolId);
+    }
+
+    @Test
+    void radarSearchNormalizesVietnameseKeywordBeforeQueryingUnaccentedColumns() {
+        when(orgUnitCacheService.getDirectory()).thenReturn(Map.of());
+        when(orgUnitScopeService.currentUserScope()).thenReturn(OrgUnitScopeService.Scope.all());
+        when(radarStationRepository.searchFiltered(null, "%ten tram radar tren ban do%"))
+                .thenReturn(List.of());
+
+        service.search(
+                null, List.of(InfrastructureType.RADAR_STATION_LEGACY),
+                null, null, "  Tên trạm radar trên bản đồ  ", null, 0, 20);
+
+        verify(radarStationRepository).searchFiltered(null, "%ten tram radar tren ban do%");
+        assertThat(KchtGis155Service.normalizeUnaccentedSearch("Đài Hải Phòng"))
+                .isEqualTo("dai hai phong");
     }
 
     @Test

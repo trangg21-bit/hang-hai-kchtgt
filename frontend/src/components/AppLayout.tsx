@@ -582,13 +582,30 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
     '/dry-port',
     '/water-zone',
     '/anchorage',
+    '/transfer-area',
+    '/storm-shelter',
+    '/buoy-berth',
+    '/dike-revetment',
+    '/navigation-channel',
+    '/ship-repair-facility',
+    '/ship-repair-yard',
+    '/beacon-stations',
+    '/buoys',
+    '/buoy-station',
+    '/vts-system',
+    '/radar-station',
+    '/dai-ttdh',
+    '/station/coastal',
+    '/station/inmarsat',
+    '/station/cospas-sarsat',
+    '/station/lrit',
+    '/station/hanoi',
     '/ais-system',
     '/cctv',
     '/scada',
     '/transmission',
     '/vts-assist',
     '/vts-operation-center',
-    '/station/coastal'
   ].includes(location.pathname);
 
   if (isInIframe) {
@@ -619,6 +636,23 @@ export default function AppLayout({ initialSidebarHidden }: { initialSidebarHidd
             padding: 8px 16px !important;
           }
           ${isModalIframe ? `
+            html,
+            body {
+              width: 100% !important;
+              height: 100% !important;
+              overflow: hidden !important;
+            }
+            @media (min-width: 641px) {
+              body .ant-drawer .chk-detail-label,
+              body .ant-drawer .sec-col1-label,
+              body .ant-drawer .sec-col2-label,
+              body .ant-drawer .sec-full-label {
+                width: 220px !important;
+                min-width: 220px !important;
+                max-width: 220px !important;
+                flex-shrink: 0 !important;
+              }
+            }
             #root {
               display: none !important;
             }

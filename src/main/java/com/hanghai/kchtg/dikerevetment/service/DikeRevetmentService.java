@@ -240,8 +240,6 @@ public class DikeRevetmentService {
                     statusEnum = ApprovalStatus.fromString(approvalStatus);
                 } catch (Exception ignored) {}
             }
-        } else if (isDeleted == null) {
-            isDeleted = Boolean.FALSE;
         }
         String keywordPattern = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + normalizeSearchKeyword(keyword) + "%"
@@ -296,7 +294,8 @@ public class DikeRevetmentService {
         counts.put("DRAFT", 0L);
         counts.put("PENDING_APPROVAL", 0L);
         counts.put("APPROVED_LEVEL1", 0L);
-        counts.put("REJECTED", 0L);
+        counts.put("REJECTED_LEVEL1", 0L);
+        counts.put("REJECTED_LEVEL2", 0L);
         counts.put("APPROVED", 0L);
         counts.put("ARCHIVED", 0L);
 
@@ -305,14 +304,13 @@ public class DikeRevetmentService {
             if (row[0] == null) continue;
             ApprovalStatus st = (ApprovalStatus) row[0];
             long count = ((Number) row[1]).longValue();
-            if (st != ApprovalStatus.ARCHIVED) {
-                total += count;
-            }
+            total += count;
             switch (st) {
-                case DRAFT, PROPOSED -> counts.put("DRAFT", counts.get("DRAFT") + count);
-                case PENDING_APPROVAL -> counts.put("PENDING_APPROVAL", counts.get("PENDING_APPROVAL") + count);
+                case DRAFT -> counts.put("DRAFT", counts.get("DRAFT") + count);
+                case PENDING_APPROVAL, PROPOSED -> counts.put("PENDING_APPROVAL", counts.get("PENDING_APPROVAL") + count);
                 case APPROVED_LEVEL1 -> counts.put("APPROVED_LEVEL1", counts.get("APPROVED_LEVEL1") + count);
-                case REJECTED_LEVEL1, REJECTED_LEVEL2, REJECTED -> counts.put("REJECTED", counts.get("REJECTED") + count);
+                case REJECTED_LEVEL1, REJECTED -> counts.put("REJECTED_LEVEL1", counts.get("REJECTED_LEVEL1") + count);
+                case REJECTED_LEVEL2 -> counts.put("REJECTED_LEVEL2", counts.get("REJECTED_LEVEL2") + count);
                 case APPROVED, APPROVED_LEVEL2 -> counts.put("APPROVED", counts.get("APPROVED") + count);
                 case ARCHIVED -> counts.put("ARCHIVED", counts.get("ARCHIVED") + count);
                 default -> {}

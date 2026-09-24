@@ -1158,7 +1158,7 @@ export default function BerthList() {
             {v ? (waterwayMap.get(v) || record?.waterway || v) : (record?.waterway || '')}
           </span>
         ) },
-      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250,
+      { key: 'provinceId', label: 'Địa điểm (Tỉnh/Thành phố)', dataIndex: 'provinceId', width: 250, sortable: true,
         cellTitle: (record: Berth) => record.provinceId ? (VIETNAM_PROVINCES[record.provinceId - 1] || '') : '',
         render: (v: number | null) => v ? (VIETNAM_PROVINCES[v - 1] || '') : '' },
       { key: 'operationalFunction', label: 'Công năng khai thác', dataIndex: 'operationalFunction', width: 240, ellipsis: true,

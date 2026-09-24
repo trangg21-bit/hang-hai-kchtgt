@@ -282,9 +282,12 @@ public class TransmissionService {
         ? orgUnitScopeService.resolveSubtreeIds(orgUnitId)
         : List.of();
 
-    Boolean isDeleted = Boolean.FALSE;
+    // isDeleted = null  → trả về mọi bản ghi (kể cả đã xóa) — dùng cho tab "Tất cả" (chuẩn AGENTS.md)
+    // isDeleted = true  → chỉ bản ghi đã xóa mềm (tab "Đã xóa")
+    // isDeleted = false → chỉ bản ghi chưa xóa (các tab trạng thái phê duyệt)
+    Boolean isDeleted = null;
     ApprovalStatus apprStatus = null;
-    if (approvalStatus != null && !approvalStatus.isBlank()) {
+    if (approvalStatus != null && !approvalStatus.isBlank() && !"ALL".equalsIgnoreCase(approvalStatus.trim())) {
       String upper = approvalStatus.trim().toUpperCase();
       if ("DELETED".equals(upper) || "ARCHIVED".equals(upper) || "DA_XOA".equals(upper)) {
         isDeleted = Boolean.TRUE;
@@ -564,6 +567,10 @@ public class TransmissionService {
       }
     }
 
+    ApprovalStatus effectiveApprovalStatus = (entity.getDeletedAt() != null || entity.getDeletedBy() != null)
+        ? ApprovalStatus.ARCHIVED
+        : entity.getApprovalStatus();
+
     return TransmissionResponse.builder()
       .id(entity.getId())
       .deviceCode(entity.getDeviceCode())
@@ -585,7 +592,7 @@ public class TransmissionService {
       .unitOfMeasure(entity.getUnitOfMeasure())
       .yearOfUse(entity.getYearOfUse())
       .operationalStatus(entity.getOperationalStatus())
-      .approvalStatus(entity.getApprovalStatus())
+      .approvalStatus(effectiveApprovalStatus)
       .approverLevel1(entity.getApproverLevel1())
       .approverLevel1Name(resolveUserName(entity.getApproverLevel1()))
       .approvedDateLevel1(entity.getApprovedDateLevel1())
@@ -701,6 +708,9 @@ public class TransmissionService {
       if ("REJECTED_LEVEL2".equals(upper) || "REJECTED_L2".equals(upper)) {
         return ApprovalStatus.REJECTED_LEVEL2;
       }
+      if ("ARCHIVED".equals(upper) || "DELETED".equals(upper) || "DA_XOA".equals(upper)) {
+        return ApprovalStatus.ARCHIVED;
+      }
       return null;
     } catch (Exception e) {
       return null;
@@ -747,6 +757,16 @@ public class TransmissionService {
       case "orgUnitName":
       case "orgUnitId":
         property = "LOWER(o.name)";
+        break;
+      case "attachedInfrastructureName":
+      case "vtsSystemName":
+      case "attachedInfrastructure":
+        property = "COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')";
+        break;
+      case "operatingUnitName":
+      case "operatingOrgName":
+      case "operatingUnit":
+        property = "COALESCE(LOWER(opo.name), LOWER(opu.name), '')";
         break;
       case "provinceName":
         property = "LOWER(c.provinceName)";
@@ -1123,7 +1143,7 @@ public class TransmissionService {
         if (jdbcTemplate != null) {
           List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
-          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_station WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
         }
         return rawValue;

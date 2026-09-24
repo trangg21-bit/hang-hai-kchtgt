@@ -573,6 +573,9 @@ public class CctvService {
       }
     }
 
+    boolean isDeletedEntity = entity.getDeletedAt() != null || entity.getDeletedBy() != null || entity.getApprovalStatus() == ApprovalStatus.ARCHIVED;
+    ApprovalStatus effectiveApprovalStatus = isDeletedEntity ? ApprovalStatus.ARCHIVED : entity.getApprovalStatus();
+
     return CctvResponse.builder()
       .id(entity.getId())
       .deviceCode(entity.getDeviceCode())
@@ -592,7 +595,7 @@ public class CctvService {
       .unitOfMeasure(entity.getUnitOfMeasure())
       .yearOfUse(entity.getYearOfUse())
       .operationalStatus(entity.getOperationalStatus())
-      .approvalStatus(entity.getApprovalStatus())
+      .approvalStatus(effectiveApprovalStatus)
       .approverLevel1(entity.getApproverLevel1())
       .approverLevel1Name(resolveUserName(entity.getApproverLevel1()))
       .approvedDateLevel1(entity.getApprovedDateLevel1())
@@ -735,7 +738,7 @@ public class CctvService {
         if (jdbcTemplate != null) {
           List<String> ocNames = jdbcTemplate.queryForList("SELECT name FROM vts_operation_center WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!ocNames.isEmpty() && ocNames.get(0) != null) return ocNames.get(0);
-          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_stations WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
+          List<String> rsNames = jdbcTemplate.queryForList("SELECT station_name FROM radar_station WHERE id = ? AND deleted_at IS NULL", String.class, infraId);
           if (!rsNames.isEmpty() && rsNames.get(0) != null) return rsNames.get(0);
         }
         return rawValue;
@@ -913,6 +916,9 @@ public class CctvService {
       if ("REJECTED_LEVEL2".equals(upper) || "REJECTED_L2".equals(upper)) {
         return ApprovalStatus.REJECTED_LEVEL2;
       }
+      if ("ARCHIVED".equals(upper) || "DELETED".equals(upper) || "DA_XOA".equals(upper)) {
+        return ApprovalStatus.ARCHIVED;
+      }
       return null;
     } catch (Exception e) {
       return null;
@@ -959,6 +965,16 @@ public class CctvService {
       case "orgUnitName":
       case "orgUnitId":
         property = "LOWER(o.name)";
+        break;
+      case "attachedInfrastructureName":
+      case "vtsSystemName":
+      case "attachedInfrastructure":
+        property = "COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')";
+        break;
+      case "operatingUnitName":
+      case "operatingOrgName":
+      case "operatingUnit":
+        property = "COALESCE(LOWER(opo.name), LOWER(opu.name), '')";
         break;
       case "provinceName":
         property = "LOWER(c.provinceName)";
@@ -1028,12 +1044,10 @@ public class CctvService {
     String oldFilesSummary = String.join(", ", fileListBefore);
     List<String> uploadedFileNames = new ArrayList<>();
 
-    // Ghi nhật ký 'Tài liệu đính kèm' (ATTACHMENT_UPLOADED) khi hồ sơ ĐÃ DUYỆT — mirror /vts-operation-center.
-    // Guard: Thêm mới không bao giờ ghi lịch sử đính kèm (createdAt trùng/sát thời điểm hiện tại).
+    // Ghi nhật ký khi hồ sơ đã duyệt. Không suy đoán thao tác tạo/sửa bằng tuổi
+    // bản ghi vì thao tác sửa hợp lệ có thể diễn ra ngay sau lúc tạo.
     Cctv entity = cctvRepository.findById(entityId).orElse(null);
-    boolean isNewlyCreated = entity != null && entity.getCreatedAt() != null
-        && Math.abs(java.time.Duration.between(entity.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30;
-    boolean wasApproved = !isNewlyCreated && entity != null
+    boolean wasApproved = entity != null
         && (ApprovalStatus.APPROVED.equals(entity.getApprovalStatus())
             || ApprovalStatus.APPROVED_LEVEL2.equals(entity.getApprovalStatus()));
     for (MultipartFile file : files) {

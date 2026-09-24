@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import {
   Tabs, Row, Col, Input, Select, DatePicker, Form, Space, Button, Modal, Drawer,
-  type InputNumberProps,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
+import NumberInputWithCount from '../../components/shared/NumberInputWithCount';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import {
@@ -38,7 +38,7 @@ import {
   toStormShelterBuoyBerthOptions,
 } from './stormShelterBuoyBerthOptions';
 import {
-  textSecondary, textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, textPrimary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, readonlyInputStyle, sidebarBg, textAreaStyle,
@@ -104,21 +104,6 @@ const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
 ];
-
-type NumberInputWithCountProps = InputNumberProps<any> & { maxLength: number };
-
-function NumberInputWithCount({ maxLength, value, ...inputProps }: NumberInputWithCountProps) {
-  const count = String(value ?? '').length;
-  return (
-    <InputNumber
-      stringMode
-      {...inputProps}
-      value={value}
-      maxLength={maxLength}
-      suffix={<span style={{ color: textSecondary, fontSize: fontSizeMd }}>{count}/{maxLength}</span>}
-    />
-  );
-}
 
 const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
   const wkt = gisLocation?.coordinates;
@@ -219,7 +204,6 @@ interface DmsInputConfig {
   msg?: string;
   onEdit: (v: number | null) => void;
 }
-
 const renderDmsGroup = (
   dVal: number | null | undefined,
   mVal: number | null | undefined,
@@ -231,29 +215,29 @@ const renderDmsGroup = (
   const inputs: DmsInputConfig[] = [
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
-      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 66px', width: 66,
+      radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
       step: 1,
-      msg: started && dVal == null ? 'Bắt buộc' : undefined,
+      msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
-      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 72px', width: 72,
+      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
       step: 1,
-      msg: started && mVal == null ? 'Bắt buộc' : undefined,
+      msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
     {
       key: 's', base: 'Giây', value: sVal, max: 59.99,
-      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 82px', width: 82,
+      radius: '0', unit: '"', unitStyle: dmsUnitEndStyle, basis: '1.2 0 130px', width: 130,
       step: 0.01, formatter: fmtInputNumber,
-      msg: started && sVal == null ? 'Bắt buộc' : undefined,
+      msg: started && sVal == null ? 'Giây bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, mVal ?? null, v),
     },
   ];
 
   const inputRow = (
-    <div className="dms-input-row" style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-start', maxWidth: '100%', minWidth: 0 }}>
+    <div style={{ display: 'inline-flex', flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'center', maxWidth: '100%', minWidth: 0 }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
           <InputNumber
@@ -262,11 +246,11 @@ const renderDmsGroup = (
             max={inp.max}
             step={inp.step}
             placeholder={inp.base}
-            formatter={inp.formatter}
+            formatter={'formatter' in inp ? (inp as any).formatter : undefined}
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
-            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32, fontSize: 13 }}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
             controls={false}
           />
           <span style={inp.unitStyle}>{inp.unit}</span>
@@ -279,10 +263,10 @@ const renderDmsGroup = (
 
   // Chỉ hiện hàng thông báo lỗi khi thực sự có ít nhất 1 ô bị lỗi; khi không có lỗi thì không chiếm diện tích để ô nhập căn giữa hoàn hảo
   const messageRow = hasMsg ? (
-    <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: 2, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+    <div aria-live="polite" style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', width: 'fit-content', maxWidth: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
-          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: 10, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
+          {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
         </div>
       ))}
     </div>
@@ -290,7 +274,6 @@ const renderDmsGroup = (
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', width: '100%', minWidth: 0 }}>
-      <style>{dmsInputCss}</style>
       {inputRow}
       {messageRow}
     </div>
@@ -1159,13 +1142,18 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         displayRule: currentGeometryType ? 1 : undefined,
         latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
         longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
-        coordinates: wktCoordinates || undefined,
+        // Gửi chuỗi rỗng TƯỜNG MINH khi không có tọa độ (thay vì `undefined` bị dòng dọn key bên
+        // dưới xóa mất): server dùng '' = "người dùng đã xóa trắng vị trí" để chạy nhánh xóa
+        // spatial object; nếu key bị xóa thì server nhận null và GIỮ NGUYÊN hình học cũ.
+        coordinates: wktCoordinates || '',
         mooringWaterAreas: mooringPayload,
       };
 
       if (saveAction !== 'UPDATE') {
         payload.saveAction = saveAction;
       }
+      // Lưu ý: dòng dưới chỉ dọn key `undefined` (trường không gửi). Ô người dùng XÓA TRẮNG phải
+      // được gửi dạng null/'' tường minh ở trên, nếu không thao tác xóa bị bỏ qua âm thầm.
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
 
       let createdId: string | undefined;
@@ -1322,7 +1310,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                   {...labelProps('Tên khu tránh, trú bão')}
                   required
                   style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Tên khu tránh, trú bão không được để trống' }, { max: 255 }]}
+                  rules={[{ required: true, whitespace: true, message: 'Tên khu tránh, trú bão không được để trống' }, { max: 255 }]}
                 >
                   <Input placeholder="Nhập tên khu tránh, trú bão" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
@@ -1770,13 +1758,13 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                     render: (_v: unknown, _r: unknown, idx: number) => idx + 1,
                   },
                   {
-                    title: 'Vĩ độ (Latitude - N)',
+                    title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: fontSizeSm }}>*</span></span>,
                     key: 'lat',
                     onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lat', d, m, s)),
                   },
                   {
-                    title: 'Kinh độ (Longitude - E)',
+                    title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: fontSizeSm }}>*</span></span>,
                     key: 'lng',
                     onCell: () => ({ style: { verticalAlign: 'middle' } }),
                     render: (_v: unknown, record: GpsCoordinateItem) => renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) => updateGpsPoint(record._idx ?? 0, 'lng', d, m, s)),
