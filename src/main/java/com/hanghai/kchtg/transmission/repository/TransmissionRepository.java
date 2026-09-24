@@ -41,7 +41,7 @@ public interface TransmissionRepository extends JpaRepository<Transmission, UUID
      * So sánh theo SỐ, không so sánh chuỗi (tránh 'TRD-000010' < 'TRD-000002' theo từ điển).
      */
     @Query(value = "SELECT MAX(CAST(SUBSTRING(device_code FROM 5) AS INTEGER)) " +
-            "FROM transmission WHERE device_code ~ '^TRD-[0-9]+$'", nativeQuery = true)
+            "FROM transmission WHERE device_code SIMILAR TO 'TRD-[0-9]+'", nativeQuery = true)
     Optional<Integer> findMaxDeviceCodeSequence();
 
     /**
@@ -69,7 +69,11 @@ public interface TransmissionRepository extends JpaRepository<Transmission, UUID
     List<Transmission> findAllActiveForCache();
 
     @Query(value = "SELECT c FROM Transmission c " +
-            "LEFT JOIN OrgUnit o ON o.id = c.orgUnitId WHERE " +
+            "LEFT JOIN OrgUnit o ON o.id = c.orgUnitId " +
+            "LEFT JOIN VtsOperationCenter voc ON (c.attachedInfrastructureType = 1 AND voc.id = c.attachedInfrastructureId) " +
+            "LEFT JOIN RadarStation rs ON (c.attachedInfrastructureType = 2 AND rs.id = c.attachedInfrastructureId) " +
+            "LEFT JOIN OperatingOrganization opo ON opo.id = c.operatingUnitId " +
+            "LEFT JOIN OrgUnit opu ON opu.id = c.operatingUnitId WHERE " +
             "(:isDeleted IS NULL OR (:isDeleted = true AND (c.deletedAt IS NOT NULL OR c.deletedBy IS NOT NULL)) OR (:isDeleted = false AND c.deletedAt IS NULL AND c.deletedBy IS NULL)) " +
             "AND (:includeAll = true OR c.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR c.orgUnitId IN :filterOrgUnitIds) " +

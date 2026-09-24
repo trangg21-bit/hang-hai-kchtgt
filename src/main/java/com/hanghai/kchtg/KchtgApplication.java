@@ -24,6 +24,7 @@ public class KchtgApplication {
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(KchtgApplication.class);
 
     @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnBean(javax.sql.DataSource.class)
     public org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy flywayMigrationStrategy(
             javax.sql.DataSource dataSource) {
         return flyway -> {

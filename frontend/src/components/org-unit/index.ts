@@ -6,6 +6,7 @@ import OrgUnitTreeSelect, {
 import {
   buildOrgUnitTreeData,
   normalizeSearchText,
+  flattenOrgUnits,
   resolveOrgLevel2Name,
   resolveOrgTailPath,
   resolveOrgFullPath,
@@ -20,6 +21,7 @@ export {
   FormOrgUnitTreeSelect,
   buildOrgUnitTreeData,
   normalizeSearchText,
+  flattenOrgUnits,
   resolveOrgLevel2Name,
   resolveOrgTailPath,
   resolveOrgFullPath,

@@ -56,7 +56,11 @@ public interface VhfRepository extends JpaRepository<Vhf, UUID> {
 
     @Query(value = "SELECT v FROM Vhf v " +
             "LEFT JOIN OrgUnit o ON o.id = v.orgUnitId " +
-            "LEFT JOIN Port p ON p.id = v.seaportId WHERE " +
+            "LEFT JOIN Port p ON p.id = v.seaportId " +
+            "LEFT JOIN VtsOperationCenter voc ON (v.attachedInfrastructureType = 1 AND voc.id = v.attachedInfrastructureId) " +
+            "LEFT JOIN RadarStation rs ON (v.attachedInfrastructureType = 2 AND rs.id = v.attachedInfrastructureId) " +
+            "LEFT JOIN OperatingOrganization opo ON opo.id = v.operatingUnitId " +
+            "LEFT JOIN OrgUnit opu ON opu.id = v.operatingUnitId WHERE " +
             "(:isDeleted IS NULL OR (:isDeleted = true AND (v.deletedAt IS NOT NULL OR v.deletedBy IS NOT NULL OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) OR (:isDeleted = false AND v.deletedAt IS NULL AND v.deletedBy IS NULL AND v.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "AND (:includeAll = true OR v.orgUnitId IN :orgUnitIds) " +
             "AND (:filterEnabled = false OR v.orgUnitId IN :filterOrgUnitIds) " +

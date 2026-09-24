@@ -51,7 +51,7 @@ describe('BeaconStation Number Input Rules', () => {
   });
 
   describe('decimalNumberRule validator', () => {
-    const validator = decimalNumberRule.validator as (rule: unknown, val: unknown) => Promise<void>;
+    const validator = (decimalNumberRule as any).validator as (rule: unknown, val: unknown) => Promise<void>;
 
     it('chấp nhận giá trị rỗng', async () => {
       await expect(validator({}, '')).resolves.toBeUndefined();

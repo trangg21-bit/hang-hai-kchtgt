@@ -96,6 +96,7 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
 
     it('chấp nhận số âm hợp lệ, vẫn chấp nhận số dương và giá trị rỗng', async () => {
       await expect(signedValidator({}, '-12.34')).resolves.toBeUndefined();
+      await expect(signedValidator({}, '-12,34')).resolves.toBeUndefined();
       await expect(signedValidator({}, '-0.5')).resolves.toBeUndefined();
       await expect(signedValidator({}, '-1234567890123456.1234')).resolves.toBeUndefined();
       await expect(signedValidator({}, '12.34')).resolves.toBeUndefined();
@@ -107,7 +108,7 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       await expect(signedValidator({}, '-')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '12-34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '--1')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
-      await expect(signedValidator({}, '-12,34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
+      await expect(signedValidator({}, '-12a34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '-12345678901234567.3456')).rejects.toThrow(
         'Giới hạn chữ số khi có dấu "." là 16',
       );
@@ -126,6 +127,34 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       expect(normalizeDecimal20_4('-12.5')).toBe('12.5');
       expect(normalizeDecimal20_4Signed('abc')).toBe('');
       expect(normalizeDecimal20_4Signed('-')).toBe('-');
+    });
+
+    it('parseNumber20Signed đồng bộ 100% với parseNumber20 nhưng giữ nguyên số âm (Cao trình đỉnh vs Chiều dài)', () => {
+      // Định dạng số phân tách hàng nghìn bằng dấu chấm và thập phân bằng dấu phẩy chuẩn vi-VN
+      expect(parseNumber20('12.345,67')).toBe('12345.67');
+      expect(parseNumber20Signed('-12.345,67')).toBe('-12345.67');
+      expect(parseNumber20Signed('12.345,67')).toBe('12345.67');
+
+      // Số có dấu chấm hàng nghìn không bị parse nhầm thành số thập phân
+      expect(parseNumber20('1.234')).toBe('1234');
+      expect(parseNumber20Signed('1.234')).toBe('1234');
+      expect(parseNumber20Signed('-1.234')).toBe('-1234');
+
+      // Số thập phân có dấu phẩy
+      expect(parseNumber20('12,34')).toBe('12.34');
+      expect(parseNumber20Signed('12,34')).toBe('12.34');
+      expect(parseNumber20Signed('-12,34')).toBe('-12.34');
+
+      // Số 4 chữ số thập phân (như trong ảnh test 9,9999)
+      expect(parseNumber20('9,9999')).toBe('9.9999');
+      expect(parseNumber20Signed('9,9999')).toBe('9.9999');
+      expect(parseNumber20Signed('-9,9999')).toBe('-9.9999');
+
+      // Trạng thái đang gõ dấu "-" hoặc số 0
+      expect(parseNumber20Signed('-')).toBe('-');
+      expect(parseNumber20Signed('-0')).toBe('-0');
+      expect(parseNumber20Signed('-0,')).toBe('-0.');
+      expect(parseNumber20('0,')).toBe('0.');
     });
 
     it('getValueFromEvent20Signed trả null cho chuỗi rỗng và giữ dấu âm khi có giá trị', () => {

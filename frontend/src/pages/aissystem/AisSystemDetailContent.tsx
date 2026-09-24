@@ -43,7 +43,7 @@ import { getProvinceNameById } from '../../types/common';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { parseWktToCoordinates } from '../../utils/gisGeometry';
+import { parseWktToCoordinates, ddToDms } from '../../utils/gisGeometry';
 
 const fontSizeMd = 13.5;
 
@@ -80,19 +80,6 @@ const sectionTitleStyle: React.CSSProperties = {
 };
 
 const fmtDateTime = (v?: string | null): string => (v ? dayjs(v).format('DD/MM/YYYY HH:mm:ss') : '');
-
-const ddToDms = (dd?: number | null) => {
-  if (dd === undefined || dd === null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-  const abs = Math.abs(dd);
-  let d = Math.floor(abs);
-  let minFloat = (abs - d) * 60;
-  if (minFloat > 59.999999999) { d += 1; minFloat = 0; }
-  let m = Math.floor(minFloat);
-  let s = Math.round((minFloat - m) * 60);
-  if (s >= 60) { m += 1; s = 0; }
-  if (m >= 60) { d += 1; m = 0; }
-  return { d, m, s };
-};
 
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
   if (!record) return [];
@@ -704,7 +691,15 @@ export default function AisSystemDetailContent({
                   <div className="chk-detail-grid">
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
-                      <span className="chk-detail-value">{record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm'}</span>
+                      <span className="chk-detail-value">
+                        {record?.geometryType === 'LINE'
+                          ? 'Đối tượng đường'
+                          : record?.geometryType === 'POLYGON'
+                          ? 'Đối tượng vùng'
+                          : (record?.geometryType === 'POINT' || coordinates.length > 0
+                          ? 'Đối tượng điểm'
+                          : '—')}
+                      </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
@@ -734,17 +729,26 @@ export default function AisSystemDetailContent({
                               </Space>
                             );
                           }
+                          if (!record?.geometryType && coordinates.length === 0) {
+                            return '—';
+                          }
                           return 'Hệ thống trạm bờ AIS';
                         })()}
                       </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
-                      <span className="chk-detail-value">{(record as any)?.coordinateSystem === 2 ? 'VN-2000' : 'WGS-84'}</span>
+                      <span className="chk-detail-value">
+                        {(record as any)?.coordinateSystem === 2
+                          ? 'VN-2000'
+                          : (record?.geometryType || coordinates.length > 0 ? 'WGS-84' : '—')}
+                      </span>
                     </div>
                     <div className="chk-detail-row">
                       <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
-                      <span className="chk-detail-value">Độ, phút, giây (DMS)</span>
+                      <span className="chk-detail-value">
+                        {record?.geometryType || coordinates.length > 0 ? 'Độ, phút, giây (DMS)' : '—'}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -755,9 +759,23 @@ export default function AisSystemDetailContent({
                   </span>
                   <Button
                     type="default"
-                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    icon={<EnvironmentOutlined style={{ color: coordinates.length === 0 ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
                     onClick={() => setMapModalOpen(true)}
-                    style={{
+                    disabled={coordinates.length === 0}
+                    style={coordinates.length === 0 ? {
+                      height: 32,
+                      fontSize: fontSizeSm,
+                      padding: '0 14px',
+                      borderRadius: radiusPill,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      background: '#f5f5f5',
+                      borderColor: '#d9d9d9',
+                      color: 'rgba(0, 0, 0, 0.25)',
+                      cursor: 'not-allowed',
+                      boxShadow: 'none',
+                    } : {
                       ...outlineButtonStyle,
                       height: 32,
                       fontSize: fontSizeSm,
@@ -766,6 +784,7 @@ export default function AisSystemDetailContent({
                       alignItems: 'center',
                       gap: 4,
                     }}
+                    title={coordinates.length === 0 ? 'Chưa có dữ liệu tọa độ GPS để hiển thị trên bản đồ' : undefined}
                   >
                     Xem vị trí trên bản đồ
                   </Button>

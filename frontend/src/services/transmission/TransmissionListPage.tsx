@@ -898,11 +898,11 @@ const TransmissionListPage = () => {
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
-        key: "vtsSystemName",
+        key: "attachedInfrastructureName",
         label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        sortable: false,
+        sortOrder: sortOrderFor("attachedInfrastructureName"),
         cellTitle: (record: TransmissionResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -911,7 +911,7 @@ const TransmissionListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        sortable: false,
+        sortOrder: sortOrderFor("operatingUnitName"),
         cellTitle: (record: TransmissionResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -1973,14 +1973,18 @@ const TransmissionListPage = () => {
     fetchTabCounts();
   }, [orgUnitReady, fetchData, fetchTabCounts]);
 
-  const handleFilterApply = useCallback(() => {
+  const handleFilterApply = useCallback((overrides?: { deviceName?: string; deviceCode?: string }) => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
     if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
-    setFilterDeviceName(inputDeviceName);
-    setFilterDeviceCode(inputDeviceCode);
+    const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+    const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+    setInputDeviceName(nextName);
+    setInputDeviceCode(nextCode);
+    setFilterDeviceName(nextName);
+    setFilterDeviceCode(nextCode);
     setPage(0);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
@@ -2436,21 +2440,37 @@ const TransmissionListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị" allowClear
+              <Input
+                placeholder="Tìm theo tên thiết bị"
+                allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
+                onBlur={() => setInputDeviceName((prev) => (prev ? prev.trim() : ""))}
+                onPressEnter={(e) => {
+                  const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceName).trim();
+                  setInputDeviceName(val);
+                  handleFilterApply({ deviceName: val });
+                }}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
             </SidebarFilterField>
 
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị" allowClear
+                  <Input
+                    placeholder="Tìm theo mã thiết bị"
+                    allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
-                    onPressEnter={handleFilterApply}
-                    style={{ borderRadius: radiusPill, height: 40 }} />
+                    onBlur={() => setInputDeviceCode((prev) => (prev ? prev.trim() : ""))}
+                    onPressEnter={(e) => {
+                      const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceCode).trim();
+                      setInputDeviceCode(val);
+                      handleFilterApply({ deviceCode: val });
+                    }}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
@@ -2678,7 +2698,6 @@ const TransmissionListPage = () => {
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống truyền dẫn{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
         open={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
-        extra={<Button type="text" onClick={() => setDetailDrawerOpen(false)} style={drawerCloseBtnStyle}>✕</Button>}
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },
@@ -3544,16 +3563,6 @@ const TransmissionListPage = () => {
         }}
         footer={
           <div style={drawerFooterStyle}>
-            <Button
-              onClick={() => {
-                setUpdateModalOpen(false);
-                setUpdateTarget(null);
-                updateForm.resetFields();
-              }}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Hủy
-            </Button>
             {updateTarget && ['APPROVED', 'APPROVED_L2', 'APPROVED_LEVEL2', 'PUBLISHED'].includes(updateTarget.approvalStatus || '') ? (
               canSaveAndApprove && (
                 <Button

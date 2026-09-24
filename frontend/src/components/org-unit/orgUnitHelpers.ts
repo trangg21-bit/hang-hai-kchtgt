@@ -4,6 +4,7 @@ export interface OrgUnitTreeOption {
   name: string;
   code?: string;
   parentId?: string;
+  children?: OrgUnitTreeOption[];
 }
 
 export interface OrgUnitTreeNode {
@@ -26,6 +27,37 @@ export function normalizeSearchText(value: unknown): string {
     .replace(/[đĐ]/g, 'd');
 }
 
+/** Làm phẳng danh sách đơn vị nếu được truyền vào dưới dạng cây lồng nhau (hoặc hỗn hợp). */
+export function flattenOrgUnits(
+  nodes: readonly OrgUnitTreeOption[] = [],
+): OrgUnitTreeOption[] {
+  const result: OrgUnitTreeOption[] = [];
+  const walk = (items: readonly OrgUnitTreeOption[], inheritedParentId?: string) => {
+    if (!Array.isArray(items)) return;
+    for (const item of items) {
+      if (!item || item.id === undefined || item.id === null) continue;
+      const strId = String(item.id).trim();
+      if (!strId) continue;
+      const explicitParentId = item.parentId !== undefined && item.parentId !== null
+        ? String(item.parentId).trim()
+        : undefined;
+      const effectiveParentId = explicitParentId || inheritedParentId;
+      result.push({
+        id: strId,
+        name: item.name,
+        code: item.code,
+        parentId: effectiveParentId,
+      });
+      const children = item.children;
+      if (Array.isArray(children) && children.length > 0) {
+        walk(children, strId);
+      }
+    }
+  };
+  walk(nodes);
+  return result;
+}
+
 /**
  * Tên đơn vị cấp 2 (con của cấp cao nhất) trong chuỗi phân cấp của đơn vị.
  * Dùng để hiển thị Đơn vị quản lý đồng nhất giữa danh sách và chi tiết:
@@ -36,13 +68,14 @@ export function resolveOrgLevel2Name(
   orgUnitId?: string | null,
 ): string | undefined {
   if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
-  const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [o.id, o]));
+  const flat = flattenOrgUnits(orgUnits);
+  const byId = new Map<string, OrgUnitTreeOption>(flat.map((o) => [String(o.id).toLowerCase(), o]));
   const chain: OrgUnitTreeOption[] = [];
-  let cur: OrgUnitTreeOption | undefined = byId.get(orgUnitId);
+  let cur: OrgUnitTreeOption | undefined = byId.get(String(orgUnitId).toLowerCase());
   let guard = 0;
   while (cur && guard++ < 30) {
     chain.unshift(cur);
-    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+    cur = cur.parentId ? byId.get(String(cur.parentId).toLowerCase()) : undefined;
   }
   const level2 = chain.length >= 2 ? chain[1] : chain[0];
   return level2 ? level2.name : undefined;
@@ -57,13 +90,14 @@ export function resolveOrgTailPath(
   orgUnitId?: string | null,
 ): string | undefined {
   if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
-  const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [o.id, o]));
+  const flat = flattenOrgUnits(orgUnits);
+  const byId = new Map<string, OrgUnitTreeOption>(flat.map((o) => [String(o.id).toLowerCase(), o]));
   const chain: OrgUnitTreeOption[] = [];
-  let cur: OrgUnitTreeOption | undefined = byId.get(orgUnitId);
+  let cur: OrgUnitTreeOption | undefined = byId.get(String(orgUnitId).toLowerCase());
   let guard = 0;
   while (cur && guard++ < 30) {
     chain.unshift(cur);
-    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+    cur = cur.parentId ? byId.get(String(cur.parentId).toLowerCase()) : undefined;
   }
   if (chain.length === 0) return undefined;
   return chain.slice(1).map((o) => o.name).join(' / ');
@@ -78,13 +112,14 @@ export function resolveOrgFullPath(
   orgUnitId?: string | null,
 ): string[] | undefined {
   if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
-  const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [o.id, o]));
+  const flat = flattenOrgUnits(orgUnits);
+  const byId = new Map<string, OrgUnitTreeOption>(flat.map((o) => [String(o.id).toLowerCase(), o]));
   const chain: OrgUnitTreeOption[] = [];
-  let cur: OrgUnitTreeOption | undefined = byId.get(orgUnitId);
+  let cur: OrgUnitTreeOption | undefined = byId.get(String(orgUnitId).toLowerCase());
   let guard = 0;
   while (cur && guard++ < 30) {
     chain.unshift(cur);
-    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+    cur = cur.parentId ? byId.get(String(cur.parentId).toLowerCase()) : undefined;
   }
   if (chain.length === 0) return undefined;
   return chain.map((o) => o.name);
@@ -93,29 +128,44 @@ export function resolveOrgFullPath(
 /**
  * Lấy tập hợp tất cả ID của đơn vị gốc và toàn bộ đơn vị cấp con/cháu bên dưới.
  * Dùng cho logic lọc Cascading (chọn Cục -> hiển thị KCHT thuộc Cục và toàn bộ Cảng vụ con).
+ * Hỗ trợ cả danh sách phẳng và cấu trúc cây lồng nhau (children), không phân biệt hoa/thường (case-insensitive).
  */
 export function resolveOrgSubtreeIds(
   orgUnits: readonly OrgUnitTreeOption[] = [],
   rootOrgUnitId?: string | null,
 ): Set<string> {
   const result = new Set<string>();
-  if (!rootOrgUnitId || !Array.isArray(orgUnits)) return result;
-  const rootStr = String(rootOrgUnitId);
-  result.add(rootStr);
-  const queue = [rootStr];
+  if (!rootOrgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return result;
+
+  const targetRoot = String(rootOrgUnitId).trim();
+  if (!targetRoot) return result;
+
+  const flatList = flattenOrgUnits(orgUnits);
+  const targetRootNorm = targetRoot.toLowerCase();
+
+  result.add(targetRoot);
+  result.add(targetRootNorm);
+
+  const queue: string[] = [targetRootNorm];
+  const visited = new Set<string>([targetRootNorm]);
+
   while (queue.length > 0) {
-    const parentId = queue.shift()!;
-    for (const org of orgUnits) {
+    const curParentNorm = queue.shift()!;
+    for (const org of flatList) {
       if (!org || org.id === undefined || org.id === null) continue;
-      const orgIdStr = String(org.id);
-      const orgParentIdStr =
-        org.parentId !== undefined && org.parentId !== null ? String(org.parentId) : undefined;
-      if (orgParentIdStr === parentId && !result.has(orgIdStr)) {
+      const orgIdStr = String(org.id).trim();
+      const orgIdNorm = orgIdStr.toLowerCase();
+      const orgParentIdNorm = org.parentId ? String(org.parentId).trim().toLowerCase() : undefined;
+
+      if (orgParentIdNorm === curParentNorm && !visited.has(orgIdNorm)) {
+        visited.add(orgIdNorm);
         result.add(orgIdStr);
-        queue.push(orgIdStr);
+        result.add(orgIdNorm);
+        queue.push(orgIdNorm);
       }
     }
   }
+
   return result;
 }
 
@@ -144,33 +194,36 @@ export function findRootOrgUnitId(
   orgUnitId?: string | null,
 ): string | undefined {
   if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
-  const byId = new Map<string, OrgUnitTreeOption>(orgUnits.map((o) => [String(o.id), o]));
-  let cur = byId.get(String(orgUnitId));
+  const flat = flattenOrgUnits(orgUnits);
+  const byId = new Map<string, OrgUnitTreeOption>(flat.map((o) => [String(o.id).toLowerCase(), o]));
+  let cur = byId.get(String(orgUnitId).toLowerCase());
   if (!cur) return undefined;
   let guard = 0;
   while (cur && guard++ < 30) {
+    const parentIdStr = cur.parentId ? String(cur.parentId).trim().toLowerCase() : undefined;
     if (
-      !cur.parentId ||
-      cur.parentId === '00000000-0000-0000-0000-000000000017' ||
-      !byId.has(String(cur.parentId))
+      !parentIdStr ||
+      parentIdStr === '00000000-0000-0000-0000-000000000017' ||
+      !byId.has(parentIdStr)
     ) {
       return String(cur.id);
     }
-    cur = byId.get(String(cur.parentId));
+    cur = byId.get(parentIdStr);
   }
   return undefined;
 }
 
 /**
- * Dựng cây từ danh sách phẳng. Có thể tái sử dụng cho Tree, Cascader hoặc
+ * Dựng cây từ danh sách phẳng (hoặc làm phẳng trước nếu là cây). Có thể tái sử dụng cho Tree, Cascader hoặc
  * các component khác cần cùng một cấu trúc đơn vị.
  */
 export function buildOrgUnitTreeData(
   options: readonly OrgUnitTreeOption[] = [],
 ): OrgUnitTreeNode[] {
+  const flatOptions = flattenOrgUnits(options);
   // Ẩn đơn vị gốc G17 (Bộ GTVT) nếu có — G17 chỉ dùng làm container phân quyền ngầm cho admin
-  const safeOptions = (Array.isArray(options) ? options : []).filter(
-    (o) => o && o.code !== 'G17' && o.id !== '00000000-0000-0000-0000-000000000017',
+  const safeOptions = flatOptions.filter(
+    (o) => o && o.code !== 'G17' && String(o.id).toLowerCase() !== '00000000-0000-0000-0000-000000000017',
   );
   const nodes = new Map<string, OrgUnitTreeNode>();
 

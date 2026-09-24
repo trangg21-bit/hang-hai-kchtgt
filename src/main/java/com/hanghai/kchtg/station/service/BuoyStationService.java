@@ -269,7 +269,14 @@ public class BuoyStationService {
                 .rejectionReason(entity.getRejectionReason())
                 .build();
 
-        if (request.getName() != null) entity.setName(request.getName());
+        // name là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng, TUYỆT ĐỐI không
+        // được âm thầm giữ giá trị cũ hoặc ghi chuỗi rỗng vào CSDL rồi vẫn trả về thành công.
+        if (request.getName() != null) {
+            if (request.getName().isBlank()) {
+                throw new IllegalArgumentException("Tên nhà trạm không được để trống");
+            }
+            entity.setName(request.getName().trim());
+        }
         if (request.getType() != null) {
             if (isApprovedStatus(entity.getStatus())) {
                 throw new IllegalArgumentException("Loại nhà trạm phao không thể thay đổi khi đã được phê duyệt.");
@@ -346,6 +353,14 @@ public class BuoyStationService {
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
                 && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+
+        // coordinates = '' (có mặt nhưng rỗng) = người dùng đã XÓA TRẮNG vị trí ⇒ phải xóa spatial
+        // object cũ, nếu không tọa độ cũ vẫn còn nguyên — đúng lỗi "xóa triệt để mà kiểm tra không
+        // có gì thay đổi". coordinates = null (trường không gửi) ⇒ giữ nguyên hành vi cũ, KHÔNG xóa.
+        if (coordinates != null && coordinates.trim().isEmpty() && entity.getSpatialId() != null) {
+            gisSpatialObjectService.delete(entity.getSpatialId());
+            entity.setSpatialId(null);
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {

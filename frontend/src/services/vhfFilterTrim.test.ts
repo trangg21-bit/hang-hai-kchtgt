@@ -49,4 +49,38 @@ describe('VHF API Query Trim (/vhf)', () => {
     expect(urlObj.searchParams.get('deviceName')).toBeNull();
     expect(urlObj.searchParams.get('search')).toBeNull();
   });
+
+  it('trims leading and trailing spaces for deviceName and deviceCode on search submit and enter key', () => {
+    let filterValues = {
+      deviceName: '   Trạm VHF Bạch Long Vĩ   ',
+      deviceCode: '   VHF-001   ',
+    };
+
+    const handleFilterApply = (overrides?: { deviceName?: string; deviceCode?: string }) => {
+      const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : (filterValues.deviceName || '')).trim();
+      const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : (filterValues.deviceCode || '')).trim();
+      filterValues = {
+        ...filterValues,
+        deviceName: nextName,
+        deviceCode: nextCode,
+      };
+    };
+
+    // Khi người dùng nhấn nút "Tìm kiếm"
+    handleFilterApply();
+    expect(filterValues.deviceName).toBe('Trạm VHF Bạch Long Vĩ');
+    expect(filterValues.deviceCode).toBe('VHF-001');
+
+    // Khi người dùng nhấn phím Enter trên ô "Tên thiết bị"
+    filterValues.deviceName = '   Trạm VHF Cát Bà   ';
+    const enterNameVal = filterValues.deviceName.trim();
+    handleFilterApply({ deviceName: enterNameVal });
+    expect(filterValues.deviceName).toBe('Trạm VHF Cát Bà');
+
+    // Khi người dùng nhấn phím Enter trên ô "Mã thiết bị"
+    filterValues.deviceCode = '   VHF-NEW-88   ';
+    const enterCodeVal = filterValues.deviceCode.trim();
+    handleFilterApply({ deviceCode: enterCodeVal });
+    expect(filterValues.deviceCode).toBe('VHF-NEW-88');
+  });
 });

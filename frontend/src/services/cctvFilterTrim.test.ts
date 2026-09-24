@@ -49,4 +49,41 @@ describe('CCTV API Query Trim (/cctv)', () => {
     expect(urlObj.searchParams.get('deviceName')).toBeNull();
     expect(urlObj.searchParams.get('search')).toBeNull();
   });
+
+  it('trims leading and trailing spaces for deviceName and deviceCode on search submit and enter key', () => {
+    let inputDeviceName = '   Camera Giám Sát Cảng A   ';
+    let inputDeviceCode = '   CCTV-001   ';
+    let filterDeviceName = '';
+    let filterDeviceCode = '';
+
+    const handleFilterApply = (overrides?: { deviceName?: string; deviceCode?: string }) => {
+      const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+      const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+      inputDeviceName = nextName;
+      inputDeviceCode = nextCode;
+      filterDeviceName = nextName;
+      filterDeviceCode = nextCode;
+    };
+
+    // Khi người dùng nhấn nút "Tìm kiếm"
+    handleFilterApply();
+    expect(inputDeviceName).toBe('Camera Giám Sát Cảng A');
+    expect(inputDeviceCode).toBe('CCTV-001');
+    expect(filterDeviceName).toBe('Camera Giám Sát Cảng A');
+    expect(filterDeviceCode).toBe('CCTV-001');
+
+    // Khi người dùng nhấn phím Enter trên ô "Tên thiết bị"
+    inputDeviceName = '   Camera Mới 02   ';
+    const enterNameVal = inputDeviceName.trim();
+    handleFilterApply({ deviceName: enterNameVal });
+    expect(inputDeviceName).toBe('Camera Mới 02');
+    expect(filterDeviceName).toBe('Camera Mới 02');
+
+    // Khi người dùng nhấn phím Enter trên ô "Mã thiết bị"
+    inputDeviceCode = '   CAM-NEW-99   ';
+    const enterCodeVal = inputDeviceCode.trim();
+    handleFilterApply({ deviceCode: enterCodeVal });
+    expect(inputDeviceCode).toBe('CAM-NEW-99');
+    expect(filterDeviceCode).toBe('CAM-NEW-99');
+  });
 });

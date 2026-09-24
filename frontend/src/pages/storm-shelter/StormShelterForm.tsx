@@ -1159,13 +1159,18 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         displayRule: currentGeometryType ? 1 : undefined,
         latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
         longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
-        coordinates: wktCoordinates || undefined,
+        // Gửi chuỗi rỗng TƯỜNG MINH khi không có tọa độ (thay vì `undefined` bị dòng dọn key bên
+        // dưới xóa mất): server dùng '' = "người dùng đã xóa trắng vị trí" để chạy nhánh xóa
+        // spatial object; nếu key bị xóa thì server nhận null và GIỮ NGUYÊN hình học cũ.
+        coordinates: wktCoordinates || '',
         mooringWaterAreas: mooringPayload,
       };
 
       if (saveAction !== 'UPDATE') {
         payload.saveAction = saveAction;
       }
+      // Lưu ý: dòng dưới chỉ dọn key `undefined` (trường không gửi). Ô người dùng XÓA TRẮNG phải
+      // được gửi dạng null/'' tường minh ở trên, nếu không thao tác xóa bị bỏ qua âm thầm.
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
 
       let createdId: string | undefined;
@@ -1322,7 +1327,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                   {...labelProps('Tên khu tránh, trú bão')}
                   required
                   style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Tên khu tránh, trú bão không được để trống' }, { max: 255 }]}
+                  rules={[{ required: true, whitespace: true, message: 'Tên khu tránh, trú bão không được để trống' }, { max: 255 }]}
                 >
                   <Input placeholder="Nhập tên khu tránh, trú bão" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>

@@ -23,6 +23,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -219,7 +220,7 @@ public class DikeRevetmentController {
             PageRequest pageable = PageRequest.of(page, size, sort);
             Page<DikeRevetmentResponse> responses = service.searchPaged(
                     orgUnitId, keyword, dikeRevetmentName, seaportId, dikeRevetmentType, conditionStatus,
-                    approvalStatus, isDeleted, updatedBy, parseLocalDateTime(updatedFrom), parseLocalDateTime(updatedTo),
+                    approvalStatus, isDeleted, updatedBy, parseUpdatedFrom(updatedFrom), parseUpdatedTo(updatedTo),
                     code, location, commissioningYear, pageable);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm đê kè thành công", responses));
         } catch (Exception e) {
@@ -381,16 +382,45 @@ public class DikeRevetmentController {
                 .body(data);
     }
 
-    private LocalDateTime parseLocalDateTime(String dateStr) {
+    private LocalDateTime parseUpdatedFrom(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty()) return null;
+        String s = dateStr.trim();
         try {
-            return LocalDateTime.parse(dateStr, DateTimeFormatter.ISO_DATE_TIME);
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atStartOfDay();
+            }
+            return LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
             try {
-                return LocalDateTime.parse(dateStr + "T00:00:00");
+                return LocalDateTime.parse(s.replace(" ", "T"));
             } catch (Exception e2) {
                 return null;
             }
         }
+    }
+
+    private LocalDateTime parseUpdatedTo(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) return null;
+        String s = dateStr.trim();
+        try {
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
+            }
+            LocalDateTime ldt = LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
+            if (ldt.getNano() == 0 || (ldt.getNano() == 999_000_000 && (s.endsWith(".999") || s.endsWith(":59")))) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
+        } catch (Exception e) {
+            try {
+                return LocalDateTime.parse(s.replace(" ", "T"));
+            } catch (Exception e2) {
+                return null;
+            }
+        }
+    }
+
+    private LocalDateTime parseLocalDateTime(String dateStr) {
+        return parseUpdatedFrom(dateStr);
     }
 }

@@ -942,7 +942,7 @@ public class VtsSystemService {
 
         // 1. Tên hệ thống VTS
         if ("systemName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN t.systemName IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN t.systemName IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
                     .and(defaultSort);
@@ -950,7 +950,7 @@ public class VtsSystemService {
 
         // 2. Mã hệ thống VTS
         if ("code".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN t.code IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN t.code IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
                     .and(defaultSort);
@@ -958,35 +958,35 @@ public class VtsSystemService {
 
         // 3. Đơn vị quản lý
         if ("orgUnitName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN o.name IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN o.name IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(o.name)"))
                     .and(defaultSort);
         }
 
         // 4. Thuộc cảng biển
         if ("portName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN p.portName IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN p.portName IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(p.portName)"))
                     .and(defaultSort);
         }
 
         // 5. Đơn vị chủ quản
         if ("owningOrgName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN own.name IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN own.name IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(own.name)"))
                     .and(defaultSort);
         }
 
         // 6. Đơn vị vận hành
         if ("operatingOrgName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN COALESCE(op.name, oorg.name) IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN COALESCE(op.name, oorg.name) IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(COALESCE(op.name, oorg.name))"))
                     .and(defaultSort);
         }
 
         // 7. Địa điểm (Tỉnh/TP)
         if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN pv.id IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN pv.id IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "pv.sortOrder"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
                     .and(defaultSort);
@@ -994,7 +994,7 @@ public class VtsSystemService {
 
         // 8. Cán bộ cập nhật (ưu tiên người cập nhật, nếu chưa cập nhật lấy người tạo)
         if ("updatedByName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN COALESCE(u.fullName, uCreate.fullName) IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN COALESCE(u.fullName, uCreate.fullName) IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(COALESCE(u.fullName, uCreate.fullName))"))
                     .and(JpaSort.unsafe(Sort.Direction.DESC, "COALESCE(t.updatedAt, t.createdAt)"))
                     .and(defaultSort);
@@ -1002,7 +1002,7 @@ public class VtsSystemService {
 
         // 9. Cán bộ gửi phê duyệt
         if ("submittedByName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN uSub.fullName IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN uSub.fullName IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(uSub.fullName)"))
                     .and(JpaSort.unsafe(Sort.Direction.DESC, "t.submittedAt"))
                     .and(defaultSort);
@@ -1010,7 +1010,7 @@ public class VtsSystemService {
 
         // 10. Cán bộ phê duyệt cấp Cảng vụ/Chi cục
         if ("approverLevel1Name".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN uApp1.fullName IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN uApp1.fullName IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(uApp1.fullName)"))
                     .and(JpaSort.unsafe(Sort.Direction.DESC, "t.approvedDateLevel1"))
                     .and(defaultSort);
@@ -1018,7 +1018,7 @@ public class VtsSystemService {
 
         // 11. Cán bộ phê duyệt cấp Cục
         if ("approverLevel2Name".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN uApp2.fullName IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN uApp2.fullName IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(uApp2.fullName)"))
                     .and(JpaSort.unsafe(Sort.Direction.DESC, "t.approvedDateLevel2"))
                     .and(defaultSort);
@@ -1026,7 +1026,7 @@ public class VtsSystemService {
 
         // 12. Lý do từ chối
         if ("rejectionReason".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN t.rejectionReason IS NULL THEN 1 ELSE 0 END")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN t.rejectionReason IS NULL THEN 1 ELSE 0 END)")
                     .and(JpaSort.unsafe(direction, "LOWER(t.rejectionReason)"))
                     .and(defaultSort);
         }
@@ -1035,7 +1035,8 @@ public class VtsSystemService {
         if (property == null) {
             return defaultSort;
         }
-        return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN " + property + " IS NULL THEN 1 ELSE 0 END")
+        String caseExpr = property.contains(".") ? property : ("t." + property);
+        return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN " + caseExpr + " IS NULL THEN 1 ELSE 0 END)")
                 .and(JpaSort.unsafe(direction, property))
                 .and(defaultSort);
     }

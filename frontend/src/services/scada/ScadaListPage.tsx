@@ -764,11 +764,11 @@ const ScadaListPage = () => {
         render: (val: string) => renderCellWithTooltip(val, true),
       },
       {
-        key: "vtsSystemName",
+        key: "attachedInfrastructureName",
         label: "Thuộc TTDH VTS/Trạm radar",
         dataIndex: "attachedInfrastructureName",
         width: 280,
-        sortable: false,
+        sortOrder: sortOrderFor("attachedInfrastructureName"),
         cellTitle: (record: ScadaResponse) => record.attachedInfrastructureName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -777,7 +777,7 @@ const ScadaListPage = () => {
         label: "Đơn vị khai thác",
         dataIndex: "operatingUnitName",
         width: 260,
-        sortable: false,
+        sortOrder: sortOrderFor("operatingUnitName"),
         cellTitle: (record: ScadaResponse) => record.operatingUnitName || '',
         render: (val: string) => renderCellWithTooltip(val),
       },
@@ -859,7 +859,7 @@ const ScadaListPage = () => {
         width: 300,
         type: "status" as const,
                 render: (val: string, record: ScadaResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy);
+          const isDeleted = isScadaDeleted(record);
           return renderApprovalBadge(val, isDeleted);
         },
       },
@@ -1870,14 +1870,18 @@ const ScadaListPage = () => {
     fetchTabCounts();
   }, [orgUnitReady, fetchData, fetchTabCounts]);
 
-  const handleFilterApply = useCallback(() => {
+  const handleFilterApply = useCallback((overrides?: { deviceName?: string; deviceCode?: string }) => {
     // Validate khoảng ngày: Từ ngày không được lớn hơn Đến ngày (so sánh chuỗi ISO "YYYY-MM-DD HH:mm:ss")
     if (filterValues.updatedFrom && filterValues.updatedTo && filterValues.updatedFrom > filterValues.updatedTo) {
       toast.error("Ngày bắt đầu không được lớn hơn ngày kết thúc");
       return;
     }
-    setFilterDeviceName(inputDeviceName);
-    setFilterDeviceCode(inputDeviceCode);
+    const nextName = (overrides?.deviceName !== undefined ? overrides.deviceName : inputDeviceName).trim();
+    const nextCode = (overrides?.deviceCode !== undefined ? overrides.deviceCode : inputDeviceCode).trim();
+    setInputDeviceName(nextName);
+    setInputDeviceCode(nextCode);
+    setFilterDeviceName(nextName);
+    setFilterDeviceCode(nextCode);
     setPage(0);
   }, [inputDeviceName, inputDeviceCode, filterValues.updatedFrom, filterValues.updatedTo]);
 
@@ -2309,21 +2313,37 @@ const ScadaListPage = () => {
             </SidebarFilterField>
 
             <SidebarFilterField label="Tên thiết bị" labelGap={spaceSm}>
-              <Input placeholder="Tìm theo tên thiết bị" allowClear
+              <Input
+                placeholder="Tìm theo tên thiết bị"
+                allowClear
                 value={inputDeviceName}
                 onChange={(e) => setInputDeviceName(e.target.value)}
-                onPressEnter={handleFilterApply}
-                style={{ borderRadius: radiusPill, height: 40 }} />
+                onBlur={() => setInputDeviceName((prev) => (prev ? prev.trim() : ""))}
+                onPressEnter={(e) => {
+                  const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceName).trim();
+                  setInputDeviceName(val);
+                  handleFilterApply({ deviceName: val });
+                }}
+                style={{ borderRadius: radiusPill, height: 40 }}
+              />
             </SidebarFilterField>
 
             {filterCollapsed && (
               <>
                 <SidebarFilterField label="Mã thiết bị" labelGap={spaceSm}>
-                  <Input placeholder="Tìm theo mã thiết bị" allowClear
+                  <Input
+                    placeholder="Tìm theo mã thiết bị"
+                    allowClear
                     value={inputDeviceCode}
                     onChange={(e) => setInputDeviceCode(e.target.value)}
-                    onPressEnter={handleFilterApply}
-                    style={{ borderRadius: radiusPill, height: 40 }} />
+                    onBlur={() => setInputDeviceCode((prev) => (prev ? prev.trim() : ""))}
+                    onPressEnter={(e) => {
+                      const val = ((e.target as HTMLInputElement)?.value ?? inputDeviceCode).trim();
+                      setInputDeviceCode(val);
+                      handleFilterApply({ deviceCode: val });
+                    }}
+                    style={{ borderRadius: radiusPill, height: 40 }}
+                  />
                 </SidebarFilterField>
 
                 <SidebarFilterField label="Tình trạng" labelGap={spaceSm}>
@@ -2698,7 +2718,7 @@ const ScadaListPage = () => {
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
-                              {renderApprovalBadge(selectedRecord.approvalStatus, Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy))}
+                              {renderApprovalBadge(selectedRecord.approvalStatus, isScadaDeleted(selectedRecord))}
                             </span>
                           </div>
                           <div className="chk-detail-row">

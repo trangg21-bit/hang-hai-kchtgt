@@ -245,6 +245,55 @@ class BeaconStationServiceTest {
         }
 
         @Test
+        @DisplayName("search with formatted date ranges correctly parses commissioned and updated dates")
+        void search_withFormattedDateRanges() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "DRAFT");
+            when(beaconStationRepo.searchFiltered(any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(List.of(entity));
+
+            List<BeaconStationResponse> result = service.search(
+                    null, null, null, null, null, null, null, null, null, null, null, null, null,
+                    "2026-09-22 00:00:00.000", "2026-09-22 23:59:59.999",
+                    "2026-09-22 00:00:00.000", "2026-09-22 23:59:59.999");
+
+            assertThat(result).hasSize(1);
+            verify(beaconStationRepo).searchFiltered(
+                    isNull(), isNull(), isNull(), isNull(), isNull(), eq(true), eq(List.of()),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                    eq(LocalDate.of(2026, 9, 22)), eq(LocalDate.of(2026, 9, 22)),
+                    argThat(from -> from != null && from.getYear() == 2026 && from.getMonthValue() == 9 && from.getDayOfMonth() == 22 && from.getHour() == 0 && from.getMinute() == 0 && from.getSecond() == 0),
+                    argThat(to -> to != null && to.getYear() == 2026 && to.getMonthValue() == 9 && to.getDayOfMonth() == 22 && to.getHour() == 23 && to.getMinute() == 59 && to.getSecond() == 59 && to.getNano() == 999_999_999)
+            );
+        }
+
+        @Test
+        @DisplayName("searchPaged with formatted date ranges correctly parses commissioned and updated dates")
+        void searchPaged_withFormattedDateRanges() {
+            UUID id = UUID.randomUUID();
+            BeaconStation entity = makeEntity(id, "DRAFT");
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+            when(beaconStationRepo.searchFilteredPaged(any(), any(), any(), any(), any(), anyBoolean(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(entity)));
+
+            var result = service.searchPaged(
+                    null, null, null, null, null, null, null, null, null, null, null, null, null,
+                    "2026-09-22 00:00:00.000", "2026-09-22 23:59:59.999",
+                    "2026-09-22 00:00:00.000", "2026-09-22 23:59:59.999",
+                    pageable);
+
+            assertThat(result.getContent()).hasSize(1);
+            verify(beaconStationRepo).searchFilteredPaged(
+                    isNull(), isNull(), isNull(), isNull(), isNull(), eq(true), eq(List.of()),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
+                    eq(LocalDate.of(2026, 9, 22)), eq(LocalDate.of(2026, 9, 22)),
+                    argThat(from -> from != null && from.getYear() == 2026 && from.getMonthValue() == 9 && from.getDayOfMonth() == 22 && from.getHour() == 0 && from.getMinute() == 0 && from.getSecond() == 0),
+                    argThat(to -> to != null && to.getYear() == 2026 && to.getMonthValue() == 9 && to.getDayOfMonth() == 22 && to.getHour() == 23 && to.getMinute() == 59 && to.getSecond() == 59 && to.getNano() == 999_999_999),
+                    eq(pageable)
+            );
+        }
+
+        @Test
         @DisplayName("findById deleted entity returns status DELETED and deleted audit fields")
         void findByIdDeletedEntity() {
             UUID id = UUID.randomUUID();
@@ -398,6 +447,48 @@ class BeaconStationServiceTest {
             assertThat(result).isNotNull();
             verify(beaconStationRepo, atLeastOnce()).save(beaconStationCaptor.capture());
             assertThat(beaconStationCaptor.getValue().getLightRange()).isEqualTo(85.5);
+        }
+
+        @Test
+        @DisplayName("generateBeaconStationCode when no existing records returns DBNT-000001")
+        void generateBeaconStationCode_whenNoRecords_returnsFirstSequence() {
+            when(beaconStationRepo.findMaxBeaconStationCodeSequence()).thenReturn(Optional.empty());
+            when(beaconStationRepo.existsCodeAnyState("DBNT-000001")).thenReturn(false);
+
+            String code = service.generateBeaconStationCode();
+            assertThat(code).isEqualTo("DBNT-000001");
+        }
+
+        @Test
+        @DisplayName("generateBeaconStationCode when DBNT-000001 exists returns DBNT-000002")
+        void generateBeaconStationCode_whenDBNT000001Exists_returnsDBNT000002() {
+            when(beaconStationRepo.findMaxBeaconStationCodeSequence()).thenReturn(Optional.of(1));
+            when(beaconStationRepo.existsCodeAnyState("DBNT-000002")).thenReturn(false);
+
+            String code = service.generateBeaconStationCode();
+            assertThat(code).isEqualTo("DBNT-000002");
+        }
+
+        @Test
+        @DisplayName("generateBeaconStationCode when collision occurs loops to next available")
+        void generateBeaconStationCode_whenCollision_loopsToNextAvailable() {
+            when(beaconStationRepo.findMaxBeaconStationCodeSequence()).thenReturn(Optional.of(1));
+            when(beaconStationRepo.existsCodeAnyState("DBNT-000002")).thenReturn(true);
+            when(beaconStationRepo.existsCodeAnyState("DBNT-000003")).thenReturn(false);
+
+            String code = service.generateBeaconStationCode();
+            assertThat(code).isEqualTo("DBNT-000003");
+        }
+
+        @Test
+        @DisplayName("generateBeaconStationCode when native query fails uses fallback list")
+        void generateBeaconStationCode_whenNativeQueryFails_usesFallbackList() {
+            when(beaconStationRepo.findMaxBeaconStationCodeSequence()).thenThrow(new RuntimeException("Native query error"));
+            when(beaconStationRepo.findAllCodesWithBeaconPrefix()).thenReturn(List.of("DBNT-000001", "DBNT-000005"));
+            when(beaconStationRepo.existsCodeAnyState("DBNT-000006")).thenReturn(false);
+
+            String code = service.generateBeaconStationCode();
+            assertThat(code).isEqualTo("DBNT-000006");
         }
     }
 
@@ -1223,6 +1314,8 @@ class BeaconStationServiceTest {
             attachment.setFilePath("target/test-uploads/test.pdf");
 
             when(attachmentRepository.findById(attachmentId)).thenReturn(Optional.of(attachment));
+            when(attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("BEACON_LIGHT", stationId))
+                    .thenReturn(List.of(attachment));
             when(beaconStationRepo.findById(stationId)).thenReturn(Optional.of(approvedStation));
 
             service.deleteAttachment(stationId, attachmentId);

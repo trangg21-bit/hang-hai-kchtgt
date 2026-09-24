@@ -241,6 +241,16 @@ const APPROVAL_COLOR: Record<string, string> = {
   ARCHIVED: statusCritical,
 };
 
+export function isVtsAssistDeleted(record?: Partial<VtsAssistResponse> | null): boolean {
+  if (!record) return false;
+  return Boolean(
+    record.deletedAt ||
+    record.deletedBy ||
+    record.approvalStatus === 'DELETED' ||
+    record.approvalStatus === 'ARCHIVED'
+  );
+}
+
 /* ── Shared list/detail UI tokens — aligned with Port list-view ───────── */
 const pillStyle: React.CSSProperties = {
   borderRadius: radiusPill,
@@ -1845,7 +1855,7 @@ const VtsAssistListPage = () => {
         width: 300,
         type: "status" as const,
                 render: (val: string, record: VtsAssistResponse) => {
-          const isDeleted = Boolean(record.deletedAt || record.deletedBy || val === "DELETED" || val === "ARCHIVED");
+          const isDeleted = isVtsAssistDeleted(record) || val === "DELETED" || val === "ARCHIVED";
           return renderApprovalBadge(isDeleted ? "DELETED" : val);
         },
       },
@@ -2519,7 +2529,7 @@ const VtsAssistListPage = () => {
   // /vts-system (VtsSystemList.tsx:196), không tự viết lại điều kiện quyền ở từng nút.
   const rowActions = useCallback(
     (record: VtsAssistResponse) => {
-      const isDeleted = Boolean(record.deletedAt || record.deletedBy || record.approvalStatus === "DELETED" || record.approvalStatus === "ARCHIVED");
+      const isDeleted = isVtsAssistDeleted(record);
       if (isDeleted) {
         const actions: Array<{ key: string; label: string; icon: React.ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean }> = [];
         if (kchtPerms.canRead) {
@@ -3833,7 +3843,7 @@ const VtsAssistListPage = () => {
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
                               {(() => {
-                                const isDeleted = Boolean(selectedRecord.deletedAt || selectedRecord.deletedBy || selectedRecord.approvalStatus === 'DELETED' || selectedRecord.approvalStatus === 'ARCHIVED');
+                                const isDeleted = isVtsAssistDeleted(selectedRecord);
                                 return renderApprovalBadge(isDeleted ? 'ARCHIVED' : selectedRecord.approvalStatus);
                               })()}
                             </span>

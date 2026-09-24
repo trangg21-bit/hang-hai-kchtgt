@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react-refresh/only-export-components, react-hooks/set-state-in-effect */
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
@@ -23,7 +24,7 @@ import {
     Tooltip,
     Typography,
 } from 'antd';
-import { normalizeSafeNumber, fmtNum } from '../../utils/numFmt';
+import { normalizeSafeNumber, fmtNum, formatDotNumber, parseDotNumber } from '../../utils/numFmt';
 import { parseWktToCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
 import EmptyState from '../../components/EmptyState';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -240,6 +241,23 @@ const BEACON_HISTORY_FIELD_ORDER = [
   'rejectionReason', 'note', 'Tài liệu đính kèm',
 ];
 
+const BEACON_HISTORY_FIELD_LABELS: Record<string, string> = {
+  unitId: 'Đơn vị quản lý', code: 'Mã đèn biển', name: 'Tên đèn biển', type: 'Loại đèn biển',
+  unitName: 'Đơn vị quản lý', latitude: 'Vĩ độ', longitude: 'Kinh độ', lightRange: 'Tầm hiệu lực ánh sáng',
+  towerColor: 'Màu sắc bên ngoài của tháp đèn', location: 'Địa điểm đặt trạm đèn', shape: 'Hình dáng',
+  structure: 'Kết cấu', towerHeight: 'Chiều cao tháp đèn', lightHeight: 'Chiều cao tâm sáng',
+  geographicRange: 'Tầm hiệu lực địa lý', backupLightModel: 'Đèn dự phòng', powerSupply: 'Nguồn cung cấp',
+  staffCount: 'Nhân sự bố trí', stationArea: 'Diện tích sử dụng trạm', primaryLightModel: 'Đèn chính',
+  area: 'Diện tích', lastRepairDate: 'Thời điểm sửa chữa gần nhất', commissionedDate: 'Thời điểm đưa vào sử dụng',
+  status: 'Trạng thái', approvalStatus: 'Trạng thái phê duyệt', rejectionReason: 'Lý do từ chối',
+  provinceId: 'Tỉnh / Thành phố', seaportId: 'Cảng biển', operator: 'Đơn vị vận hành',
+  detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động', region: 'Địa bàn',
+  identifyingFeature: 'Đặc điểm nhận dạng', note: 'Ghi chú', geometryType: 'Loại đối tượng GIS',
+  coordinates: 'Tọa độ GIS',
+  mapSymbolId: 'Biểu tượng GIS', coordinateSystem: 'Hệ quy chiếu', displayRule: 'Quy tắc hiển thị',
+  attachments: 'Tài liệu đính kèm',
+};
+
 // Tình trạng hoạt động — semantic tokens (integer enum khớp backend OperationalStatus)
 const OPERATIONAL_STATUS_OPTIONS = [
   { value: 0, label: 'Chưa khai thác/vận hành' },
@@ -280,19 +298,65 @@ function formatOperationTableDateTime(dateStr: string | null | undefined): strin
 }
 
 // Số hiển thị chuẩn vi-VN: hàng nghìn dùng dấu chấm, phần thập phân dùng dấu phẩy.
-const formatNumber = (v: number | string | null | undefined, maxFractionDigits = 6): string | null => {
+export const formatNumber = (v: number | string | null | undefined, maxFractionDigits = 6): string | null => {
   if (v === null || v === undefined || v === '') return null;
   const safeStr = normalizeSafeNumber(v);
   if (!safeStr) return null;
   if (safeStr === '99999999999999999999') return '99.999.999.999.999.999.999';
-  const n = Number(safeStr);
-  if (!Number.isFinite(n) || safeStr.replace(/\./g, '').length > 15) {
-    const parts = safeStr.split('.');
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return parts.join(',');
+  const formatted = formatDotNumber(safeStr);
+  if (!formatted) return null;
+  if (maxFractionDigits >= 0 && formatted.includes(',')) {
+    const [intPart, decPart] = formatted.split(',');
+    const trimmedDec = decPart.slice(0, maxFractionDigits).replace(/0+$/, '');
+    return trimmedDec ? `${intPart},${trimmedDec}` : intPart;
   }
-  return n.toLocaleString('vi-VN', { maximumFractionDigits: maxFractionDigits });
+  return formatted;
 };
+
+export function isBeaconNumericField(fn: string | null | undefined): boolean {
+  if (!fn) return false;
+  const raw = fn.trim().toLowerCase();
+  const unaccented = raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/²/g, '2')
+    .toLowerCase();
+  const clean = unaccented.replace(/[^a-z0-9]/g, '');
+
+  // 1. Chiều cao tháp đèn (m)
+  if (clean.includes('towerheight') || clean.includes('chieucaothap')) {
+    return true;
+  }
+  // 2. Chiều cao tâm sáng (m)
+  if (clean.includes('lightheight') || clean.includes('chieucaotamsang')) {
+    return true;
+  }
+  // 3. Tầm hiệu lực ánh sáng
+  if (clean.includes('lightrange') || clean.includes('tamhieulucanhsang')) {
+    return true;
+  }
+  // 4. Diện tích (m²) & 5. Diện tích sử dụng trạm đèn (m²)
+  if (
+    clean === 'area' ||
+    clean.includes('dientich') ||
+    clean.includes('stationarea')
+  ) {
+    return true;
+  }
+  // 6. Số lượng nhân sự bố trí
+  if (
+    clean.includes('staffcount') ||
+    clean.includes('nhansubotri') ||
+    clean.includes('soluongnhansu') ||
+    clean.includes('nhansu') ||
+    clean.includes('nhanvien')
+  ) {
+    return true;
+  }
+
+  return false;
+}
 
 const rangeValue = (from: string, to: string): [Dayjs | null, Dayjs | null] | null =>
   from || to ? [from ? dayjs(from) : null, to ? dayjs(to) : null] : null;
@@ -366,8 +430,8 @@ export default function BeaconStationList() {
     if (!filterUnitId || filterUnitId === '__all__') return seaports;
     const rawSet = resolveOrgSubtreeIds(organizations, filterUnitId);
     const normalizedSet = new Set<string>();
-    rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
-    return seaports.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).toLowerCase()));
+    rawSet.forEach((oId) => normalizedSet.add(String(oId).trim().toLowerCase()));
+    return seaports.filter((port) => port.orgUnitId && normalizedSet.has(String(port.orgUnitId).trim().toLowerCase()));
   }, [seaports, organizations, filterUnitId]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
 
@@ -601,9 +665,13 @@ export default function BeaconStationList() {
   useEffect(() => { if (orgUnitReady) void fetchCounts(); }, [fetchCounts, orgUnitReady]);
 
   // ── Filter handlers ─────────────────────────────────────────────
-  const handleFilterApply = useCallback(() => {
-    setFilterName(inputName.trim());
-    setFilterCode(inputCode.trim());
+  const handleFilterApply = useCallback((overrides?: { name?: string; code?: string }) => {
+    const nextName = (overrides?.name !== undefined ? overrides.name : inputName).trim();
+    const nextCode = (overrides?.code !== undefined ? overrides.code : inputCode).trim();
+    setInputName(nextName);
+    setInputCode(nextCode);
+    setFilterName(nextName);
+    setFilterCode(nextCode);
     setPage(1);
   }, [inputName, inputCode]);
   const handleFilterReset = useCallback(() => {
@@ -647,7 +715,7 @@ export default function BeaconStationList() {
       || (currentUser?.orgUnitId && currentUser.orgUnitId !== '00000000-0000-0000-0000-000000000017' && currentUser.orgUnitId !== 'G17' ? currentUser.orgUnitId : undefined);
 
     createForm.setFieldsValue({
-      operationalStatus: 1,
+      operationalStatus: 0,
       unitId: currentOrgUnitId,
     });
 
@@ -1212,8 +1280,9 @@ export default function BeaconStationList() {
             if (nextUnit && nextUnit !== '__all__' && filterSeaportId) {
               const rawSet = resolveOrgSubtreeIds(organizations, nextUnit);
               const normalizedSet = new Set<string>();
-              rawSet.forEach((oId) => normalizedSet.add(String(oId).toLowerCase()));
-              const valid = seaports.some((p) => p.id === filterSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()));
+              rawSet.forEach((oId) => normalizedSet.add(String(oId).trim().toLowerCase()));
+              const filterPortStr = String(filterSeaportId).trim().toLowerCase();
+              const valid = seaports.some((p) => String(p.id).trim().toLowerCase() === filterPortStr && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).trim().toLowerCase()));
               if (!valid) setFilterSeaportId(undefined);
             }
             setPage(1);
@@ -1226,9 +1295,19 @@ export default function BeaconStationList() {
 
       <div style={{ marginBottom: 12 }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Tên đèn biển</div>
-        <Input placeholder="Nhập tên đèn biển" allowClear value={inputName}
+        <Input
+          placeholder="Nhập tên đèn biển"
+          allowClear
+          value={inputName}
           onChange={(e) => setInputName(e.target.value)}
-          onPressEnter={handleFilterApply} style={inputStyle} />
+          onBlur={() => setInputName((prev) => (prev ? prev.trim() : ''))}
+          onPressEnter={(e) => {
+            const val = ((e.target as HTMLInputElement)?.value ?? inputName).trim();
+            setInputName(val);
+            handleFilterApply({ name: val });
+          }}
+          style={inputStyle}
+        />
       </div>
 
       {/* ── Bộ lọc nâng cao (ẩn, hiện khi bấm nút Filter) ── */}
@@ -1262,9 +1341,19 @@ export default function BeaconStationList() {
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Mã đèn biển</div>
-            <Input placeholder="Nhập mã đèn biển" allowClear value={inputCode}
+            <Input
+              placeholder="Nhập mã đèn biển"
+              allowClear
+              value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
-              onPressEnter={handleFilterApply} style={inputStyle} />
+              onBlur={() => setInputCode((prev) => (prev ? prev.trim() : ''))}
+              onPressEnter={(e) => {
+                const val = ((e.target as HTMLInputElement)?.value ?? inputCode).trim();
+                setInputCode(val);
+                handleFilterApply({ code: val });
+              }}
+              style={inputStyle}
+            />
           </div>
 
           <div style={{ marginBottom: 12 }}>
@@ -1279,7 +1368,11 @@ export default function BeaconStationList() {
             <DatePicker.RangePicker
               {...getRangePickerProps({
                 value: rangeValue(filterCommissionedFrom, filterCommissionedTo),
-                onChange: (range: [Dayjs | null, Dayjs | null] | null) => { setFilterCommissionedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterCommissionedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => {
+                  setFilterCommissionedFrom(range && range[0] ? `${range[0].format('YYYY-MM-DD')} 00:00:00.000` : '');
+                  setFilterCommissionedTo(range && range[1] ? `${range[1].format('YYYY-MM-DD')} 23:59:59.999` : '');
+                  setPage(1);
+                },
               })}
             />
           </div>
@@ -1303,7 +1396,11 @@ export default function BeaconStationList() {
             <DatePicker.RangePicker
               {...getRangePickerProps({
                 value: rangeValue(filterUpdatedFrom, filterUpdatedTo),
-                onChange: (range: [Dayjs | null, Dayjs | null] | null) => { setFilterUpdatedFrom(range && range[0] ? range[0].format('YYYY-MM-DD') : ''); setFilterUpdatedTo(range && range[1] ? range[1].format('YYYY-MM-DD') : ''); setPage(1); },
+                onChange: (range: [Dayjs | null, Dayjs | null] | null) => {
+                  setFilterUpdatedFrom(range && range[0] ? `${range[0].format('YYYY-MM-DD')} 00:00:00.000` : '');
+                  setFilterUpdatedTo(range && range[1] ? `${range[1].format('YYYY-MM-DD')} 23:59:59.999` : '');
+                  setPage(1);
+                },
               })}
             />
           </div>
@@ -1427,7 +1524,7 @@ export default function BeaconStationList() {
         { label: 'Kết cấu', value: detailRecord.structure || null },
         { label: 'Diện tích (m²)', value: detailRecord.area != null ? formatNumber(detailRecord.area) : null },
         { label: 'Diện tích sử dụng trạm đèn (m²)', value: detailRecord.stationArea != null ? formatNumber(detailRecord.stationArea) : null },
-        { label: 'Số lượng nhân sự bố trí', value: detailRecord.staffCount != null ? String(detailRecord.staffCount) : null },
+        { label: 'Số lượng nhân sự bố trí', value: detailRecord.staffCount != null ? formatNumber(detailRecord.staffCount) : null },
         { label: 'Ghi chú', value: detailRecord.note || null },
       ]
     : [];
@@ -1850,22 +1947,6 @@ export default function BeaconStationList() {
       .filter(Boolean);
   };
 
-  const BEACON_HISTORY_FIELD_LABELS: Record<string, string> = {
-    unitId: 'Đơn vị quản lý', code: 'Mã đèn biển', name: 'Tên đèn biển', type: 'Loại đèn biển',
-    unitName: 'Đơn vị quản lý', latitude: 'Vĩ độ', longitude: 'Kinh độ', lightRange: 'Tầm hiệu lực ánh sáng',
-    towerColor: 'Màu sắc bên ngoài của tháp đèn', location: 'Địa điểm đặt trạm đèn', shape: 'Hình dáng',
-    structure: 'Kết cấu', towerHeight: 'Chiều cao tháp đèn', lightHeight: 'Chiều cao tâm sáng',
-    geographicRange: 'Tầm hiệu lực địa lý', backupLightModel: 'Đèn dự phòng', powerSupply: 'Nguồn cung cấp',
-    staffCount: 'Nhân sự bố trí', stationArea: 'Diện tích sử dụng trạm', primaryLightModel: 'Đèn chính',
-    area: 'Diện tích', lastRepairDate: 'Thời điểm sửa chữa gần nhất', commissionedDate: 'Thời điểm đưa vào sử dụng',
-    status: 'Trạng thái', approvalStatus: 'Trạng thái phê duyệt', rejectionReason: 'Lý do từ chối',
-    provinceId: 'Tỉnh / Thành phố', seaportId: 'Cảng biển', operator: 'Đơn vị vận hành',
-    detailedLocation: 'Địa điểm chi tiết', operationalStatus: 'Tình trạng hoạt động', region: 'Địa bàn',
-    identifyingFeature: 'Đặc điểm nhận dạng', note: 'Ghi chú', geometryType: 'Loại đối tượng GIS',
-    coordinates: 'Tọa độ GIS',
-    mapSymbolId: 'Biểu tượng GIS', coordinateSystem: 'Hệ quy chiếu', displayRule: 'Quy tắc hiển thị',
-    attachments: 'Tài liệu đính kèm',
-  };
 
   const historyTimestamp = (item: any): string => item.approvedDate || item.changedAt || item.createdAt || '';
   const historyActorName = (item: any): string => item.changedByName || item.actor || item.changedBy || '—';
@@ -1970,6 +2051,10 @@ export default function BeaconStationList() {
 
   const formatHistoryValue = (field: string, val: string | null | undefined): string => {
     if (!val || val === '(null)' || val === 'null') return '(trống)';
+    if (isBeaconNumericField(field)) {
+      const formatted = formatNumber(val);
+      return formatted != null ? formatted : val;
+    }
     if (field === 'status' || field === 'approvalStatus') {
       return BEACON_STATUS_MAP[val as BeaconStatus]?.label || val;
     }
@@ -1985,7 +2070,7 @@ export default function BeaconStationList() {
     return val;
   };
 
-  const renderHistoryFieldLabel = (field: string): string => BEACON_HISTORY_FIELD_LABELS[field] || field;
+  const renderHistoryFieldLabel = useCallback((field: string): string => BEACON_HISTORY_FIELD_LABELS[field] || field, []);
 
   // Tách 1 dòng nhật ký thành các thay đổi theo TỪNG TRƯỜNG — định dạng backend ghi vào
   // infrastructure_history: changed_field = "f1, f2, ..." (String.join ", "), còn
@@ -2035,10 +2120,12 @@ export default function BeaconStationList() {
       if (ov === null && nv === null) return;
       if (ov !== null && nv !== null) {
         if (ov.trim() === nv.trim()) return;
+        const ovParsed = parseDotNumber(ov.trim()) || ov.trim();
+        const nvParsed = parseDotNumber(nv.trim()) || nv.trim();
         if (
-          !isNaN(Number(ov.trim())) &&
-          !isNaN(Number(nv.trim())) &&
-          Math.abs(Number(ov.trim()) - Number(nv.trim())) < 1e-9
+          !isNaN(Number(ovParsed)) &&
+          !isNaN(Number(nvParsed)) &&
+          Math.abs(Number(ovParsed) - Number(nvParsed)) < 1e-9
         ) {
           return;
         }
@@ -2287,7 +2374,7 @@ export default function BeaconStationList() {
       changes: any[];
       orderedChanges: any[];
     }>;
-  }, [historyRecords, isMeaningfulChange]);
+  }, [historyRecords, isMeaningfulChange, renderHistoryFieldLabel]);
 
   const historyUpdateCount = validHistoryGroups.length;
 
@@ -2358,6 +2445,11 @@ export default function BeaconStationList() {
       if (key === 'type' || key.includes('cap tram den')) {
         const opt = BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === raw);
         return <span>{opt ? opt.label : String(raw)}</span>;
+      }
+      if (isBeaconNumericField(field)) {
+        const formatted = formatNumber(raw);
+        const displayVal = formatted != null ? formatted : String(raw);
+        return <span title={displayVal} style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{displayVal}</span>;
       }
       const txt = formatHistoryValue(field, raw);
       if (/^-?\d+(\.\d+)?$/.test(String(txt).trim()) && key !== 'coordinatesystem' && !key.includes('he quy chieu') && !key.includes('he toa do') && key !== 'provinceid') {
@@ -2765,11 +2857,12 @@ export default function BeaconStationList() {
       >
         <style>{requiredMarkStyle}</style>
         {createDrawerVisible && (
-          <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 1 }}>
+          <Form form={createForm} layout="vertical" initialValues={{ operationalStatus: 0 }}>
             <BeaconStationForm
               ref={createFormRef}
               form={createForm}
               organizations={organizations}
+              seaports={seaports}
               onFinish={() => { setCreateDrawerVisible(false); void fetchData(); void fetchCounts(); }}
               onSubmittingChange={setSubmitting}
             />
@@ -2858,6 +2951,7 @@ export default function BeaconStationList() {
                 id={editingRecord.id}
                 initialData={editingRecord}
                 organizations={organizations}
+                seaports={seaports}
                 onFinish={() => { setEditingRecord(null); void fetchData(); void fetchCounts(); }}
                 onSubmittingChange={setSubmitting}
               />

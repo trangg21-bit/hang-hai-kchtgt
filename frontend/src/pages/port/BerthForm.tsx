@@ -540,7 +540,10 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         geometryType: currentGeometryType || undefined,
         latitude: validCoords.length > 0 ? validCoords[0].latitude : undefined,
         longitude: validCoords.length > 0 ? validCoords[0].longitude : undefined,
-        coordinates: wktCoordinates || undefined,
+        // Gửi chuỗi rỗng TƯỜNG MINH khi không có tọa độ (thay vì `undefined` bị dòng dọn key
+        // bên dưới xóa mất): server dùng '' = "người dùng đã xóa trắng vị trí" để xóa spatial
+        // object cũ, còn null = "không gửi trường" thì giữ nguyên.
+        coordinates: wktCoordinates || '',
         operatingOrgId: values.operatingOrgId || undefined, provinceId: provinceName ? VIETNAM_PROVINCES.indexOf(provinceName) + 1 : undefined,
         detailedLocation: values.detailedLocation || undefined, structureType: values.structureType != null ? Number(values.structureType) : undefined,
         operationalFunction: Array.isArray(values.operationalFunction) ? (values.operationalFunction.length > 0 ? values.operationalFunction.join(',') : undefined) : (values.operationalFunction || undefined),
@@ -558,6 +561,9 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         displayRule: currentDisplayRule != null ? Number(currentDisplayRule) : undefined,
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
+      // Lưu ý: dòng dưới chỉ dọn key `undefined` (trường không gửi). Các ô người dùng XÓA TRẮNG
+      // phải được gửi dạng null/'' tường minh ở trên, nếu không server không phân biệt được
+      // "đã xóa trắng" với "không gửi" và thao tác xóa bị bỏ qua âm thầm.
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
       let createdBerthId: string | undefined;
       if (isEdit && id) { await api.put('/v1/berths', { ...payload, id }); createdBerthId = id; }
@@ -624,7 +630,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="berthName" {...labelProps('Tên bến cảng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Tên bến cảng không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
+                <Form.Item name="berthName" {...labelProps('Tên bến cảng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, whitespace: true, message: 'Tên bến cảng không được để trống' }, { max: 255, message: 'Tối đa 255 ký tự' }]}>
                   <Input placeholder="Nhập tên bến cảng" maxLength={255} showCount style={inputStyle} />
                 </Form.Item>
               </Col>

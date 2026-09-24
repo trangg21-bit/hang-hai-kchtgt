@@ -162,8 +162,13 @@ public class BuoyBerthService {
             }
         }
 
-        if (request.getBuoyBerthName() != null)
+        // Tên bến phao là trường BẮT BUỘC (buoy_berth_name NOT NULL): xóa trắng phải báo lỗi rõ
+        // ràng thay vì bỏ qua âm thầm rồi ghi chuỗi rỗng vào CSDL mà vẫn trả về thành công.
+        if (request.getBuoyBerthName() != null) {
+            if (request.getBuoyBerthName().isBlank())
+                throw new IllegalArgumentException("Tên bến phao không được để trống");
             entity.setBuoyBerthName(request.getBuoyBerthName());
+        }
         if (request.getPortId() != null) {
             Port parent = portRepository.findById(request.getPortId())
                     .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
@@ -176,6 +181,9 @@ public class BuoyBerthService {
         entity.setClassification(request.getClassification());
         entity.setProvinceId(request.getProvinceId());
         entity.setDetailedLocation(request.getDetailedLocation());
+        // operational_status là cột nullable, NHƯNG Drawer Chỉnh sửa CHẶN xóa trắng trường này
+        // (rule `required` + kiểm tra trong handleSave), nên `null` ở đây nghĩa là "client không
+        // gửi trường" — giữ guard để không xóa tình trạng ngoài ý muốn.
         if (request.getOperationalStatus() != null)
             entity.setOperationalStatus(request.getOperationalStatus());
         entity.setOperatingOrgId(request.getOperatingOrgId());

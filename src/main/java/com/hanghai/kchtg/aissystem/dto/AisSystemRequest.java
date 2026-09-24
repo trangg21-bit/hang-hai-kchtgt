@@ -160,4 +160,42 @@ public class AisSystemRequest extends FieldPresenceTrackedRequest {
         markFieldPresent("approvalStatus");
         this.approvalStatus = value;
     }
+
+    // ── Presence-tracking cho các trường còn thiếu ────────────────────────────────────────────
+    // Không đăng ký presence thì `EntityUpdateUtils.copyPropertiesIfPresent` coi giá trị null là
+    // "client không gửi" và BỎ QUA ⇒ người dùng xóa trắng trường nhưng giá trị cũ vẫn được giữ.
+    public void setCode(String value) {
+        markFieldPresent("code");
+        this.code = value;
+    }
+
+    public void setName(String value) {
+        markFieldPresent("name");
+        this.name = value;
+    }
+
+    public void setOperatingOrgId(UUID value) {
+        markFieldPresent("operatingOrgId");
+        this.operatingOrgId = value;
+    }
+
+    public void setOrgUnitId(UUID value) {
+        markFieldPresent("orgUnitId");
+        this.orgUnitId = value;
+    }
+
+    public void setUnitOfMeasure(UnitOfMeasure value) {
+        markFieldPresent("unitOfMeasure");
+        this.unitOfMeasure = value;
+    }
+
+    public void setQuantity(Integer value) {
+        markFieldPresent("quantity");
+        this.quantity = value;
+    }
+
+    public void setConditionStatus(ConditionStatus value) {
+        markFieldPresent("conditionStatus");
+        this.conditionStatus = value;
+    }
 }

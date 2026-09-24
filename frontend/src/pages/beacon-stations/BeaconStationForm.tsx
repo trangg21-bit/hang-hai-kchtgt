@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useRef, forwardRef, useImperativeHandle, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import {
@@ -235,12 +236,13 @@ export interface BeaconStationFormProps {
   id?: string;
   initialData?: BeaconStation | null;
   organizations?: any[];
+  seaports?: Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>;
   onFinish?: (saved: boolean) => void;
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
 export default forwardRef(function BeaconStationForm(
-  { form: externalForm, id, initialData, organizations: propOrganizations, onFinish, onSubmittingChange }: BeaconStationFormProps,
+  { form: externalForm, id, initialData, organizations: propOrganizations, seaports: propSeaports, onFinish, onSubmittingChange }: BeaconStationFormProps,
   ref,
 ) {
   const [internalForm] = Form.useForm();
@@ -260,14 +262,15 @@ export default forwardRef(function BeaconStationForm(
   const [internalOrganizations, setInternalOrganizations] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const organizations = propOrganizations && propOrganizations.length > 0 ? propOrganizations : internalOrganizations;
-  const [seaports, setSeaports] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
+  const [internalSeaports, setInternalSeaports] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
+  const seaports = propSeaports && propSeaports.length > 0 ? propSeaports : internalSeaports;
 
   const allowedOrgIds = useMemo(() => {
     if (!selectedUnitId) return new Set<string>();
     const rawSet = resolveOrgSubtreeIds(organizations, String(selectedUnitId));
     const normalizedSet = new Set<string>();
     rawSet.forEach((oId) => {
-      normalizedSet.add(String(oId).toLowerCase());
+      normalizedSet.add(String(oId).trim().toLowerCase());
     });
     return normalizedSet;
   }, [organizations, selectedUnitId]);
@@ -275,7 +278,7 @@ export default forwardRef(function BeaconStationForm(
   const filteredSeaportOptions = useMemo(() => {
     if (!selectedUnitId || allowedOrgIds.size === 0) return [];
     return seaports.filter((port) => {
-      return port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId).toLowerCase());
+      return port.orgUnitId && allowedOrgIds.has(String(port.orgUnitId).trim().toLowerCase());
     });
   }, [allowedOrgIds, seaports, selectedUnitId]);
   const [symbols, setSymbols] = useState<MapSymbol[]>([]);
@@ -304,26 +307,11 @@ export default forwardRef(function BeaconStationForm(
         .finally(() => setLoadingOrgs(false));
     }
 
-    api.get('/common/options/ports').then((res) => {
-      const data = res.data?.data;
-      if (Array.isArray(data) && data.length > 0) {
-        setSeaports(data);
-      } else {
-        api.get('/v1/ports?size=1000').then((r) => {
-          const list = r.data?.data?.content || r.data?.data || [];
-          if (Array.isArray(list)) {
-            setSeaports(list.map((p: any) => ({
-              id: p.id,
-              portName: p.portName || p.name || '',
-              portCode: p.portCode || p.code,
-              orgUnitId: p.orgUnitId,
-            })));
-          }
-        }).catch(() => {});
-      }
-    }).catch(() => {
-      portCRUD.getOptions().then((opts) => setSeaports(opts || [])).catch(() => {});
-    });
+    if (!propSeaports || propSeaports.length === 0) {
+      portCRUD.getOptions()
+        .then((opts) => setInternalSeaports(opts || []))
+        .catch(() => {});
+    }
 
     symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
       .then((r) => setSymbols(r.data || []))
@@ -337,7 +325,7 @@ export default forwardRef(function BeaconStationForm(
         setUserMap(map);
       })
       .catch(() => {});
-  }, [propOrganizations]);
+  }, [propOrganizations, propSeaports]);
 
   // Set default unit for create mode
   useEffect(() => {
@@ -793,10 +781,11 @@ export default forwardRef(function BeaconStationForm(
                         const rawSet = resolveOrgSubtreeIds(organizations, String(val));
                         const normalizedSet = new Set<string>();
                         rawSet.forEach((oId) => {
-                          normalizedSet.add(String(oId).toLowerCase());
+                          normalizedSet.add(String(oId).trim().toLowerCase());
                         });
+                        const currentPortStr = String(currentSeaportId).trim().toLowerCase();
                         const isValid = seaports.some(
-                          (p) => p.id === currentSeaportId && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).toLowerCase()),
+                          (p) => String(p.id).trim().toLowerCase() === currentPortStr && !!p.orgUnitId && normalizedSet.has(String(p.orgUnitId).trim().toLowerCase()),
                         );
                         if (!isValid) {
                           form.setFieldValue('seaportId', undefined);
@@ -858,7 +847,7 @@ export default forwardRef(function BeaconStationForm(
               </Col>
               <Col span={12}>
                 <Form.Item name="operationalStatus" {...labelProps('Tình trạng')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn tình trạng' }]} initialValue={0}>
-                  <Select placeholder="Chọn tình trạng..." allowClear options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
+                  <Select placeholder="Chọn tình trạng" allowClear options={OPERATIONAL_STATUS_OPTIONS} style={selectStyle} />
                 </Form.Item>
               </Col>
             </Row>
@@ -866,7 +855,7 @@ export default forwardRef(function BeaconStationForm(
               <Col span={12}>
                 <Form.Item name="provinceId" {...labelProps('Địa điểm Tỉnh/TP')} style={{ marginBottom: spaceFormField }}>
                   <Select
-                    placeholder="Chọn tỉnh/thành phố..."
+                    placeholder="Chọn tỉnh/thành phố"
                     allowClear
                     showSearch
                     optionFilterProp="label"
@@ -1064,6 +1053,7 @@ export default forwardRef(function BeaconStationForm(
                     style={numberInputStyle}
                     maxLength={5}
                     parser={parseNumber5}
+                    formatter={fmtInputNumber}
                   />
                 </Form.Item>
               </Col>

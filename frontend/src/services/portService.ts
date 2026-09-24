@@ -78,7 +78,7 @@ export const portCRUD = {
       try {
         const res = await api.get('/common/options/ports', { params });
         const list = res.data?.data || [];
-        if (Array.isArray(list) && list.length > 0) {
+        if (Array.isArray(list)) {
           getWin().__portOptionsCache = { ...(cache || {}), [cacheKey]: list };
           return list;
         }

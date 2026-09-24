@@ -1,9 +1,12 @@
 package com.hanghai.kchtg.port.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -178,5 +181,113 @@ class TransferAreaServiceTest {
         assertNull(result.getRemarks());
         assertNull(result.getPublicDecision());
         assertNull(result.getInvestmentAgreement());
+    }
+
+    @Test
+    void update_whenCoordinatesProvidedWithoutGeometryType_shouldInferGeometryTypeAndNotClearLocation() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+
+        GisSpatialObject mockSpatial = new GisSpatialObject();
+        mockSpatial.setId(spatialId);
+        mockSpatial.setGeometryType(GisGeometryType.POLYGON);
+        mockSpatial.setCoordinates("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))");
+
+        when(transferAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(transferAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+        when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(mockSpatial);
+
+        UpdateTransferAreaRequest req = new UpdateTransferAreaRequest();
+        req.setId(ID);
+        req.setTransferAreaName("Khu chuyển tải Hải Phòng");
+        req.setCoordinates("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))");
+        req.setGeometryType(null); // Không truyền geometryType tường minh
+
+        TransferAreaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertEquals(spatialId, entity.getSpatialId());
+        verify(gisSpatialObjectService, never()).delete(any());
+        verify(gisSpatialObjectService).createOrUpdate(
+                eq(spatialId),
+                eq("Khu chuyển tải Hải Phòng"),
+                any(),
+                eq(GisGeometryType.POLYGON),
+                any(),
+                eq("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))"),
+                eq(ID),
+                any()
+        );
+        assertEquals(GisGeometryType.POLYGON, result.getGeometryType());
+        assertNotNull(result.getCoordinates());
+    }
+
+    @Test
+    void update_whenWktHasSridPrefix_shouldParseLatLngAndNotClearLocation() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+
+        GisSpatialObject mockSpatial = new GisSpatialObject();
+        mockSpatial.setId(spatialId);
+        mockSpatial.setGeometryType(GisGeometryType.POINT);
+        mockSpatial.setCoordinates("SRID=4326;POINT (106.685678 20.841234)");
+
+        when(transferAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(transferAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+        when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(mockSpatial);
+
+        UpdateTransferAreaRequest req = new UpdateTransferAreaRequest();
+        req.setId(ID);
+        req.setTransferAreaName("Khu chuyển tải Hải Phòng");
+        req.setCoordinates("SRID=4326;POINT (106.685678 20.841234)");
+
+        TransferAreaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertEquals(spatialId, entity.getSpatialId());
+        verify(gisSpatialObjectService, never()).delete(any());
+        assertEquals(GisGeometryType.POINT, result.getGeometryType());
+        assertNotNull(result.getLongitude());
+        assertNotNull(result.getLatitude());
+        assertEquals(0, new java.math.BigDecimal("106.685678").compareTo(result.getLongitude()));
+        assertEquals(0, new java.math.BigDecimal("20.841234").compareTo(result.getLatitude()));
+    }
+
+    @Test
+    void update_whenLocationFieldsNotSent_shouldPreserveExistingLocation() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+        entity.setMapSymbolId(UUID.randomUUID());
+        entity.setCoordinateSystem(1);
+        entity.setDisplayRule(1);
+
+        GisSpatialObject mockSpatial = new GisSpatialObject();
+        mockSpatial.setId(spatialId);
+        mockSpatial.setGeometryType(GisGeometryType.POINT);
+        mockSpatial.setCoordinates("POINT (106.685678 20.841234)");
+
+        when(transferAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(transferAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+
+        // Chỉ update remarks, không đụng tới GIS fields
+        UpdateTransferAreaRequest req = new UpdateTransferAreaRequest();
+        req.setId(ID);
+        req.setRemarks("Ghi chú mới");
+
+        TransferAreaResponse result = service.update(req);
+
+        assertNotNull(result);
+        assertEquals(spatialId, entity.getSpatialId());
+        assertNotNull(entity.getMapSymbolId());
+        assertEquals(1, entity.getCoordinateSystem());
+        assertEquals(1, entity.getDisplayRule());
+        verify(gisSpatialObjectService, never()).delete(any());
+        assertEquals(GisGeometryType.POINT, result.getGeometryType());
+        assertEquals("POINT (106.685678 20.841234)", result.getCoordinates());
     }
 }

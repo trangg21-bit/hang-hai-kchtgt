@@ -277,6 +277,26 @@ export interface BuoyBerthFormProps {
   onSubmittingChange?: (submitting: boolean) => void;
 }
 
+/**
+ * Chuẩn hóa payload trước khi gửi API: MỌI ô rỗng đi kèm request dưới dạng `null`
+ * TƯỜNG MINH — key vẫn còn trong JSON.
+ *
+ * Lý do: nếu xóa hẳn key khỏi body thì server không phân biệt được "người dùng đã xóa
+ * trắng trường" với "client không gửi trường" — trường bị xóa bị bỏ qua âm thầm và giữ
+ * nguyên giá trị cũ dù API vẫn trả về thành công.
+ *
+ * Cùng chuẩn đã áp cho Cảng biển (`/port`), Bến cảng (`/berth`), Cầu cảng (`/pier`) —
+ * xem docs/JOURNAL.md mục 2026-09-23. Hồi quy: BuoyBerthFormClearFields.test.tsx.
+ */
+export function finalizePayloadForSubmit(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  Object.keys(payload).forEach((k) => {
+    if (payload[k] === undefined) payload[k] = null;
+  });
+  return payload;
+}
+
 export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmittingChange }: BuoyBerthFormProps, ref) {
   const isEdit = !!id;
   const [, setSubmitting] = useState(false);
@@ -734,7 +754,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         displayRule: (values.displayRule ?? form.getFieldValue('displayRule')) != null && !isNaN(Number(values.displayRule ?? form.getFieldValue('displayRule'))) ? Number(values.displayRule ?? form.getFieldValue('displayRule')) : (currentGeometryType ? 1 : undefined),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
-      Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
+      finalizePayloadForSubmit(payload);
       let createdBuoyBerthId: string | undefined;
       if (isEdit && id) { await buoyBerthCRUD.update({ ...payload, id } as any); createdBuoyBerthId = id; }
       else { const res: any = await buoyBerthCRUD.create(payload as any); createdBuoyBerthId = res?.id ?? res?.data?.id; }
@@ -825,7 +845,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           </Col>
           <Col span={12}>
             <Form.Item name="buoyBerthName" {...labelProps('Tên bến phao')} required style={{ marginBottom: spaceFormField }}
-              rules={[{ required: true, message: 'Tên bến phao không được để trống' }, { max: 255 }]}>
+              rules={[{ required: true, whitespace: true, message: 'Tên bến phao không được để trống' }, { max: 255 }]}>
               <Input placeholder="Nhập tên bến phao" maxLength={255} showCount style={inputStyle} />
             </Form.Item>
           </Col>

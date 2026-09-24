@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -65,6 +64,9 @@ import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -827,27 +829,39 @@ public class RadarStationService {
 
     private LocalDateTime parseFromDate(String value) {
         if (value == null || value.trim().isEmpty()) return null;
+        String s = value.trim();
         try {
-            String v = value.trim();
-            if (v.length() == 10) {
-                return LocalDate.parse(v).atStartOfDay();
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atStartOfDay();
             }
-            return LocalDateTime.parse(v.replace(" ", "T"));
+            return LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
         } catch (Exception e) {
-            return null;
+            try {
+                return LocalDateTime.parse(s.replace(" ", "T"));
+            } catch (Exception e2) {
+                return null;
+            }
         }
     }
 
     private LocalDateTime parseToDate(String value) {
         if (value == null || value.trim().isEmpty()) return null;
+        String s = value.trim();
         try {
-            String v = value.trim();
-            if (v.length() == 10) {
-                return LocalDate.parse(v).atTime(LocalTime.MAX);
+            if (s.length() == 10) {
+                return LocalDate.parse(s).atTime(23, 59, 59, 999_999_999);
             }
-            return LocalDateTime.parse(v.replace(" ", "T"));
+            LocalDateTime ldt = LocalDateTime.parse(s.replace(" ", "T"), DateTimeFormatter.ISO_DATE_TIME);
+            if (ldt.getNano() == 0 || (ldt.getNano() == 999_000_000 && (s.endsWith(".999") || s.endsWith(":59")))) {
+                return ldt.withNano(999_999_999);
+            }
+            return ldt;
         } catch (Exception e) {
-            return null;
+            try {
+                return LocalDateTime.parse(s.replace(" ", "T"));
+            } catch (Exception e2) {
+                return null;
+            }
         }
     }
 

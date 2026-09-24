@@ -45,6 +45,7 @@ import {
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import {
   actionPrimary,
   surfaceCard,
@@ -164,47 +165,29 @@ const isImageFile = (fileName?: string): boolean => {
 };
 
 const parseGisCoordinates = (record?: any): Array<{ lat: number; lng: number }> => {
-  const out: Array<{ lat: number; lng: number }> = [];
   const raw = record?.coordinates || record?.gisCoordinates;
   if (typeof raw === 'string' && raw.trim().length > 0) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        parsed.forEach((item: any) => {
-          if (Array.isArray(item) && item.length >= 2) {
-            out.push({ lng: Number(item[0]), lat: Number(item[1]) });
-          } else if (item && typeof item === 'object') {
-            const lat = item.lat ?? item.latitude;
-            const lng = item.lng ?? item.longitude;
-            if (lat != null && lng != null) out.push({ lat: Number(lat), lng: Number(lng) });
-          }
-        });
-      }
-    } catch {
-      const match = raw.match(/\(\((.*?)\)\)/) || raw.match(/\((.*?)\)/);
-      const coordStr = match ? match[1] : raw;
-      const pairs = coordStr.split(',');
-      pairs.forEach((p: string) => {
-        const parts = p.trim().split(/\s+/);
-        if (parts.length >= 2) {
-          const lng = parseFloat(parts[0]);
-          const lat = parseFloat(parts[1]);
-          if (!isNaN(lat) && !isNaN(lng)) out.push({ lat, lng });
-        }
-      });
+    const coords = parseWktToCoordinates(raw);
+    if (coords.length > 0) {
+      return coords.map(c => ({ lat: c.latitude, lng: c.longitude }));
     }
   }
-  if (out.length === 0 && Array.isArray(record?.anchorPoints)) {
+  if (Array.isArray(record?.anchorPoints)) {
     try {
+      const out: Array<{ lat: number; lng: number }> = [];
       for (const ap of record.anchorPoints) {
         if (ap.latitude != null && ap.longitude != null) {
           out.push({ lat: Number(ap.latitude), lng: Number(ap.longitude) });
         }
       }
-    } catch {}
+      if (out.length > 0) return out;
+    } catch {
+      /* ignore */
+    }
   }
-  if (out.length === 0 && Array.isArray(record?.mooringWaterAreas)) {
+  if (Array.isArray(record?.mooringWaterAreas)) {
     try {
+      const out: Array<{ lat: number; lng: number }> = [];
       for (const wa of record.mooringWaterAreas) {
         if (Array.isArray(wa.anchorPoints)) {
           for (const ap of wa.anchorPoints) {
@@ -214,28 +197,31 @@ const parseGisCoordinates = (record?: any): Array<{ lat: number; lng: number }> 
           }
         }
       }
-    } catch {}
+      if (out.length > 0) return out;
+    } catch {
+      /* ignore */
+    }
   }
-  if (out.length === 0 && record?.pointGeom) {
+  if (record?.pointGeom) {
     try {
-      const m = String(record.pointGeom).match(/POINT\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)/i);
-      if (m) out.push({ lng: Number(m[1]), lat: Number(m[2]) });
-    } catch {}
+      const coords = parseWktToCoordinates(String(record.pointGeom));
+      if (coords.length > 0) return coords.map(c => ({ lat: c.latitude, lng: c.longitude }));
+    } catch {
+      /* ignore */
+    }
   }
-  if (out.length === 0 && record?.polygonGeom) {
+  if (record?.polygonGeom) {
     try {
-      const str = String(record.polygonGeom);
-      const pairRegex = /([0-9.]+)\s+([0-9.]+)/g;
-      let pm;
-      while ((pm = pairRegex.exec(str)) !== null) {
-        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
-      }
-    } catch {}
+      const coords = parseWktToCoordinates(String(record.polygonGeom));
+      if (coords.length > 0) return coords.map(c => ({ lat: c.latitude, lng: c.longitude }));
+    } catch {
+      /* ignore */
+    }
   }
-  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
-    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  if (record?.latitude != null && record?.longitude != null) {
+    return [{ lat: Number(record.latitude), lng: Number(record.longitude) }];
   }
-  return out;
+  return [];
 };
 
 export default function TransferAreaDetailContent({
@@ -866,21 +852,22 @@ export default function TransferAreaDetailContent({
                             gt = coords.length > 2 ? 'POLYGON' : coords.length === 2 ? 'LINE' : 'POINT';
                           }
                           const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
-                          return labels[gt] || gt || '';
+                          return labels[gt] || gt || '—';
                         })()],
                         ['Biểu tượng', (() => {
                           const symbolId = r.mapSymbolId || (r as any).bieuTuongId || (r as any).symbolId || '';
                           const name = symbolMap.get(symbolId) || symbolId || '';
                           const image = symbolImageMap.get(symbolId);
+                          if (!name && !image) return '—';
                           return (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>
                               {image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}
-                              {name}
+                              {name || '—'}
                             </span>
                           );
                         })()],
-                        ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : ''],
-                        ['Quy tắc hiển thị', (r.geometryType || r.coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : ''],
+                        ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (coords.length > 0 ? 'WGS-84' : '—')],
+                        ['Quy tắc hiển thị', (r.geometryType || r.coordinates || r.latitude != null || r.longitude != null || coords.length > 0) ? 'Độ, phút, giây (DMS)' : '—'],
                       ].map(([label, value], index) => (
                         <div key={label as string} className="chk-detail-row">
                           <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
@@ -895,7 +882,8 @@ export default function TransferAreaDetailContent({
                         Tọa độ GPS ({coords.length})
                       </span>
                       <Button
-                        icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                        icon={<EnvironmentOutlined style={{ color: coords.length > 0 ? actionPrimary : undefined }} />}
+                        disabled={coords.length === 0}
                         onClick={() => setGisModalOpen(true)}
                         style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       >
@@ -1237,13 +1225,13 @@ export default function TransferAreaDetailContent({
             value={(() => {
               const pts = parseGisCoordinates(r);
               if (pts.length > 0) {
-                const rawWkt = r.coordinates || '';
-                let geom: 'POINT' | 'LINE' | 'POLYGON' = (r.geometryType as any) || 'POINT';
+                const rawWkt = (r.coordinates || '').replace(/^SRID=\d+\s*;/i, '').trim();
+                let geom: 'POINT' | 'LINE' | 'POLYGON' = (r.geometryType as any) || (pts.length > 2 ? 'POLYGON' : pts.length === 2 ? 'LINE' : 'POINT');
                 let coordinates: string;
-                if (rawWkt.startsWith('LINESTRING')) {
+                if (rawWkt.startsWith('LINESTRING') || geom === 'LINE') {
                   geom = 'LINE';
                   coordinates = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
-                } else if (rawWkt.startsWith('POLYGON')) {
+                } else if (rawWkt.startsWith('POLYGON') || geom === 'POLYGON') {
                   geom = 'POLYGON';
                   coordinates = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
                 } else if (pts.length > 1) {
