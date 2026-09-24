@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.orgunit.service.OrganizationService;
 import com.hanghai.kchtg.security.ClientEncryptionService;
 import com.hanghai.kchtg.user.dto.RegisterConfigResponse;
 import com.hanghai.kchtg.user.service.PasswordPolicyValidator;
@@ -11,6 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 /**
  * Config controller - returns registration settings (password policy, RSA public key, rate limits).
@@ -23,12 +27,26 @@ public class RegisterConfigController {
 
     private final PasswordPolicyValidator passwordPolicyValidator;
     private final ClientEncryptionService clientEncryptionService;
+    private final OrganizationService organizationService;
 
     public RegisterConfigController(PasswordPolicyValidator passwordPolicyValidator,
                                      RateLimiterService rateLimiterService,
-                                     ClientEncryptionService clientEncryptionService) {
+                                     ClientEncryptionService clientEncryptionService,
+                                     OrganizationService organizationService) {
         this.passwordPolicyValidator = passwordPolicyValidator;
         this.clientEncryptionService = clientEncryptionService;
+        this.organizationService = organizationService;
+    }
+
+    /**
+     * GET /api/register/org-units - returns active organisational units for the registration form.
+     */
+    @GetMapping("/org-units")
+    public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getRegistrationOrgUnits() {
+        List<OrgUnitResponse> units = organizationService.findAll().stream()
+                .filter(u -> !"G17".equalsIgnoreCase(u.getCode()) && (u.getLevel() == null || u.getLevel() > 0))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success("Danh sách đơn vị", units));
     }
 
     /**

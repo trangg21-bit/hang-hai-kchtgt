@@ -1,11 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Form, Input, Button, Alert } from 'antd';
 import { message } from '../components/ToastNotification';
-import { UserOutlined, LockOutlined, SafetyOutlined } from '@ant-design/icons';
+import {
+  UserOutlined,
+  LockOutlined,
+  SafetyOutlined,
+  SafetyCertificateOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
-import type { LoginRequest } from '../types/auth';
+import type { LoginRequest, CaptchaData } from '../types/auth';
 import * as themeTokenChk from '../themetokenchk';
 import {
   radiusPill,
@@ -73,6 +79,9 @@ const getFriendlyAuthError = (err: unknown, defaultMsg: string): string => {
   if (rawMsg === 'Invalid TOTP code' || rawMsg === 'Mã TOTP không đúng hoặc hết hạn') {
     return 'Mã xác thực TOTP không chính xác hoặc đã hết hạn.';
   }
+  if (rawMsg.includes('Captcha') || rawMsg.includes('Mã bảo vệ')) {
+    return 'Mã bảo vệ (Captcha) không chính xác hoặc đã hết hạn. Vui lòng thử lại.';
+  }
 
   return rawMsg;
 };
@@ -95,12 +104,35 @@ const labelProps = (text: string) => ({
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [form] = Form.useForm();
   const login = useAuthStore((s) => s.login);
   const clearSession = useAuthStore((s) => s.clearSession);
   const [submitting, setSubmitting] = useState(false);
   const [showTotp, setShowTotp] = useState(false);
   const [userId, setUserId] = useState('');
   const [totpCode, setTotpCode] = useState('');
+  const [captchaData, setCaptchaData] = useState<CaptchaData | null>(null);
+  const [loadingCaptcha, setLoadingCaptcha] = useState(false);
+
+  const fetchCaptcha = useCallback(async () => {
+    setLoadingCaptcha(true);
+    try {
+      const res = await api.get('/auth/captcha');
+      const { success, data } = res.data;
+      if (success && data) {
+        setCaptchaData(data as CaptchaData);
+        form.setFieldValue('captchaCode', '');
+      }
+    } catch {
+      message.error('Không thể tải mã bảo vệ. Vui lòng bấm làm mới.');
+    } finally {
+      setLoadingCaptcha(false);
+    }
+  }, [form]);
+
+  useEffect(() => {
+    fetchCaptcha();
+  }, [fetchCaptcha]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -113,12 +145,18 @@ export default function LoginPage() {
   const handleLogin = useCallback(async (values: LoginRequest) => {
     setSubmitting(true);
     try {
-      const res = await api.post('/auth/login', values);
+      const payload: LoginRequest = {
+        ...values,
+        captchaId: captchaData?.captchaId,
+        captchaCode: values.captchaCode?.trim(),
+      };
+      const res = await api.post('/auth/login', payload);
       const { success, data, message: msg } = res.data;
 
       if (!success) {
         clearSession();
         message.error(msg || 'Đăng nhập thất bại');
+        fetchCaptcha();
         setSubmitting(false);
         return;
       }
@@ -147,16 +185,18 @@ export default function LoginPage() {
         navigate('/', { replace: true });
       } else {
         clearSession();
+        fetchCaptcha();
         message.error('Không nhận được token');
       }
     } catch (err: unknown) {
       clearSession();
+      fetchCaptcha();
       const msg = getFriendlyAuthError(err, 'Đăng nhập thất bại. Vui lòng thử lại.');
       message.error(msg);
     } finally {
       setSubmitting(false);
     }
-  }, [clearSession, login, navigate]);
+  }, [clearSession, login, navigate, captchaData, fetchCaptcha]);
 
   const handleTotpVerify = useCallback(async () => {
     if (!totpCode.trim()) {
@@ -294,12 +334,6 @@ export default function LoginPage() {
             box-shadow: 0 0 0 1000px #ffffff inset !important;
             caret-color: ${textPrimary} !important;
             transition: background-color 5000s ease-in-out 0s;
-          }
-          .chk-login-card input::selection,
-          .chk-login-card .ant-input::selection {
-            background: rgba(39, 62, 124, 0.22) !important;
-            color: ${textPrimary} !important;
-            -webkit-text-fill-color: ${textPrimary} !important;
           }
         `}</style>
 
@@ -449,6 +483,7 @@ export default function LoginPage() {
               ) : (
                 /* ---- Login Form ---- */
                 <Form
+                  form={form}
                   layout="vertical"
                   onFinish={handleLogin}
                   initialValues={{ identifier: localStorage.getItem('last_username') || '' }}
@@ -484,6 +519,95 @@ export default function LoginPage() {
                       spellCheck={false}
                       style={{ borderRadius: radiusPill, height: 40, fontFamily: fontSans, fontSize: fontSizeMd }}
                     />
+                  </Form.Item>
+
+                  {/* Mã bảo vệ (CAPTCHA) */}
+                  <Form.Item
+                    name="captchaCode"
+                    {...labelProps('Mã bảo vệ')}
+                    style={{ marginBottom: spaceFormField, textAlign: 'left' }}
+                    rules={[
+                      { required: true, message: 'Vui lòng nhập mã bảo vệ' },
+                      { pattern: /^\d{5}$/, message: 'Mã bảo vệ gồm 5 chữ số' },
+                    ]}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Input
+                        prefix={<SafetyCertificateOutlined style={{ color: textTertiary, marginRight: 4 }} />}
+                        placeholder="Nhập 5 số bảo vệ"
+                        maxLength={5}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        spellCheck={false}
+                        autoCorrect="off"
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          form.setFieldValue('captchaCode', val);
+                        }}
+                        style={{
+                          borderRadius: radiusPill,
+                          height: 40,
+                          flex: 1,
+                          fontFamily: fontSans,
+                          fontSize: fontSizeMd,
+                          letterSpacing: '0.15em',
+                        }}
+                      />
+                      {captchaData?.imageBase64 ? (
+                        <img
+                          src={captchaData.imageBase64}
+                          alt="Mã bảo vệ"
+                          onClick={fetchCaptcha}
+                          title="Bấm để đổi mã bảo vệ khác"
+                          style={{
+                            width: 116,
+                            height: 40,
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            display: 'block',
+                            objectFit: 'cover',
+                            border: `1px solid ${borderDefault}`,
+                            flexShrink: 0,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 116,
+                            height: 40,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: fontSizeSm,
+                            color: textTertiary,
+                            background: '#f1f5f9',
+                            borderRadius: 6,
+                            border: `1px solid ${borderDefault}`,
+                            flexShrink: 0,
+                          }}
+                        >
+                          Đang tải...
+                        </div>
+                      )}
+                      <Button
+                        type="text"
+                        icon={<ReloadOutlined spin={loadingCaptcha} style={{ fontSize: 16 }} />}
+                        onClick={fetchCaptcha}
+                        title="Làm mới mã bảo vệ"
+                        style={{
+                          width: 34,
+                          height: 34,
+                          minWidth: 34,
+                          padding: 0,
+                          borderRadius: '50%',
+                          color: actionPrimary,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      />
+                    </div>
                   </Form.Item>
 
                   <div

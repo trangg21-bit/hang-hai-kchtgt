@@ -9,6 +9,9 @@ import com.hanghai.kchtg.user.exception.DuplicateResourceException;
 import com.hanghai.kchtg.user.exception.RateLimitExceededException;
 import com.hanghai.kchtg.user.exception.RegistrationException;
 import com.hanghai.kchtg.user.exception.ValidationException;
+import com.hanghai.kchtg.common.util.PhoneUtils;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +36,7 @@ public class RegistrationService {
     private static final Logger log = LoggerFactory.getLogger(RegistrationService.class);
 
     private final UserRepository userRepository;
+    private final OrgUnitRepository orgUnitRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyValidator passwordPolicyValidator;
     private final ClientEncryptionService clientEncryptionService;
@@ -42,6 +46,7 @@ public class RegistrationService {
     private final RateLimiterService rateLimiterService;
 
     public RegistrationService(UserRepository userRepository,
+                               OrgUnitRepository orgUnitRepository,
                                PasswordEncoder passwordEncoder,
                                PasswordPolicyValidator passwordPolicyValidator,
                                ClientEncryptionService clientEncryptionService,
@@ -50,6 +55,7 @@ public class RegistrationService {
                                AccountRegistrationAuditService auditService,
                                RateLimiterService rateLimiterService) {
         this.userRepository = userRepository;
+        this.orgUnitRepository = orgUnitRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyValidator = passwordPolicyValidator;
         this.clientEncryptionService = clientEncryptionService;
@@ -146,6 +152,12 @@ public class RegistrationService {
         if (request.getPassword() == null || request.getPassword().isBlank()) {
             throw new ValidationException("Mật khẩu không được để trống");
         }
+        if (request.getOrgUnitId() == null) {
+            throw new ValidationException("Vui lòng chọn đơn vị");
+        }
+        if (!orgUnitRepository.existsById(request.getOrgUnitId())) {
+            throw new ValidationException("Đơn vị không tồn tại trên hệ thống");
+        }
     }
 
     private void checkDuplicate(RegisterAccountRequest request) {
@@ -194,8 +206,19 @@ public class RegistrationService {
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(plainPassword));
         user.setEmail(request.getEmail().trim());
-        user.setFullName(request.getFullName().trim());
-        user.setPhone(com.hanghai.kchtg.common.util.PhoneUtils.normalize(request.getPhone()));
+        user.setFullName(request.getFullName() != null ? request.getFullName().trim() : null);
+        user.setPhone(PhoneUtils.normalize(request.getPhone()));
+        if (request.getOrgUnitId() != null) {
+            OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
+                    .orElseThrow(() -> new ValidationException("Đơn vị không tồn tại trên hệ thống"));
+            user.setOrgUnit(orgUnit);
+        }
+        if (request.getDepartment() != null && !request.getDepartment().isBlank()) {
+            user.setDepartment(request.getDepartment().trim());
+        }
+        if (request.getPosition() != null && !request.getPosition().isBlank()) {
+            user.setPosition(request.getPosition().trim());
+        }
         user.setStatus(UserStatus.PENDING_APPROVAL);
         return user;
     }
@@ -207,6 +230,12 @@ public class RegistrationService {
         response.setEmail(user.getEmail());
         response.setFullName(user.getFullName());
         response.setPhone(user.getPhone());
+        if (user.getOrgUnit() != null) {
+            response.setOrgUnitId(user.getOrgUnit().getId());
+            response.setOrgUnitName(user.getOrgUnit().getName());
+        }
+        response.setDepartment(user.getDepartment());
+        response.setPosition(user.getPosition());
         response.setStatus(user.getStatus().name());
         response.setMessage("Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.");
         return response;

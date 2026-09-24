@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * DTO returned after successful account registration.
  */
@@ -12,11 +14,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RegisterResponse {
 
-    private java.util.UUID id;
+    private UUID id;
     private String username;
     private String email;
     private String fullName;
     private String phone;
+    private UUID orgUnitId;
+    private String orgUnitName;
+    private String department;
+    private String position;
     private String status;
     private String message;
 }

@@ -75,7 +75,7 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
   const [internalOrgs, setInternalOrgs] = useState<OrgUnitTreeOption[]>([]);
 
   useEffect(() => {
-    if (propOrganizations && propOrganizations.length > 0) return;
+    if (propOrganizations !== undefined) return;
     let cancelled = false;
     organizationService.getAll()
       .then((data) => {

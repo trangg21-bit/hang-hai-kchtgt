@@ -2,10 +2,13 @@ package com.hanghai.kchtg.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 /**
  * DTO for POST /api/register request body.
@@ -36,4 +39,14 @@ public class RegisterAccountRequest {
     @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phone;
 
+    @NotNull(message = "Vui lòng chọn đơn vị")
+    private UUID orgUnitId;
+
+    @Size(max = 100, message = "Phòng ban tối đa 100 ký tự")
+    private String department;
+
+    @Size(max = 100, message = "Chức vụ tối đa 100 ký tự")
+    private String position;
+
 }
+

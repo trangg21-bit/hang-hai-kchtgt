@@ -329,7 +329,8 @@ Error responses follow the standard format:
 
 | Method | Endpoint | Description | Auth | Request Body | Response (200) |
 |---|---|---|---|---|---|
-| `POST` | `/api/v1/auth/register` | Đăng ký tài khoản mới (email hoặc SĐT) | Public | `RegisterAccountDTO` (see §3.2) | `RegistrationResponseDTO` (see §3.3) |
+| `POST` | `/api/v1/auth/register` hoặc `/api/register` | Đăng ký tài khoản mới (email hoặc SĐT) | Public | `RegisterAccountRequest` (see §3.2) | `RegisterResponse` (see §3.3) |
+| `GET` | `/api/register/org-units` | Danh sách đơn vị trực thuộc ngành Hàng hải phục vụ đăng ký | Public | None | `ApiResponse<List<OrgUnitResponse>>` |
 
 **Status Codes:**
 | Code | Meaning |
@@ -337,27 +338,30 @@ Error responses follow the standard format:
 | `201 Created` | Đăng ký thành công, verification token đã tạo |
 | `400 Bad Request` | Dữ liệu không hợp lệ (validation error) |
 | `409 Conflict` | Email/username/SĐT đã tồn tại |
-| `429 Too Many Requests` | Rate limit exceeded (3 đăng ký/15 phút/ip) |
+| `429 Too Many Requests` | Rate limit exceeded (5 đăng ký/5 phút/ip) |
 | `500 Internal Server Error` | Lỗi hệ thống |
 
-#### §3.2 Request Body — RegisterAccountDTO
+#### §3.2 Request Body — RegisterAccountRequest
 
 ```json
 {
-  "email": "user@example.com",        // required if phone not provided
-  "phone": "+84901234567",            // required if email not provided
-  "username": "nguyenvana",           // required: 3-100 chars, lowercase + underscore + number only
-  "password": "EncryptedBase64String", // required: client-side encrypted, server-side validated
-  "fullName": "Nguyễn Văn A"          // optional: 0-200 chars
+  "email": "user@example.com",        // required
+  "phone": "+84901234567",            // optional: format sĐT VN
+  "username": "user_example",         // optional (tự sinh từ email nếu rỗng)
+  "password": "Password@123456",      // required: min 8 ký tự, complexity policy
+  "fullName": "Nguyễn Văn A",         // optional: 0-200 chars
+  "orgUnitId": "123e4567-e89b-12d3-a456-426614174001", // required: Đơn vị trực thuộc
+  "department": "Phòng Pháp chế",     // optional: tối đa 100 ký tự
+  "position": "Chuyên viên"           // optional: tối đa 100 ký tự
 }
 ```
 
 **Validation rules:**
-- `email` and `phone` are mutually exclusive — at least one required, both optional (but not both null).
-- `email`: valid RFC 5322 format if provided.
-- `phone`: E.164 format if provided (e.g., `+84901234567` or `84901234567`).
-- `username`: `[a-z0-9_]`, 3–100 characters, no consecutive underscores, not starting with underscore.
-- `password`: client-side AES-256 encrypted before transmission (public key from `GET /api/v1/auth/register-config`). Server decrypts, then validates against F-276 complexity policy.
+- `email`: valid RFC 5322 format, không được để trống.
+- `orgUnitId`: UUID của đơn vị tổ chức, bắt buộc chọn (`@NotNull`), phải tồn tại trong CSDL.
+- `department`: tối đa 100 ký tự.
+- `position`: tối đa 100 ký tự.
+- `password`: kiểm tra độ phức tạp theo chính sách mật khẩu.
 - `fullName`: UTF-8, max 200 characters.
 
 #### §3.3 Response Body — RegistrationResponseDTO

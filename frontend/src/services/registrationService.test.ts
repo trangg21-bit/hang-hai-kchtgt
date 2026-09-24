@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import api from './api';
-import { registerAccount, getRegistrationConfig } from './registrationService';
+import { registerAccount, getRegistrationConfig, getRegistrationOrgUnits } from './registrationService';
 
 vi.mock('./api', () => ({
   default: {
@@ -46,6 +46,29 @@ describe('registrationService', () => {
     });
   });
 
+  describe('getRegistrationOrgUnits', () => {
+    it('should fetch active organizational units for registration', async () => {
+      const mockOrgs = [
+        { id: 'org-1', name: 'Cục Hàng hải Việt Nam', code: 'CHHVN', parentId: null },
+        { id: 'org-2', name: 'Cảng vụ Hàng hải Hải Phòng', code: 'CVHP', parentId: 'org-1' },
+      ];
+
+      vi.mocked(api.get).mockResolvedValue({
+        data: {
+          success: true,
+          data: mockOrgs,
+        },
+      });
+
+      const result = await getRegistrationOrgUnits();
+
+      expect(api.get).toHaveBeenCalledWith('/register/org-units');
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('Cục Hàng hải Việt Nam');
+      expect(result[1].parentId).toBe('org-1');
+    });
+  });
+
   describe('registerAccount', () => {
     it('should submit registration payload to /register', async () => {
       const payload = {
@@ -54,6 +77,9 @@ describe('registrationService', () => {
         email: 'test@example.com',
         fullName: 'Test User',
         phone: '0901234567',
+        orgUnitId: '123e4567-e89b-12d3-a456-426614174001',
+        department: 'Phòng Pháp chế',
+        position: 'Chuyên viên',
       };
 
       const mockResponseData = {
@@ -62,6 +88,10 @@ describe('registrationService', () => {
         email: 'test@example.com',
         fullName: 'Test User',
         phone: '0901234567',
+        orgUnitId: '123e4567-e89b-12d3-a456-426614174001',
+        orgUnitName: 'Cảng vụ Hàng hải Hải Phòng',
+        department: 'Phòng Pháp chế',
+        position: 'Chuyên viên',
         status: 'PENDING_APPROVAL',
         message: 'Đăng ký tài khoản thành công',
       };
@@ -77,6 +107,9 @@ describe('registrationService', () => {
 
       expect(api.post).toHaveBeenCalledWith('/register', payload);
       expect(result.username).toBe('testuser');
+      expect(result.orgUnitName).toBe('Cảng vụ Hàng hải Hải Phòng');
+      expect(result.department).toBe('Phòng Pháp chế');
+      expect(result.position).toBe('Chuyên viên');
       expect(result.status).toBe('PENDING_APPROVAL');
     });
   });
