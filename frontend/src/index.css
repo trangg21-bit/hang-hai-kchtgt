@@ -16,23 +16,24 @@ body {
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
 }
 
-/* ---- Text selection (bôi đen) mềm mại, thanh lịch, chuẩn tông Navy CHK ---- */
-::selection {
-  background: rgba(39, 62, 124, 0.20) !important;
-  color: #0F172A !important;
+/* ---- Chuẩn hóa inner input bên trong Affix Wrapper: chống bo tròn con và nền lệch ---- */
+.ant-input-affix-wrapper > input.ant-input,
+.ant-input-affix-wrapper input.ant-input,
+.ant-input-affix-wrapper input {
+  border-radius: 0 !important;
+  background: transparent !important;
 }
 
-::-moz-selection {
-  background: rgba(39, 62, 124, 0.20) !important;
-  color: #0F172A !important;
-}
-
-input::selection,
-textarea::selection,
-.ant-input::selection {
-  background: rgba(39, 62, 124, 0.22) !important;
-  color: #0F172A !important;
+/* ---- Chuẩn hóa Autofill toàn hệ thống: chống nền Chrome lệch bên trong input ---- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
   -webkit-text-fill-color: #0F172A !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  caret-color: #0F172A !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* ---- Scrollbar ---- */

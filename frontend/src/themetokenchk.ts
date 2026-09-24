@@ -276,9 +276,9 @@ export const scrollbarThumbHover = 'rgba(0, 0, 0, 0.25)';
  * Chuẩn chiều cao bảng trong Drawer (DRAWER_TABLE_SCROLL_Y)
  * Khóa cứng khoảng cách từ thanh phân trang xuống đáy Drawer luôn luôn cố định:
  * - Chuẩn tham chiếu từ Tab 'Kết cấu hạ tầng' (BerthDetailContent: scrollY="calc(100vh - 320px)")
- * - detailView: calc(100vh - 320px) (Drawer Xem chi tiết: Tab File đính kèm, Vùng VTS...)
- * - detailViewWithFilter: calc(100vh - 320px) (Tab có thanh lọc/select 32px trên đầu như Tab Kết cấu hạ tầng)
- * - detailGis: calc(100vh - 426px) (Tab GIS trong Drawer Xem chi tiết: Top box 4 dòng + header 32px cân bằng ~146px)
+ * - detailView: calc(100vh - 224px) (Drawer Xem chi tiết: Tab File đính kèm, Vùng VTS...)
+ * - detailViewWithFilter: calc(100vh - 264px) (Tab có thanh lọc/select 32px trên đầu như Tab Kết cấu hạ tầng: 224px + 40px)
+ * - detailGis: calc(100vh - 378px) (Tab GIS trong Drawer Xem chi tiết: Top box + header GPS ~154px: 224px + 154px = 378px)
  * - pureTable: calc(100vh - 328px) (Form Thêm mới/Sửa có footer 3 nút bấm)
  * - withButton: calc(100vh - 370px) (Form Thêm mới/Sửa có nút bấm trên đầu 32px + 10px margin)
  * - withDragger: calc(100vh - 442px) (Form Thêm mới/Sửa có khung Upload Dragger 104px + 10px margin)
@@ -294,11 +294,11 @@ export const DRAWER_TABLE_SCROLL_Y = {
   /** Tab GIS trong form tạo/sửa (Top controls cố định 194px) */
   withGisForm: 'calc(100vh - 522px)',
   /** Tab trong Drawer Xem chi tiết: Tab thuần chỉ có bảng (File đính kèm, Vùng VTS...) - cố định chuẩn đáy theo Tab Kết cấu hạ tầng */
-  detailView: 'calc(100vh - 320px)',
+  detailView: 'calc(100vh - 224px)',
   /** Tab trong Drawer Xem chi tiết có thanh lọc/nút bấm trên đầu (32px + 8px margin như Tab Kết cấu hạ tầng) */
-  detailViewWithFilter: 'calc(100vh - 320px)',
-  /** Tab GIS trong Drawer Xem chi tiết (Top box thông số + GPS header cố định ~146px, đáy bảng thẳng hàng với Tab Kết cấu hạ tầng) */
-  detailGis: 'calc(100vh - 426px)',
+  detailViewWithFilter: 'calc(100vh - 264px)',
+  /** Tab GIS trong Drawer Xem chi tiết (Top box thông số + GPS header cố định ~154px: 224px + 154px = 378px, đáy bảng thẳng hàng 100% với Tab File đính kèm & Kết cấu hạ tầng) */
+  detailGis: 'calc(100vh - 378px)',
 } as const;
 
 /**
@@ -722,8 +722,8 @@ export const themeScopedCss = (scope: string): string => `
 .${scope} .ant-dropdown-menu-item:hover { background: #f4f5f8; }
 .${scope} .ant-dropdown-menu-item .anticon { margin-right: 8px; width: 16px; text-align: center; }
 .${scope} .ant-btn { border-radius: 999px !important; }
-.${scope} input.ant-input:not(.ant-space-compact *) { border-radius: 999px !important; }
-.${scope} .ant-input:not(textarea):not(.ant-space-compact *) { border-radius: 999px !important; }
+.${scope} input.ant-input:not(.ant-space-compact *):not(.ant-input-affix-wrapper *) { border-radius: 999px !important; }
+.${scope} .ant-input:not(textarea):not(.ant-space-compact *):not(.ant-input-affix-wrapper *):not(.ant-input-affix-wrapper) { border-radius: 999px !important; }
 .${scope} .ant-input-affix-wrapper:not(.ant-input-textarea-affix-wrapper):not(.ant-input-affix-wrapper-textarea-with-clear-btn):not(.ant-space-compact *) {
   border-radius: 999px !important;
   padding: 0 12px !important;
@@ -731,7 +731,11 @@ export const themeScopedCss = (scope: string): string => `
   display: inline-flex !important;
   align-items: center !important;
 }
-.${scope} .ant-input-affix-wrapper > input.ant-input {
+.${scope} .ant-input-affix-wrapper > input.ant-input,
+.${scope} .ant-input-affix-wrapper input.ant-input,
+.${scope} .ant-input-affix-wrapper input {
+  border-radius: 0 !important;
+  background: transparent !important;
   padding: 0 !important;
   font-size: ${fontSizeMd}px !important;
   height: 38px !important;

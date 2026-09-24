@@ -42,7 +42,7 @@ import {
   spaceXs,
   textAreaStyle,
 } from '../../../themetokenchk';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
@@ -165,8 +165,8 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = checkCanSaveAndApprove('coastalstationhaiphong', hasPerm, currentUser) || checkCanSaveAndApprove('ttxltt', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationhaiphong', hasExplicitPerm || hasPerm, currentUser) || checkCanSaveAndApprove('ttxltt', hasExplicitPerm || hasPerm, currentUser);
   const canCreate = hasPerm('coastalstationhaiphong:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
@@ -668,7 +668,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         servicesProvided: Array.isArray(values.services) ? values.services.join(', ') : values.services,
         description: values.description?.trim(),
         geometryType: currentGeometryType || undefined,
-        symbolId: currentSymbolId || undefined,
+        symbolId: currentGeometryType ? (currentSymbolId || undefined) : undefined,
         coordinateSystem: currentGeometryType ? (values.coordinateSystem ?? form.getFieldValue('coordinateSystem') ?? 1) : undefined,
         displayRule: currentGeometryType ? (values.displayRule ?? form.getFieldValue('displayRule') ?? 'Độ, phút, giây (DMS)') : undefined,
         latitude: firstPt?.latitude,

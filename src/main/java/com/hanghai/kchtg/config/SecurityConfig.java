@@ -115,6 +115,7 @@ public class SecurityConfig {
                     }
                     auth
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/captcha").permitAll()
                         .requestMatchers("/api/auth/password-policy").permitAll()
                         // Map data stays readable without a login so the public map keeps
                         // working, but only for reads. These controllers carry no

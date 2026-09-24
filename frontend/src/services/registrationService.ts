@@ -1,4 +1,5 @@
 import api from './api';
+import type { OrgUnitTreeOption } from '../components/org-unit/orgUnitHelpers';
 
 export interface RegisterAccountPayload {
   username: string;
@@ -6,6 +7,9 @@ export interface RegisterAccountPayload {
   email: string;
   fullName?: string;
   phone?: string;
+  orgUnitId: string;
+  department?: string;
+  position?: string;
 }
 
 export interface RegisterResponse {
@@ -14,6 +18,10 @@ export interface RegisterResponse {
   email: string;
   fullName?: string;
   phone?: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
+  department?: string;
+  position?: string;
   status?: string;
   message?: string;
 }
@@ -42,7 +50,19 @@ export const getRegistrationConfig = async (): Promise<RegisterConfigResponse> =
   return res.data?.data || {};
 };
 
+export const getRegistrationOrgUnits = async (): Promise<OrgUnitTreeOption[]> => {
+  const res = await api.get('/register/org-units');
+  const list = res.data?.data || [];
+  return list.map((o: any) => ({
+    id: String(o.id),
+    name: o.name,
+    code: o.code,
+    parentId: o.parentId ? String(o.parentId) : undefined,
+  }));
+};
+
 export const registerAccount = async (payload: RegisterAccountPayload): Promise<RegisterResponse> => {
   const res = await api.post('/register', payload);
   return res.data?.data || res.data;
 };
+

@@ -45,10 +45,15 @@ Cung cấp kênh tiếp cận an toàn và tiêu chuẩn để người dùng m�
 
 ## In Scope
 - **Đăng ký qua email hoặc số điện thoại**: chấp nhận cả hai định dạng, validate theo regex chuẩn (email RFC 5322, sĐT Việt Nam +84 hoặc 0开头).
+- **Thông tin đơn vị, phòng ban, chức vụ**:
+  - `orgUnitId` (Đơn vị*): Bắt buộc chọn từ danh mục đơn vị hoạt động của ngành Hàng hải. Cung cấp qua endpoint công khai `GET /api/register/org-units`.
+  - `department` (Phòng ban): Tùy chọn, tối đa 100 ký tự.
+  - `position` (Chức vụ): Tùy chọn, tối đa 100 ký tự.
 - **Mật khẩu complexity validation**: áp dụng chính sách F-276 (độ dài ≥ 12, chữ hoa, chữ thường, số, ký tự đặc biệt).
 - **Hash mật khẩu**: bcrypt (work factor ≥ 12) hoặc argon2id, sinh salt ngẫu nhiên ≥ 16 bytes cho mỗi password.
 - **Uniqueness check**: kiểm tra email/số điện thoại chưa tồn tại trong bảng User trước khi tạo.
-- **User entity creation**: tạo bản ghi User với status=ACTIVE, totp_enabled=false, account_locked_until=NULL.
+- **User entity creation**: tạo bản ghi User với status=PENDING_APPROVAL, gán orgUnitId, department, position, totp_enabled=false, account_locked_until=NULL.
+- **Giao diện người dùng (UI / UX)**: Trang đăng ký (`RegisterPage.tsx`) thiết kế bố cục lưới 2 cột đối xứng (`maxWidth: 680px`), tối ưu hiển thị trọn vẹn trong 1 màn hình duy nhất không phải cuộn chuột (No Scroll Down). Viền bo tròn `radiusPill` (height 38px), có `paddingLeft: 14px` và `marginRight: 8px` cho các icon tiền tố để con trỏ chuột không bị sát viền hay sát icon.
 - **Audit logging**: ghi nhận mọi attempt đăng ký (success/fail) vào bảng AuditLog.
 - **Response message chuẩn**: trả về message chung "Đăng ký thành công" hoặc "Thông tin đã tồn tại" — không lộ chi tiết.
 

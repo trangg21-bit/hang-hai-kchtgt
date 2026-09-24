@@ -970,7 +970,11 @@ body, .ant-layout {
 .ant-input-affix-wrapper {
   padding: 4px 11px !important;
 }
-.ant-input-affix-wrapper > input.ant-input {
+.ant-input-affix-wrapper > input.ant-input,
+.ant-input-affix-wrapper input.ant-input,
+.ant-input-affix-wrapper input {
+  border-radius: 0 !important;
+  background: transparent !important;
   padding: 0 !important;
   font-size: 13px !important;
 }
@@ -2216,8 +2220,7 @@ textarea::placeholder,
 /* --- Drawer & Detail Table Card Standard (Khóa cứng phân trang cố định đáy, đỉnh bảng đồng đều) --- */
 .ant-drawer .ant-drawer-body {
   overflow-x: hidden !important;
-  overflow-y: scroll !important;
-  scrollbar-gutter: stable !important;
+  overflow-y: auto !important;
   scrollbar-width: thin !important;
   scrollbar-color: #cbd5e1 transparent !important;
 }
