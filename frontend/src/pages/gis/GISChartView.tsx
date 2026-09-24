@@ -94,6 +94,11 @@ import { colors } from '../../theme';
 import Flatbush from 'flatbush';
 import MapToolbar from '../../components/gis/MapToolbar';
 import { getPopupValueByPath, resolveVmdPopupFields } from './vmdPopupFields';
+import {
+  buildKchtScreenPath,
+  resolveKchtCustomFeatureReference,
+  resolveKchtInfrastructureType,
+} from './kchtGisDetailRouting';
 import DrawSaveModal from '../../components/gis/DrawSaveModal';
 import type { DrawResult } from '../../components/gis/DrawSaveModal';
 import { pointObjectService } from '../../services/pointObjectService';
@@ -131,6 +136,7 @@ import {
 import {
   buildMapShareUrl,
   circleToPolygonCoordinates,
+  DEFAULT_GIS_MAP_VIEW,
   parseSharedMapView,
   shouldRenderKchtGeometry,
 } from '../../utils/mapInteraction';
@@ -138,6 +144,7 @@ import {
   getKchtOperationalStatusText,
   getKchtStructureTypeText,
   getKchtSymbolCode,
+  getKchtUnitOfMeasureText,
 } from '../../utils/kchtGisPresentation';
 import Leaflet from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -156,6 +163,17 @@ let leafletRuntime: any;
 const PLANNING_LAYER_CACHE_VERSION = 'screen-hit-resolver-v1';
 const SEARCH_MARKER_RENDER_BATCH_SIZE = 350;
 const SEARCH_MARKER_RENDER_BATCH_DELAY_MS = 40;
+const GIS_RESULTS_TABLE_MIN_WIDTH = 964;
+const PLANNING_LEGEND_ITEMS = [
+  { label: 'Bến cảng hiện hữu', color: PLANNING_STATUS_COLORS.existingPort, kind: 'area' },
+  { label: 'Bến cảng quy hoạch đến năm 2030', color: PLANNING_STATUS_COLORS.planned2030, kind: 'area' },
+  { label: 'Bến cảng phát triển có điều kiện', color: PLANNING_STATUS_COLORS.conditionalDevelopment, kind: 'area' },
+  { label: 'Bến cảng quy hoạch tầm nhìn đến năm 2050', color: PLANNING_STATUS_COLORS.vision2050, kind: 'area' },
+  { label: 'Vùng đón trả hoa tiêu quy hoạch', color: PLANNING_STATUS_COLORS.plannedPilotArea, kind: 'line' },
+  { label: 'Vùng đón trả hoa tiêu hiện trạng', color: PLANNING_STATUS_COLORS.existingPilotArea, kind: 'line' },
+  { label: 'Vùng neo hiện trạng', color: PLANNING_STATUS_COLORS.existingAnchorage, kind: 'line' },
+  { label: 'Vùng neo quy hoạch', color: PLANNING_STATUS_COLORS.plannedAnchorage, kind: 'line' },
+] as const;
 
 const KCHT_DETAIL_ENDPOINT_BY_TYPE: Record<string, string> = {
   SEAPORT: '/v1/ports',
@@ -189,102 +207,6 @@ const KCHT_DETAIL_ENDPOINT_BY_TYPE: Record<string, string> = {
   SCADA: '/v1/scada',
   TRANSMISSION: '/v1/transmission',
   VTS_ASSIST: '/v1/vtsassist',
-};
-
-const KCHT_SCREEN_ROUTE_BY_TYPE: Record<string, string> = {
-  SEAPORT: '/port',
-  PORT_TERMINAL: '/berth',
-  PIER: '/pier',
-  DRY_PORT: '/dry-port',
-  WATER_AREA: '/water-zone',
-  ANCHORAGE_AREA: '/anchorage',
-  TRANSSHIPMENT_AREA: '/transfer-area',
-  STORM_SHELTER_AREA: '/storm-shelter',
-  BUOY_BERTH: '/buoy-berth',
-  DIKE_REVETMENT: '/dike-revetment',
-  NAVIGATION_CHANNEL: '/navigation-channel',
-  SHIP_REPAIR_FACILITY: '/ship-repair-facility',
-  SHIP_REPAIR_YARD: '/ship-repair-yard',
-  LIGHTHOUSE: '/beacon-stations',
-  BUOY: '/buoys',
-  BUOY_STATION: '/buoy-station',
-  VTS_SYSTEM: '/vts-system',
-  RADAR_STATION: '/radar-station',
-  RADAR_STATION_LEGACY: '/radar-station',
-  DAI_TTDH: '/dai-ttdh',
-  COASTAL_RADIO_STATION: '/station/coastal',
-  INMARSAT_STATION: '/station/inmarsat',
-  COSPAS_SARSAT_STATION: '/station/cospas-sarsat',
-  LRIT_STATION: '/station/lrit',
-  HANOI_STATION: '/station/hanoi',
-  VTS_OPERATION_CENTER: '/vts-operation-center',
-  AIS_SYSTEM: '/ais-system',
-  CCTV: '/cctv',
-  SCADA: '/scada',
-  TRANSMISSION: '/transmission',
-  VTS_ASSIST: '/vts-assist',
-};
-
-const KCHT_PATH_DETAIL_TYPES = new Set([
-  'DIKE_REVETMENT',
-  'NAVIGATION_CHANNEL',
-  'SHIP_REPAIR_FACILITY',
-  'LIGHTHOUSE',
-  'RADAR_STATION',
-  'RADAR_STATION_LEGACY',
-]);
-
-const KCHT_RICH_DETAIL_SCREEN_TYPES = new Set([
-  'SEAPORT',
-  'PORT_TERMINAL',
-  'PIER',
-  'DRY_PORT',
-  'WATER_AREA',
-  'ANCHORAGE_AREA',
-  'TRANSSHIPMENT_AREA',
-  'STORM_SHELTER_AREA',
-  'BUOY_BERTH',
-  'BUOY',
-  'BUOY_STATION',
-  'DIKE_REVETMENT',
-  'NAVIGATION_CHANNEL',
-  'SHIP_REPAIR_FACILITY',
-  'SHIP_REPAIR_YARD',
-  'LIGHTHOUSE',
-  'RADAR_STATION',
-  'RADAR_STATION_LEGACY',
-  'DAI_TTDH',
-  'COASTAL_RADIO_STATION',
-  'INMARSAT_STATION',
-  'COSPAS_SARSAT_STATION',
-  'LRIT_STATION',
-  'HANOI_STATION',
-  'AIS_SYSTEM',
-  'CCTV',
-  'SCADA',
-  'TRANSMISSION',
-  'VTS_ASSIST',
-  'VTS_OPERATION_CENTER',
-]);
-
-const KCHT_TYPE_BY_LABEL = new Map(
-  KCHT_GIS_TYPE_OPTIONS.map((option) => [option.label.toLocaleLowerCase('vi'), option.value]),
-);
-
-const resolveKchtInfrastructureType = (record: Pick<KchtGisSearchResult, 'infrastructureType' | 'kchtTypeLabel'>) => {
-  const rawType = String(record.infrastructureType || '').trim();
-  const normalizedType = LEGACY_KCHT_TYPE_MAP[rawType] || rawType.toUpperCase();
-  if (KCHT_DETAIL_ENDPOINT_BY_TYPE[normalizedType]) return normalizedType;
-  return KCHT_TYPE_BY_LABEL.get(String(record.kchtTypeLabel || '').trim().toLocaleLowerCase('vi')) || normalizedType;
-};
-
-const buildKchtScreenPath = (infrastructureType: string, id: string, action: 'view' | 'edit') => {
-  const basePath = KCHT_SCREEN_ROUTE_BY_TYPE[infrastructureType];
-  if (!basePath) return '';
-  if (KCHT_PATH_DETAIL_TYPES.has(infrastructureType)) {
-    return `${basePath}/${id}${action === 'edit' ? '?mode=edit' : ''}`;
-  }
-  return `${basePath}?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
 };
 
 const CELL_COORDINATES: Record<string, [number, number]> = {
@@ -729,8 +651,6 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     // Common
     id: 'ID',
     code: 'Mã',
-    code: 'Mã',
-    name: 'Tên',
     name: 'Tên',
     orgName: 'Đơn vị quản lý',
     orgUnitName: 'Đơn vị quản lý',
@@ -741,9 +661,6 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     recordSecurityLevel: 'Mức độ bảo mật',
     location: 'Địa điểm',
     diaChiChiTiet: 'Địa chỉ chi tiết',
-    diaDiemChiTiet: 'Địa điểm chi tiết',
-    latitude: 'Vĩ độ',
-    longitude: 'Kinh độ',
     latitude: 'Vĩ độ',
     longitude: 'Kinh độ',
     createdAt: 'Ngày tạo',
@@ -786,26 +703,17 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     anchorageCount: 'Số lượng khu neo đậu',
     transshipmentCount: 'Số lượng khu chuyển tải',
     otherWaterAreas: 'Các vùng nước khác',
-    remarks: 'Ghi chú',
-    detailedLocation: 'Vị trí chi tiết',
     portClass: 'Phân loại cảng',
-    coordinateSystem: 'Hệ tọa độ',
-    displayRule: 'Quy tắc hiển thị',
     activityStatus: 'Trạng thái xử lý',
     approvalStatus: 'Trạng thái phê duyệt',
-    province: 'Tỉnh / Thành phố',
     provinceId: 'Tỉnh / Thành phố',
     tinhThanh: 'Tỉnh / Thành phố',
-    orgUnitId: 'Đơn vị quản lý',
     orgUnitId: 'Đơn vị quản lý',
     unitId: 'Đơn vị quản lý',
     donViQuanLy: 'Đơn vị quản lý',
     portId: 'Thuộc cảng biển',
-    portName: 'Thuộc cảng biển',
     tenCangBien: 'Thuộc cảng biển',
     berthId: 'Thuộc bến cảng',
-    tenBenCang: 'Thuộc bến cảng',
-    loaiHinhHoc: 'Loại hình học',
     geomType: 'Loại hình học',
 
     // Cầu cảng
@@ -832,7 +740,6 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     channelDepth: 'Độ sâu luồng (m)',
     coordinateSystem: 'Hệ tọa độ',
     displayRule: 'Quy tắc hiển thị',
-    structureType: 'Loại kết cấu cầu cảng',
     operator: 'Đơn vị khai thác',
     totalArea: 'Tổng diện tích (ha)',
     designThroughput: 'Năng lực thông qua thiết kế',
@@ -863,7 +770,6 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     vanBanThoaThuanDauTu: 'Văn bản thỏa thuận đầu tư xây dựng',
     structureType: 'Loại kết cấu cầu cảng',
     province: 'Địa điểm (Tỉnh/ Thành phố)',
-    diaDiemChiTiet: 'Địa điểm chi tiết',
     navigationChannelId: 'Thuộc luồng hàng hải',
 
     // Cảng cạn
@@ -1078,7 +984,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           return formatDate(value);
         }
         if (field === 'operationalStatus' || field === 'conditionStatus' || field === 'condition' || field === 'tinhTrang' || field === 'isActive') {
-          return getKchtOperationalStatusText(field === 'isActive' ? Boolean(value) : value);
+          return getKchtOperationalStatusText(field === 'isActive' ? Boolean(value) : value, infrastructureType);
         }
         if (field === 'approvalStatus' || field === 'trangThai' || field === 'status') {
           return getApprovalStatusText(value);
@@ -1088,6 +994,9 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
         }
         if (field === 'structureType') {
           return getKchtStructureTypeText(value);
+        }
+        if (field === 'unitOfMeasure' || field === 'unitOfMeasureLabel') {
+          return getKchtUnitOfMeasureText(value);
         }
         return value;
       };
@@ -1120,21 +1029,21 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           if (valExists) {
             const isLegacyDateField = fieldType === 'date' || fieldType === 'dateTime' || fieldType === 'monthYear';
             if (fieldType === 'date') {
-              val = formatDate(val);
+              val = formatDate(String(val));
             } else if (fieldType === 'dateTime') {
-              val = formatDateTime(val);
+              val = formatDateTime(String(val));
             } else if (fieldType === 'monthYear') {
-              val = formatDate(val);
+              val = formatDate(String(val));
             } else if (k === 'type') {
               if (displayType === 'Đèn biển') {
-                val = getBeaconLightTypeText(val);
+                val = getBeaconLightTypeText(String(val));
               } else if (displayType === 'Phao tiêu') {
-                val = getBuoyTypeText(val);
+                val = getBuoyTypeText(String(val));
               }
             }
-            if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
-            if (k === 'berthType') val = getLoaiBenText(val);
-            if (k === 'loaiCau') val = getLoaiCauText(val);
+            if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(String(val));
+            if (k === 'berthType') val = getLoaiBenText(String(val));
+            if (k === 'loaiCau') val = getLoaiCauText(String(val));
             if (!isLegacyDateField) {
               val = formatDetailFieldValue(k, val);
             }
@@ -1237,14 +1146,14 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           }
           if (k === 'type') {
             if (displayType === 'Đèn biển') {
-              displayVal = getBeaconLightTypeText(val);
+              displayVal = getBeaconLightTypeText(String(val));
             } else if (displayType === 'Phao tiêu') {
-              displayVal = getBuoyTypeText(val);
+              displayVal = getBuoyTypeText(String(val));
             }
           }
-          if (k === 'loaiVungNuoc') displayVal = getLoaiVungNuocText(val);
-          if (k === 'berthType') displayVal = getLoaiBenText(val);
-          if (k === 'loaiCau') displayVal = getLoaiCauText(val);
+          if (k === 'loaiVungNuoc') displayVal = getLoaiVungNuocText(String(val));
+          if (k === 'berthType') displayVal = getLoaiBenText(String(val));
+          if (k === 'loaiCau') displayVal = getLoaiCauText(String(val));
           displayVal = formatDetailFieldValue(k, displayVal);
 
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal)}</td></tr>`;
@@ -1484,7 +1393,6 @@ export default function GISChartView() {
   const desktopSearchPanelWidth = 560;
   const searchPanelWidth = screens.md ? desktopSearchPanelWidth : '100%';
   const [activeModalUrl, setActiveModalUrl] = useState<string | null>(null);
-  const [activeFallbackDetailHtml, setActiveFallbackDetailHtml] = useState<string | null>(null);
 
   const activePopupRef = useRef<any>(null);
   const activePopupRecordRef = useRef<any>(null);
@@ -1574,15 +1482,6 @@ export default function GISChartView() {
         kchtTypeLabel: typeLabel || '',
         });
       const path = buildKchtScreenPath(infrastructureType, id, action);
-
-      if (action === 'view' && !KCHT_RICH_DETAIL_SCREEN_TYPES.has(infrastructureType)) {
-        const activeRecord = activePopupRecordRef.current;
-        if (activeRecord && String(activeRecord.id) === String(id)) {
-          setActiveFallbackDetailHtml('<div>Đang tải dữ liệu chi tiết...</div>');
-          void fetchAndFormatPopupDetails(activeRecord, false).then(setActiveFallbackDetailHtml);
-          return;
-        }
-      }
 
       if (path) {
         setActiveModalUrl(path);
@@ -1713,6 +1612,24 @@ export default function GISChartView() {
     { key: 'diaChiChiTiet', dataIndex: 'diaChiChiTiet', label: 'Địa điểm chi tiết', width: 180 },
     { key: 'name', dataIndex: 'name', label: 'Kết cấu hạ tầng', width: 200 },
   ], [searchPage, searchPageSize]);
+  const infrastructureTableScroll = useMemo(
+    () => ({ y: tableHeight }),
+    [tableHeight],
+  );
+  const handleInfrastructureSelectionChange = useCallback((keys: React.Key[]) => {
+    const previousKeySet = new Set(selectedRowKeys.map(String));
+    const hasNewSelection = keys.some((key) => !previousKeySet.has(String(key)));
+
+    setSelectedRowKeys(keys);
+    if (hasNewSelection && screens.md === false) {
+      setSearchPanelVisible(false);
+    }
+  }, [screens.md, selectedRowKeys]);
+  const infrastructureRowSelection = useMemo(() => ({
+    columnWidth: 44,
+    selectedRowKeys,
+    onChange: handleInfrastructureSelectionChange,
+  }), [handleInfrastructureSelectionChange, selectedRowKeys]);
 
   // Drawing state
   const [, setDrawnGeometry] = useState<{
@@ -1741,7 +1658,10 @@ export default function GISChartView() {
         const paginationHeight = el.querySelector<HTMLElement>('[data-gis-pagination]')
           ?.getBoundingClientRect().height ?? 0;
         const available = entry.contentRect.height - paginationHeight - 55;
-        setTableHeight(Math.max(100, Math.floor(available)));
+        const nextHeight = Math.max(100, Math.floor(available));
+        setTableHeight((currentHeight) => (
+          Math.abs(currentHeight - nextHeight) <= 1 ? currentHeight : nextHeight
+        ));
       }
     });
     observer.observe(el);
@@ -1799,7 +1719,7 @@ export default function GISChartView() {
         return {
           ...x,
           location: x.location || getProvinceNameById(x.provinceId) || '',
-          toaDo: getRecordCoordinatesWkt(x),
+          toaDo: getRecordCoordinatesWkt(x) || undefined,
           loaiHinhHoc: x.geometryType,
           latitude: mapLocation?.center[1],
           longitude: mapLocation?.center[0],
@@ -1929,28 +1849,28 @@ export default function GISChartView() {
   const planningGroupRef = useRef<any>(null);
   const planningRendererRef = useRef<any>(null);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
-  const renderChartFeaturesRef = useRef<() => void>();
+  const renderChartFeaturesRef = useRef<(() => void) | undefined>(undefined);
   const searchMarkerRenderGenerationRef = useRef(0);
   const searchMarkerRenderTimerRef = useRef<number | undefined>(undefined);
   const searchMarkerRenderFrameRef = useRef<number | undefined>(undefined);
   const searchMarkerIconCacheRef = useRef<Map<string, any>>(new Map());
   const notifiedBulkSelectionRef = useRef('');
-  const renderSearchMarkersRef = useRef<() => void>();
-  const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
-  const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
+  const renderSearchMarkersRef = useRef<(() => void) | undefined>(undefined);
+  const fetchFeaturesInViewportRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const fetchPlanningFeaturesRef = useRef<(() => Promise<void>) | undefined>(undefined);
   const moveEndTimeoutRef = useRef<any>(null);
   const planningLayersCacheRef = useRef<Record<string, any>>({});
   const planningLayerCacheVersionRef = useRef('');
-  const planningStyleZoomBandRef = useRef<number>();
+  const planningStyleZoomBandRef = useRef<number | undefined>(undefined);
   const [customGisFeatures, setCustomGisFeatures] = useState<any[]>([]);
   const customGisFeaturesDataRef = useRef<any[]>([]);
-  const fetchCustomGisFeaturesRef = useRef<() => Promise<void>>();
+  const fetchCustomGisFeaturesRef = useRef<(() => Promise<void>) | undefined>(undefined);
   const customGisGroupRef = useRef<any>(null);
   const customKchtHitTargetsRef = useRef<KchtMapHitTarget[]>([]);
   const searchKchtHitTargetsRef = useRef<KchtMapHitTarget[]>([]);
   const planningHitTargetsRef = useRef<PlanningMapHitTarget[]>([]);
   const planningHitIndexRef = useRef<Flatbush | null>(null);
-  const mapFeatureClickHandlerRef = useRef<(latlng: any) => Promise<void>>();
+  const mapFeatureClickHandlerRef = useRef<((latlng: any) => Promise<void>) | undefined>(undefined);
   const mapFeatureClickSequenceRef = useRef(0);
   const mapFeatureChoiceActionsRef = useRef<Map<string, () => void | Promise<void>>>(new Map());
   const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -2328,8 +2248,8 @@ export default function GISChartView() {
     const selectedIds = new Set(selectedRowKeys.map(String));
     const visibleCustomFeatures = customGisFeatures.filter((feature) => {
       const featureId = String(feature.id);
-      const isSystemLinkedRecord = feature.refType !== null && feature.refType !== undefined && feature.refType !== 0 && feature.refType !== 'SEAPORT';
-      const referenceId = (isSystemLinkedRecord && feature.refId) ? String(feature.refId) : '';
+      const featureReference = resolveKchtCustomFeatureReference(feature);
+      const referenceId = featureReference.referenceId || '';
       const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
 
       if (matchingResult) {
@@ -2346,8 +2266,8 @@ export default function GISChartView() {
     visibleCustomFeatures.forEach((feature) => {
       try {
         const featureId = String(feature.id);
-        const isSystemLinkedRecord = feature.refType !== null && feature.refType !== undefined && feature.refType !== 0 && feature.refType !== 'SEAPORT';
-        const referenceId = (isSystemLinkedRecord && feature.refId) ? String(feature.refId) : '';
+        const featureReference = resolveKchtCustomFeatureReference(feature);
+        const referenceId = featureReference.referenceId || '';
         const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
         let layer: any = null;
         let interactionPosition: [number, number] | null = null;
@@ -2424,11 +2344,22 @@ export default function GISChartView() {
             { direction: 'top', offset: [0, -5], opacity: 0.9 }
           );
 
-          const isPort = feature.refType === 0 || feature.refType === 'SEAPORT';
-          const isSystemRef = Boolean(matchingResult || (isSystemLinkedRecord && feature.refId));
-          const systemRefType = (matchingResult?.infrastructureType || feature.refType || 'PORT_TERMINAL') as string;
+          const matchingInfrastructureType = matchingResult
+            ? resolveKchtInfrastructureType(matchingResult)
+            : undefined;
+          const systemRefType = matchingInfrastructureType
+            || featureReference.infrastructureType
+            || 'PORT_TERMINAL';
+          const isPort = systemRefType === 'SEAPORT';
+          const isSystemRef = Boolean(matchingResult || featureReference.isSystemLinked);
+          const systemTargetId = matchingResult?.id || featureReference.referenceId || featureId;
           const kchtTypeDisplay = isSystemRef
-            ? (matchingResult?.kchtTypeLabel || getKchtGisTypeByCategoryId(feature.categoryId) || 'Kết cấu hạ tầng')
+            ? (
+              matchingResult?.kchtTypeLabel
+              || getKchtGisTypeLabelByCategoryId(feature.categoryId)
+              || KCHT_GIS_TYPE_OPTIONS.find((option) => option.value === systemRefType)?.label
+              || 'Kết cấu hạ tầng'
+            )
             : getObjectTypeLabel(feature.type, feature.objectType, feature.categoryId);
 
           const getPopupHtml = (portName: string) => `
@@ -2477,10 +2408,10 @@ export default function GISChartView() {
               <!-- Action Buttons -->
               <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
                 ${isSystemRef ? `
-                  <button onclick="window.handleKchtAction('${feature.refId}', '${kchtTypeDisplay}', 'view', '${systemRefType}')" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #0E6FD6; background: #0E6FD6; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
+                  <button onclick="window.handleKchtAction('${systemTargetId}', '${kchtTypeDisplay}', 'view', '${systemRefType}')" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #0E6FD6; background: #0E6FD6; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
                     Xem chi tiết
                   </button>
-                  <button onclick="window.handleKchtAction('${feature.refId}', '${kchtTypeDisplay}', 'edit', '${systemRefType}')" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #52c41a; background: transparent; color: #52c41a; font-weight: 500; outline: none; transition: background 0.2s;">
+                  <button onclick="window.handleKchtAction('${systemTargetId}', '${kchtTypeDisplay}', 'edit', '${systemRefType}')" style="font-size: 13px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #52c41a; background: transparent; color: #52c41a; font-weight: 500; outline: none; transition: background 0.2s;">
                     Chỉnh sửa
                   </button>
                 ` : `
@@ -2525,7 +2456,7 @@ export default function GISChartView() {
 
             const popup = L.popup({ minWidth: 280, maxWidth: 360, autoPanPadding: [50, 100] })
               .setLatLng(latlng)
-              .setContent(getPopupHtml(feature.refId && isPort ? 'Đang tải...' : '—'))
+              .setContent(getPopupHtml(featureReference.referenceId && isPort ? 'Đang tải...' : '—'))
               .openOn(mapRef.current);
 
             activePopupRef.current = popup;
@@ -2537,9 +2468,9 @@ export default function GISChartView() {
               }
             });
 
-            if (!feature.refId || !isPort) return;
+            if (!featureReference.referenceId || !isPort) return;
             try {
-              const port = await portCRUD.findById(feature.refId);
+              const port = await portCRUD.findById(featureReference.referenceId);
               if (
                 requestId === activePopupRequestRef.current
                 && activePopupRef.current === popup
@@ -2547,7 +2478,7 @@ export default function GISChartView() {
               ) {
                 popup.setContent(getPopupHtml(port?.portName || '—'));
               }
-            } catch {
+            } catch (err) {
               console.error(err);
               if (
                 requestId === activePopupRequestRef.current
@@ -2664,7 +2595,7 @@ export default function GISChartView() {
             opacity: visualStyle.opacity,
             weight: visualStyle.weight,
           }),
-          pointToLayer: (geoJsonFeature: any, latlng: any) => {
+          pointToLayer: (_geoJsonFeature: any, latlng: any) => {
             return L.circleMarker(latlng, {
               pane: GIS_LAYER_INTERACTION_POLICY.planningPane,
               renderer: planningRendererRef.current,
@@ -2889,8 +2820,10 @@ export default function GISChartView() {
       maxZoom: 20,
       zoomControl: false,
     }).setView(
-      sharedMapView ? [sharedMapView.latitude, sharedMapView.longitude] : [16.0, 108.0],
-      sharedMapView?.zoom ?? 5,
+      sharedMapView
+        ? [sharedMapView.latitude, sharedMapView.longitude]
+        : [...DEFAULT_GIS_MAP_VIEW.center],
+      sharedMapView?.zoom ?? DEFAULT_GIS_MAP_VIEW.zoom,
     );
     mapRef.current = map;
     setMapInstance(map);
@@ -3091,7 +3024,7 @@ export default function GISChartView() {
               if (fetchPlanningFeaturesRef.current) {
                 await fetchPlanningFeaturesRef.current();
               }
-            } catch {
+            } catch (err) {
               toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
               throw err;
             }
@@ -3112,7 +3045,7 @@ export default function GISChartView() {
         if (!id || !type) return;
 
         const feature = customGisFeaturesDataRef.current.find((candidate) => String(candidate.id) === id);
-        if (feature?.refId) {
+        if (feature && resolveKchtCustomFeatureReference(feature).isSystemLinked) {
           toast.warning('Dữ liệu kết cấu hạ tầng hệ thống không thể xóa từ bản đồ thủ công.');
           return;
         }
@@ -3159,19 +3092,15 @@ export default function GISChartView() {
 
         const feature = customGisFeaturesDataRef.current.find((candidate) => String(candidate.id) === id);
         if (feature) {
-          const isSystemLinkedRecord = feature.refType !== null && feature.refType !== undefined && feature.refType !== 0 && feature.refType !== 'SEAPORT';
-          const referenceId = (isSystemLinkedRecord && feature.refId) ? String(feature.refId) : '';
-          const matchingResult = resultsById.get(String(feature.id)) || (referenceId ? resultsById.get(referenceId) : undefined);
-          const refType = String(feature.refType ?? '').toUpperCase();
-          const kchtType = getKchtGisTypeByCategoryId(feature.categoryId);
-          const isSystemRef = Boolean(matchingResult || (isSystemLinkedRecord && feature.refId));
+          const featureReference = resolveKchtCustomFeatureReference(feature);
+          const kchtType = featureReference.infrastructureType
+            || getKchtGisTypeByCategoryId(feature.categoryId);
 
-          if (isSystemRef) {
-            const systemTargetId = referenceId || String(feature.id);
-            const infraType = matchingResult?.infrastructureType
-              || (refType === 'CCTV' || Number(feature.refType) === 28 || kchtType === 'CCTV' ? 'CCTV' : (refType || 'PORT_TERMINAL'));
-            const typeLabel = matchingResult?.kchtTypeLabel
-              || (infraType === 'CCTV' ? 'Hệ thống CCTV' : infraType === 'PORT_TERMINAL' ? 'Bến cảng' : 'Kết cấu hạ tầng');
+          if (featureReference.isSystemLinked) {
+            const systemTargetId = featureReference.referenceId || String(feature.id);
+            const infraType = kchtType || 'PORT_TERMINAL';
+            const typeLabel = KCHT_GIS_TYPE_OPTIONS.find((option) => option.value === infraType)?.label
+              || (infraType === 'PORT_TERMINAL' ? 'Bến cảng' : 'Kết cấu hạ tầng');
             window.handleKchtAction(systemTargetId, typeLabel, 'edit', infraType);
             if (mapRef.current) {
               mapRef.current.closePopup();
@@ -3661,7 +3590,7 @@ export default function GISChartView() {
     // VMD returns to the Vietnam overview for a bulk selection. Avoid parsing
     // every coordinate a second time only to calculate a country-wide bound.
     if (selectedRecords.length > 500) {
-      mapRef.current.setView([16.0, 108.0], 5, { animate: false });
+      mapRef.current.setView([...DEFAULT_GIS_MAP_VIEW.center], DEFAULT_GIS_MAP_VIEW.zoom, { animate: false });
       return;
     }
 
@@ -3949,13 +3878,13 @@ export default function GISChartView() {
                 <div
                   style={{
                     position: 'absolute',
-                    bottom: '20px',
-                    right: '20px',
+                    bottom: spaceMd,
+                    right: spaceMd,
                     zIndex: 1000,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'flex-end',
-                    gap: '8px'
+                    gap: spaceSm,
                   }}
                 >
                   {legendOpen && (
@@ -3966,92 +3895,30 @@ export default function GISChartView() {
                         boxShadow: shadowLg,
                         border: `1px solid ${borderDefault}`,
                         padding: spaceMd,
-                        width: 340,
-                        maxHeight: '68vh',
-                        overflowY: 'auto',
+                        width: 280,
+                        maxWidth: 'calc(100vw - 24px)',
                         fontFamily: fontSans,
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                     >
-                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeLg, color: colors.sidebarBg, borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
-                        Chú giải bản đồ
-                      </div>
-                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceSm }}>
-                        Biểu tượng kết cấu hạ tầng
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm, marginBottom: spaceMd }}>
-                        {KCHT_GIS_TYPE_OPTIONS.map((option) => {
-                          const symbolCode = getKchtSymbolCode(option.value);
-                          const symbol = symbols.find((item) => item.code === symbolCode);
-                          const imageSource = symbol?.image
-                            ? (symbol.image.startsWith('data:') ? symbol.image : `data:image/png;base64,${symbol.image}`)
-                            : undefined;
-                          return (
-                            <div key={option.value} style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
-                              <div style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                {imageSource ? (
-                                  <img src={imageSource} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
-                                ) : (
-                                  <span style={{ width: spaceSm, height: spaceSm, borderRadius: radiusPill, background: actionPrimary }} />
-                                )}
-                              </div>
-                              <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{option.label}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: textSecondary, borderTop: `1px solid ${borderDefault}`, paddingTop: spaceMd, marginBottom: spaceSm }}>
-                        Quy hoạch cảng biển
+                      <div style={{ fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, borderBottom: `1px solid ${borderDefault}`, paddingBottom: spaceSm, marginBottom: spaceMd }}>
+                        GHI CHÚ QUY HOẠCH:
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
-                        {/* Bến cảng hiện hữu */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.existingPort, border: `1px solid ${PLANNING_STATUS_COLORS.existingPort}`, borderRadius: radiusSm }} />
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng hiện hữu</span>
-                        </div>
-                        {/* Bến cảng quy hoạch đến năm 2030 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.planned2030, border: `1px solid ${PLANNING_STATUS_COLORS.planned2030}`, borderRadius: radiusSm }} />
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng quy hoạch đến năm 2030</span>
-                        </div>
-                        {/* Bến cảng phát triển có điều kiện */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.conditionalDevelopment, border: `1px solid ${PLANNING_STATUS_COLORS.conditionalDevelopment}`, borderRadius: radiusSm }} />
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng phát triển có điều kiện</span>
-                        </div>
-                        {/* Bến cảng quy hoạch tầm nhìn đến năm 2050 */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <div style={{ width: spaceLg, height: spaceMd, background: PLANNING_STATUS_COLORS.vision2050, border: `1px solid ${PLANNING_STATUS_COLORS.vision2050}`, borderRadius: radiusSm }} />
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
-                        </div>
-                        {/* Vùng đón trả hoa tiêu quy hoạch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
-                            <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.plannedPilotArea} strokeWidth="3" strokeLinecap="round" />
-                          </svg>
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng đón trả hoa tiêu quy hoạch</span>
-                        </div>
-                        {/* Vùng đón trả hoa tiêu hiện trạng */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
-                            <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.existingPilotArea} strokeWidth="2" strokeLinecap="round" />
-                          </svg>
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng đón trả hoa tiêu hiện trạng</span>
-                        </div>
-                        {/* Vùng neo hiện trạng */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
-                            <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.existingAnchorage} strokeWidth="2" strokeLinecap="round" />
-                          </svg>
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng neo hiện trạng</span>
-                        </div>
-                        {/* Vùng neo quy hoạch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: spaceMd }}>
-                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
-                            <line x1="2" y1="10" x2="22" y2="2" stroke={PLANNING_STATUS_COLORS.plannedAnchorage} strokeWidth="2" strokeLinecap="round" />
-                          </svg>
-                          <span style={{ fontSize: fontSizeMd, color: textPrimary }}>Vùng neo quy hoạch</span>
-                        </div>
+                        {PLANNING_LEGEND_ITEMS.map((item) => (
+                          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}>
+                            <div style={{ width: spaceLg, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+                              {item.kind === 'area' ? (
+                                <span style={{ width: spaceMd, height: spaceSm, background: item.color, border: `1px solid ${item.color}`, borderRadius: radiusSm }} />
+                              ) : (
+                                <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
+                                  <line x1="2" y1="10" x2="22" y2="2" stroke={item.color} strokeWidth="2" strokeLinecap="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{item.label}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -4460,33 +4327,29 @@ export default function GISChartView() {
                           <ErrorState message={searchError} onRetry={() => void handleSearchInfrastructure(searchPage, searchPageSize)} />
                         ) : (
                           <>
-                            <DataTable
-                              columns={infrastructureColumns}
-                              dataSource={infrastructureResults}
-                              rowKey="id"
-                              loading={searchingInfrastructure}
-                              fill
-                              virtual={infrastructureResults.length > 100}
-                              scroll={{ x: 'max-content', y: tableHeight }}
-                              emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
-                              rowSelection={{
-                                fixed: true,
-                                columnWidth: 44,
-                                selectedRowKeys,
-                                onChange: (keys: React.Key[]) => {
-                                  const previousKeySet = new Set(selectedRowKeys.map(String));
-                                  const hasNewSelection = keys.some((key) => !previousKeySet.has(String(key)));
-
-                                  setSelectedRowKeys(keys);
-                                  if (hasNewSelection && screens.md === false) {
-                                    setSearchPanelVisible(false);
-                                  }
-                                },
-                              }}
-                              onRow={(record: KchtGisSearchResult) => ({
-                                onClick: () => void handleRowClick(record),
-                              })}
-                            />
+                            <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden' }}>
+                              <DataTable
+                                columns={infrastructureColumns}
+                                dataSource={infrastructureResults}
+                                rowKey="id"
+                                loading={searchingInfrastructure}
+                                fill
+                                scroll={infrastructureTableScroll}
+                                style={{
+                                  minWidth: GIS_RESULTS_TABLE_MIN_WIDTH,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  minHeight: 0,
+                                  flex: 1,
+                                  height: '100%',
+                                }}
+                                emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
+                                rowSelection={infrastructureRowSelection}
+                                onRow={(record: KchtGisSearchResult) => ({
+                                  onClick: () => void handleRowClick(record),
+                                })}
+                              />
+                            </div>
                             <div
                               data-gis-pagination
                               style={{
@@ -4772,23 +4635,9 @@ export default function GISChartView() {
         {activeModalUrl && (
           <iframe
             src={activeModalUrl}
-            style={{ width: '100%', height: '100%', border: 'none', background: 'transparent' }}
+            style={{ display: 'block', width: '100%', height: '100%', border: 'none', background: 'transparent' }}
             onLoad={handleIframeLoad}
           />
-        )}
-      </Modal>
-
-      <Modal
-        open={!!activeFallbackDetailHtml}
-        footer={null}
-        onCancel={() => setActiveFallbackDetailHtml(null)}
-        width={760}
-        destroyOnHidden
-        title="Chi tiết kết cấu hạ tầng"
-        styles={{ body: { maxHeight: 'calc(100vh - 180px)', overflow: 'auto' } }}
-      >
-        {activeFallbackDetailHtml && (
-          <div dangerouslySetInnerHTML={{ __html: activeFallbackDetailHtml }} />
         )}
       </Modal>
 

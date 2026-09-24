@@ -31,6 +31,7 @@ import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, 
 import { canEditApprovalRecord, canDeleteApprovalRecord } from '../../../utils/approvalEditPolicy';
 import { isCucLevelUser } from '../../../hooks/useKchtPermissions';
 import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
+import { useGisEmbeddedAction } from '../../../hooks/useGisEmbeddedAction';
 import { getOperatingOrgName } from './CospasSarsatStationDetailContent';
 import { formatMaritimeServicesDisplay } from '../../../constants/maritimeServices';
 
@@ -186,6 +187,12 @@ const CospasSarsatGlobalStyles = React.memo(() => (
 ));
 
 export default function CospasSarsatStationList() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
@@ -221,6 +228,14 @@ export default function CospasSarsatStationList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<CoastalStationCospasSarsatResponse | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    setEditingId(embeddedRecordId);
+    setSelectedRecord(null);
+    setModalMode(embeddedAction);
+    setIsModalOpen(true);
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction]);
 
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
@@ -1111,17 +1126,20 @@ export default function CospasSarsatStationList() {
               setIsModalOpen(false);
               setEditingId(null);
               setSelectedRecord(null);
+              closeEmbeddedAction();
             }}
             onClose={() => {
               setIsModalOpen(false);
               setEditingId(null);
               setSelectedRecord(null);
+              closeEmbeddedAction();
             }}
             onSuccess={() => {
               setIsModalOpen(false);
               setEditingId(null);
               setSelectedRecord(null);
               refreshList();
+              closeEmbeddedAction();
             }}
             onEdit={(rec: CoastalStationCospasSarsatResponse) => {
               setSelectedRecord(rec);

@@ -1280,26 +1280,26 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
                   </Col>
                   <Col span={12}>
                     <Form.Item name="area" {...labelProps('Diện tích (ha)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="designWaterDepth" {...labelProps('Độ sâu khu nước theo thiết kế (m)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
                     <Form.Item name="currentWaterDepth" {...labelProps('Độ sâu khu nước hiện tại (theo TBHH gần nhất) (m)')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                 </Row>
                 <Row gutter={[24, 0]}>
                   <Col span={12}>
                     <Form.Item name="bottomElevationDesign" {...labelProps('Cao độ đáy bến thiết kế')} style={{ marginBottom: spaceFormField }} rules={[decimalNumberRule]} getValueFromEvent={getValueFromEvent20}>
-                      <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
+                      <NumberInputWithCount allowDecimal min={0} step={0.01} maxLength={20} placeholder="0" style={numberStyle} parser={parseNumber20} formatter={fmtInputNumber} />
                     </Form.Item>
                   </Col>
                   <Col span={12}>

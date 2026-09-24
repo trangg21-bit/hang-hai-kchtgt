@@ -30,6 +30,7 @@ import InputNumber from '../../components/shared/LocalizedInputNumber';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
+import { PaginatedHistoryList } from "../../components/shared/HistoryPagination";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import toast from "../../components/ToastNotification";
@@ -119,7 +120,7 @@ import {
     validateDmsCoordinates,
 } from "../../utils/gisGeometry";
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
-import { deduplicateAttachmentHistoryChanges, isAttachmentField } from "../../utils/historyAttachmentDedup";
+import { deduplicateAttachmentHistoryChanges, isAttachmentField, mergeAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtInputNumber, fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import { getValueFromEvent5, integer5Rule, parseNumber5 } from "../../utils/numberRuleHelper";
@@ -1784,6 +1785,7 @@ const VtsAssistListPage = () => {
         dataIndex: "provinceName",
         width: 250,
         ellipsis: false,
+        sortable: true,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: VtsAssistResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
@@ -2088,18 +2090,22 @@ const VtsAssistListPage = () => {
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      if (prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
 
     let count = 0;
     for (const g of groups) {
-      const changes = deduplicateAttachmentHistoryChanges(
+      const deduplicatedChanges = deduplicateAttachmentHistoryChanges(
         g.items.flatMap((item: any) => {
           const fn = historyField(item);
           return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
         })
       );
+      const changes = [
+        ...deduplicatedChanges.filter((change) => !isAttachmentField(change.field)),
+        ...mergeAttachmentHistoryChanges(deduplicatedChanges.filter((change) => isAttachmentField(change.field))),
+      ];
       const isCreate = changes.length > 0 && changes.every(
         (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
       );
@@ -2158,7 +2164,7 @@ const VtsAssistListPage = () => {
       const sec = ts ? toSec(ts) : 0;
       const actor = historyActor(r);
       const prev = groups[groups.length - 1];
-      if (prev && prev.tsSec === sec && prev.actor === actor) prev.items.push(r);
+      if (prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor) prev.items.push(r);
       else groups.push({ tsSec: sec, ts, actor, items: [r] });
     }
 
@@ -2190,12 +2196,16 @@ const VtsAssistListPage = () => {
 
     const processedGroups = groups.map((g) => {
       // Chuẩn /vts-operation-center: dedup thay đổi đính kèm (upload/delete cùng lúc).
-      const changes = deduplicateAttachmentHistoryChanges(
+      const deduplicatedChanges = deduplicateAttachmentHistoryChanges(
         g.items.flatMap((item: any) => {
           const fn = historyField(item);
           return fn ? [{ field: fn, oldValue: historyOldValue(item), newValue: historyNewValue(item) }] : [];
         })
       );
+      const changes = [
+        ...deduplicatedChanges.filter((change) => !isAttachmentField(change.field)),
+        ...mergeAttachmentHistoryChanges(deduplicatedChanges.filter((change) => isAttachmentField(change.field))),
+      ];
       const isCreate = changes.length > 0 && changes.every(
         (c: any) => c.oldValue === null || c.oldValue === '(null)' || c.oldValue === ''
       );
@@ -2267,8 +2277,11 @@ const VtsAssistListPage = () => {
     };
 
     return (
+      <PaginatedHistoryList
+        items={processedGroups}
+        renderItems={(pageGroups) => (
       <div>
-        {processedGroups.map((g, gi) => {
+        {pageGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
@@ -2286,7 +2299,7 @@ const VtsAssistListPage = () => {
           return (
             <div
               key={gi}
-              style={{ ...historyGroupGridStyle, marginBottom: gi < processedGroups.length - 1 ? spaceSm : 0 }}
+              style={{ ...historyGroupGridStyle, marginBottom: gi < pageGroups.length - 1 ? spaceSm : 0 }}
             >
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
@@ -2414,6 +2427,8 @@ const VtsAssistListPage = () => {
           );
         })}
       </div>
+        )}
+      />
     );
   };
 
@@ -3708,8 +3723,9 @@ const VtsAssistListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
-        style={{ maxWidth: '96vw' }}
+        size={undefined}
+        width={isMapLinkedView ? '100%' : DRAWER_WIDTH}
+        style={{ maxWidth: isMapLinkedView ? '100%' : '96vw' }}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống phụ trợ VTS{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}

@@ -26,6 +26,7 @@ import type { ShipRepairFacilityResponse, ListParams } from '../../types/shipRep
 import { usePermissionStore } from '../../store/permissionStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import ShipRepairFacilityForm from './ShipRepairFacilityForm';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Lưu tạm', value: 'DRAFT' },
@@ -47,6 +48,12 @@ const LOAI_CO_SO_MAP: Record<string, string> = {
 
 export default function ShipRepairFacilityList() {
   const isInIframe = window.self !== window.top;
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [filterKeyword, setFilterKeyword] = useState('');
@@ -62,6 +69,13 @@ export default function ShipRepairFacilityList() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    setEditingId(embeddedRecordId);
+    setModalMode(embeddedAction);
+    setIsModalOpen(true);
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -320,11 +334,13 @@ export default function ShipRepairFacilityList() {
         onCancel={() => {
           setIsModalOpen(false);
           setEditingId(null);
+          closeEmbeddedAction();
         }}
         onSuccess={() => {
           setIsModalOpen(false);
           setEditingId(null);
           fetchData();
+          closeEmbeddedAction();
         }}
       />
     </>

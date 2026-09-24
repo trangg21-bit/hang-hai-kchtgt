@@ -71,7 +71,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             "  OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (p.deletedAt IS NOT NULL OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED)) " +
             "  OR (p.deletedAt IS NULL AND p.approvalStatus != com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (" +
             "      p.approvalStatus = :approvalStatus " +
-            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)) " +
+            "      OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND p.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED) " +
             "  )) " +
             ") " +
             "AND (:includeAll = true OR p.orgUnitId IN :orgUnitIds) " +

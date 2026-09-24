@@ -1387,6 +1387,7 @@ export default function DaiTtdhListPage() {
         dataIndex: 'provinceId',
         key: 'provinceId',
         width: 250,
+        sortable: true,
         render: (v?: number) => (
           <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
             {v ? VIETNAM_PROVINCES[v - 1] || v.toString() : ''}

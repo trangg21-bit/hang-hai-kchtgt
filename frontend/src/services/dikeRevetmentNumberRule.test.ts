@@ -100,6 +100,7 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       await expect(signedValidator({}, '-0.5')).resolves.toBeUndefined();
       await expect(signedValidator({}, '-1234567890123456.1234')).resolves.toBeUndefined();
       await expect(signedValidator({}, '12.34')).resolves.toBeUndefined();
+      await expect(signedValidator({}, '12,34')).resolves.toBeUndefined();
       await expect(signedValidator({}, '')).resolves.toBeUndefined();
       await expect(signedValidator({}, null)).resolves.toBeUndefined();
     });
@@ -109,6 +110,7 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       await expect(signedValidator({}, '12-34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '--1')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '-12a34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
+
       await expect(signedValidator({}, '-12345678901234567.3456')).rejects.toThrow(
         'Giới hạn chữ số khi có dấu "." là 16',
       );

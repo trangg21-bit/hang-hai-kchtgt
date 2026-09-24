@@ -15,6 +15,7 @@ import type { SpatialObjectCategory } from '../../services/spatialObjectCategory
 import { symbolService } from '../../services/symbolService';
 import type { Symbol as MapSymbolItem } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { ScreenHeader, FilterTableLayout, DataTable, type ScreenHeaderAction, type DataTableColumn } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -35,7 +36,6 @@ import {
   borderDefault,
   radiusPill,
   radiusMd,
-  fontSizeSm,
   fontWeightMedium,
   fontWeightBold,
   spaceFormField,
@@ -59,6 +59,7 @@ const fontSizeMd = 13.5;
 
 export default function LineObjectList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const authUser = useAuthStore((s) => s.user);
 
   // ── Filter states ────────────────────────────────────────────────
   const [filterCode, setFilterCode] = useState('');
@@ -256,26 +257,8 @@ export default function LineObjectList() {
 
     try {
       const sym = symbols.find((s) => s.id === record.iconId);
+      const orgUnit = (record as any).orgUnitName || authUser?.orgUnitName || 'Bộ Giao thông Vận tải';
       const entries: CommonHistoryEntry[] = [];
-
-      // Mốc tạo mới
-      if (record.createdAt) {
-        entries.push({
-          id: `create-${record.id}`,
-          action: 'CREATE',
-          status: 'Tạo mới',
-          actor: formatUserDisplayName(record.createdBy, (record as any).createdByName, userMap) || 'Quản trị viên',
-          timestamp: record.createdAt,
-          description: `Khởi tạo danh mục đối tượng đường "${record.name}"`,
-          changes: [
-            { field: 'Mã đối tượng', oldValue: null, newValue: record.code },
-            { field: 'Tên đối tượng', oldValue: null, newValue: record.name },
-            { field: 'Loại hình học', oldValue: null, newValue: 'Đường (Line)' },
-            { field: 'Biểu tượng', oldValue: null, newValue: sym ? `${sym.name} (${sym.code})` : record.iconId || '(Không có)' },
-            { field: 'Trạng thái', oldValue: null, newValue: record.status === 1 ? 'Sử dụng' : 'Khóa' },
-          ],
-        });
-      }
 
       // Mốc cập nhật gần nhất
       if (record.updatedAt && record.updatedAt !== record.createdAt) {
@@ -283,12 +266,53 @@ export default function LineObjectList() {
           id: `update-${record.id}`,
           action: 'UPDATE',
           status: 'Cập nhật',
-          actor: formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName) || 'Quản trị viên',
+          actor: formatUserDisplayName(record.updatedBy, (record as any).updatedByName, userMap, record.createdBy, (record as any).createdByName) || authUser?.fullName || 'Nguyễn Văn An',
+          orgUnitName: orgUnit,
           timestamp: record.updatedAt,
           description: `Cập nhật thông tin danh mục đối tượng đường "${record.name}"`,
           changes: [
-            { field: 'Tên đối tượng', oldValue: '—', newValue: record.name },
-            { field: 'Trạng thái', oldValue: '—', newValue: record.status === 1 ? 'Sử dụng' : 'Khóa' },
+            { field: 'name', oldValue: '—', newValue: record.name },
+            { field: 'iconId', oldValue: '—', newValue: sym ? `${sym.name} (${sym.code})` : record.iconId || '(Không có)' },
+            { field: 'status', oldValue: '—', newValue: record.status === 1 ? 'Sử dụng' : 'Khóa' },
+          ],
+        });
+      }
+
+      // Mốc tạo mới
+      if (record.createdAt) {
+        entries.push({
+          id: `create-${record.id}`,
+          action: 'CREATE',
+          status: 'Tạo mới',
+          actor: formatUserDisplayName(record.createdBy, (record as any).createdByName, userMap) || authUser?.fullName || 'Nguyễn Văn An',
+          orgUnitName: orgUnit,
+          timestamp: record.createdAt,
+          description: `Khởi tạo danh mục đối tượng đường "${record.name}"`,
+          changes: [
+            { field: 'code', oldValue: null, newValue: record.code },
+            { field: 'name', oldValue: null, newValue: record.name },
+            { field: 'geometryType', oldValue: null, newValue: 'Đối tượng đường' },
+            { field: 'iconId', oldValue: null, newValue: sym ? `${sym.name} (${sym.code})` : record.iconId || '(Không có)' },
+            { field: 'status', oldValue: null, newValue: record.status === 1 ? 'Sử dụng' : 'Khóa' },
+          ],
+        });
+      }
+
+      if (entries.length === 0) {
+        entries.push({
+          id: `init-${record.id}`,
+          action: 'UPDATE',
+          status: 'Cập nhật',
+          actor: authUser?.fullName || 'Nguyễn Văn An',
+          orgUnitName: orgUnit,
+          timestamp: record.updatedAt || record.createdAt || dayjs().toISOString(),
+          description: `Thông tin danh mục đối tượng đường "${record.name}"`,
+          changes: [
+            { field: 'code', oldValue: '—', newValue: record.code },
+            { field: 'name', oldValue: '—', newValue: record.name },
+            { field: 'geometryType', oldValue: '—', newValue: 'Đối tượng đường' },
+            { field: 'iconId', oldValue: '—', newValue: sym ? `${sym.name} (${sym.code})` : record.iconId || '(Không có)' },
+            { field: 'status', oldValue: '—', newValue: record.status === 1 ? 'Sử dụng' : 'Khóa' },
           ],
         });
       }
@@ -297,7 +321,7 @@ export default function LineObjectList() {
     } finally {
       setHistoryLoading(false);
     }
-  }, [symbols, userMap]);
+  }, [symbols, userMap, authUser]);
 
   // ── Delete confirmation ─────────────────────────────────────────
   const openDeleteModal = useCallback((record: SpatialObjectCategory) => {
@@ -339,7 +363,7 @@ export default function LineObjectList() {
       key: 'name',
       label: 'Tên đối tượng đường',
       dataIndex: 'name',
-      width: 280,
+      width: 240,
       sortable: true,
       sortOrder: sortField === 'name' ? (sortOrder === 'asc' ? 'ascend' : sortOrder === 'desc' ? 'descend' : null) : null,
       ellipsis: false,
@@ -380,7 +404,7 @@ export default function LineObjectList() {
       key: 'icon',
       label: 'Biểu tượng',
       dataIndex: 'iconId',
-      width: 160,
+      width: 130,
       align: 'center' as const,
       render: (_: unknown, record: SpatialObjectCategory) => {
         const sym = symbols.find((s) => s.id === record.iconId);
@@ -409,7 +433,7 @@ export default function LineObjectList() {
     {
       key: 'geometryType',
       label: 'Loại hình học',
-      width: 150,
+      width: 160,
       align: 'center' as const,
       render: () => (
         <span style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightMedium }}>
@@ -421,7 +445,7 @@ export default function LineObjectList() {
       key: 'updatedBy',
       label: 'Cán bộ cập nhật',
       dataIndex: 'updatedBy',
-      width: 220,
+      width: 240,
       sortable: true,
       sortOrder: sortField === 'updatedBy' || sortField === 'updatedAt' ? (sortOrder === 'asc' ? 'ascend' : sortOrder === 'desc' ? 'descend' : null) : null,
       ellipsis: false,
@@ -443,7 +467,7 @@ export default function LineObjectList() {
             >
               {name}
             </div>
-            <div style={{ fontSize: fontSizeSm, color: textSecondary, whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
               {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
             </div>
           </div>
@@ -823,6 +847,17 @@ export default function LineObjectList() {
           records={historyRecords}
           loading={historyLoading}
           userMap={userMap}
+          variant="berth"
+          fieldLabelMap={{
+            code: 'Mã đối tượng',
+            name: 'Tên đối tượng',
+            geometryType: 'Loại đối tượng',
+            iconId: 'Biểu tượng',
+            status: 'Trạng thái',
+            displayRule: 'Quy tắc hiển thị',
+            coordinates: 'Tọa độ GPS',
+            attachments: 'File đính kèm',
+          }}
         />
 
         {/* ── Delete Confirmation Modal ────────────────────────────── */}

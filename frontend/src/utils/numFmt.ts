@@ -79,10 +79,32 @@ export function parseDotNumber(v: string | undefined | null): string {
   const negative = s.startsWith('-');
   s = s.replace(/[^0-9.,]/g, '');
   const commaIndex = s.lastIndexOf(',');
-  const integerPart = (commaIndex >= 0 ? s.slice(0, commaIndex) : s).replace(/[.,]/g, '');
-  const decimalPart = commaIndex >= 0 ? s.slice(commaIndex + 1).replace(/[.,]/g, '') : '';
-  if (!integerPart && !decimalPart) return '';
-  return `${negative ? '-' : ''}${integerPart || '0'}${commaIndex >= 0 ? `.${decimalPart}` : ''}`;
+
+  if (commaIndex >= 0) {
+    const integerPart = s.slice(0, commaIndex).replace(/[.,]/g, '');
+    const decimalPart = s.slice(commaIndex + 1).replace(/[.,]/g, '');
+    if (!integerPart && !decimalPart) return '';
+    return `${negative ? '-' : ''}${integerPart || '0'}.${decimalPart}`;
+  }
+
+  // commaIndex === -1: Không có dấu phẩy.
+  // Kiểm tra trường hợp giá trị gốc từ API/JS float có 1 dấu chấm thập phân (ví dụ "12.5", "0.5")
+  const dotCount = (s.match(/\./g) || []).length;
+  if (dotCount === 1) {
+    const dotIndex = s.indexOf('.');
+    const frac = s.slice(dotIndex + 1);
+    // Nếu phần sau dấu chấm không phải đúng 3 chữ số, hoặc bắt đầu bằng 0., hoặc kết thúc bằng dấu chấm:
+    // đây là dấu chấm thập phân chuẩn JS/API/paste
+    if (frac.length !== 3 || s.startsWith('0.') || dotIndex === 0) {
+      const integerPart = s.slice(0, dotIndex).replace(/[.,]/g, '');
+      return `${negative ? '-' : ''}${integerPart || '0'}.${frac}`;
+    }
+  }
+
+  // Ngược lại, tất cả dấu chấm đều là dấu phân tách hàng nghìn
+  const integerPart = s.replace(/[.,]/g, '');
+  if (!integerPart) return '';
+  return `${negative ? '-' : ''}${integerPart}`;
 }
 
 /**

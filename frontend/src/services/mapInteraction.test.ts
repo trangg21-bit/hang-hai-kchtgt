@@ -2,11 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   buildMapShareUrl,
   circleToPolygonCoordinates,
+  DEFAULT_GIS_MAP_VIEW,
   parseSharedMapView,
   shouldRenderKchtGeometry,
 } from '../utils/mapInteraction';
 
 describe('map interaction helpers', () => {
+  it('uses the legacy Vietnam overview as the default viewport', () => {
+    expect(DEFAULT_GIS_MAP_VIEW).toEqual({ center: [16, 108], zoom: 6 });
+  });
+
   it('builds a stable share URL without dropping existing filters', () => {
     const result = buildMapShareUrl(
       'http://127.0.0.1:3001/gis/map?kchtType=PORT',

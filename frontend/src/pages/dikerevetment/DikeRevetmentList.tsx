@@ -31,7 +31,7 @@ import InputNumber from '../../components/shared/LocalizedInputNumber';
 import EmptyState from '../../components/EmptyState';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { DataTable, FilterTableLayout, ScreenHeader } from '../../components/list-view';
+import { DataTable, FilterTableLayout, ScreenHeader, type DataTableColumn } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import { OrgUnitTreeSelect, FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds } from '../../components/org-unit';
 
@@ -41,11 +41,13 @@ import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DetailTable from '../../components/shared/DetailTable';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { PaginatedHistoryList } from '../../components/shared/HistoryPagination';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import toast, { message } from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
-import { isAttachmentField } from '../../utils/historyAttachmentDedup';
+import { isAttachmentField, mergeAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 import * as themeTokenChk from '../../themetokenchk';
 import {
   DRAWER_WIDTH,
@@ -574,6 +576,13 @@ const renderDmsGroup = (
 };
 
 export default function DikeRevetmentList() {
+  const {
+    action: embeddedAction,
+    recordId: embeddedRecordId,
+    isEmbeddedAction,
+    closeEmbeddedAction,
+  } = useGisEmbeddedAction();
+  const embeddedOpenedRef = useRef<string | null>(null);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const currentUser = useAuthStore((s: any) => s.user);
   // Phê duyệt 2 cấp (M-1006): C1 = Cảng vụ/Chi cục, C2 = Cục — quyền theo cấp duyệt.
@@ -1288,12 +1297,29 @@ export default function DikeRevetmentList() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!isEmbeddedAction || !embeddedAction || !embeddedRecordId) return;
+    const requestKey = `${embeddedAction}:${embeddedRecordId}`;
+    if (embeddedOpenedRef.current === requestKey) return;
+    embeddedOpenedRef.current = requestKey;
+    void dikeRevetmentCRUD.getById(embeddedRecordId)
+      .then((record) => {
+        if (embeddedAction === 'edit') openEditDrawer(record);
+        else void openDetailDrawer(record);
+      })
+      .catch(() => {
+        embeddedOpenedRef.current = null;
+        toast.error('Không tải được chi tiết công trình đê kè');
+      });
+  }, [embeddedAction, embeddedRecordId, isEmbeddedAction, openDetailDrawer, openEditDrawer]);
+
   const closeDrawer = () => {
     editOpenSeqRef.current += 1;
     setDrawerVisible(false);
     setEditingRecord(null);
     setDetailRecord(null);
     setPendingDeletedAttachments([]);
+    closeEmbeddedAction();
   };
 
   // ── Submit ───────────────────────────────────────────────────────
@@ -1825,10 +1851,11 @@ export default function DikeRevetmentList() {
     } catch { /* ignore */ } finally { setLoadingMoreHistory(false); }
   };
 
-  const handleHistoryScroll = (e: any) => {
-    const el = e.currentTarget;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) loadMoreHistory();
-  };
+  useEffect(() => {
+    if (!historyOpen || !hasMoreHistory || historyLoading || loadingMoreHistory) return;
+    void loadMoreHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyOpen, hasMoreHistory, historyLoading, loadingMoreHistory, historyRecords.length]);
 
   const validHistoryGroups = useMemo(() => {
     if (!Array.isArray(historyRecords) || historyRecords.length === 0) return [];
@@ -1850,7 +1877,7 @@ export default function DikeRevetmentList() {
       const prev = rawGroups[rawGroups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1949,39 +1976,17 @@ export default function DikeRevetmentList() {
         nonAttachmentChanges.push({ field: fn, oldValue: ov, newValue: nv });
       }
 
-      let attachmentChange: { field: string; oldValue: string | null; newValue: string | null } | null = null;
-      if (attachmentItems.length > 0) {
-        const addedFiles: string[] = [];
-        const deletedFiles: string[] = [];
-        for (const it of attachmentItems) {
-          const ov = historyOldValue(it);
-          const nv = historyNewValue(it);
-          const st = String(it.status || '').toUpperCase();
-          if (st === 'ATTACHMENT_UPLOADED' || (isBlank(ov) && !isBlank(nv))) {
-            if (nv && !isBlank(nv) && !addedFiles.includes(nv.trim())) {
-              addedFiles.push(nv.trim());
-            }
-          } else if (st === 'ATTACHMENT_DELETED' || (!isBlank(ov) && isBlank(nv))) {
-            if (ov && !isBlank(ov) && !deletedFiles.includes(ov.trim())) {
-              deletedFiles.push(ov.trim());
-            }
-          } else if (nv && ov && nv !== ov) {
-            if (!addedFiles.includes(nv.trim())) addedFiles.push(nv.trim());
-            if (!deletedFiles.includes(ov.trim())) deletedFiles.push(ov.trim());
-          }
-        }
-        if (addedFiles.length > 0 || deletedFiles.length > 0) {
-          attachmentChange = {
-            field: 'Tài liệu đính kèm',
-            oldValue: deletedFiles.length > 0 ? deletedFiles.join(', ') : 'Chưa có',
-            newValue: addedFiles.length > 0 ? addedFiles.join(', ') : 'Chưa có',
-          };
-        }
-      }
+      const attachmentChanges = mergeAttachmentHistoryChanges(
+        attachmentItems.map((item: any) => ({
+          field: historyField(item) || 'Tài liệu đính kèm',
+          oldValue: historyOldValue(item),
+          newValue: historyNewValue(item),
+        })),
+      );
 
       const changes = [
         ...nonAttachmentChanges,
-        ...(attachmentChange ? [attachmentChange] : []),
+        ...attachmentChanges,
       ];
 
       if (changes.length === 0) return null;
@@ -2021,8 +2026,11 @@ export default function DikeRevetmentList() {
     }
     const fmtTime = (ts: string) => { const d = new Date(ts); return `${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`; };
     return (
+      <PaginatedHistoryList
+        items={validHistoryGroups}
+        renderItems={(pageGroups) => (
       <div>
-        {validHistoryGroups.map((g, gi) => {
+        {pageGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const rawUnit = rec0.orgUnitName || rec0.unitName;
           const orgId = rec0.orgUnitId;
@@ -2035,7 +2043,7 @@ export default function DikeRevetmentList() {
           const am = resolveHistoryActionMeta(g, g.changes);
 
           return (
-            <div key={`${gi}-${g.ts}-${g.actor}`} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
+            <div key={`${gi}-${g.ts}-${g.actor}`} style={{ ...historyGroupGridStyle, marginBottom: gi < pageGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -2115,6 +2123,8 @@ export default function DikeRevetmentList() {
           );
         })}
       </div>
+        )}
+      />
     );
   };
 
@@ -2149,7 +2159,7 @@ export default function DikeRevetmentList() {
     );
   };
 
-  const columns = useMemo(() => [
+  const columns: DataTableColumn[] = useMemo(() => [
     {
       key: 'sequenceNo',
       label: 'STT',
@@ -2223,6 +2233,7 @@ export default function DikeRevetmentList() {
       label: 'Địa điểm (Tỉnh/TP)',
       dataIndex: 'location',
       width: 190,
+      sortable: true,
       sortOrder: sortOrderFor('location'),
       cellTitle: (record: DikeRevetmentResponse) => record.location || '',
       render: (val: string) => renderCellWithTooltip(val),
@@ -4126,7 +4137,7 @@ export default function DikeRevetmentList() {
             </div>
           )}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} onScroll={handleHistoryScroll}>
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {historyLoading ? (
             <LoadingSkeleton rows={5} />
           ) : validHistoryGroups.length === 0 ? (

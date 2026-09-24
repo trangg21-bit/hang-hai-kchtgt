@@ -24,6 +24,8 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import DeleteConfirmModal from "../../components/shared/DeleteConfirmModal";
+import { PaginatedHistoryList } from "../../components/shared/HistoryPagination";
+import { isAttachmentField, mergeAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import EmptyState from "../../components/EmptyState";
 import LoadingSkeleton from "../../components/LoadingSkeleton";
 import toast from "../../components/ToastNotification";
@@ -921,6 +923,7 @@ const TransmissionListPage = () => {
         dataIndex: "provinceName",
         width: 250,
         ellipsis: false,
+        sortable: true,
         sortOrder: sortOrderFor("provinceName"),
         cellTitle: (record: TransmissionResponse) => record.provinceName || '',
         render: (val: string) => renderCellWithTooltip(val),
@@ -1370,7 +1373,7 @@ const TransmissionListPage = () => {
       const prev = groups[groups.length - 1];
       const actor = historyActor(r);
       const isBothUpdate = prev && isUpdateAction(prev.status, prev.items[0]?.reason) && isUpdateAction(r.status, r.reason);
-      const isSameGroup = prev && prev.tsSec === sec && prev.actor === actor && (prev.status === r.status || isBothUpdate);
+      const isSameGroup = prev && Math.abs(prev.tsSec - sec) <= 10 && prev.actor === actor && (prev.status === r.status || isBothUpdate);
       if (isSameGroup) {
         prev.items.push(r);
       } else {
@@ -1407,35 +1410,13 @@ const TransmissionListPage = () => {
           return [{ field: fn, oldValue: ov, newValue: nv }];
         });
 
-      let attachmentChange: { field: string; oldValue: string | null; newValue: string | null } | null = null;
-      if (attachmentItems.length > 0) {
-        const addedFiles: string[] = [];
-        const deletedFiles: string[] = [];
-        for (const it of attachmentItems) {
-          const ov = historyOldValue(it);
-          const nv = historyNewValue(it);
-          const st = String(it.status || '').toUpperCase();
-          if (st === 'ATTACHMENT_UPLOADED' || (isBlank(ov) && !isBlank(nv))) {
-            if (nv && !isBlank(nv) && !addedFiles.includes(nv.trim())) {
-              addedFiles.push(nv.trim());
-            }
-          } else if (st === 'ATTACHMENT_DELETED' || (!isBlank(ov) && isBlank(nv))) {
-            if (ov && !isBlank(ov) && !deletedFiles.includes(ov.trim())) {
-              deletedFiles.push(ov.trim());
-            }
-          } else if (nv && ov && nv !== ov) {
-            if (!addedFiles.includes(nv.trim())) addedFiles.push(nv.trim());
-            if (!deletedFiles.includes(ov.trim())) deletedFiles.push(ov.trim());
-          }
-        }
-        if (addedFiles.length > 0 || deletedFiles.length > 0) {
-          attachmentChange = {
-            field: 'Tài liệu đính kèm',
-            oldValue: deletedFiles.length > 0 ? deletedFiles.join(', ') : 'Chưa có',
-            newValue: addedFiles.length > 0 ? addedFiles.join(', ') : 'Chưa có',
-          };
-        }
-      }
+      const attachmentChanges = mergeAttachmentHistoryChanges(
+        attachmentItems.map((item: any) => ({
+          field: historyField(item) || 'Tài liệu đính kèm',
+          oldValue: historyOldValue(item),
+          newValue: historyNewValue(item),
+        })),
+      );
 
       const seenDisplayFields = new Set<string>();
       const dedupedChanges: Array<{ field: string; oldValue: string | null; newValue: string | null }> = [];
@@ -1458,7 +1439,7 @@ const TransmissionListPage = () => {
 
       const changes = [
         ...dedupedChanges,
-        ...(attachmentChange ? [attachmentChange] : []),
+        ...attachmentChanges,
       ];
 
       const orderedChanges = [...changes]
@@ -1516,8 +1497,11 @@ const TransmissionListPage = () => {
     };
 
     return (
+      <PaginatedHistoryList
+        items={validHistoryGroups}
+        renderItems={(pageGroups) => (
       <div>
-        {validHistoryGroups.map((g, gi) => {
+        {pageGroups.map((g, gi) => {
           const rec0 = g.items[0] || {};
           const orgId = rec0.orgUnitId || selectedRecord?.orgUnitId;
           const orgName = orgId ? orgMap.get(orgId) : undefined;
@@ -1564,7 +1548,7 @@ const TransmissionListPage = () => {
           const barColor = am.color;
 
           return (
-            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < validHistoryGroups.length - 1 ? spaceSm : 0 }}>
+            <div key={gi} style={{ ...historyGroupGridStyle, marginBottom: gi < pageGroups.length - 1 ? spaceSm : 0 }}>
               <div style={{ minWidth: 0, paddingTop: spaceXs }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: spaceSm }}>
                   <Typography.Text style={historyTimeStyle}>
@@ -1668,6 +1652,8 @@ const TransmissionListPage = () => {
           );
         })}
       </div>
+        )}
+      />
     );
   };
 
