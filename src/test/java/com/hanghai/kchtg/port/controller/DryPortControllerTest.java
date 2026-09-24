@@ -161,6 +161,7 @@ class DryPortControllerTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     void testApproveGeneric() {
         // SecurityUtils.getCurrentUserId() returns null in unit tests → fallback to authentication.getName()
         when(authentication.getName()).thenReturn("testuser");

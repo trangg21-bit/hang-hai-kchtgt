@@ -1,14 +1,16 @@
 package com.hanghai.kchtg.port.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.port.entity.TransferArea;
-import com.hanghai.kchtg.port.repository.TransferAreaRepository;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,17 +21,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.port.entity.TransferArea;
+import com.hanghai.kchtg.port.repository.TransferAreaRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 
 
 @ExtendWith(MockitoExtension.class)

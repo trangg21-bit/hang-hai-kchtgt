@@ -1,51 +1,78 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Form,
-  Input,
-  Select,
-  Button,
-  Tabs,
-  Space,
-  Row,
-  Col,
-  Spin,
-  Modal,
+    BankOutlined,
+    DeleteOutlined,
+    EnvironmentOutlined,
+    FileTextOutlined,
+    PlusOutlined,
+} from '@ant-design/icons';
+import {
+    Button,
+    Col,
+    Form,
+    Input,
+    Modal,
+    Row,
+    Select,
+    Space,
+    Spin,
+    Tabs,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
-import {
-  EnvironmentOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  FileTextOutlined,
-  BankOutlined,
-} from '@ant-design/icons';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
+import AppDrawer from '../../components/shared/AppDrawer';
+import DetailTable from '../../components/shared/DetailTable';
+import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
-import { focusErrorTab } from '../../utils/formValidationHelper';
-import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
-import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { useKchtPermissions } from '../../hooks/useKchtPermissions';
 import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
-import type {
-  VtsOperationCenterResponse,
-  UpdateVtsOperationCenterRequest,
-  VtsOperationCenterAttachment,
-} from '../../types/vtsOperationCenter';
-import { ApprovalStatus, ConditionStatus, CONDITION_STATUS_OPTIONS, normalizeConditionStatus } from '../../types/vtsSystem';
+import { vtsOperationCenterService } from '../../services/vtsOperationCenterService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { useAuthStore, type AuthState } from '../../store/authStore';
 import {
-  drawerTitleStyle, primaryButtonStyle, outlineButtonStyle,
-  drawerTabBarStyle, drawerFormScrollStyle, DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
-  requiredMarkStyle, spaceFormField, radiusPill, sidebarBg,
-  fontWeightBold, fontSizeMd, fontSizeSm, fontSizeLg,
-  textTertiary, borderDefault,
-  statusCritical, actionPrimary,
-  readonlyInputStyle, spaceSm, spaceXs,
-  textAreaStyle,
+    actionPrimary,
+    borderDefault,
+    DRAWER_TABLE_SCROLL_Y, DRAWER_WIDTH,
+    drawerFormScrollStyle,
+    drawerTabBarStyle,
+    drawerTitleStyle,
+    fontSizeLg,
+    fontSizeMd, fontSizeSm,
+    fontWeightBold,
+    outlineButtonStyle,
+    primaryButtonStyle,
+    radiusPill,
+    readonlyInputStyle,
+    requiredMarkStyle,
+    sidebarBg,
+    spaceFormField,
+    spaceSm, spaceXs,
+    statusCritical,
+    textAreaStyle,
+    textTertiary,
 } from '../../themetokenchk';
-import { fmtInputNumber } from '../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
-import AppDrawer from '../../components/shared/AppDrawer';
-import KchtFormFooter from '../../components/kcht/KchtFormFooter';
-import { useKchtPermissions } from '../../hooks/useKchtPermissions';
+import type {
+    UpdateVtsOperationCenterRequest,
+    VtsOperationCenterAttachment,
+    VtsOperationCenterResponse,
+} from '../../types/vtsOperationCenter';
+import { ApprovalStatus, CONDITION_STATUS_OPTIONS, ConditionStatus, normalizeConditionStatus } from '../../types/vtsSystem';
+import { focusErrorTab } from '../../utils/formValidationHelper';
+import {
+    ddToDms,
+    dmsToDd,
+    GEOMETRY_POINT_COUNT,
+    parseWktToCoordinates,
+    serializeCoordinatesToWkt,
+    validateDmsCoordinates,
+} from '../../utils/gisGeometry';
+import { fmtInputNumber } from '../../utils/numFmt';
+import VtsOperationCenterDetailContent from './VtsOperationCenterDetailContent';
 
 export const DEFAULT_GIS_SYMBOLS = [
   { id: '1', code: 'SYM-VTS', name: 'Trung tâm điều hành VTS', image: '' },
@@ -58,21 +85,6 @@ export const DEFAULT_GIS_SYMBOLS = [
   { id: '8', code: 'SYM-PORT', name: 'Cảng biển / Bến cảng', image: '' },
   { id: '9', code: 'SYM-ANCHORAGE', name: 'Khu neo đậu / Đón trả hoa tiêu', image: '' },
 ];
-import { useAuthStore, type AuthState } from '../../store/authStore';
-import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
-import LoadingSkeleton from '../../components/LoadingSkeleton';
-import DetailTable from '../../components/shared/DetailTable';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
-import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import {
-  GEOMETRY_POINT_COUNT,
-  validateDmsCoordinates,
-  serializeCoordinatesToWkt,
-  parseWktToCoordinates,
-  ddToDms,
-  dmsToDd,
-} from '../../utils/gisGeometry';
-import VtsOperationCenterDetailContent from './VtsOperationCenterDetailContent';
 
 export interface VtsOperationCenterFormProps {
   open?: boolean;
@@ -252,8 +264,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [symbols, setSymbols] = useState<any[]>(providedSymbols);
   const [coordinateList, setCoordinateList] = useState<DmsPoint[]>([]);
   const watchedGeometryType = Form.useWatch('geometryType', form);
+  const effectiveGeometryType = watchedGeometryType || record?.geometryType;
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
+  const hasLocation = Boolean(effectiveGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [attachments, setAttachments] = useState<VtsOperationCenterAttachment[]>([]);
@@ -515,7 +528,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       vtsOperationCenterService.generateCode().then((res) => {
         form.setFieldsValue({
           code: res.code || 'TT-VTS-AUTO',
-          conditionStatus: ConditionStatus.OPERATIONAL,
+          conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
           geometryType: undefined,
           coordinateSystem: undefined,
           displayRule: undefined,
@@ -523,7 +536,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       }).catch(() => {
         form.setFieldsValue({
           code: undefined,
-          conditionStatus: ConditionStatus.OPERATIONAL,
+          conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
           geometryType: undefined,
           coordinateSystem: undefined,
           displayRule: undefined,
@@ -567,8 +580,9 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     }
   }, [record?.symbolId, (record as any)?.symbolName, (record as any)?.symbolCode, (record as any)?.symbolImage, initialData, symbols]);
 
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldsValue({ geometryType: val });
+    if (!val) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
       setGpsError(null);
@@ -578,12 +592,12 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       coordinateSystem: 1,
       displayRule: 'Độ, phút, giây (DMS)',
     });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -593,7 +607,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       return prev;
     });
     setGpsError(null);
-  }, [watchedGeometryType, form]);
+  };
 
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
   const effectiveOrgUnitId = selectedOrgUnitId || record?.orgUnitId;
@@ -627,9 +641,14 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
     setIsSubmitting(true);
     let attachmentPartialFailure = false;
     try {
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
+      const currentSymbolId = values.symbolId !== undefined ? values.symbolId : (form.getFieldValue('symbolId') ?? record?.symbolId);
+      const currentCoordinateSystem = values.coordinateSystem !== undefined ? values.coordinateSystem : (form.getFieldValue('coordinateSystem') ?? (record as any)?.coordinateSystem);
+      const currentDisplayRule = values.displayRule !== undefined ? values.displayRule : (form.getFieldValue('displayRule') ?? (record as any)?.displayRule);
+
       let wkt: string | undefined = undefined;
-      if (values.geometryType || coordinateList.length > 0) {
-        const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
+      if (currentGeometryType || coordinateList.length > 0) {
+        const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
         if (!coordResult.valid) {
           const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
           toast.error(errMsg);
@@ -638,7 +657,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           setIsSubmitting(false);
           return;
         }
-        wkt = serializeCoordinatesToWkt(coordResult.validCoords, values.geometryType || 'POINT');
+        wkt = serializeCoordinatesToWkt(coordResult.validCoords, currentGeometryType || 'POINT');
       }
 
       const payload = {
@@ -652,11 +671,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         coverage: values.coverage?.trim() ?? null,
         conditionStatus: values.conditionStatus,
         note: values.note?.trim() ?? null,
-        geometryType: values.geometryType ?? null,
-        symbolId: values.symbolId ?? null,
-        coordinates: wkt ?? null,
-        coordinateSystem: values.coordinateSystem ?? null,
-        displayRule: values.displayRule ?? null,
+        geometryType: currentGeometryType ?? null,
+        symbolId: currentSymbolId ?? null,
+        coordinates: coordinateList.length > 0 ? (wkt ?? null) : null,
+        coordinateSystem: currentCoordinateSystem ?? null,
+        displayRule: currentDisplayRule ?? null,
       };
 
       if (isCreateMode) {
@@ -821,10 +840,12 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
               onChange={setTabKey}
               tabBarStyle={drawerTabBarStyle}
               animated={false}
+              destroyInactiveTabPane={false}
               items={[
                 {
                   key: 'general',
                   label: 'Thông tin chung',
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
@@ -1000,6 +1021,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 {
                   key: 'gis',
                   label: `Thông tin vị trí (${coordinateList.length})`,
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1024,6 +1046,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                 allowClear
                                 options={GEOMETRY_TYPE_OPTIONS}
                                 style={selectStyle}
+                                onChange={handleGeometryTypeChange}
                               />
                             </Form.Item>
                           </Col>
@@ -1041,7 +1064,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                disabled={!watchedGeometryType}
+                                disabled={!effectiveGeometryType}
                                 filterOption={(input, option) =>
                                   normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
                                 }
@@ -1115,10 +1138,10 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                           </span>
                           <Space size={8}>
                             <Button
-                              icon={<EnvironmentOutlined style={{ color: !watchedGeometryType ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
+                              icon={<EnvironmentOutlined style={{ color: !effectiveGeometryType ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
                               onClick={() => setMapModalOpen(true)}
-                              disabled={!watchedGeometryType}
-                              style={!watchedGeometryType ? {
+                              disabled={!effectiveGeometryType}
+                              style={!effectiveGeometryType ? {
                                 height: 32,
                                 fontSize: fontSizeSm,
                                 padding: '0 14px',
@@ -1140,16 +1163,16 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                 alignItems: 'center',
                                 gap: 4,
                               }}
-                              title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi chọn tọa độ trên bản đồ' : undefined}
+                              title={!effectiveGeometryType ? 'Vui lòng chọn loại đối tượng trước khi chọn tọa độ trên bản đồ' : undefined}
                             >
                               Chọn tọa độ trên bản đồ
                             </Button>
                             <Button
                               type="primary"
-                              icon={<PlusOutlined style={{ color: (!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? 'rgba(0, 0, 0, 0.25)' : undefined }} />}
+                              icon={<PlusOutlined style={{ color: (!effectiveGeometryType || (effectiveGeometryType === 'POINT' && coordinateList.length >= 1)) ? 'rgba(0, 0, 0, 0.25)' : undefined }} />}
                               onClick={addGpsPoint}
-                              disabled={!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)}
-                              style={(!watchedGeometryType || (watchedGeometryType === 'POINT' && coordinateList.length >= 1)) ? {
+                              disabled={!effectiveGeometryType || (effectiveGeometryType === 'POINT' && coordinateList.length >= 1)}
+                              style={(!effectiveGeometryType || (effectiveGeometryType === 'POINT' && coordinateList.length >= 1)) ? {
                                 height: 32,
                                 fontSize: fontSizeSm,
                                 padding: '0 14px',
@@ -1171,7 +1194,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                 alignItems: 'center',
                                 gap: 4,
                               }}
-                              title={!watchedGeometryType ? 'Vui lòng chọn loại đối tượng trước khi thêm tọa độ' : (watchedGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined)}
+                              title={!effectiveGeometryType ? 'Vui lòng chọn loại đối tượng trước khi thêm tọa độ' : (effectiveGeometryType === 'POINT' && coordinateList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined)}
                             >
                               Thêm tọa độ
                             </Button>
@@ -1217,8 +1240,8 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                               align: 'center' as const,
                               onCell: () => ({ style: { verticalAlign: 'middle' } }),
                               render: (_v: any, record: any) => {
-                                const isPoint = watchedGeometryType === 'POINT';
-                                const minPoints = isPoint ? 1 : watchedGeometryType === 'LINE' ? 2 : 3;
+                                const isPoint = (effectiveGeometryType || 'POINT') === 'POINT';
+                                const minPoints = isPoint ? 1 : effectiveGeometryType === 'LINE' ? 2 : 3;
                                 const canDelete = coordinateList.length > minPoints;
 
                                 if (isPoint) {
@@ -1265,10 +1288,10 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                     }}
                                     title={
                                       !canDelete
-                                        ? watchedGeometryType === 'LINE'
+                                        ? effectiveGeometryType === 'LINE'
                                           ? 'Đối tượng đường phải có tối thiểu 2 tọa độ'
                                           : 'Đối tượng vùng phải có tối thiểu 3 tọa độ'
-                                        : 'Xóa tọa độ'
+                                        : 'Xóa điểm tọa độ này'
                                     }
                                   />
                                 );
@@ -1283,6 +1306,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                 {
                   key: 'files',
                   label: `File đính kèm (${attachments.length})`,
+                  forceRender: true,
                   children: (
                     <InfrastructureAttachmentTab
                       attachments={attachments}
@@ -1343,7 +1367,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
             height={520}
             disabled={isDetailMode}
             value={{
-              geometryType: (watchedGeometryType as any) || 'POINT',
+              geometryType: (effectiveGeometryType as any) || 'POINT',
               coordinates: serializeCoordinatesToWkt(
                 coordinateList
                   .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
@@ -1352,17 +1376,17 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                     longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
                   }))
                   .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
-                watchedGeometryType || 'POINT',
+                effectiveGeometryType || 'POINT',
               ),
               symbolId: form.getFieldValue('symbolId'),
             }}
-            defaultGeometryType={(watchedGeometryType as any) || 'POINT'}
+            defaultGeometryType={(effectiveGeometryType as any) || 'POINT'}
             onChange={(val) => {
               if (isDetailMode) return;
               if (val?.coordinates) {
                 const points = parseWktToCoordinates(val.coordinates);
                 if (points.length > 0) {
-                  const geom = ((val?.geometryType || watchedGeometryType || 'POINT') as string).toUpperCase();
+                  const geom = ((val?.geometryType || effectiveGeometryType || 'POINT') as string).toUpperCase();
                   const newPoints = points.map((p) => {
                     const latDms = ddToDms(p.latitude);
                     const lngDms = ddToDms(p.longitude);
@@ -1378,7 +1402,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                   setGpsError(null);
                 }
               }
-              if (val?.geometryType && val.geometryType !== watchedGeometryType) {
+              if (val?.geometryType && val.geometryType !== effectiveGeometryType) {
                 form.setFieldValue('geometryType', val.geometryType);
               }
               if (val?.symbolId) {

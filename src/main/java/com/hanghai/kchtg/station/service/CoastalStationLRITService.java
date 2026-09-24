@@ -1,29 +1,20 @@
 package com.hanghai.kchtg.station.service;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
-import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.station.dto.lrit.*;
-import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
-import com.hanghai.kchtg.station.entity.StationHistoryActionType;
-import com.hanghai.kchtg.station.entity.StationStatus;
-import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
-import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -31,16 +22,40 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITAttachmentResponse;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITHistoryResponse;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITListResponse;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITRequest;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITResponse;
+import com.hanghai.kchtg.station.dto.lrit.CoastalStationLRITUpdateRequest;
+import com.hanghai.kchtg.station.entity.CoastalStationLRIT;
+import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.station.repository.CoastalStationLRITRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -635,14 +650,6 @@ public class CoastalStationLRITService {
         approvalService.deleteDraft(entity, InfrastructureType.LRIT_STATION, currentUserId);
         entity.softDelete(currentUserId);
         repository.save(entity);
-
-        historyService.recordHistory(
-                InfrastructureType.LRIT_STATION,
-                entity.getId(),
-                StationHistoryActionType.DELETE,
-                null,
-                "Xóa Đài LRIT: " + entity.getName(),
-                currentUserId);
     }
 
 

@@ -570,8 +570,7 @@ export default function LegalDocumentList() {
 
       <Drawer
         {...drawerProps}
-        size={undefined}
-        size={DRAWER_WIDTH}
+        width={DRAWER_WIDTH}
         title={
           <span style={drawerTitleStyle}>
             {isViewing

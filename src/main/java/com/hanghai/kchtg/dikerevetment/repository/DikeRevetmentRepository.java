@@ -3,8 +3,6 @@ package com.hanghai.kchtg.dikerevetment.repository;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

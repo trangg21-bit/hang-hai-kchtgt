@@ -257,7 +257,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/permissions")
-    @PreAuthorize("@auth.check(authentication, 'user:manage')")
+    @PreAuthorize("@auth.check(authentication, 'user:manage') || @auth.check(authentication, 'user:permission')")
     public ResponseEntity<ApiResponse<java.util.List<UserPermissionOverrideResponse>>> listDirectPermissions(
             @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(userPermissionService.list(id)));

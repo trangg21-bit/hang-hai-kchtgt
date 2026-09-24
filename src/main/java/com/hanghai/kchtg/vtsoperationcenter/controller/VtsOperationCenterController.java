@@ -1,17 +1,43 @@
 package com.hanghai.kchtg.vtsoperationcenter.controller;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpHeaders;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.dto.ApprovalRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.util.ApprovalUtils;
 import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.security.annotation.DataScope;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsoperationcenter.dto.HistoryEntry;
@@ -22,27 +48,10 @@ import com.hanghai.kchtg.vtsoperationcenter.dto.VtsOperationCenterResponse;
 import com.hanghai.kchtg.vtsoperationcenter.service.VtsOperationCenterService;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.JpaSort;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import com.hanghai.kchtg.security.annotation.DataScope;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.time.LocalDateTime;
-import org.springframework.format.annotation.DateTimeFormat;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/vts-operation-center")
@@ -85,63 +94,134 @@ public class VtsOperationCenterController {
      *
      * Tỉnh/TP được sắp theo tên người dùng nhìn thấy, không theo mã hành chính.
      */
-    private static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
-            Map.entry("name", "t.name"),
-            Map.entry("code", "t.code"),
-            Map.entry("vtsSystemId", "t.vtsSystemId"),
+    static final Map<String, String> SORTABLE_LIST_FIELDS = Map.ofEntries(
+            Map.entry("name", "name"),
+            Map.entry("code", "code"),
+            Map.entry("vtsSystemId", "vtsSystemId"),
             Map.entry("vtsSystemName", "vs.systemName"),
-            Map.entry("portId", "t.portId"),
+            Map.entry("portId", "portId"),
             Map.entry("portName", "p.portName"),
-            Map.entry("orgUnitId", "t.orgUnitId"),
+            Map.entry("orgUnitId", "orgUnitId"),
             Map.entry("orgUnitName", "o.name"),
-            Map.entry("detailedLocation", "t.detailedLocation"),
-            Map.entry("conditionStatus", "t.conditionStatus"),
-            Map.entry("approvalStatus", "t.approvalStatus"),
-            Map.entry("province", "t.provinceId"),
-            Map.entry("provinceId", "t.provinceId"),
-            Map.entry("rejectionReason", "t.rejectionReason"),
+            Map.entry("detailedLocation", "detailedLocation"),
+            Map.entry("conditionStatus", "conditionStatus"),
+            Map.entry("approvalStatus", "approvalStatus"),
+            Map.entry("province", "provinceId"),
+            Map.entry("provinceId", "provinceId"),
+            Map.entry("rejectionReason", "rejectionReason"),
             Map.entry("updatedByName", "u.fullName"),
-            Map.entry("updatedAt", "t.updatedAt"),
-            Map.entry("updatedDate", "t.updatedAt"),
-            Map.entry("createdAt", "t.createdAt"),
+            Map.entry("updatedAt", "updatedAt"),
+            Map.entry("updatedDate", "updatedAt"),
+            Map.entry("createdAt", "createdAt"),
             Map.entry("submittedByName", "uSub.fullName"),
-            Map.entry("submittedAt", "t.submittedAt"),
-            Map.entry("submittedDate", "t.submittedAt"),
+            Map.entry("submittedAt", "submittedAt"),
+            Map.entry("submittedDate", "submittedAt"),
             Map.entry("approverLevel1Name", "uApp1.fullName"),
-            Map.entry("approvedDateLevel1", "t.approvedDateLevel1"),
+            Map.entry("approvedDateLevel1", "approvedDateLevel1"),
             Map.entry("approverLevel2Name", "uApp2.fullName"),
-            Map.entry("approvedDateLevel2", "t.approvedDateLevel2"));
+            Map.entry("approvedDateLevel2", "approvedDateLevel2"));
 
-    private static Sort resolveListSort(String sortBy, String sortDir) {
-        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
+    public static Sort resolveListSort(String sortBy, String sortDir) {
+        Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "createdAt");
         if (sortBy == null || sortBy.isBlank()) {
             return defaultSort;
         }
         String cleanSortBy = sortBy.trim();
-        String property = SORTABLE_LIST_FIELDS.get(cleanSortBy);
-        if (property == null) {
-            return defaultSort;
-        }
-        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) || "asc".equalsIgnoreCase(sortDir)
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir)
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
+
+        // 1. Tên / Mã TTDH VTS
         if ("name".equalsIgnoreCase(cleanSortBy)) {
-            return JpaSort.unsafe(direction, "LOWER(t.name)")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN t.name IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
                     .and(defaultSort);
         }
         if ("code".equalsIgnoreCase(cleanSortBy)) {
-            return JpaSort.unsafe(direction, "LOWER(t.code)")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN t.code IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
                     .and(defaultSort);
         }
+
+        // 2. Đơn vị quản lý
+        if ("orgUnitName".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN o.name IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(o.name)"))
+                    .and(defaultSort);
+        }
+
+        // 3. Thuộc cảng biển
+        if ("portName".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN p.portName IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(p.portName)"))
+                    .and(defaultSort);
+        }
+
+        // 4. Thuộc hệ thống VTS (Xử lý lỗi: NULLS LAST + LOWER)
+        if ("vtsSystemName".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN vs.systemName IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(vs.systemName)"))
+                    .and(defaultSort);
+        }
+
+        // 5. Địa điểm (Tỉnh/TP)
         if ("province".equalsIgnoreCase(cleanSortBy) || "provinceId".equalsIgnoreCase(cleanSortBy)) {
-            return JpaSort.unsafe(direction, "pv.sortOrder")
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN pv.id IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "pv.sortOrder"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.name)"))
                     .and(defaultSort);
         }
-        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau.
-        return JpaSort.unsafe(direction, property).and(defaultSort);
+
+        // 6. Cán bộ cập nhật (u.fullName || uCreated.fullName)
+        if ("updatedByName".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN COALESCE(u.fullName, uCreated.fullName) IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(COALESCE(u.fullName, uCreated.fullName))"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "COALESCE(t.updatedAt, t.createdAt)"))
+                    .and(defaultSort);
+        }
+
+        // 7. Cán bộ gửi phê duyệt
+        if ("submittedByName".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN uSub.fullName IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(uSub.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "t.submittedAt"))
+                    .and(defaultSort);
+        }
+
+        // 8. Cán bộ phê duyệt cấp Cảng vụ/Chi cục
+        if ("approverLevel1Name".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN uApp1.fullName IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(uApp1.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "t.approvedDateLevel1"))
+                    .and(defaultSort);
+        }
+
+        // 9. Cán bộ phê duyệt cấp Cục
+        if ("approverLevel2Name".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN uApp2.fullName IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(uApp2.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "t.approvedDateLevel2"))
+                    .and(defaultSort);
+        }
+
+        // 10. Lý do từ chối
+        if ("rejectionReason".equalsIgnoreCase(cleanSortBy)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN t.rejectionReason IS NULL THEN 1 ELSE 0 END)")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.rejectionReason)"))
+                    .and(defaultSort);
+        }
+
+        // 11. Các cột còn lại (ID, Enum, Dates...)
+        String property = SORTABLE_LIST_FIELDS.get(cleanSortBy);
+        if (property == null) {
+            return defaultSort;
+        }
+        String caseExpr = property.contains(".") ? property : ("t." + property);
+        return JpaSort.unsafe(Sort.Direction.ASC, "(CASE WHEN " + caseExpr + " IS NULL THEN 1 ELSE 0 END)")
+                .and(JpaSort.unsafe(direction, property))
+                .and(defaultSort);
     }
 
     @PreAuthorize("isAuthenticated()")
@@ -323,7 +403,7 @@ public class VtsOperationCenterController {
         return ResponseEntity.ok(ApiResponse.success("Xóa tệp đính kèm thành công", null));
     }
 
-    
+
     private Path resolveAttachmentFilePath(InfrastructureAttachment attachment, UUID id) {
         if (attachment == null || attachment.getFilePath() == null) {
             return null;

@@ -1,8 +1,16 @@
 package com.hanghai.kchtg.vtssystem.repository;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
-import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,11 +19,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.junit.jupiter.api.Assertions.*;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 
 /**
  * JPA repository tests for VtsSystem — verifies unique code constraint,
@@ -332,6 +338,52 @@ class VtsSystemRepositoryTest {
                         "Không sắp xếp được theo " + property + " " + direction);
             }
         }
+    }
+
+    @Test
+    void testFindOptions_IncludesApprovedRegardlessOfConditionStatus() {
+        // 1. Approved + Operational -> Should be included
+        VtsSystem sys1 = createVtsSystemWithCodeAndName("VTS-OPT1", "VTS Operational");
+        sys1.setApprovalStatus(ApprovalStatus.APPROVED);
+        sys1.setConditionStatus(ConditionStatus.OPERATIONAL);
+        repository.save(sys1);
+
+        // 2. Approved + Not Yet Operational -> Must be included (Bug 2 fix)
+        VtsSystem sys2 = createVtsSystemWithCodeAndName("VTS-OPT2", "VTS Not Yet Operational");
+        sys2.setApprovalStatus(ApprovalStatus.APPROVED);
+        sys2.setConditionStatus(ConditionStatus.NOT_YET_OPERATIONAL);
+        repository.save(sys2);
+
+        // 3. Approved + Suspended -> Must be included (Bug 2 fix)
+        VtsSystem sys3 = createVtsSystemWithCodeAndName("VTS-OPT3", "VTS Suspended");
+        sys3.setApprovalStatus(ApprovalStatus.APPROVED);
+        sys3.setConditionStatus(ConditionStatus.SUSPENDED);
+        repository.save(sys3);
+
+        // 4. Draft + Operational -> Must NOT be included
+        VtsSystem sys4 = createVtsSystemWithCodeAndName("VTS-OPT4", "VTS Draft");
+        sys4.setApprovalStatus(ApprovalStatus.DRAFT);
+        sys4.setConditionStatus(ConditionStatus.OPERATIONAL);
+        repository.save(sys4);
+
+        // 5. Approved + Soft Deleted -> Must NOT be included
+        VtsSystem sys5 = createVtsSystemWithCodeAndName("VTS-OPT5", "VTS Deleted");
+        sys5.setApprovalStatus(ApprovalStatus.APPROVED);
+        sys5.setConditionStatus(ConditionStatus.OPERATIONAL);
+        sys5.setDeletedAt(java.time.LocalDateTime.now());
+        repository.save(sys5);
+
+        entityManager.flush();
+
+        var options = repository.findOptions(false, List.of(), false, List.of());
+
+        assertEquals(3, options.size(), "Options should include 3 approved VTS systems regardless of conditionStatus");
+        List<String> optionCodes = options.stream().map(com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse::getCode).toList();
+        assertTrue(optionCodes.contains("VTS-OPT1"));
+        assertTrue(optionCodes.contains("VTS-OPT2"));
+        assertTrue(optionCodes.contains("VTS-OPT3"));
+        assertFalse(optionCodes.contains("VTS-OPT4"));
+        assertFalse(optionCodes.contains("VTS-OPT5"));
     }
 
     // Helper methods

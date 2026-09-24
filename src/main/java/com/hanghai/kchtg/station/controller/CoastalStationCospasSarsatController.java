@@ -53,7 +53,14 @@ public class CoastalStationCospasSarsatController {
             Map.entry("conditionStatus", "c.conditionStatus"),
             Map.entry("approvalStatus", "c.approvalStatus"),
             Map.entry("rejectionReason", "c.rejectionReason"),
-            Map.entry("updatedByName", "uu.fullName"),
+            Map.entry("updatedByName", "COALESCE(uu.fullName, uc.fullName)"),
+            Map.entry("updatedInfo", "COALESCE(uu.fullName, uc.fullName)"),
+            Map.entry("submittedByName", "us.fullName"),
+            Map.entry("submittedInfo", "us.fullName"),
+            Map.entry("approverLevel1Name", "ua1.fullName"),
+            Map.entry("approvedLevel1Info", "ua1.fullName"),
+            Map.entry("approverLevel2Name", "ua2.fullName"),
+            Map.entry("approvedLevel2Info", "ua2.fullName"),
             Map.entry("updatedAt", "c.updatedAt"),
             Map.entry("submittedAt", "c.submittedAt"),
             Map.entry("approvedDateLevel1", "c.approvedDateLevel1"),
@@ -181,26 +188,90 @@ public class CoastalStationCospasSarsatController {
         Sort.Direction direction = parts.length > 1 && "asc".equalsIgnoreCase(parts[1].trim())
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
+        // 1. Tên đài
         if ("name".equalsIgnoreCase(field) || "stationName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, "LOWER(c.name)")
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN c.name IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(c.name)"))
                     .and(JpaSort.unsafe(direction, "LOWER(c.code)"))
                     .and(defaultSort);
         }
+
+        // 2. Mã đài
         if ("code".equalsIgnoreCase(field) || "stationCode".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, "LOWER(c.code)")
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN c.code IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(c.code)"))
                     .and(JpaSort.unsafe(direction, "LOWER(c.name)"))
                     .and(defaultSort);
         }
+
+        // 3. Đơn vị quản lý
+        if ("orgUnitName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN o.name IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(o.name)"))
+                    .and(defaultSort);
+        }
+
+        // 4. Đơn vị khai thác
+        if ("operatingOrgName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN COALESCE(oo.name, oorg.name) IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(COALESCE(oo.name, oorg.name))"))
+                    .and(defaultSort);
+        }
+
+        // 5. Địa điểm (Tỉnh/TP)
         if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, "pv.sortOrder")
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN pv.id IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "pv.sortOrder"))
                     .and(JpaSort.unsafe(direction, "LOWER(c.name)"))
                     .and(defaultSort);
         }
+
+        // 6. Cán bộ cập nhật
+        if ("updatedInfo".equalsIgnoreCase(field) || "updatedByName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN COALESCE(uu.fullName, uc.fullName) IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(COALESCE(uu.fullName, uc.fullName))"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "COALESCE(c.updatedAt, c.createdAt)"))
+                    .and(defaultSort);
+        }
+
+        // 7. Cán bộ gửi duyệt
+        if ("submittedInfo".equalsIgnoreCase(field) || "submittedByName".equalsIgnoreCase(field) || "submittedAt".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN us.fullName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(us.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "c.submittedAt"))
+                    .and(defaultSort);
+        }
+
+        // 8. Cán bộ duyệt C1
+        if ("approvedLevel1Info".equalsIgnoreCase(field) || "approverLevel1Name".equalsIgnoreCase(field) || "approvedDateLevel1".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN ua1.fullName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(ua1.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "c.approvedDateLevel1"))
+                    .and(defaultSort);
+        }
+
+        // 9. Cán bộ duyệt C2
+        if ("approvedLevel2Info".equalsIgnoreCase(field) || "approverLevel2Name".equalsIgnoreCase(field) || "approvedDateLevel2".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN ua2.fullName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(ua2.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "c.approvedDateLevel2"))
+                    .and(defaultSort);
+        }
+
+        // 10. Lý do từ chối
+        if ("rejectionReason".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN c.rejectionReason IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(c.rejectionReason)"))
+                    .and(defaultSort);
+        }
+
         String property = SORTABLE_LIST_FIELDS.get(field);
         if (property == null) {
             return defaultSort;
         }
-        return JpaSort.unsafe(direction, property).and(defaultSort);
+        return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN " + property + " IS NULL THEN 1 ELSE 0 END")
+                .and(JpaSort.unsafe(direction, property))
+                .and(defaultSort);
     }
 
     @GetMapping("/options")

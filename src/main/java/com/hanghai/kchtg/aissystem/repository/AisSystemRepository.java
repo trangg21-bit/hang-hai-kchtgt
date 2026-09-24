@@ -45,6 +45,9 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
         LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User u ON u.id = t.updatedBy
         LEFT JOIN User uCreate ON uCreate.id = t.createdBy
+        LEFT JOIN User uSub ON uSub.id = t.submittedBy
+        LEFT JOIN User uApp1 ON uApp1.id = t.approverLevel1
+        LEFT JOIN User uApp2 ON uApp2.id = t.approverLevel2
         WHERE (:scopeEnabled = false OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
           AND (:vtsOperationCenterId IS NULL OR t.vtsOperationCenterId = :vtsOperationCenterId)
@@ -204,7 +207,6 @@ public interface AisSystemRepository extends JpaRepository<AisSystem, UUID> {
         FROM AisSystem t
         WHERE t.deletedAt IS NULL
           AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL)
           AND (:scopeEnabled = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR t.orgUnitId IS NULL OR t.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(t.name) ASC

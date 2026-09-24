@@ -17,7 +17,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import { OrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { OrgUnitTreeSelect, normalizeSearchText, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
@@ -1095,14 +1095,15 @@ export default function BerthList() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Công năng khai thác</div>
-            <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} allowClear showSearch optionFilterProp="label" placeholder="Chọn công năng khai thác"
+            <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} allowClear showSearch placeholder="Chọn công năng khai thác"
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               options={OPERATIONAL_FUNCTION_OPTIONS} value={filterOperationalFunction || undefined}
               onChange={(v) => { setFilterOperationalFunction(v || undefined); setPage(1); }} />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành Phố)</div>
             <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               value={filterProvince || undefined} onChange={(v) => { setFilterProvince(v || ''); setPage(1); }}
               options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />

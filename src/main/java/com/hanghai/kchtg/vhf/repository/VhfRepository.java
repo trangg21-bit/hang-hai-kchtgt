@@ -9,8 +9,6 @@ import java.util.Collection;
 import com.hanghai.kchtg.vhf.entity.Vhf;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.vhf.dto.VhfOptionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -10,7 +10,6 @@ import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -525,10 +524,6 @@ public class NavigationChannelService {
             gisSpatialObjectService.delete(nc.getSpatialId());
         }
         repo.save(nc);
-
-        // F-040 D2: ghi history DELETED (caller đầu tiên của InfrastructureHistoryUtils.recordSoftDelete)
-        InfrastructureHistoryUtils.recordSoftDelete(approvalHistoryRepo, id,
-                InfrastructureType.NAVIGATION_CHANNEL, operatorId, "Xóa luồng hàng hải");
         log.info("Soft deleted navigation channel id={} by {}", id, operatorId);
     }
 

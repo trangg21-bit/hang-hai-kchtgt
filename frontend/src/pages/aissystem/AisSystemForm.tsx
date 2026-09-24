@@ -502,7 +502,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       // Create mode
       form.resetFields();
       form.setFieldsValue({
-        conditionStatus: ConditionStatus.OPERATIONAL,
+        conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
         unitOfMeasure: UnitOfMeasure.SET,
         quantity: 1,
         geometryType: undefined,
@@ -519,7 +519,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       aisSystemService.generateCode().then((res) => {
         form.setFieldsValue({
           code: res.code,
-          conditionStatus: ConditionStatus.OPERATIONAL,
+          conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
           unitOfMeasure: UnitOfMeasure.SET,
           quantity: 1,
           geometryType: undefined,
@@ -530,21 +530,21 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     }
   }, [open, editId, initialData, form]);
 
-  // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
       setGpsError(null);
       return;
     }
     form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return [prev[0]];
       }
       if (prev.length < count) {
@@ -554,7 +554,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       return prev;
     });
     setGpsError(null);
-  }, [watchedGeometryType, form]);
+  };
 
   const effectiveOrgUnitId = watchedOrgUnitId || record?.orgUnitId;
 
@@ -675,8 +675,13 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
 
+    const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
+    const currentSymbolId = (values.symbolId !== undefined)
+      ? values.symbolId
+      : (form.getFieldValue('symbolId') ?? record?.symbolId ?? (record as any)?.symbol);
+
     // Kiểm tra tính đầy đủ và hợp lệ của tọa độ GPS
-    const geomType = values.geometryType || undefined;
+    const geomType = currentGeometryType || undefined;
     let wkt: string | undefined = undefined;
 
     if (geomType) {
@@ -729,7 +734,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         maintenanceInfo: values.maintenanceInfo?.trim() ?? null,
         note: values.note?.trim() ?? null,
         geometryType: geomType ?? null,
-        symbolId: values.symbolId ?? null,
+        symbolId: currentSymbolId ?? null,
+        coordinateSystem: geomType ? (values.coordinateSystem || form.getFieldValue('coordinateSystem') || 1) : null,
+        displayRule: geomType ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
         coordinates: wkt ?? null,
       };
 
@@ -924,12 +931,14 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
             <Tabs
               activeKey={tabKey}
               onChange={setTabKey}
+              destroyInactiveTabPane={false}
               tabBarStyle={drawerTabBarStyle}
               animated={false}
               items={[
                 {
                   key: 'general',
                   label: 'Thông tin chung',
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section 1: Thông tin định danh & Quản lý ── */}
@@ -1187,6 +1196,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                 {
                   key: 'gis',
                   label: `Thông tin vị trí (${coordinateList.length})`,
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1211,6 +1221,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                                 allowClear
                                 options={GEOMETRY_TYPE_OPTIONS}
                                 style={selectStyle}
+                                onChange={handleGeometryTypeChange}
                               />
                             </Form.Item>
                           </Col>
@@ -1429,6 +1440,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
                 {
                   key: 'files',
                   label: `File đính kèm (${attachments.length})`,
+                  forceRender: true,
                   children: (
                     <InfrastructureAttachmentTab
                       attachments={attachments}

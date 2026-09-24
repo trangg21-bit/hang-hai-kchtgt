@@ -333,7 +333,7 @@ const ScadaListPage = () => {
   }, []);
 
   const sortOrderFor = useCallback(
-    (key: string) =>
+    (key: string): 'ascend' | 'descend' | null =>
       sortField === key && sortOrder ? (sortOrder === 'asc' ? 'ascend' : 'descend') : null,
     [sortField, sortOrder]
   );
@@ -2545,8 +2545,7 @@ const ScadaListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        size={undefined}
-        size={DRAWER_WIDTH}
+        width={DRAWER_WIDTH}
         rootClassName={THEME_SCOPE_CLASS}
         className="scada-drawer-scope"
         title={<span style={drawerTitleStyle}>Chi tiết hệ thống SCADA{selectedRecord ? ` - ${selectedRecord.deviceName || selectedRecord.deviceCode || ''}` : ''}</span>}
@@ -3361,7 +3360,6 @@ const ScadaListPage = () => {
           },
           body: { padding: '0 24px 12px 24px' },
         }}
-        destroyOnHidden
       >
         <style>{requiredMarkStyle}</style>
         {createModalOpen && (

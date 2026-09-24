@@ -348,7 +348,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       } else {
         form.resetFields();
         form.setFieldsValue({
-          conditionStatus: ConditionStatus.OPERATIONAL,
+          conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
           unitOfMeasure: UnitOfMeasure.SET,
           quantity: 1,
         });
@@ -357,13 +357,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         aisSystemService.generateCode().then((res) => {
           form.setFieldsValue({
             code: res.code,
-            conditionStatus: ConditionStatus.OPERATIONAL,
+            conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
           });
         }).catch(() => {
           form.setFieldsValue({
-            conditionStatus: ConditionStatus.OPERATIONAL,
+            conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
           });
@@ -1164,7 +1164,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           form={form}
           layout="vertical"
           initialValues={{
-            conditionStatus: ConditionStatus.OPERATIONAL,
+            conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
           }}

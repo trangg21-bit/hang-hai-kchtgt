@@ -1,9 +1,11 @@
 package com.hanghai.kchtg.vtssystem.repository;
 
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse;
-import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
-import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,11 +13,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
-import java.util.List;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse;
+import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 
 @Repository
 public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
@@ -52,7 +53,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.SUSPENDED AND t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.STOPPED)
                OR (:conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.NOT_YET_OPERATIONAL AND (t.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.UNDER_CONSTRUCTION)))
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
         ORDER BY t.createdAt DESC
@@ -78,7 +79,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:fromDate AS java.time.LocalDate) IS NULL OR t.operationStartDate >= :fromDate)
@@ -122,7 +123,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:fromDate AS java.time.LocalDateTime) IS NULL OR t.createdAt >= :fromDate)
@@ -151,6 +152,11 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.approvalStatus AS approvalStatus,
                t.rejectionReason AS rejectionReason,
                t.approverLevel1 AS approverLevel1,
+               t.approvedDateLevel1 AS approvedDateLevel1,
+               t.approverLevel2 AS approverLevel2,
+               t.approvedDateLevel2 AS approvedDateLevel2,
+               t.submittedBy AS submittedBy,
+               t.submittedAt AS submittedAt,
                t.createdBy AS createdBy,
                COALESCE(t.updatedAt, t.createdAt) AS updatedDate,
                t.createdAt AS createdDate,
@@ -172,6 +178,9 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
         LEFT JOIN Province pv ON pv.id = t.provinceId
         LEFT JOIN User u ON u.id = t.updatedBy
         LEFT JOIN User uCreate ON uCreate.id = t.createdBy
+        LEFT JOIN User uSub ON uSub.id = t.submittedBy
+        LEFT JOIN User uApp1 ON uApp1.id = t.approverLevel1
+        LEFT JOIN User uApp2 ON uApp2.id = t.approverLevel2
         WHERE (
             (:approvalStatus IS NULL)
             OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED AND (t.deletedAt IS NOT NULL OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.ARCHIVED))
@@ -278,6 +287,14 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
                t.orgUnitId AS orgUnitId,
                t.approvalStatus AS approvalStatus,
                t.approverLevel1 AS approverLevel1,
+               t.approvedDateLevel1 AS approvedDateLevel1,
+               t.approverLevel2 AS approverLevel2,
+               t.approvedDateLevel2 AS approvedDateLevel2,
+               t.submittedBy AS submittedBy,
+               t.submittedAt AS submittedAt,
+               t.createdBy AS createdBy,
+               t.createdAt AS createdAt,
+               t.updatedAt AS updatedAt,
                t.updatedAt AS updatedDate,
                t.updatedBy AS updatedBy,
                t.owningOrgId AS owningOrgId,
@@ -295,7 +312,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:fromDate AS java.time.LocalDateTime) IS NULL OR t.createdAt >= :fromDate)
@@ -314,7 +331,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
             CAST(function('immutable_unaccent', LOWER(t.code)) AS string) LIKE CAST(:keyword AS string) OR
             CAST(function('immutable_unaccent', LOWER(t.address)) AS string) LIKE CAST(:keyword AS string))
           AND (:conditionStatus IS NULL OR t.conditionStatus = :conditionStatus)
-          AND (:approvalStatus IS NULL 
+          AND (:approvalStatus IS NULL
                OR t.approvalStatus = :approvalStatus
                OR (:approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 AND (t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL1 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED_LEVEL2 OR t.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.REJECTED)))
           AND (CAST(:fromDate AS java.time.LocalDateTime) IS NULL OR t.createdAt >= :fromDate)

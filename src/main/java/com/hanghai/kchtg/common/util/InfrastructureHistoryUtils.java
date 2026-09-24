@@ -1,13 +1,9 @@
 package com.hanghai.kchtg.common.util;
 
-import com.hanghai.kchtg.common.entity.EntityFields;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-
-import java.util.UUID;
 
 /**
  * Utility helper ghi nhận Lịch sử Biến động KCHTGT và Lịch sử Xóa mềm (Soft Delete) dùng chung cho tất cả các đối tượng KCHTGT.
@@ -19,13 +15,8 @@ public final class InfrastructureHistoryUtils {
     }
 
     /**
-     * Ghi nhận lịch sử xóa mềm (Soft Delete) dùng chung cho mọi loại hạ tầng.
-     *
-     * @param repository  InfrastructureHistoryRepository
-     * @param refId       ID của bản ghi hạ tầng bị xóa
-     * @param refType     Loại hạ tầng (InfrastructureType)
-     * @param userId      ID người thực hiện xóa
-     * @param reason      Lý do xóa (nếu có)
+     * Quy chuẩn KCHT: Không lưu log lịch sử khi xóa bản ghi (soft delete).
+     * Hàm này được giữ lại dưới dạng no-op để tương thích ngược mà không tạo bản ghi rác.
      */
     public static void recordSoftDelete(
             InfrastructureHistoryRepository repository,
@@ -33,19 +24,7 @@ public final class InfrastructureHistoryUtils {
             InfrastructureType refType,
             UUID userId,
             String reason) {
-        if (repository == null || refId == null || refType == null) {
-            return;
-        }
-        repository.save(InfrastructureHistory.builder()
-                .refId(refId)
-                .refType(refType)
-                .approvalLevel(ApprovalLevel.LEVEL_0)
-                .status(InfrastructureHistoryStatus.DELETED)
-                .approvedBy(userId)
-                .changedField(EntityFields.DELETED_AT)
-                .previousValue(null)
-                .newValue("đã xóa mềm")
-                .build());
+        // No-op: Không lưu log khi xóa bản ghi, chỉ lưu log khi chỉnh sửa record có status = APPROVED
     }
 
     public static void recordSoftDelete(
@@ -53,6 +32,6 @@ public final class InfrastructureHistoryUtils {
             UUID refId,
             InfrastructureType refType,
             UUID userId) {
-        recordSoftDelete(repository, refId, refType, userId, null);
+        // No-op
     }
 }

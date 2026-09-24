@@ -497,7 +497,7 @@ public class BuoyService {
             entity.setLevel2ApprovedBy(uid);
             entity.setLevel2ApprovedDate(LocalDateTime.now());
         } else if (wasApproved) {
-            entity.setStatus("PUBLISHED");
+            entity.setStatus(entity.getStatus() != null ? entity.getStatus() : "PUBLISHED");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
         }
 

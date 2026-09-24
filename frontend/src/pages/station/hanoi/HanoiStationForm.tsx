@@ -113,6 +113,12 @@ const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POLYGON', label: 'Đối tượng vùng' },
 ];
 
+const GEOMETRY_POINT_COUNT: Record<string, number> = {
+  POINT: 1,
+  LINE: 2,
+  POLYGON: 3,
+};
+
 const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
@@ -175,17 +181,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
   const hasCoordinates = coordinateList.some((c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null);
   const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
 
-  useEffect(() => {
-    if (!watchedGeometryType) {
-      form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
-      setCoordinateList([]);
-    } else {
-      form.setFieldsValue({
-        coordinateSystem: 1,
-        displayRule: 'Độ, phút, giây (DMS)',
-      });
-    }
-  }, [watchedGeometryType, form]);
+
 
   useEffect(() => {
     if (open) {
@@ -409,17 +405,30 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
     }
   };
 
-  const handleGeometryTypeChange = (val: string) => {
+  const handleGeometryTypeChange = (val: string | undefined) => {
     form.setFieldValue('geometryType', val);
-    if (val) {
-      form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    } else {
+    if (!val) {
       form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
       setCoordinateList([]);
+      setGpsError(null);
+      return;
     }
-    if (val === 'POINT' && coordinateList.length > 1) {
-      setCoordinateList([coordinateList[0]]);
-    }
+    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
+    setCoordinateList((prev) => {
+      if (!prev || prev.length === 0) {
+        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      }
+      if (val === 'POINT' && prev.length > 1) {
+        return [prev[0]];
+      }
+      if (prev.length < count) {
+        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+        return [...prev, ...added];
+      }
+      return prev;
+    });
+    setGpsError(null);
   };
 
   const addGpsPoint = () => {
@@ -605,8 +614,13 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
       let wkt: string | undefined = undefined;
       let firstPt: { latitude: number; longitude: number } | undefined = undefined;
 
-      if (values.geometryType || coordinateList.length > 0) {
-        const geom = values.geometryType || 'POINT';
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
+      const currentSymbolId = (values.symbolId !== undefined)
+        ? values.symbolId
+        : (form.getFieldValue('symbolId') ?? record?.symbolId ?? (record as any)?.symbol);
+
+      if (currentGeometryType || coordinateList.length > 0) {
+        const geom = currentGeometryType || 'POINT';
         const dmsCoordList = coordinateList.map((c) => ({
           latD: c.latD,
           latM: c.latM,
@@ -653,10 +667,10 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
         services: values.services,
         servicesProvided: Array.isArray(values.services) ? values.services.join(', ') : values.services,
         description: values.description?.trim(),
-        geometryType: values.geometryType || undefined,
-        symbolId: values.symbolId || undefined,
-        coordinateSystem: values.geometryType ? values.coordinateSystem : undefined,
-        displayRule: values.geometryType ? values.displayRule : undefined,
+        geometryType: currentGeometryType || undefined,
+        symbolId: currentSymbolId || undefined,
+        coordinateSystem: currentGeometryType ? (values.coordinateSystem ?? form.getFieldValue('coordinateSystem') ?? 1) : undefined,
+        displayRule: currentGeometryType ? (values.displayRule ?? form.getFieldValue('displayRule') ?? 'Độ, phút, giây (DMS)') : undefined,
         latitude: firstPt?.latitude,
         longitude: firstPt?.longitude,
         coordinates: wkt,
@@ -843,12 +857,14 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
             <Tabs
               activeKey={activeTab}
               onChange={setActiveTab}
+              destroyInactiveTabPane={false}
               tabBarStyle={drawerTabBarStyle}
               animated={false}
               items={[
                 {
                   key: 'general',
                   label: 'Thông tin chung',
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* Section 1: Thông tin cơ bản & Quản lý vận hành */}
@@ -1014,6 +1030,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                 {
                   key: 'location',
                   label: `Thông tin vị trí (${coordinateList.length})`,
+                  forceRender: true,
                   children: (
                     <div style={drawerFormScrollStyle}>
                       {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1267,6 +1284,7 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
                 {
                   key: 'files',
                   label: `File đính kèm (${attachments.length})`,
+                  forceRender: true,
                   children: (
                     <InfrastructureAttachmentTab
                       attachments={attachments}

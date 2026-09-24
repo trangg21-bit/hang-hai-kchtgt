@@ -508,8 +508,13 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
       return;
     }
 
-    if (vals.geometryType) {
-      if (!vals.mapSymbolId) {
+    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
+    const currentMapSymbolId = vals.mapSymbolId ?? form.getFieldValue('mapSymbolId');
+    const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+    const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
+
+    if (currentGeometryType) {
+      if (!currentMapSymbolId) {
         setActiveTabKey('location');
         form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
         toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
@@ -599,10 +604,10 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
           ? (vals.servicesProvided.length > 0 ? vals.servicesProvided.join(',') : null)
           : (vals.servicesProvided ?? null),
         remarks: vals.remarks?.trim() ?? null,
-        geometryType: vals.geometryType ?? null,
-        mapSymbolId: vals.mapSymbolId ?? null,
-        coordinateSystem: vals.coordinateSystem ?? null,
-        displayRule: vals.displayRule ?? null,
+        geometryType: currentGeometryType ?? null,
+        mapSymbolId: currentMapSymbolId ?? null,
+        coordinateSystem: currentCoordSys ?? null,
+        displayRule: currentDisplayRule ?? null,
       };
       (payload as any).latitude = coordsFormatted.length > 0 ? coordsFormatted[0].latitude : null;
       (payload as any).longitude = coordsFormatted.length > 0 ? coordsFormatted[0].longitude : null;
@@ -668,6 +673,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
     {
       key: 'general',
       label: 'Thông tin chung',
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           <div style={sectionBoxStyle}>
@@ -843,6 +849,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           <div style={sectionBoxStyle}>
@@ -1061,6 +1068,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <InfrastructureAttachmentTab
           attachments={uploadedFiles.map((file: any) => {
@@ -1091,7 +1099,7 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
 
   return (
     <>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK & PierForm) */}
       <Modal

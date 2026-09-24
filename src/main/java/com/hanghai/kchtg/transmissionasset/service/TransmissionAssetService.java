@@ -26,7 +26,6 @@ import com.hanghai.kchtg.assetmovement.dto.InfraAssetAttachmentResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.port.entity.Attachment;
@@ -180,8 +179,6 @@ public class TransmissionAssetService {
         entity.softDelete(currentUserId);
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
-
-        InfrastructureHistoryUtils.recordSoftDelete(historyRepository, id, InfrastructureType.TRANSMISSION, currentUserId, "Xóa tài sản hệ thống truyền dẫn");
     }
 
     @Transactional(readOnly = true)

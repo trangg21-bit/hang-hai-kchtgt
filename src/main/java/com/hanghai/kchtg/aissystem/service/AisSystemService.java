@@ -1,5 +1,37 @@
 package com.hanghai.kchtg.aissystem.service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.hanghai.kchtg.aissystem.dto.AisSystemListItem;
 import com.hanghai.kchtg.aissystem.dto.AisSystemOptionResponse;
 import com.hanghai.kchtg.aissystem.dto.AisSystemRequest;
@@ -11,59 +43,39 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
 import com.hanghai.kchtg.common.entity.InfrastructureAttachment;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.AttachmentFileType;
+import com.hanghai.kchtg.common.entity.OperatingOrganization;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.AttachmentFileType;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.enums.UnitOfMeasure;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.common.util.EntityUpdateUtils;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
-import com.hanghai.kchtg.common.entity.OperatingOrganization;
-import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtsoperationcenter.entity.VtsOperationCenter;
 import com.hanghai.kchtg.vtsoperationcenter.repository.VtsOperationCenterRepository;
 import com.hanghai.kchtg.vtssystem.dto.VtsSystemAttachmentResponse;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import jakarta.persistence.EntityNotFoundException;
-import java.util.stream.Stream;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import org.springframework.jdbc.core.JdbcTemplate;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -539,13 +551,6 @@ public class AisSystemService {
         entity.setDeletedAt(LocalDateTime.now());
         entity.setDeletedBy(userId);
         repository.save(entity);
-
-        InfrastructureHistoryUtils.recordSoftDelete(
-                historyRepository,
-                id,
-                InfrastructureType.AIS_SYSTEM,
-                userId,
-                "Xóa hệ thống AIS: " + entity.getName());
     }
 
     @Transactional(readOnly = true)

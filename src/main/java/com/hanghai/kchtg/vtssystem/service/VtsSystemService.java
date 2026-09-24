@@ -914,6 +914,9 @@ public class VtsSystemService {
             // Sắp theo họ tên cán bộ (join User) chứ không theo thời điểm cập nhật:
             // cột hiển thị là tên người, sắp theo ngày làm người dùng hiểu sai.
             Map.entry("updatedByName", "COALESCE(u.fullName, uCreate.fullName)"),
+            Map.entry("submittedByName", "uSub.fullName"),
+            Map.entry("approverLevel1Name", "uApp1.fullName"),
+            Map.entry("approverLevel2Name", "uApp2.fullName"),
             Map.entry("updatedBy", "t.updatedBy"),
             Map.entry("updatedDate", "t.updatedAt"),
             Map.entry("updatedAt", "t.updatedAt"),
@@ -923,10 +926,10 @@ public class VtsSystemService {
      * Chuyển tham số {@code sort=<field>,<asc|desc>} thành {@link Sort}. Tên cột
      * không nằm trong danh sách cho phép sẽ rơi về mặc định (mới nhất trước) thay
      * vì ném lỗi, để một tham số lạ không làm hỏng cả màn danh sách.
-     * Dùng {@link JpaSort#unsafe} để hỗ trợ biểu thức COALESCE cho tên đơn vị
-     * vận hành và tên cán bộ cập nhật.
+     * Áp dụng CASE WHEN ... IS NULL để đảm bảo NULLS LAST (giá trị rỗng luôn ở đáy bảng).
+     * Áp dụng LOWER() cho các cột chuỗi để không bị ảnh hưởng bởi mã ASCII hoa/thường.
      */
-    private static Sort resolveListSort(String sort) {
+    static Sort resolveListSort(String sort) {
         Sort defaultSort = JpaSort.unsafe(Sort.Direction.DESC, "t.createdAt");
         if (sort == null || sort.isBlank()) {
             return defaultSort;
@@ -937,19 +940,94 @@ public class VtsSystemService {
                 ? Sort.Direction.ASC
                 : Sort.Direction.DESC;
 
+        // 1. Tên hệ thống VTS
         if ("systemName".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, "LOWER(t.systemName)")
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN t.systemName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
                     .and(defaultSort);
         }
+
+        // 2. Mã hệ thống VTS
         if ("code".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, "LOWER(t.code)")
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN t.code IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.code)"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
                     .and(defaultSort);
         }
+
+        // 3. Đơn vị quản lý
+        if ("orgUnitName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN o.name IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(o.name)"))
+                    .and(defaultSort);
+        }
+
+        // 4. Thuộc cảng biển
+        if ("portName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN p.portName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(p.portName)"))
+                    .and(defaultSort);
+        }
+
+        // 5. Đơn vị chủ quản
+        if ("owningOrgName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN own.name IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(own.name)"))
+                    .and(defaultSort);
+        }
+
+        // 6. Đơn vị vận hành
+        if ("operatingOrgName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN COALESCE(op.name, oorg.name) IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(COALESCE(op.name, oorg.name))"))
+                    .and(defaultSort);
+        }
+
+        // 7. Địa điểm (Tỉnh/TP)
         if ("province".equalsIgnoreCase(field) || "provinceId".equalsIgnoreCase(field)) {
-            return JpaSort.unsafe(direction, "pv.sortOrder")
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN pv.id IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "pv.sortOrder"))
                     .and(JpaSort.unsafe(direction, "LOWER(t.systemName)"))
+                    .and(defaultSort);
+        }
+
+        // 8. Cán bộ cập nhật (ưu tiên người cập nhật, nếu chưa cập nhật lấy người tạo)
+        if ("updatedByName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN COALESCE(u.fullName, uCreate.fullName) IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(COALESCE(u.fullName, uCreate.fullName))"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "COALESCE(t.updatedAt, t.createdAt)"))
+                    .and(defaultSort);
+        }
+
+        // 9. Cán bộ gửi phê duyệt
+        if ("submittedByName".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN uSub.fullName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(uSub.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "t.submittedAt"))
+                    .and(defaultSort);
+        }
+
+        // 10. Cán bộ phê duyệt cấp Cảng vụ/Chi cục
+        if ("approverLevel1Name".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN uApp1.fullName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(uApp1.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "t.approvedDateLevel1"))
+                    .and(defaultSort);
+        }
+
+        // 11. Cán bộ phê duyệt cấp Cục
+        if ("approverLevel2Name".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN uApp2.fullName IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(uApp2.fullName)"))
+                    .and(JpaSort.unsafe(Sort.Direction.DESC, "t.approvedDateLevel2"))
+                    .and(defaultSort);
+        }
+
+        // 12. Lý do từ chối
+        if ("rejectionReason".equalsIgnoreCase(field)) {
+            return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN t.rejectionReason IS NULL THEN 1 ELSE 0 END")
+                    .and(JpaSort.unsafe(direction, "LOWER(t.rejectionReason)"))
                     .and(defaultSort);
         }
 
@@ -957,9 +1035,9 @@ public class VtsSystemService {
         if (property == null) {
             return defaultSort;
         }
-        // Chốt thêm createdAt để thứ tự ổn định khi giá trị sắp xếp trùng nhau,
-        // tránh bản ghi nhảy giữa các trang.
-        return JpaSort.unsafe(direction, property).and(defaultSort);
+        return JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN " + property + " IS NULL THEN 1 ELSE 0 END")
+                .and(JpaSort.unsafe(direction, property))
+                .and(defaultSort);
     }
 
     public Page<VtsSystemResponse> findAllWithSearch(UUID orgUnitId, String keyword, ConditionStatus conditionStatus,
@@ -1081,8 +1159,12 @@ public class VtsSystemService {
                 userIds.add(item.getUpdatedBy());
             if (item.getCreatedBy() != null)
                 userIds.add(item.getCreatedBy());
+            if (item.getSubmittedBy() != null)
+                userIds.add(item.getSubmittedBy());
             if (item.getApproverLevel1() != null)
                 userIds.add(item.getApproverLevel1());
+            if (item.getApproverLevel2() != null)
+                userIds.add(item.getApproverLevel2());
         }
         Map<UUID, String> userNameMap = resolveUserNames(userIds);
 
@@ -2034,6 +2116,11 @@ public class VtsSystemService {
         UUID createdBy = item.getCreatedBy();
         String createdByName = createdBy != null ? userNameMap.get(createdBy) : null;
         UUID approverLevel1 = item.getApproverLevel1();
+        String approverLevel1Name = approverLevel1 != null ? userNameMap.get(approverLevel1) : null;
+        UUID approverLevel2 = item.getApproverLevel2();
+        String approverLevel2Name = approverLevel2 != null ? userNameMap.get(approverLevel2) : null;
+        UUID submittedBy = item.getSubmittedBy();
+        String submittedByName = submittedBy != null ? userNameMap.get(submittedBy) : null;
 
         String operatingOrgName = item.getOperatingOrgName();
         if (operatingOrgName == null && item.getOperatingOrgId() != null) {
@@ -2059,7 +2146,16 @@ public class VtsSystemService {
                 .orgUnitName(orgUnitCacheService.getName(item.getOrgUnitId()))
                 .approvalStatus(item.getApprovalStatus())
                 .rejectionReason(item.getRejectionReason())
+                .submittedAt(item.getSubmittedAt())
+                .submittedDate(item.getSubmittedAt())
+                .submittedBy(submittedBy)
+                .submittedByName(submittedByName)
                 .approverLevel1(approverLevel1)
+                .approverLevel1Name(approverLevel1Name)
+                .approvedDateLevel1(item.getApprovedDateLevel1())
+                .approverLevel2(approverLevel2)
+                .approverLevel2Name(approverLevel2Name)
+                .approvedDateLevel2(item.getApprovedDateLevel2())
                 .createdBy(createdBy)
                 .createdByName(createdByName)
                 .updatedDate(updatedDate)

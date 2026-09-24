@@ -132,10 +132,8 @@ export interface TreeCheckInfo {
   node?: {
     key?: string | number;
     children?: readonly unknown[];
-    [key: string]: unknown;
-  };
+  } | any;
   checked?: boolean;
-  [key: string]: unknown;
 }
 
 export function getNodeLeafKeys(node: MenuTreeNode | Record<string, unknown> | null | undefined): string[] {
@@ -169,7 +167,11 @@ export function handleTreeCheck(
   treeNodes: readonly MenuTreeNode[],
   allowedKeys?: Set<string> | Iterable<string> | null,
 ): string[] {
-  const rawChecked = Array.isArray(checked) ? checked : (checked?.checked ?? []);
+  const rawChecked: readonly unknown[] = Array.isArray(checked)
+    ? checked
+    : (checked && typeof checked === 'object' && 'checked' in checked && Array.isArray((checked as any).checked))
+      ? (checked as any).checked
+      : [];
   let nextVisible = rawChecked.map(String).filter((k) => !isStructuralNodeKey(k));
   let workingCurrent = [...currentKeys];
 

@@ -12,7 +12,6 @@ import {
   Col,
   Tabs,
   Space,
-  Tooltip,
   Dropdown,
   type MenuProps,
 } from 'antd';
@@ -174,11 +173,6 @@ const ROUTE_TYPE_OPTIONS = [
 ];
 
 const ROUTE_TYPE_MAP: Record<number, string> = { 1: 'Công cộng', 2: 'Chuyên dùng' };
-
-const ROUTE_GRADE_OPTIONS = [1, 2, 3, 4, 5, 6].map((g) => ({
-  value: g,
-  label: `Cấp ${g}`,
-}));
 
 export const DEFAULT_CHANNEL_GIS_SYMBOLS = [
   { id: 'a1b2c3d4-e5f6-7a8b-9c0d-112233445523', code: 'CHANNEL', name: 'Luồng hàng hải', image: '' },
@@ -881,10 +875,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           setRecord(data);
           setRouteDetails(Array.isArray(data.routeDetails) ? data.routeDetails : []);
           let coords: any[] = [];
-          if (Array.isArray(data.coordinates)) {
-            coords = data.coordinates;
-          } else if (typeof data.coordinates === 'string' && data.coordinates.trim()) {
-            coords = parseWktToCoordinates(data.coordinates);
+          const rawCoords = (data as any).coordinates;
+          if (Array.isArray(rawCoords)) {
+            coords = rawCoords;
+          } else if (typeof rawCoords === 'string' && rawCoords.trim()) {
+            coords = parseWktToCoordinates(rawCoords);
           } else if (Array.isArray((data as any).coordinateList)) {
             coords = (data as any).coordinateList;
           }

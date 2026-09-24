@@ -19,7 +19,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader, type ScreenHeaderAction } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -75,7 +75,7 @@ import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } 
 import { formatHistoryNumber } from '../../utils/numFmt';
 import DaiTtdhDetailContent from './DaiTtdhDetailContent';
 import DaiTtdhForm, { DAI_TTDH_STATION_LEVEL_OPTIONS } from './DaiTtdhForm';
-import { resolveMaritimeServiceLabel, formatMaritimeServicesDisplay } from '../../constants/maritimeServices';
+import { formatMaritimeServicesDisplay } from '../../constants/maritimeServices';
 
 // ── Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK (theo PierListPage / PortListPage) ─────
 const fontSizeMd = 13.5;
@@ -1156,7 +1156,7 @@ export default function DaiTtdhListPage() {
               placeholder="Chọn tỉnh/thành phố"
               allowClear
               showSearch
-              filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+              filterOption={(input, option) => normalizeSearchText(option?.label).includes(normalizeSearchText(input))}
               value={filterProvince}
               onChange={(v) => setFilterProvince(v)}
               options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
@@ -1312,24 +1312,6 @@ export default function DaiTtdhListPage() {
     ];
   }, [userMap]);
 
-  // ── Sorting helper ──────────────────────────────────────────────
-  const getSortValue = useCallback((r: any, field: string): string | number => {
-    if (field === 'orgUnitId') return resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(r.orgUnitId || '') || '';
-    // Đơn vị khai thác không còn trong danh mục đơn vị → để trống (''), KHÔNG rơi về UUID thô
-    if (field === 'operatingUnitId') return resolveOrgLevel2Name(organizations, r.operatingUnitId) || orgMap.get(r.operatingUnitId || '') || r.operatingUnitName || '';
-    if (field === 'daiTtdhName') return r.daiTtdhName ?? '';
-    if (field === 'provinceId') return r.provinceId ? (VIETNAM_PROVINCES[r.provinceId - 1] ?? '') : '';
-    if (field === 'stationLevel') return DAI_TTDH_STATION_LEVEL_OPTIONS.find((o) => o.value === r.stationLevel)?.label ?? r.stationLevel ?? '';
-    if (field === 'operationalStatus') return OPERATIONAL_STYLE_MAP[r.operationalStatus]?.label || r.operationalStatus || '';
-    if (field === 'updatedAt' || field === 'updatedBy' || field === 'updatedByName') {
-      const t = r.updatedAt || r.createdAt;
-      return t ? new Date(t).getTime() : 0;
-    }
-    if (field === 'submittedForApprovalAt') return r.submittedForApprovalAt ? new Date(r.submittedForApprovalAt).getTime() : 0;
-    if (field === 'portAuthorityApprovedAt') return r.portAuthorityApprovedAt ? new Date(r.portAuthorityApprovedAt).getTime() : 0;
-    if (field === 'departmentApprovedAt') return r.departmentApprovedAt ? new Date(r.departmentApprovedAt).getTime() : 0;
-    return r[field] ?? '';
-  }, [organizations, orgMap]);
 
   // ── Columns ─────────────────────────────────────────────────────
   const columns = useMemo(() => {
@@ -1743,8 +1725,7 @@ export default function DaiTtdhListPage() {
           {...drawerProps}
           rootClassName="daittdh-drawer-scope"
           className="daittdh-drawer-scope"
-          size={undefined}
-          size={DRAWER_WIDTH}
+          width={DRAWER_WIDTH}
           title={<span style={drawerTitleStyle}>Chi tiết đài TTDH{detailRecord ? ` - ${detailRecord.daiTtdhName}` : ''}</span>}
           open={detailDrawerVisible}
           onClose={closeDetailDrawer}

@@ -7,6 +7,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
+import { useAuthStore } from '../../store/authStore';
 import { getPermissionTreeKeys, getVisiblePermissionKeys, handleTreeCheck, isHiddenPermission, isStructuralNodeKey, usePermissions } from '../../hooks/usePermissions';
 import type { MenuTreeNode } from '../../types/permission';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -23,7 +24,7 @@ import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { userService } from '../../services/userService';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import {
-  actionPrimary, textPrimary, textSecondary, textTertiary,
+  actionPrimary, textSecondary,
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
   radiusMd, radiusPill, spaceFormField, spaceMd,
   statusOperational, statusCritical, surfaceCard, borderDefault,
@@ -362,7 +363,7 @@ export default function GroupList() {
   const openPermissionModal = useCallback(async (group: Group) => {
     setPermissionGroup(group); setAppliedPermissionSearch(''); setPermissionLoading(true);
     try { const permissions = await groupService.getPermissions(group.id); setSelectedPermissionKeys((permissions || []).filter((p: string) => !isHiddenPermission(p))); }
-    catch (err: unknown) { setSelectedPermissionKeys([]); toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền'); }
+    catch (err: unknown) { setPermissionGroup(null); toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền'); }
     finally { setPermissionLoading(false); }
   }, []);
 
@@ -660,7 +661,7 @@ export default function GroupList() {
         </Drawer>
 
         <Drawer {...drawerProps} size="50%" open={!!permissionGroup} onClose={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} title={<span style={drawerTitleStyle}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>} extra={<Button type="text" onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={outlineButtonStyle}>Đóng</Button><Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button></div>}>
-          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={() => setSelectedPermissionKeys(allGroupPermissionsSelected || someGroupPermissionsSelected ? [] : allGroupPermissionKeys)}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c, info) => { const next = handleTreeCheck(c, info, selectedPermissionKeys, assignablePermissionTree, validCodesSet); setSelectedPermissionKeys(next); }} /></div></div>)}</div></Spin>
+          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={() => setSelectedPermissionKeys(allGroupPermissionsSelected || someGroupPermissionsSelected ? [] : allGroupPermissionKeys)}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c, info) => { const next = handleTreeCheck(c, info, selectedPermissionKeys, permissionTreeData, validCodesSet); setSelectedPermissionKeys(next); }} /></div></div>)}</div></Spin>
 
         </Drawer>
 

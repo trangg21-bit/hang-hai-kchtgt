@@ -11,7 +11,7 @@ import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import {
-  textSecondary, textTertiary, borderDefault, actionPrimary, statusCritical,
+  textTertiary, borderDefault, actionPrimary, statusCritical,
   fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
   radiusPill, radiusMd, spaceXs, spaceSm, spaceFormField,
   surfaceCard, sidebarBg, readonlyInputStyle, textAreaStyle,
@@ -32,7 +32,6 @@ import {
   safeDecimal,
   parseNumber5,
   getValueFromEvent5,
-  integer5NonNegativeRule,
 } from './shipRepairYardRules';
 import { organizationService } from '../../services/organizationService';
 import { shipRepairYardCRUD, portCRUD, pierCRUD } from '../../services/portService';
@@ -180,14 +179,14 @@ const renderDmsGroup = (
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
       radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
       radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
@@ -407,35 +406,6 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       .finally(() => setShipRepairYardCodeLoading(false));
   }, [watchedPortId]);
 
-  // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
-  useEffect(() => {
-    if (isEdit && !isInitialLoadDoneRef.current) {
-      return;
-    }
-    if (!watchedGeometryType) {
-      form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
-      form.setFields([{ name: 'mapSymbolId', errors: [] }]);
-      setCoordinateList([]);
-      setGpsError(null);
-      return;
-    }
-    form.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
-    setCoordinateList((prev) => {
-      if (!prev || prev.length === 0) {
-        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-      }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
-        return [prev[0]];
-      }
-      if (prev.length < count) {
-        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-        return [...prev, ...added];
-      }
-      return prev;
-    });
-  }, [watchedGeometryType, isEdit, form]);
-
   // Edit mode: load existing
   useEffect(() => {
     if (!isEdit || !id) return;
@@ -607,8 +577,12 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
       return false;
     }
 
+    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
     const symbolIdVal = vals.mapSymbolId || (vals as any).symbolId || form.getFieldValue('mapSymbolId');
-    if (vals.geometryType && !symbolIdVal) {
+    const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+    const currentDisplayRule = vals.displayRule ?? form.getFieldValue('displayRule');
+
+    if (currentGeometryType && !symbolIdVal) {
       setActiveTabKey('location');
       form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
       toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
@@ -665,13 +639,13 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         activity: cleanString(vals.activity),
         slipwayCount: cleanNumber(vals.slipwayCount),
         remarks: cleanString(vals.remarks),
-        latitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : null),
-        longitude: vals.geometryType && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : null),
-        coordinates: vals.geometryType ? (wktCoordinates || null) : (isEdit ? null : null),
-        geometryType: vals.geometryType || (isEdit ? null : null),
-        mapSymbolId: vals.geometryType ? (symbolIdVal || null) : (isEdit ? null : null),
-        coordinateSystem: vals.geometryType && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : (isEdit ? null : null),
-        displayRule: vals.geometryType ? (vals.displayRule === 'Độ, phút, giây (DMS)' || vals.displayRule === 1 ? 1 : (Number(vals.displayRule) || null)) : (isEdit ? null : null),
+        latitude: currentGeometryType && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : null),
+        longitude: currentGeometryType && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : null),
+        coordinates: currentGeometryType ? (wktCoordinates || null) : (isEdit ? null : null),
+        geometryType: currentGeometryType || (isEdit ? null : null),
+        mapSymbolId: currentGeometryType ? (symbolIdVal || null) : (isEdit ? null : null),
+        coordinateSystem: currentGeometryType && currentCoordSys != null ? Number(currentCoordSys) : (isEdit ? null : null),
+        displayRule: currentGeometryType ? (currentDisplayRule === 'Độ, phút, giây (DMS)' || currentDisplayRule === 1 ? 1 : (Number(currentDisplayRule) || null)) : (isEdit ? null : null),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });
@@ -716,7 +690,10 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
 
   const tabItems = [
     // Tab 1: Thông tin chung
-    { key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}>
+    { key: 'general',
+      label: 'Thông tin chung',
+      forceRender: true,
+      children: (<div style={drawerFormScrollStyle}>
       {/* ── Section 1: Thông tin cơ bản & Quản lý vận hành ── */}
       <div style={sectionBoxStyle}>
         <div style={sectionHeaderStyle}>
@@ -864,6 +841,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           {/* ── Section Card: Thông số đối tượng bản đồ ── */}
@@ -1087,6 +1065,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     {
       key: 'files',
       label: `File đính kèm (${uploadedFiles.length})`,
+      forceRender: true,
       children: (
         <InfrastructureAttachmentTab
           attachments={uploadedFiles.map((f: any) => ({
@@ -1122,7 +1101,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
   return (
     <>
       <style>{`.ship-repair-yard-filter .ant-select-selector { border-radius: 999px !important; } .ship-repair-yard-filter .ant-select-content { flex-wrap: nowrap !important; overflow: hidden; } .ship-repair-yard-filter .ant-select-content-item { max-width: 45% !important; } .ship-repair-yard-filter .ant-select-selection-item { border-radius: 999px !important; }`}</style>
-      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} />
+      <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={drawerTabBarStyle} items={tabItems} destroyInactiveTabPane={false} />
 
       {/* GIS Location Selector Modal — chọn tọa độ trên bản đồ chuyên dụng (chuẩn VTS CHK) */}
       <Modal

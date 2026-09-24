@@ -5,7 +5,6 @@ import java.util.UUID;
 import com.hanghai.kchtg.transmission.entity.Transmission;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.transmission.dto.TransmissionOptionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

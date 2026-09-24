@@ -1,8 +1,28 @@
 package com.hanghai.kchtg.station.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.entity.OperatingOrganization;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.repository.OperatingOrganizationRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
@@ -15,26 +35,21 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService.Scope;
 import com.hanghai.kchtg.security.SecurityUtils;
-import com.hanghai.kchtg.station.dto.cospas.*;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatAttachmentResponse;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatHistoryResponse;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatOptionResponse;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatRequest;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatResponse;
+import com.hanghai.kchtg.station.dto.cospas.CoastalStationCospasSarsatUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationCospasSarsat;
-import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.repository.CoastalStationCospasSarsatRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * Service xử lý nghiệp vụ cho Đài thông tin vệ tinh Cospas-Sarsat.
@@ -271,13 +286,6 @@ public class CoastalStationCospasSarsatService {
             saved = repository.save(saved);
         }
 
-        historyService.recordHistory(
-                InfrastructureType.COSPAS_SARSAT_STATION,
-                saved.getId(),
-                StationHistoryActionType.CREATE,
-                null,
-                "Cospas-Sarsat station created",
-                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -511,14 +519,6 @@ public class CoastalStationCospasSarsatService {
         entity.softDelete(SecurityUtils.getCurrentUserId());
         entity.setApprovalStatus(ApprovalStatus.ARCHIVED);
         repository.save(entity);
-
-        historyService.recordHistory(
-                InfrastructureType.COSPAS_SARSAT_STATION,
-                entity.getId(),
-                StationHistoryActionType.DELETE,
-                "Active",
-                "Cospas-Sarsat station deleted",
-                SecurityUtils.getCurrentUserId());
     }
 
     @Transactional(readOnly = true)

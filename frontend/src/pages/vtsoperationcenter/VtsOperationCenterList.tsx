@@ -1,36 +1,43 @@
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Input, DatePicker, Select } from 'antd';
-import { vtsOperationCenterService, type VtsOperationCenterListParams } from '../../services/vtsOperationCenterService';
-import { vtsSystemCRUD } from '../../services/vtsSystemService';
-import type { VtsOperationCenterListItem, VtsOperationCenterResponse } from '../../types/vtsOperationCenter';
-import { ConditionStatus, ApprovalStatus, CONDITION_STATUS_OPTIONS } from '../../types/vtsSystem';
-import { ScreenHeader, DataTable } from '../../components/list-view';
+import { DatePicker, Input, Select } from 'antd';
+import dayjs from 'dayjs';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
+import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
-import VtsOperationCenterForm from './VtsOperationCenterForm';
-import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
+import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, type OrgUnitTreeOption } from '../../components/org-unit';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
+import CommonHistoryDrawer, { type CommonHistoryEntry } from '../../components/shared/CommonHistoryDrawer';
 import toast from '../../components/ToastNotification';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { useKchtPermissions } from '../../hooks/useKchtPermissions';
 import { useKchtRowActions } from '../../hooks/useKchtRowActions';
-import { KchtApprovalModals } from '../../components/kcht/KchtApprovalModals';
-import {
-  textSecondary,
-  fontWeightBold,
-  spaceSm, spaceMd,
-  statusOperational, statusCritical, statusAttention,
-  statusBadgeStyle, icons, cellTitleStyle, cellSubtitleStyle,
-  colors, radiusPill,
-  getRangePickerProps,
-} from '../../themetokenchk';
-import * as themeTokenChk from '../../themetokenchk';
-import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
-import dayjs from 'dayjs';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../components/org-unit';
-import { useSearchParams } from 'react-router-dom';
-import { useStandardApprovalStatusTabs } from '../../components/shared/approvalStatusTabs';
-import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import { vtsOperationCenterService, type VtsOperationCenterListParams } from '../../services/vtsOperationCenterService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { useAuthStore } from '../../store/authStore';
+import * as themeTokenChk from '../../themetokenchk';
+import {
+  cellSubtitleStyle,
+  cellTitleStyle,
+  colors,
+  fontWeightBold,
+  getRangePickerProps,
+  icons,
+  radiusPill,
+  spaceMd,
+  spaceSm,
+  statusAttention,
+  statusBadgeStyle,
+  statusCritical,
+  statusOperational,
+  textSecondary,
+} from '../../themetokenchk';
+import { getProvinceNameById, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
+import type { VtsOperationCenterListItem, VtsOperationCenterResponse } from '../../types/vtsOperationCenter';
+import { ApprovalStatus, CONDITION_STATUS_OPTIONS, ConditionStatus } from '../../types/vtsSystem';
+import VtsOperationCenterForm from './VtsOperationCenterForm';
 
 const fontSizeMd = 13.5;
 
@@ -703,6 +710,39 @@ export default function VtsOperationCenterList() {
       ),
     },
     {
+      key: 'updatedByName',
+      label: 'Cán bộ cập nhật',
+      dataIndex: 'updatedByName',
+      width: 200,
+      ellipsis: false,
+      sortable: true,
+      sortOrder: sortOrderFor('updatedByName'),
+      render: (_: unknown, record: VtsOperationCenterListItem) => {
+        const name = record.updatedByName || record.createdByName || '—';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: 'submittedByName',
       label: 'Cán bộ gửi phê duyệt',
       dataIndex: 'submittedByName',
@@ -779,39 +819,6 @@ export default function VtsOperationCenterList() {
       render: (_: unknown, record: VtsOperationCenterListItem) => {
         const name = record.approverLevel2Name || '—';
         const date = record.approvedDateLevel2;
-        return (
-          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
-            <div
-              title={name}
-              style={{
-                fontWeight: fontWeightBold,
-                color: '#0F172A',
-                fontSize: fontSizeMd,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {name}
-            </div>
-            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
-              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: 'updatedByName',
-      label: 'Cán bộ cập nhật',
-      dataIndex: 'updatedByName',
-      width: 200,
-      ellipsis: false,
-      sortable: true,
-      sortOrder: sortOrderFor('updatedByName'),
-      render: (_: unknown, record: VtsOperationCenterListItem) => {
-        const name = record.updatedByName || record.createdByName || '—';
-        const date = record.updatedAt || record.createdAt;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             <div

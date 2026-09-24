@@ -2,9 +2,6 @@ package com.hanghai.kchtg.common.service;
 
 import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -32,6 +29,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InfrastructureApprovalService {
 
+    @SuppressWarnings("unused")
     private final InfrastructureHistoryRepository historyRepository;
     private final UserRepository userRepository;
 
@@ -441,24 +439,5 @@ public class InfrastructureApprovalService {
         return ApprovalStatus.APPROVED.name().equals(upper)
                 || ApprovalStatus.APPROVED_LEVEL1.name().equals(upper)
                 || ApprovalStatus.APPROVED_LEVEL2.name().equals(upper);
-    }
-
-    private void recordHistory(UUID refId, InfrastructureType refType, ApprovalLevel level,
-                               InfrastructureHistoryStatus status, UUID userId, String reason,
-                               String changedField, String previousValue, String newValue) {
-        try {
-            historyRepository.save(InfrastructureHistory.builder()
-                    .refId(refId)
-                    .refType(refType)
-                    .approvalLevel(level)
-                    .status(status)
-                    .approvedBy(userId)
-                    .changedField(changedField)
-                    .previousValue(previousValue)
-                    .newValue(newValue)
-                    .build());
-        } catch (Exception e) {
-            log.error("Không thể ghi lịch sử phê duyệt cho refId={}, refType={}: {}", refId, refType, e.getMessage());
-        }
     }
 }

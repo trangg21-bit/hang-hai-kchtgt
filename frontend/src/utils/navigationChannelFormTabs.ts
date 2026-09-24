@@ -54,8 +54,10 @@ export function resolveMainFormTabForField(fieldName: unknown): string {
   return LOCATION_TAB_FIELD_SET.has(String(fieldName ?? '')) ? LOCATION_TAB_KEY : MAIN_FORM_DEFAULT_TAB;
 }
 
+export type RouteDrawerTabKey = 'general' | 'location';
+
 /** Tab chứa trường lỗi của drawer tuyến luồng: vị trí ↔ thông tin chung. */
-export function resolveRouteDrawerTabForField(fieldName: unknown): string {
+export function resolveRouteDrawerTabForField(fieldName: unknown): RouteDrawerTabKey {
   return LOCATION_TAB_FIELD_SET.has(String(fieldName ?? '')) ? LOCATION_TAB_KEY : ROUTE_DRAWER_DEFAULT_TAB;
 }
 

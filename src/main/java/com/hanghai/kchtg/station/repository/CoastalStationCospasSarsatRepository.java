@@ -42,7 +42,6 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
         FROM CoastalStationCospasSarsat c
         WHERE c.deletedAt IS NULL
           AND (c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR c.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
-          AND c.conditionStatus = com.hanghai.kchtg.vtssystem.entity.ConditionStatus.OPERATIONAL
           AND (:scopeEnabled = false OR c.orgUnitId IS NULL OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgFiltered = false OR c.orgUnitId IS NULL OR c.orgUnitId IN :targetOrgUnitIds)
         ORDER BY LOWER(c.name) ASC
@@ -64,6 +63,10 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
         LEFT JOIN OrgUnit oorg ON oorg.id = c.operatingOrgId
         LEFT JOIN Province pv ON pv.id = c.provinceId
         LEFT JOIN User uu ON uu.id = c.updatedBy
+        LEFT JOIN User uc ON uc.id = c.createdBy
+        LEFT JOIN User us ON us.id = c.submittedBy
+        LEFT JOIN User ua1 ON ua1.id = c.approverLevel1
+        LEFT JOIN User ua2 ON ua2.id = c.approverLevel2
         WHERE (:scopeEnabled = false OR c.orgUnitId IN :scopeOrgUnitIds)
           AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)
           AND (:operatingOrgId IS NULL OR c.operatingOrgId = :operatingOrgId)

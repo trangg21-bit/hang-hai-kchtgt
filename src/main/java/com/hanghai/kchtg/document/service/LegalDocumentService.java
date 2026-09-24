@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings("null")
 public class LegalDocumentService {
 
     private final LegalDocumentRepository legalDocumentRepository;

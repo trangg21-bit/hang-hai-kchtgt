@@ -1,26 +1,27 @@
 package com.hanghai.kchtg.station.service;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSHistoryResponse;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSRequest;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSResponse;
 import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSUpdateRequest;
 import com.hanghai.kchtg.station.entity.CoastalStationVTS;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationVTSRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -52,13 +53,6 @@ public class CoastalStationVTSService {
         entity.setIsActive(true);
 
         CoastalStationVTS saved = repository.save(entity);
-        historyService.recordHistory(
-                InfrastructureType.COASTAL_RADIO_STATION,
-                saved.getId(),
-                StationHistoryActionType.CREATE,
-                null,
-                "Station created",
-                SecurityUtils.getCurrentUserId());
         return saved;
     }
 
@@ -168,14 +162,6 @@ public class CoastalStationVTSService {
 
         entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
-
-        historyService.recordHistory(
-                InfrastructureType.COASTAL_RADIO_STATION,
-                entity.getId(),
-                StationHistoryActionType.DELETE,
-                "Active",
-                "Deleted",
-                SecurityUtils.getCurrentUserId());
     }
 
     public CoastalStationVTS getStationById(UUID id) {

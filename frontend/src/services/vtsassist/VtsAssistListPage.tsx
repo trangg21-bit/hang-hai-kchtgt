@@ -3041,11 +3041,11 @@ const VtsAssistListPage = () => {
           quantity: values.quantity != null && !Number.isNaN(Number(String(values.quantity).replace(/,/g, '')))
             ? Number(String(values.quantity).replace(/,/g, ''))
             : 1,
-          orgUnitId: values.orgUnitId ? String(values.orgUnitId) : null,
-          operatingUnitId: values.operatingUnitId ? String(values.operatingUnitId) : null,
+          orgUnitId: trimOrNull(values.orgUnitId),
+          operatingUnitId: trimOrNull(values.operatingUnitId),
           provinceName: trimOrNull(values.provinceName),
           attachedInfrastructureType: numOrNull(values.attachedInfrastructureType),
-          attachedInfrastructureId: values.attachedInfrastructureId ? String(values.attachedInfrastructureId) : null,
+          attachedInfrastructureId: trimOrNull(values.attachedInfrastructureId),
           unitOfMeasure: numOrNull(values.unitOfMeasure),
           yearOfUse: numOrNull(values.yearOfUse),
           operationalStatus: values.operationalStatus != null ? String(values.operationalStatus) : null,
@@ -3698,7 +3698,7 @@ const VtsAssistListPage = () => {
       {/* Detail Drawer */}
       <Drawer
         {...drawerProps}
-        size={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
+        width={typeof window !== 'undefined' ? Math.min(1000, Math.floor(window.innerWidth * 0.95)) : 1000}
         style={{ maxWidth: '96vw' }}
         rootClassName="vtsassist-drawer-scope"
         className="vtsassist-drawer-scope"

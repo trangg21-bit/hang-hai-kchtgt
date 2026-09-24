@@ -1,44 +1,5 @@
 package com.hanghai.kchtg.seaportthroughput.service;
 
-import com.hanghai.kchtg.common.dto.ApprovalRequest;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
-import com.hanghai.kchtg.common.entity.EntityFields;
-import com.hanghai.kchtg.common.entity.InfrastructureHistory;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
-import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
-import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
-import com.hanghai.kchtg.common.util.InfrastructureHistoryUtils;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
-import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
-import com.hanghai.kchtg.seaportthroughput.dto.SearchResultResponse;
-import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputCreateRequest;
-import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputFileResponse;
-import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputImportResponse;
-import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputResponse;
-import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputUpdateRequest;
-import com.hanghai.kchtg.seaportthroughput.entity.SeaportThroughput;
-import com.hanghai.kchtg.seaportthroughput.entity.SeaportThroughputFile;
-import com.hanghai.kchtg.seaportthroughput.repository.SeaportThroughputFileRepository;
-import com.hanghai.kchtg.seaportthroughput.repository.SeaportThroughputRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.ss.usermodel.WorkbookFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,6 +19,46 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.hanghai.kchtg.common.dto.ApprovalRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.BaseApprovableEntity;
+import com.hanghai.kchtg.common.entity.EntityFields;
+import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
+import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
+import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputCreateRequest;
+import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputFileResponse;
+import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputImportResponse;
+import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputResponse;
+import com.hanghai.kchtg.seaportthroughput.dto.SeaportThroughputUpdateRequest;
+import com.hanghai.kchtg.seaportthroughput.dto.SearchResultResponse;
+import com.hanghai.kchtg.seaportthroughput.entity.SeaportThroughput;
+import com.hanghai.kchtg.seaportthroughput.entity.SeaportThroughputFile;
+import com.hanghai.kchtg.seaportthroughput.repository.SeaportThroughputFileRepository;
+import com.hanghai.kchtg.seaportthroughput.repository.SeaportThroughputRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service nghiệp vụ Sản lượng cảng biển (M-028 / F-301).
@@ -153,8 +154,6 @@ public class SeaportThroughputService {
                 .build();
 
         SeaportThroughput saved = repository.save(entity);
-        recordHistory(saved, ApprovalLevel.LEVEL_0, InfrastructureHistoryStatus.DRAFT_SAVED, userId,
-                "Lưu tạm sản lượng cảng biển", null, null, null);
         orgUnitCacheService.evictAfterCommit();
         return toResponse(saved);
     }
@@ -231,9 +230,6 @@ public class SeaportThroughputService {
         if (approvedFlow) {
             approvalService.recordSaveAndApprove(entity, REF_TYPE,
                     "Cập nhật thông tin sản lượng cảng biển sau ban hành", userId);
-        } else {
-            recordHistory(entity, ApprovalLevel.LEVEL_0, InfrastructureHistoryStatus.UPDATED, userId,
-                    "Cập nhật thông tin sản lượng cảng biển", null, null, null);
         }
 
         SeaportThroughput saved = repository.save(entity);
@@ -332,8 +328,6 @@ public class SeaportThroughputService {
         approvalService.deleteDraft(entity, REF_TYPE, userId);
         entity.softDelete(userId);
         repository.save(entity);
-        InfrastructureHistoryUtils.recordSoftDelete(historyRepository, entity.getId(), REF_TYPE, userId,
-                "Xóa bản ghi sản lượng cảng biển");
         orgUnitCacheService.evictAfterCommit();
     }
 
@@ -580,10 +574,6 @@ public class SeaportThroughputService {
         }
 
         List<SeaportThroughput> saved = repository.saveAll(toSave);
-        for (SeaportThroughput entity : saved) {
-            recordHistory(entity, ApprovalLevel.LEVEL_0, InfrastructureHistoryStatus.DRAFT_SAVED, userId,
-                    "Nhập dữ liệu từ file Excel", null, null, null);
-        }
         orgUnitCacheService.evictAfterCommit();
         return new SeaportThroughputImportResponse(saved.size());
     }

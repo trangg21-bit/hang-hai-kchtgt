@@ -217,13 +217,13 @@ class VtsAssistServiceTest {
     }
 
     @Test
-    void softDeleteRecordsHistory() {
+    void softDeleteDoesNotRecordHistory() {
         when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
         when(vtsAssistRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.softDelete(ID);
 
-        verify(historyRepository).save(any());
+        verify(historyRepository, never()).save(any());
         assertNotNull(entity.getDeletedAt());
         assertEquals(USER_ID, entity.getDeletedBy());
     }

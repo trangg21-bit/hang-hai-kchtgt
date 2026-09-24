@@ -338,13 +338,8 @@ export default function UsersPage() {
         setSelectedPermissionKeys(cleanCodes);
       }
     } catch (err: any) {
-      const fallbackCodes = (user.permissionCodes || []).filter((code) => !isHiddenPermission(code));
-      if (fallbackCodes.includes('*')) {
-        setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : fallbackCodes);
-      } else {
-        setSelectedPermissionKeys(fallbackCodes);
-      }
       toast.error(err.response?.data?.message || err.message || 'Không thể tải quyền trực tiếp của người dùng');
+      setPermissionUser(null);
     } finally {
       setPermissionLoading(false);
     }
@@ -904,7 +899,7 @@ export default function UsersPage() {
                           checked,
                           info,
                           selectedPermissionKeys,
-                          rawPermissionTree,
+                          permissionTreeData,
                           validCodesSet,
                         );
                         setSelectedPermissionKeys(next);

@@ -18,7 +18,6 @@ import java.util.UUID;
 
 import java.time.LocalDate;
 import java.util.Set;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/asset/vts-assets")

@@ -2770,8 +2770,7 @@ const validHistoryGroups = useMemo(() => {
         {/* ── DRAWER XEM CHI TIẾT (Đồng bộ 100% chuẩn /cctv) ── */}
         <Drawer
           {...drawerProps}
-          size={undefined}
-          size={DRAWER_WIDTH}
+          width={DRAWER_WIDTH}
           rootClassName={THEME_SCOPE_CLASS}
           className="vhf-drawer-scope"
           title={

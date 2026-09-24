@@ -354,7 +354,7 @@ export default function VtsSystemForm({
     if (isCreateMode) {
       form.resetFields();
       form.setFieldsValue({
-        conditionStatus: ConditionStatus.OPERATIONAL,
+        conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
       });
       setRecord(null);
       setZoneList([]);
@@ -368,14 +368,14 @@ export default function VtsSystemForm({
           if (mounted && res?.code) {
             form.setFieldsValue({
               code: res.code,
-              conditionStatus: ConditionStatus.OPERATIONAL,
+              conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             });
           }
         })
         .catch(() => {
           if (mounted) {
             form.setFieldsValue({
-              conditionStatus: ConditionStatus.OPERATIONAL,
+              conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             });
           }
         });
@@ -873,7 +873,7 @@ export default function VtsSystemForm({
             form={form}
             layout="vertical"
             initialValues={{
-              conditionStatus: ConditionStatus.OPERATIONAL,
+              conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             }}
             onFinish={handleSubmitForm}
             onFinishFailed={(errorInfo) => {

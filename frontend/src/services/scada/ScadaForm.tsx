@@ -553,8 +553,9 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   }, [isEdit, currentUser, orgUnits, form]);
 
   // GIS Geometry Type changes: adjust coordinateList
-  useEffect(() => {
-    if (!watchedGeometryType) {
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form.setFieldValue('geometryType', val);
+    if (!val) {
       form.setFieldsValue({ mapSymbolId: undefined, coordinateSystem: undefined, displayRule: undefined });
       form.setFields([{ name: 'mapSymbolId', errors: [] }]);
       setCoordinateList([]);
@@ -567,12 +568,12 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
     if (!form.getFieldValue('displayRule')) {
       form.setFieldsValue({ displayRule: 'Độ, phút, giây (DMS)' });
     }
-    const count = GEOMETRY_POINT_COUNT[watchedGeometryType] ?? 1;
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
     setCoordinateList((prev) => {
       if (!prev || prev.length === 0) {
         return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
       }
-      if (watchedGeometryType === 'POINT' && prev.length > 1) {
+      if (val === 'POINT' && prev.length > 1) {
         return prev.slice(0, 1);
       }
       if (prev.length < count) {
@@ -581,7 +582,8 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       }
       return prev;
     });
-  }, [watchedGeometryType, form]);
+    setGpsError(null);
+  };
 
   // Populate form fields and state from ScadaResponse
   const populateFormData = useCallback((data: ScadaResponse) => {
@@ -769,17 +771,21 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       }
 
       const values = form.getFieldsValue(true);
-      const geomType = values.geometryType || undefined;
-      const hasGeom = !!geomType;
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? undefined;
+      const currentMapSymbolId = values.mapSymbolId !== undefined ? values.mapSymbolId : (form.getFieldValue('mapSymbolId') ?? undefined);
+      const currentCoordSystem = (values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) || null;
+      const currentDisplayRuleVal = values.displayRule ?? form.getFieldValue('displayRule');
+      const currentDisplayRule = currentDisplayRuleVal != null ? (typeof currentDisplayRuleVal === 'number' ? currentDisplayRuleVal : 1) : null;
+      const hasGeom = !!currentGeometryType;
       const hasCoordinates = coordinateList.length > 0;
 
-      if (hasCoordinates && !geomType) {
+      if (hasCoordinates && !currentGeometryType) {
         toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
         setActiveTab('location');
         return;
       }
 
-      const coordResult = validateDmsCoordinates(coordinateList, geomType);
+      const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
       if (!coordResult.valid) {
         const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
         toast.error(errMsg);
@@ -790,7 +796,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       setGpsError(null);
 
       const validCoords = coordResult.validCoords;
-      const wkt = hasGeom && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, geomType) : null;
+      const wkt = hasGeom && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, currentGeometryType) : null;
 
       // DatePicker year trả về dayjs → payload gửi số năm
       const rawYear = values.yearOfUse;
@@ -832,10 +838,10 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             note: trimOrNull(values.note),
             latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
             longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
-            mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
-            coordinateSystem: hasGeom ? (values.coordinateSystem || null) : null,
-            displayRule: hasGeom ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null) : null,
-            geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+            mapSymbolId: hasGeom ? (currentMapSymbolId || null) : null,
+            coordinateSystem: hasGeom ? currentCoordSystem : null,
+            displayRule: hasGeom ? currentDisplayRule : null,
+            geometryType: hasGeom ? (currentGeometryType as 'POINT' | 'LINE' | 'POLYGON') : null,
             coordinates: hasGeom && wkt ? wkt : null,
             ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
           };
@@ -882,10 +888,10 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             note: trimOrNull(values.note),
             latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : null,
             longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : null,
-            mapSymbolId: hasGeom ? (values.mapSymbolId || null) : null,
-            coordinateSystem: hasGeom ? (values.coordinateSystem || null) : null,
-            displayRule: hasGeom ? (values.displayRule != null ? (typeof values.displayRule === 'number' ? values.displayRule : 1) : null) : null,
-            geometryType: hasGeom ? (geomType as 'POINT' | 'LINE' | 'POLYGON') : null,
+            mapSymbolId: hasGeom ? (currentMapSymbolId || null) : null,
+            coordinateSystem: hasGeom ? currentCoordSystem : null,
+            displayRule: hasGeom ? currentDisplayRule : null,
+            geometryType: hasGeom ? (currentGeometryType as 'POINT' | 'LINE' | 'POLYGON') : null,
             coordinates: hasGeom && wkt ? wkt : null,
             action: saveAction === 'DRAFT' ? 'draft' : saveAction === 'SUBMIT' ? 'submit' : 'approve',
           };
@@ -948,6 +954,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         activeKey={activeTab}
         onChange={setActiveTab}
         tabBarStyle={drawerTabBarStyle}
+        destroyInactiveTabPane={false}
         items={[
           {
             key: 'info',
@@ -1307,13 +1314,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
                           allowClear
                           options={GEOMETRY_TYPE_OPTIONS}
                           style={selectStyle}
-                          onChange={(val) => {
-                            if (!val) {
-                              form.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined });
-                              setCoordinateList([]);
-                              setGpsError(null);
-                            }
-                          }}
+                          onChange={handleGeometryTypeChange}
                         />
                       </Form.Item>
                     </Col>
@@ -1517,6 +1518,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
           {
             key: 'attachments',
             label: `File đính kèm (${uploadedFiles.length})`,
+            forceRender: true,
             children: (
               <div style={drawerFormScrollStyle}>
                 <InfrastructureAttachmentTab

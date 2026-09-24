@@ -1,12 +1,10 @@
 package com.hanghai.kchtg.cctv.repository;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import com.hanghai.kchtg.cctv.entity.Cctv;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
-import com.hanghai.kchtg.cctv.dto.CctvOptionResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,9 +13,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Collection;
+import com.hanghai.kchtg.cctv.dto.CctvOptionResponse;
+import com.hanghai.kchtg.cctv.entity.Cctv;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 
 /**
  * Repository for Cctv entity.

@@ -1828,8 +1828,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         {...drawerProps}
         rootClassName="anchorage-drawer-scope"
         className="anchorage-drawer-scope"
-        size={1000}
-        size="min(1000px, 96vw)"
+        width="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingWaterAreaIndex == null ? 'Thêm mới thông tin khu nước neo buộc tàu' : 'Chỉnh sửa thông tin khu nước neo buộc tàu'}</span>}
         open={waterAreaDrawerOpen}
         onClose={closeWaterAreaDrawer}
@@ -2108,8 +2107,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         {...drawerProps}
         rootClassName="anchorage-drawer-scope"
         className="anchorage-drawer-scope"
-        size={1000}
-        size="min(1000px, 96vw)"
+        width="min(1000px, 96vw)"
         title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin khu nước neo buộc tàu</span>}
         open={!!viewingWaterArea}
         onClose={() => setViewingWaterArea(null)}

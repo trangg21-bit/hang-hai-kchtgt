@@ -613,6 +613,34 @@ export default function VtsSystemList() {
       ),
     },
     {
+      key: 'owningOrgName',
+      label: 'Đơn vị chủ quản',
+      dataIndex: 'owningOrgName',
+      width: 200,
+      ellipsis: false,
+      sortable: true,
+      sortOrder: sortOrderFor('owningOrgName'),
+      render: (val: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
+          {val || '—'}
+        </div>
+      ),
+    },
+    {
+      key: 'operatingOrgName',
+      label: 'Đơn vị vận hành',
+      dataIndex: 'operatingOrgName',
+      width: 200,
+      ellipsis: false,
+      sortable: true,
+      sortOrder: sortOrderFor('operatingOrgName'),
+      render: (val: string) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
+          {val || '—'}
+        </div>
+      ),
+    },
+    {
       key: 'provinceId',
       label: 'Địa điểm (Tỉnh/Thành phố)',
       dataIndex: 'provinceId',
@@ -679,7 +707,7 @@ export default function VtsSystemList() {
       sortOrder: sortOrderFor('updatedByName'),
       render: (val: string, record: VtsSystemResponse) => {
         const name = val || record.updatedByName || record.createdByName || '—';
-        const date = record.updatedDate || (record as any).updatedAt || record.createdDate || (record as any).createdAt;
+        const date = record.updatedDate || record.createdDate;
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             <div
@@ -703,32 +731,103 @@ export default function VtsSystemList() {
       },
     },
     {
-      key: 'owningOrgName',
-      label: 'Đơn vị chủ quản',
-      dataIndex: 'owningOrgName',
+      key: 'submittedByName',
+      label: 'Cán bộ gửi phê duyệt',
+      dataIndex: 'submittedByName',
       width: 200,
       ellipsis: false,
       sortable: true,
-      sortOrder: sortOrderFor('owningOrgName'),
-      render: (val: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
-          {val || '—'}
-        </div>
-      ),
+      sortOrder: sortOrderFor('submittedByName'),
+      render: (_: unknown, record: VtsSystemResponse) => {
+        const name = record.submittedByName || '—';
+        const date = record.submittedDate;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
     },
     {
-      key: 'operatingOrgName',
-      label: 'Đơn vị vận hành',
-      dataIndex: 'operatingOrgName',
+      key: 'approverLevel1Name',
+      label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+      dataIndex: 'approverLevel1Name',
+      width: 240,
+      ellipsis: false,
+      sortable: true,
+      sortOrder: sortOrderFor('approverLevel1Name'),
+      render: (_: unknown, record: VtsSystemResponse) => {
+        const name = record.approverLevel1Name || '—';
+        const date = record.approvedDateLevel1;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'approverLevel2Name',
+      label: 'Cán bộ phê duyệt cấp Cục',
+      dataIndex: 'approverLevel2Name',
       width: 200,
       ellipsis: false,
       sortable: true,
-      sortOrder: sortOrderFor('operatingOrgName'),
-      render: (val: string) => (
-        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={val}>
-          {val || '—'}
-        </div>
-      ),
+      sortOrder: sortOrderFor('approverLevel2Name'),
+      render: (_: unknown, record: VtsSystemResponse) => {
+        const name = record.approverLevel2Name || '—';
+        const date = record.approvedDateLevel2;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              title={name}
+              style={{
+                fontWeight: fontWeightBold,
+                color: '#0F172A',
+                fontSize: fontSizeMd,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
+        );
+      },
     },
   ], [page, pageSize, isRejectedTab, sortOrderFor]);
 
