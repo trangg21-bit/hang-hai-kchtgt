@@ -52,7 +52,6 @@ import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/appr
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
-import { isAttachmentField } from "../../utils/historyAttachmentDedup";
 import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
 import api from "../api";
 import { organizationService } from "../organizationService";
