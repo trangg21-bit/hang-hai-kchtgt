@@ -217,13 +217,13 @@ class VtsAssistServiceTest {
     }
 
     @Test
-    void softDeleteRecordsHistory() {
+    void softDeleteDoesNotRecordHistory() {
         when(vtsAssistRepository.findById(ID)).thenReturn(Optional.of(entity));
         when(vtsAssistRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.softDelete(ID);
 
-        verify(historyRepository).save(any());
+        verify(historyRepository, never()).save(any());
         assertNotNull(entity.getDeletedAt());
         assertEquals(USER_ID, entity.getDeletedBy());
     }
@@ -403,5 +403,59 @@ class VtsAssistServiceTest {
         assertNull(entity.getAttachedInfrastructureType());
         assertNull(entity.getAttachedInfrastructureId());
         assertNull(entity.getProvinceName());
+    }
+
+    @Test
+    void findAll_SortByAttachedInfrastructureName_BuildsCoalesceSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        when(vtsAssistRepository.searchVtsAssist(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), captor.capture()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "attachedInfrastructureName", "asc");
+
+        org.springframework.data.domain.Pageable pageable = captor.getValue();
+        assertNotNull(pageable);
+        org.springframework.data.domain.Sort.Order order = pageable.getSort().getOrderFor("COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')");
+        assertNotNull(order);
+        assertEquals(org.springframework.data.domain.Sort.Direction.ASC, order.getDirection());
+    }
+
+    @Test
+    void findAll_SortByOperatingUnitName_BuildsCoalesceSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        when(vtsAssistRepository.searchVtsAssist(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), captor.capture()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "operatingUnitName", "desc");
+
+        org.springframework.data.domain.Pageable pageable = captor.getValue();
+        assertNotNull(pageable);
+        org.springframework.data.domain.Sort.Order order = pageable.getSort().getOrderFor("COALESCE(LOWER(opo.name), LOWER(opu.name), '')");
+        assertNotNull(order);
+        assertEquals(org.springframework.data.domain.Sort.Direction.DESC, order.getDirection());
+    }
+
+    @Test
+    void findAll_SortByVtsSystemName_BuildsCoalesceSort() {
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        when(vtsAssistRepository.searchVtsAssist(
+                any(), any(Boolean.class), any(), any(Boolean.class), any(),
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), captor.capture()))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(entity)));
+
+        service.findAll(0, 20, null, null, null, null, null, null, null, null, null, null, null, null, null, "vtsSystemName", "asc");
+
+        org.springframework.data.domain.Pageable pageable = captor.getValue();
+        assertNotNull(pageable);
+        org.springframework.data.domain.Sort.Order order = pageable.getSort().getOrderFor("COALESCE(LOWER(voc.name), LOWER(rs.stationName), '')");
+        assertNotNull(order);
+        assertEquals(org.springframework.data.domain.Sort.Direction.ASC, order.getDirection());
     }
 }

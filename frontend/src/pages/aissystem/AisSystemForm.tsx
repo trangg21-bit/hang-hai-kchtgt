@@ -807,9 +807,9 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       title={
         <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
           {isDetailMode
-            ? (record?.name ? `Chi tiết hệ thống trạm bờ AIS - ${record.name}` : 'Chi tiết hệ thống trạm bờ AIS')
+            ? (record?.name ? `Chi tiết hệ thống AIS - ${record.name}` : 'Chi tiết hệ thống AIS')
             : isCreateMode
-              ? 'Thêm mới hệ thống trạm bờ AIS'
+              ? 'Thêm mới hệ thống AIS'
               : (record?.name ? `Chỉnh sửa thông tin — ${record.name}` : 'Chỉnh sửa thông tin')}
         </span>
       }

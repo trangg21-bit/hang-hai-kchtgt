@@ -67,7 +67,7 @@ describe('VTS Assist Attached Infrastructure Cascade & Validation (/vts-assist)'
 
   it('TC-VTS-ASSIST-03: Resets attached infrastructure if currently selected item does not belong to new Đơn vị quản lý', () => {
     let currentAttachedId: string | undefined = 'radar-hp-1';
-    const currentAttachedType = 2;
+    const currentAttachedType: number = 2;
 
     // User changes orgUnitId to TP.HCM
     const newOrgUnitId = 'org-cv-sg';
@@ -86,7 +86,7 @@ describe('VTS Assist Attached Infrastructure Cascade & Validation (/vts-assist)'
 
   it('TC-VTS-ASSIST-04: Keeps attached infrastructure if currently selected item belongs to new Đơn vị quản lý', () => {
     let currentAttachedId: string | undefined = 'radar-hp-2';
-    const currentAttachedType = 2;
+    const currentAttachedType: number = 2;
 
     // User changes orgUnitId from sub-unit to parent (Hải Phòng)
     const newOrgUnitId = 'org-cv-hp';

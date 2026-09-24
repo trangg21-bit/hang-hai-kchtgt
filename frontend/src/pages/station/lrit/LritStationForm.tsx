@@ -782,9 +782,9 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
   };
 
   const getDrawerTitle = () => {
-    if (isCreateMode) return 'Thêm mới Đài thông tin LRIT';
-    if (isEditMode) return record?.name ? `Chỉnh sửa — ${record.name}` : 'Chỉnh sửa Đài thông tin LRIT';
-    return record?.name ? `Chi tiết Đài thông tin LRIT - ${record.name}` : 'Chi tiết Đài thông tin LRIT';
+    if (isCreateMode) return 'Thêm mới Đài thông tin nhận dạng và truy theo tầm xa (LRIT)';
+    if (isEditMode) return record?.name ? `Chỉnh sửa — ${record.name}` : 'Chỉnh sửa Đài thông tin nhận dạng và truy theo tầm xa (LRIT)';
+    return record?.name ? `Chi tiết Đài thông tin nhận dạng và truy theo tầm xa (LRIT) - ${record.name}` : 'Chi tiết Đài thông tin nhận dạng và truy theo tầm xa (LRIT)';
   };
 
   return (

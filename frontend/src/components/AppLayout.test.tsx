@@ -412,7 +412,7 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     // kcht tree (real config) rendered in sidebar
     expect(html).toContain('Cảng biển');
     expect(html).toContain('Hệ thống VTS');
-    expect(html).toContain('Đài viễn thông hàng hải');
+    expect(html).toContain('Hệ thống thông tin duyên hải Việt Nam');
     // AC-024-07: PHÊ DUYỆT group/word gone from this menu
     expect(html).not.toContain('PHÊ DUYỆT');
     expect(html).not.toContain('Phê duyệt');
@@ -432,14 +432,13 @@ describe('M-024 rework: real render (react-dom/server) — landing + kcht sideba
     expect(html).toContain('ant-menu-item-selected'); // active leaf highlighted
   });
 
-  // AC-024-04 (render seam): '/dai-ttdh' — Đài viễn thông root branch contains VHF as a
-  // DISABLED menu item (no route -> not clickable), rendered by the real antd Menu.
-  it('AC-04: "/dai-ttdh" — VHF disabled menu item rendered inside Đài viễn thông branch', () => {
+  // AC-024-04: '/dai-ttdh' — Đài viễn thông root branch rendered with Đài TTDH; VHF is at top-level
+  it('AC-04: "/dai-ttdh" — Đài viễn thông branch rendered with Đài TTDH', () => {
     const html = renderAt('/dai-ttdh', ['*']);
     expect(html).toContain('aria-label="Về Danh mục chức năng"');
-    expect(html).toContain('Đài viễn thông hàng hải');
+    expect(html).toContain('Hệ thống thông tin duyên hải Việt Nam');
     expect(html).toContain('Đài TTDH');
-    expect(html).not.toContain('VHF');
+    expect(html).toContain('Hệ thống thông tin liên lạc VHF');
   });
 
   // AC-024-05 (render seam): permission pruning feeds the same real Menu — at '/port' a

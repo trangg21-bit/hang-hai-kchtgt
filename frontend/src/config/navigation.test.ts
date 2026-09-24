@@ -110,9 +110,9 @@ const MATRIX_28_KEYS = [
   '/dike-revetment', // Đê chắn sóng, đê chắn cát, kè
   '/dai-ttdh', // Đài TTDH
   '/vhf', // Hệ thống VHF
-  '/station/inmarsat', // Đài vệ tinh Inmarsat
-  '/station/lrit', // Đài LRIT
-  '/station/cospas-sarsat', // Đài Cospas-Sarsat
+  '/station/inmarsat', // Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng
+  '/station/lrit', // Đài thông tin nhận dạng và truy theo tầm xa (LRIT)
+  '/station/cospas-sarsat', // Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam
   '/station/hanoi', // Đài TTXLTT Hà Nội
 ] as const;
 
@@ -159,19 +159,19 @@ describe('navigation.kchtTree — AC-024-03 (28 KCHT types, external matrix)', (
     const vhf = byKey.get('/vhf');
     expect(vhf).toBeDefined();
     expect(vhf?.route).toBe('/vhf');
-    expect(vhf?.ancestors).toEqual(['/navigation-channel']);
+    expect(vhf?.ancestors).toEqual([]);
   });
 
   it('keeps the multi-layer parent–child chains of the matrix (depth >= 3)', () => {
     const byKey = new Map(entries.map((e) => [e.key, e]));
     // Cảng biển → Bến cảng → Cầu cảng
     expect(byKey.get('/pier')?.ancestors).toEqual(['/port', '/berth']);
-    // Luồng hàng hải → Bến phao
-    expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/navigation-channel']);
-    // Luồng hàng hải → Hệ thống thông tin liên lạc VHF
-    expect(byKey.get('/vhf')?.ancestors).toEqual(['/navigation-channel']);
-    // Luồng hàng hải → Nhà trạm phao tiêu → Phao tiêu
-    expect(byKey.get('/buoys')?.ancestors).toEqual(['/navigation-channel', '/buoy-station']);
+    // Cảng biển → Bến phao
+    expect(byKey.get('/buoy-berth')?.ancestors).toEqual(['/port']);
+    // Hệ thống thông tin liên lạc VHF (cấp gốc)
+    expect(byKey.get('/vhf')?.ancestors).toEqual([]);
+    // Nhà trạm vận hành Phao, tiêu → Phao, tiêu
+    expect(byKey.get('/buoys')?.ancestors).toEqual(['/buoy-station']);
     // Hệ thống VTS (node route '/vts-system') → Trung tâm điều hành VTS, Trạm radar (cùng cấp con trực tiếp của /vts-system)
     expect(byKey.get('/vts-operation-center')?.ancestors).toEqual(['/vts-system']);
     expect(byKey.get('/radar-station')?.ancestors).toEqual(['/vts-system']);
@@ -329,23 +329,23 @@ describe('navigation.locateRoute — AC-024-06', () => {
     expect(locateRoute(kchtTree, '/pier')).toEqual({ key: '/pier', openKeys: ['/port', '/berth'] });
     expect(locateRoute(kchtTree, '/buoys')).toEqual({
       key: '/buoys',
-      openKeys: ['/navigation-channel', '/buoy-station'],
+      openKeys: ['/buoy-station'],
     });
     expect(locateRoute(kchtTree, '/station/hanoi')).toEqual({ key: '/station/hanoi', openKeys: ['kcht-vienthong'] });
-    expect(locateRoute(kchtTree, '/vhf')).toEqual({ key: '/vhf', openKeys: ['/navigation-channel'] });
+    expect(locateRoute(kchtTree, '/vhf')).toEqual({ key: '/vhf', openKeys: [] });
   });
 
   it('does not cross-match routes sharing a textual prefix (segment boundary)', () => {
     // '/navigation-channel/1' resolves to the Luồng node (id detail suffix), while
-    // '/buoy-berth/7' resolves to the Bến phao leaf under Luồng — nhưng path chỉ
+    // '/buoy-berth/7' resolves to the Bến phao leaf under Cảng biển — nhưng path chỉ
     // "bắt đầu bằng" cùng text ('/buoy-berth-extra/7') không được khớp '/buoy-berth'.
     expect(locateRoute(kchtTree, '/navigation-channel/1')).toEqual({
       key: '/navigation-channel',
-      openKeys: ['/navigation-channel'],
+      openKeys: [],
     });
     expect(locateRoute(kchtTree, '/buoy-berth/7')).toEqual({
       key: '/buoy-berth',
-      openKeys: ['/navigation-channel'],
+      openKeys: ['/port'],
     });
     expect(locateRoute(kchtTree, '/buoy-berth-extra/7')).toBeUndefined();
   });
@@ -388,8 +388,8 @@ describe('navigation.treeNodeLevels — chips C0..C3 depth oracle', () => {
     const levels = treeNodeLevels(kchtTree);
     // Chain evidence khớp locateRoute (external): /port(root) → /berth → /pier
     expect(levels.get('/pier')).toBe(2);
-    // /navigation-channel (root) → /buoy-station → /buoys
-    expect(levels.get('/buoys')).toBe(2);
+    // /buoy-station (root) → /buoys
+    expect(levels.get('/buoys')).toBe(1);
     // kcht-vienthong (root) → /station/hanoi
     expect(levels.get('/station/hanoi')).toBe(1);
   });
@@ -456,7 +456,8 @@ describe('navigation.collectParentKeys — Mở rộng / Thu gọn tất cả', 
     const keys = collectParentKeys(kchtTree);
     expect(keys).toContain('/port');
     expect(keys).toContain('/berth');
-    expect(keys).toContain('/navigation-channel');
+    expect(keys).toContain('/buoy-station');
+    expect(keys).not.toContain('/navigation-channel');
     expect(keys).not.toContain('/pier'); // lá không có children
   });
 });
@@ -494,7 +495,7 @@ describe('navigation.collectNavLabels — label-collector của searchNavGroups'
     const labels = collectNavLabels(kchtTree);
     expect(labels).toContain('Cảng biển'); // cha
     expect(labels).toContain('Cầu cảng'); // lá sâu
-    expect(labels).toContain('Đài viễn thông hàng hải'); // nhánh root riêng
+    expect(labels).toContain('Hệ thống thông tin duyên hải Việt Nam'); // nhánh root riêng
   });
 });
 

@@ -217,7 +217,7 @@ export const PERMISSIONS = {
     HISTORY: 'vtsoperationcenter:history',
   },
 
-  /** Hệ thống trạm bờ AIS (M-004) */
+  /** Hệ thống AIS (M-004) */
   AIS_SYSTEM: {
     READ: 'aissystem:read',
     CREATE: 'aissystem:create',
@@ -228,7 +228,7 @@ export const PERMISSIONS = {
     HISTORY: 'aissystem:history',
   },
 
-  /** Đài thông tin LRIT (M-004) */
+  /** Đài thông tin nhận dạng và truy theo tầm xa (LRIT) (M-004) */
   COASTAL_STATION_LRIT: {
     READ: 'coastalstationlrit:read',
     CREATE: 'coastalstationlrit:create',
@@ -239,7 +239,7 @@ export const PERMISSIONS = {
     HISTORY: 'coastalstationlrit:history',
   },
 
-  /** Đài thông tin vệ tinh Inmarsat (M-004) */
+  /** Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng (M-004) */
   COASTAL_STATION_INMARSAT: {
     READ: 'coastalstationinmarsat:read',
     CREATE: 'coastalstationinmarsat:create',
@@ -472,7 +472,7 @@ export const rawPermissionTree = [
   },
   {
     key: 'group_m004',
-    title: 'Hệ thống VTS & Đài duyên hải (M-004)',
+    title: 'Hệ thống VTS & Hệ thống thông tin duyên hải Việt Nam',
     children: [
       { key: PERMISSIONS.VTS.READ, title: 'Xem Hệ thống VTS' },
       { key: PERMISSIONS.VTS.CREATE, title: 'Thêm Hệ thống VTS' },
@@ -488,27 +488,27 @@ export const rawPermissionTree = [
       { key: PERMISSIONS.VTS_OPERATION_CENTER.APPROVE_C1, title: 'Duyệt TTDH VTS C1' },
       { key: PERMISSIONS.VTS_OPERATION_CENTER.APPROVE_C2, title: 'Duyệt TTDH VTS C2' },
       { key: PERMISSIONS.VTS_OPERATION_CENTER.HISTORY, title: 'Lịch sử TTDH VTS' },
-      { key: PERMISSIONS.AIS_SYSTEM.READ, title: 'Xem Trạm bờ AIS' },
-      { key: PERMISSIONS.AIS_SYSTEM.CREATE, title: 'Thêm Trạm bờ AIS' },
-      { key: PERMISSIONS.AIS_SYSTEM.UPDATE, title: 'Sửa Trạm bờ AIS' },
-      { key: PERMISSIONS.AIS_SYSTEM.DELETE, title: 'Xóa Trạm bờ AIS' },
-      { key: PERMISSIONS.AIS_SYSTEM.APPROVE_C1, title: 'Duyệt Trạm bờ AIS C1' },
-      { key: PERMISSIONS.AIS_SYSTEM.APPROVE_C2, title: 'Duyệt Trạm bờ AIS C2' },
-      { key: PERMISSIONS.AIS_SYSTEM.HISTORY, title: 'Lịch sử Trạm bờ AIS' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.READ, title: 'Xem Đài LRIT' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.CREATE, title: 'Thêm Đài LRIT' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.UPDATE, title: 'Sửa Đài LRIT' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.DELETE, title: 'Xóa Đài LRIT' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.APPROVE_C1, title: 'Duyệt Đài LRIT C1' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.APPROVE_C2, title: 'Duyệt Đài LRIT C2' },
-      { key: PERMISSIONS.COASTAL_STATION_LRIT.HISTORY, title: 'Lịch sử Đài LRIT' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.READ, title: 'Xem Đài Inmarsat' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.CREATE, title: 'Thêm Đài Inmarsat' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.UPDATE, title: 'Sửa Đài Inmarsat' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.DELETE, title: 'Xóa Đài Inmarsat' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.APPROVE_C1, title: 'Duyệt Đài Inmarsat C1' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.APPROVE_C2, title: 'Duyệt Đài Inmarsat C2' },
-      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.HISTORY, title: 'Lịch sử Đài Inmarsat' },
+      { key: PERMISSIONS.AIS_SYSTEM.READ, title: 'Xem Hệ thống AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.CREATE, title: 'Thêm Hệ thống AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.UPDATE, title: 'Sửa Hệ thống AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.DELETE, title: 'Xóa Hệ thống AIS' },
+      { key: PERMISSIONS.AIS_SYSTEM.APPROVE_C1, title: 'Duyệt Hệ thống AIS C1' },
+      { key: PERMISSIONS.AIS_SYSTEM.APPROVE_C2, title: 'Duyệt Hệ thống AIS C2' },
+      { key: PERMISSIONS.AIS_SYSTEM.HISTORY, title: 'Lịch sử Hệ thống AIS' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.READ, title: 'Xem Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.CREATE, title: 'Thêm Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.UPDATE, title: 'Sửa Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.DELETE, title: 'Xóa Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.APPROVE_C1, title: 'Duyệt Đài thông tin nhận dạng và truy theo tầm xa (LRIT) C1' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.APPROVE_C2, title: 'Duyệt Đài thông tin nhận dạng và truy theo tầm xa (LRIT) C2' },
+      { key: PERMISSIONS.COASTAL_STATION_LRIT.HISTORY, title: 'Lịch sử Đài thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.READ, title: 'Xem Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.CREATE, title: 'Thêm Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.UPDATE, title: 'Sửa Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.DELETE, title: 'Xóa Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.APPROVE_C1, title: 'Duyệt Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng C1' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.APPROVE_C2, title: 'Duyệt Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng C2' },
+      { key: PERMISSIONS.COASTAL_STATION_INMARSAT.HISTORY, title: 'Lịch sử Đài thông tin vệ tinh mặt đất Inmarsat Hải Phòng' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.READ, title: 'Xem Đài TTXLTT Hà Nội' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.CREATE, title: 'Thêm Đài TTXLTT Hà Nội' },
       { key: PERMISSIONS.COASTAL_STATION_HAIPHONG.UPDATE, title: 'Sửa Đài TTXLTT Hà Nội' },
