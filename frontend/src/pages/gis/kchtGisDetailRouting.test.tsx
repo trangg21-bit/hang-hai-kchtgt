@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getKchtGisCategoryId, KCHT_GIS_TYPE_OPTIONS } from '../../types/gisSearch';
 import {
   buildKchtScreenPath,
+  isKchtSearchResultCompatibleWithFeature,
   KCHT_SCREEN_ROUTE_BY_TYPE,
   resolveKchtCustomFeatureReference,
   resolveKchtInfrastructureType,
@@ -50,29 +51,49 @@ describe('KCHT GIS detail routing', () => {
     })).toBe('CCTV');
   });
 
-  it('uses category type for legacy AIS records whose refType was incorrectly stored as seaport ordinal 0', () => {
+  it('treats refType 0 on a manually drawn AIS object as its parent seaport reference', () => {
     expect(resolveKchtCustomFeatureReference({
       categoryId: 23,
-      refId: 'ais-123',
+      refId: 'parent-port-123',
       refType: 0,
     })).toEqual({
       infrastructureType: 'AIS_SYSTEM',
-      isSystemLinked: true,
-      referenceId: 'ais-123',
+      isSystemLinked: false,
+      referenceId: 'parent-port-123',
     });
   });
 
-  it.each(KCHT_GIS_TYPE_OPTIONS)('routes linked custom feature category $value to its native screen', ({ value }) => {
-    const categoryId = getKchtGisCategoryId(value);
-    const resolved = resolveKchtCustomFeatureReference({
-      categoryId,
-      refId: `${value}-record`,
+  it('does not route a manually drawn berth to the berth API using its parent seaport ID', () => {
+    const feature = {
+      categoryId: getKchtGisCategoryId('PORT_TERMINAL'),
+      refId: 'parent-port-456',
       refType: 0,
+    };
+    expect(resolveKchtCustomFeatureReference(feature)).toEqual({
+      infrastructureType: 'PORT_TERMINAL',
+      isSystemLinked: false,
+      referenceId: 'parent-port-456',
     });
+    expect(isKchtSearchResultCompatibleWithFeature(feature, {
+      infrastructureType: 'SEAPORT',
+      kchtTypeLabel: 'Cảng biển',
+    })).toBe(false);
+    expect(isKchtSearchResultCompatibleWithFeature(feature, {
+      infrastructureType: 'PORT_TERMINAL',
+      kchtTypeLabel: 'Bến cảng',
+    })).toBe(true);
+  });
 
-    expect(resolved.infrastructureType).toBe(value);
-    expect(resolved.isSystemLinked).toBe(true);
-    expect(KCHT_SCREEN_ROUTE_BY_TYPE[resolved.infrastructureType!]).toBeTruthy();
+  it('keeps a seaport spatial object linked when refType 0 identifies the seaport itself', () => {
+    expect(resolveKchtCustomFeatureReference({
+      categoryId: getKchtGisCategoryId('SEAPORT'),
+      refId: 'seaport-123',
+      refType: 0,
+    })).toEqual({
+      infrastructureType: 'SEAPORT',
+      isSystemLinked: true,
+      referenceId: 'seaport-123',
+    });
   });
 
   it.each([
