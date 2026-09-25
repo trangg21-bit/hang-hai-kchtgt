@@ -371,6 +371,7 @@ export default function BerthList() {
   const [symbolMap, setSymbolMap] = useState<Map<string, string>>(new Map());
   const [symbolImageMap, setSymbolImageMap] = useState<Map<string, string>>(new Map());
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; name: string; seaportId?: string }>>([]);
   const [operatingOrgMap, setOperatingOrgMap] = useState<Map<string, string>>(() => {
     const m = new Map<string, string>();
     DEFAULT_OPERATING_ORGANIZATIONS.forEach((o) => m.set(o.id, o.name));
@@ -395,16 +396,26 @@ export default function BerthList() {
     navigationChannelCRUD.getOptions()
       .then((items) => {
         const m = new Map<string, string>();
+        const list: Array<{ id: string; name: string; seaportId?: string }> = [];
         items.forEach(n => {
           const code = n.channelCode?.trim();
           const name = n.channelName?.trim();
           const label = code && name ? `${code} - ${name}` : (code || name || '');
           m.set(n.id, label);
+          list.push({ id: n.id, name: label, seaportId: n.seaportId });
         });
         setWaterwayMap(m);
+        setAllWaterways(list);
       })
       .catch(() => {});
   }, []);
+
+  const filteredWaterwayOptions = useMemo(() => {
+    if (!filterPortId) return [];
+    return allWaterways
+      .filter((w) => w.seaportId && String(w.seaportId).toLowerCase() === String(filterPortId).toLowerCase())
+      .map((w) => ({ value: w.id, label: w.name }));
+  }, [filterPortId, allWaterways]);
   const orgMap = useMemo(() => {
     const map = new Map<string, string>();
     organizations.forEach((o) => map.set(o.id, o.name));
@@ -1068,15 +1079,17 @@ export default function BerthList() {
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
             <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
-              value={filterPortId} onChange={(v) => { setFilterPortId(v); setPage(1); }}
+              value={filterPortId} onChange={(v) => { setFilterPortId(v); setFilterWaterwayId(undefined); setPage(1); }}
               options={portOptions.map(o => ({ label: o.label, value: o.value }))}
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-            <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+            <Select placeholder={!filterPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải'} allowClear showSearch optionFilterProp="label"
+              disabled={!filterPortId}
               value={filterWaterwayId} onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
-              options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+              options={filteredWaterwayOptions}
+              notFoundContent="Không có luồng hàng hải thuộc cảng biển"
               style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
           </div>
           <div style={{ marginBottom: 12 }}>

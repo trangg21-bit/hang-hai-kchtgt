@@ -10,7 +10,6 @@ import {
   Modal,
   Select,
   Space,
-  Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -393,6 +392,7 @@ export default function PierListPage() {
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; name: string; seaportId?: string }>>([]);
   const [filterConstructionGrade, setFilterConstructionGrade] = useState<number | undefined>();
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
   const [filterOperationalFunction, setFilterOperationalFunction] = useState<string | undefined>();
@@ -688,16 +688,26 @@ export default function PierListPage() {
     navigationChannelCRUD.getOptions()
       .then((items) => {
         const m = new Map<string, string>();
+        const list: Array<{ id: string; name: string; seaportId?: string }> = [];
         items.forEach(n => {
           const code = n.channelCode?.trim();
           const name = n.channelName?.trim();
           const label = code && name ? `${code} - ${name}` : (code || name || '');
           m.set(n.id, label);
+          list.push({ id: n.id, name: label, seaportId: n.seaportId });
         });
         setWaterwayMap(m);
+        setAllWaterways(list);
       })
       .catch(() => {});
   }, []);
+
+  const filteredWaterwayOptions = useMemo(() => {
+    if (!filterPortId) return [];
+    return allWaterways
+      .filter((w) => w.seaportId && String(w.seaportId).toLowerCase() === String(filterPortId).toLowerCase())
+      .map((w) => ({ value: w.id, label: w.name }));
+  }, [filterPortId, allWaterways]);
 
   useEffect(() => {
     portCRUD.getOptions()
@@ -947,7 +957,7 @@ export default function PierListPage() {
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
-            value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); }}
+            value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); setFilterWaterwayId(undefined); }}
             options={portOptions} showSearch filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -958,9 +968,11 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn luồng hàng hải" allowClear showSearch
+          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder={!filterPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải'} allowClear showSearch
+            disabled={!filterPortId}
             value={filterWaterwayId} onChange={v => setFilterWaterwayId(v)}
-            options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+            options={filteredWaterwayOptions}
+            notFoundContent="Không có luồng hàng hải thuộc cảng biển"
             filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -1106,11 +1118,9 @@ export default function PierListPage() {
       render: (v: string | null, r: Pier) => {
         const name = orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || '';
         return (
-          <Tooltip title={name}>
-            <span style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {name}
-            </span>
-          </Tooltip>
+          <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {name}
+          </span>
         );
       } },
     { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240,

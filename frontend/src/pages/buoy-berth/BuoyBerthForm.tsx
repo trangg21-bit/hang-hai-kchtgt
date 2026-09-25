@@ -336,30 +336,32 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
 
   const [loadingWaterways, setLoadingWaterways] = useState(false);
 
-  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
-    if (!orgUnitId) {
+  const loadWaterwayOptions = useCallback(async (portId?: string) => {
+    if (!portId) {
       setWaterwayOptions([]);
       return;
     }
     setLoadingWaterways(true);
     try {
-      const r = await navigationChannelCRUD.search({
-        orgUnitId,
-        approvalStatus: 'APPROVED',
-        page: 0,
-        size: 1000,
+      const items = await navigationChannelCRUD.getOptions();
+      const filtered = items.filter((n) => n.seaportId && String(n.seaportId).toLowerCase() === String(portId).toLowerCase());
+      const options = filtered.map((n) => {
+        const code = n.channelCode?.trim();
+        const name = n.channelName?.trim();
+        const label = code && name ? `${code} - ${name}` : (code || name || '');
+        return { value: n.id, label };
       });
-      const options = (r.items || []).map((n) => ({
-        value: n.id,
-        label: n.channelName || n.channelCode || '',
-      }));
       setWaterwayOptions(options);
+      const currentWaterwayId = form.getFieldValue('waterwayId');
+      if (currentWaterwayId && !options.some((o) => o.value === currentWaterwayId)) {
+        form.setFieldsValue({ waterwayId: undefined });
+      }
     } catch {
       setWaterwayOptions([]);
     } finally {
       setLoadingWaterways(false);
     }
-  }, []);
+  }, [form]);
 
   const loadPortOptions = async (orgUnitId: string) => {
     setLoadingPorts(true);
@@ -381,11 +383,15 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       return;
     }
     void loadPortOptions(watchedOrgUnitId);
-    void loadWaterwayOptions(watchedOrgUnitId);
-  }, [watchedOrgUnitId, loadWaterwayOptions]);
+  }, [watchedOrgUnitId]);
 
   useEffect(() => {
-    if (!watchedPortId) return;
+    if (!watchedPortId) {
+      setWaterwayOptions([]);
+      form.setFieldsValue({ waterwayId: undefined });
+      return;
+    }
+    void loadWaterwayOptions(watchedPortId);
     if (isEdit && editPortIdRef.current === watchedPortId) {
       if (initialBuoyBerthCodeRef.current) {
         form.setFieldsValue({ buoyBerthCode: initialBuoyBerthCodeRef.current });
@@ -397,7 +403,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
       .then((res: any) => { if (res?.buoyBerthCode) form.setFieldsValue({ buoyBerthCode: res.buoyBerthCode }); })
       .catch(() => {})
       .finally(() => setBuoyBerthCodeLoading(false));
-  }, [watchedPortId, isEdit, form]);
+  }, [watchedPortId, isEdit, form, loadWaterwayOptions]);
 
   const handleGeometryTypeChange = (val: string | undefined) => {
     form.setFieldValue('geometryType', val);
@@ -447,7 +453,9 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         }) : data.latitude != null ? (() => { const latDms = ddToDms(Number(data.latitude)); const lngDms = ddToDms(Number(data.longitude)); return [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]; })() : []);
         if (data.orgUnitId) {
           await loadPortOptions(data.orgUnitId);
-          await loadWaterwayOptions(data.orgUnitId);
+        }
+        if (data.portId) {
+          await loadWaterwayOptions(data.portId);
           if (data.waterwayId) {
             setWaterwayOptions((prev) => {
               if (prev.some((o) => o.value === data.waterwayId)) return prev;
@@ -808,14 +816,14 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
           <Col span={12}>
             <Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
               <Select
-                placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : waterwayOptions.length === 0 && !loadingWaterways ? 'Không có luồng hàng hải thuộc đơn vị quản lý' : 'Chọn luồng hàng hải...'}
+                placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : waterwayOptions.length === 0 && !loadingWaterways ? 'Không có luồng hàng hải thuộc cảng biển' : 'Chọn luồng hàng hải...'}
                 loading={loadingWaterways}
-                disabled={!watchedOrgUnitId}
+                disabled={!watchedPortId}
                 options={waterwayOptions}
                 showSearch
                 allowClear
                 optionFilterProp="label"
-                notFoundContent="Không có luồng hàng hải thuộc đơn vị quản lý"
+                notFoundContent="Không có luồng hàng hải thuộc cảng biển"
                 style={selectStyle}
               />
             </Form.Item>
