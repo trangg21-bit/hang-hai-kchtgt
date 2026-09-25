@@ -25,4 +25,10 @@ public class LoginRequest {
 
     @NotNull(message = "Mật khẩu không được để trống")
     private String password;
+
+    /** Mã định danh phiên CAPTCHA */
+    private String captchaId;
+
+    /** Mã bảo vệ do người dùng nhập */
+    private String captchaCode;
 }

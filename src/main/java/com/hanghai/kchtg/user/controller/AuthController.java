@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.accesslog.annotation.AuditLog;
+import com.hanghai.kchtg.captcha.service.CaptchaService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.*;
@@ -12,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,14 +40,25 @@ public class AuthController {
     private final UserRepository userRepository;
     private final TokenService tokenService;
     private final TotpAuthService totpAuthService;
+    private final CaptchaService captchaService;
+
+    @Autowired
+    public AuthController(UserRepository userRepository,
+                          PasswordEncoder passwordEncoder,
+                          TokenService tokenService,
+                          TotpAuthService totpAuthService,
+                          CaptchaService captchaService) {
+        this.userRepository = userRepository;
+        this.tokenService = tokenService;
+        this.totpAuthService = totpAuthService;
+        this.captchaService = captchaService;
+    }
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           TokenService tokenService,
                           TotpAuthService totpAuthService) {
-        this.userRepository = userRepository;
-        this.tokenService = tokenService;
-        this.totpAuthService = totpAuthService;
+        this(userRepository, passwordEncoder, tokenService, totpAuthService, null);
     }
 
     /**
@@ -65,6 +78,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse<?>> login(@Valid @RequestBody LoginRequest request,
                                                 HttpServletRequest httpRequest) {
         try {
+            // Kiểm tra mã bảo vệ CAPTCHA trước khi xác thực thông tin đăng nhập
+            if (captchaService != null && !captchaService.validateCaptcha(request.getCaptchaId(), request.getCaptchaCode())) {
+                log.warn("Login rejected: Invalid or expired captcha for user {}",
+                        request.getIdentifier() != null ? request.getIdentifier() : request.getUsername());
+                return ResponseEntity.badRequest().body(
+                        ApiResponse.error("Mã bảo vệ (Captcha) không chính xác hoặc đã hết hạn. Vui lòng thử lại."));
+            }
+
             // Resolve identifier: prefer 'identifier' field, fall back to 'username'
             String identifier = (request.getIdentifier() != null && !request.getIdentifier().isBlank())
                     ? request.getIdentifier()
