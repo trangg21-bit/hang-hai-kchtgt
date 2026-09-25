@@ -80,7 +80,7 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import type { ShipRepairYard } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import { countStandardHistoryCards, getStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import ShipRepairYardForm from './ShipRepairYardForm';
