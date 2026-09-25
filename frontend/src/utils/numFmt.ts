@@ -91,14 +91,18 @@ export function parseDotNumber(v: string | undefined | null): string {
   // Kiểm tra trường hợp giá trị gốc từ API/JS float có 1 dấu chấm thập phân (ví dụ "12.5", "0.5")
   const dotCount = (s.match(/\./g) || []).length;
   if (dotCount === 1) {
+    // Nếu chuỗi khớp định dạng nhóm hàng nghìn vi-VN (1..3 chữ số trước dấu chấm,
+    // từ 3 chữ số trở lên sau dấu chấm, ví dụ: "1.234", "1.2345", "12.3456", "5.0000"):
+    // Dấu chấm này là dấu phân tách hàng nghìn do formatter sinh ra khi người dùng đang nhập số nguyên.
+    if (/^[1-9]\d{0,2}\.\d{3,}$/.test(s)) {
+      const integerPart = s.replace(/[.,]/g, '');
+      if (!integerPart) return '';
+      return `${negative ? '-' : ''}${integerPart}`;
+    }
     const dotIndex = s.indexOf('.');
     const frac = s.slice(dotIndex + 1);
-    // Nếu phần sau dấu chấm không phải đúng 3 chữ số, hoặc bắt đầu bằng 0., hoặc kết thúc bằng dấu chấm:
-    // đây là dấu chấm thập phân chuẩn JS/API/paste
-    if (frac.length !== 3 || s.startsWith('0.') || dotIndex === 0) {
-      const integerPart = s.slice(0, dotIndex).replace(/[.,]/g, '');
-      return `${negative ? '-' : ''}${integerPart || '0'}.${frac}`;
-    }
+    const integerPart = s.slice(0, dotIndex).replace(/[.,]/g, '');
+    return `${negative ? '-' : ''}${integerPart || '0'}.${frac}`;
   }
 
   // Ngược lại, tất cả dấu chấm đều là dấu phân tách hàng nghìn

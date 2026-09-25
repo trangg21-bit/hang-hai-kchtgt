@@ -21,17 +21,23 @@ import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.entity.BuoyStation;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
+import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Service for Buoy CRUD + approval workflow (F-074 to F-077).
@@ -53,6 +59,10 @@ public class BuoyService {
     private final BuoyStationRepository buoyStationRepo;
     private final ChangeHistoryService changeHistoryService;
     private final PointObjectSyncService pointObjectSyncService;
+    private final AttachmentRepository attachmentRepository;
+
+    @Value("${app.upload.attachment-path:uploads/attachments}")
+    private String attachmentPath;
 
     // -- READ --
 
@@ -86,13 +96,40 @@ public class BuoyService {
                 code != null && !code.trim().isEmpty() ? code.trim() : null,
                 type != null && !type.trim().isEmpty() ? type.trim() : null,
                 status != null && !status.trim().isEmpty() ? status.trim() : null,
-                condition != null && !condition.trim().isEmpty() ? condition.trim() : null,
+                condition != null && !condition.trim().isEmpty() ? normalizeCondition(condition) : null,
                 provinceId,
                 locationDetail != null && !locationDetail.trim().isEmpty() ? locationDetail.trim() : null,
                 approvalStatus != null && !approvalStatus.trim().isEmpty() ? approvalStatus.trim() : null,
                 sort).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    public static String normalizeCondition(String condition) {
+        if (condition == null || condition.trim().isEmpty()) {
+            return null;
+        }
+        String s = condition.trim();
+        if ("\u0110ang khai th\u00e1c/v\u1eadn h\u00e0nh".equalsIgnoreCase(s)
+                || "Ch\u01b0a khai th\u00e1c/v\u1eadn h\u00e0nh".equalsIgnoreCase(s)
+                || "D\u1eebng khai th\u00e1c/v\u1eadn h\u00e0nh".equalsIgnoreCase(s)
+                || "Đang khai thác/vận hành".equalsIgnoreCase(s)
+                || "Chưa khai thác/vận hành".equalsIgnoreCase(s)
+                || "Dừng khai thác/vận hành".equalsIgnoreCase(s)) {
+            return s;
+        }
+        String lower = s.toLowerCase();
+        if (lower.contains("d\u1eebng") || lower.contains("dung") || lower.contains("h\u1ecfng") || lower.contains("hong")) {
+            return "\u0110ang khai th\u00e1c/v\u1eadn h\u00e0nh".equals(s) ? s : "D\u1eebng khai th\u00e1c/v\u1eadn h\u00e0nh";
+        }
+        if (lower.contains("b\u00e3i") || lower.contains("bai") || lower.contains("ch\u01b0a") || lower.contains("chua")) {
+            return "Ch\u01b0a khai th\u00e1c/v\u1eadn h\u00e0nh";
+        }
+        if (lower.contains("lu\u1ed3ng") || lower.contains("luong") || lower.contains("ho\u1ea1t \u0111\u1ed9ng") || lower.contains("hoat dong")
+                || lower.contains("g\u1eafn \u0111\u00e8n") || lower.contains("gan den") || lower.contains("\u0111ang") || lower.contains("dang")) {
+            return "\u0110ang khai th\u00e1c/v\u1eadn h\u00e0nh";
+        }
+        return s;
     }
 
     private Sort buildSort(String sortBy, String sortDir) {
@@ -225,7 +262,7 @@ public class BuoyService {
                 .classificationMark(request.getClassificationMark())
                 .provinceId(request.getProvinceId())
                 .locationDetail(request.getLocationDetail())
-                .condition(request.getCondition())
+                .condition(normalizeCondition(request.getCondition()))
                 .structure(request.getStructure())
                 .area(request.getArea())
                 .bodyHeight(request.getBodyHeight())
@@ -395,10 +432,14 @@ public class BuoyService {
         }
 
         // Handle latitude/longitude updates — prefer request values, fallback to
-        // existing spatial
+        // existing spatial ONLY when geometry type is still set (non-null).
+        // If geometryType is explicitly null (user cleared it), skip the fallback
+        // so that the spatial object is deleted below.
         Double currentLon = request.getLongitude();
         Double currentLat = request.getLatitude();
-        if ((currentLon == null || currentLat == null) && entity.getSpatialId() != null) {
+        boolean geometryTypeCleared = request.getGeometryType() == null
+                && request.getCoordinates() == null;
+        if (!geometryTypeCleared && (currentLon == null || currentLat == null) && entity.getSpatialId() != null) {
             Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
@@ -416,7 +457,7 @@ public class BuoyService {
         if (currentLon != null && currentLat != null) {
             validateCoordinates(currentLon, currentLat);
         }
-        String wkt = buildBuoyWkt(request.getCoordinates(), currentLon, currentLat);
+        String wkt = geometryTypeCleared ? null : buildBuoyWkt(request.getCoordinates(), currentLon, currentLat);
 
         entity.setColor(request.getColor());
         entity.setShape(request.getShape());
@@ -453,7 +494,7 @@ public class BuoyService {
         entity.setClassificationMark(request.getClassificationMark());
         entity.setProvinceId(request.getProvinceId());
         entity.setLocationDetail(request.getLocationDetail());
-        entity.setCondition(request.getCondition());
+        entity.setCondition(normalizeCondition(request.getCondition()));
         entity.setStructure(request.getStructure());
         entity.setArea(request.getArea());
         entity.setBodyHeight(request.getBodyHeight());
@@ -553,6 +594,27 @@ public class BuoyService {
                             newGeomType != null ? newGeomType.name() : null, actorId);
                 }
             }
+        } else if (geometryTypeCleared && entity.getSpatialId() != null) {
+            // User đã xóa Loại đối tượng → xóa GIS spatial object và clear spatialId
+            if (wasApproved) {
+                GisSpatialObject oldSpatial = gisSpatialObjectService
+                        .findById(entity.getSpatialId()).orElse(null);
+                if (oldSpatial != null) {
+                    String oldWkt = oldSpatial.getCoordinates();
+                    GisGeometryType oldGeomType = oldSpatial.getGeometryType();
+                    if (oldWkt != null && !oldWkt.trim().isEmpty()) {
+                        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "Tọa độ GIS",
+                                oldWkt.trim(), null, actorId);
+                    }
+                    if (oldGeomType != null) {
+                        changeHistoryService.insertChangeRecord("Buoy", entity.getId(), "geometryType",
+                                oldGeomType.name(), null, actorId);
+                    }
+                }
+            }
+            gisSpatialObjectService.delete(entity.getSpatialId());
+            entity.setSpatialId(null);
+            buoyRepo.save(entity);
         }
 
         // Approved records use the centralized per-field audit trail only. Writing an
@@ -827,7 +889,7 @@ public class BuoyService {
                 .classificationMark(entity.getClassificationMark())
                 .provinceId(entity.getProvinceId())
                 .locationDetail(entity.getLocationDetail())
-                .condition(entity.getCondition())
+                .condition(normalizeCondition(entity.getCondition()))
                 .structure(entity.getStructure())
                 .area(entity.getArea())
                 .bodyHeight(entity.getBodyHeight())
@@ -909,6 +971,175 @@ public class BuoyService {
         } catch (Exception e) {
             return "{}";
         }
+    }
+
+    // -- ATTACHMENTS (Chuẩn /beacon-stations) --
+
+    @Transactional
+    public List<AttachmentDto> uploadAttachments(UUID entityId, List<MultipartFile> files, UUID userId) {
+        final String entityType = "BUOY";
+        long existingCount = attachmentRepository.countByEntityTypeAndEntityId(entityType, entityId);
+        if (existingCount + files.size() > 10) {
+            throw new IllegalArgumentException("Tối đa 10 file đính kèm");
+        }
+        List<Attachment> saved = new ArrayList<>();
+        java.nio.file.Path basePath = java.nio.file.Paths.get(attachmentPath).toAbsolutePath().normalize();
+
+        // 1. Snapshot danh sách file trước khi upload
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        List<String> fileListBefore = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.toList());
+        String oldFilesSummary = String.join(", ", fileListBefore);
+        List<String> uploadedFileNames = new ArrayList<>();
+
+        for (MultipartFile file : files) {
+            String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
+            String storageFileName = System.currentTimeMillis() + "_" + originalFilename;
+            try {
+                java.nio.file.Path dir = basePath.resolve(entityType).resolve(entityId.toString());
+                java.nio.file.Files.createDirectories(dir);
+                java.nio.file.Path filePath = dir.resolve(storageFileName);
+                file.transferTo(filePath.toFile());
+            } catch (Exception e) {
+                throw new RuntimeException("Không thể lưu file: " + originalFilename);
+            }
+            String storagePath = basePath.resolve(entityType).resolve(entityId.toString()).resolve(storageFileName)
+                    .toString();
+            Attachment attachment = new Attachment();
+            attachment.setEntityType(entityType);
+            attachment.setEntityId(entityId);
+            attachment.setFileName(originalFilename);
+            attachment.setFilePath(storagePath);
+            attachment.setFileSize(file.getSize());
+            attachment.setContentType(file.getContentType());
+            attachment.setUploadedBy(userId);
+            saved.add(attachmentRepository.save(attachment));
+            uploadedFileNames.add(originalFilename);
+        }
+
+        // 2. Snapshot danh sách file sau khi upload
+        List<String> fileListAfter = new ArrayList<>(fileListBefore);
+        for (String fn : uploadedFileNames) {
+            if (fn != null && !fn.isBlank() && !fileListAfter.contains(fn.trim())) {
+                fileListAfter.add(fn.trim());
+            }
+        }
+        String newFilesSummary = String.join(", ", fileListAfter);
+
+        // Ghi nhật ký "Tài liệu đính kèm" (chuẩn /beacon-stations) — chỉ khi bản ghi ĐÃ DUYỆT
+        Buoy buoy = buoyRepo.findById(entityId).orElse(null);
+        boolean isNewlyCreated = buoy != null && (buoy.getCreatedAt() == null
+                || Math.abs(java.time.Duration.between(buoy.getCreatedAt(), LocalDateTime.now()).toSeconds()) <= 30);
+        boolean wasApproved = !isNewlyCreated && buoy != null
+                && (isApprovedStatus(buoy.getStatus())
+                        || buoy.getApprovalStatus() == ApprovalStatus.APPROVED
+                        || buoy.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2);
+        if (wasApproved && !uploadedFileNames.isEmpty()) {
+            String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+            String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+            if (!Objects.equals(oldVal, newVal) && infraHistoryRepo != null) {
+                infraHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(entityId)
+                        .refType(InfrastructureType.BUOY)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_UPLOADED)
+                        .approvedBy(userId)
+                        .approvedDate(LocalDateTime.now())
+                        .changedField("Tài liệu đính kèm")
+                        .approvalContent("Tải lên tệp: " + String.join(", ", uploadedFileNames))
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
+                        .build());
+            }
+        }
+        return saved.stream().map(this::toAttachmentDto).toList();
+    }
+
+    public List<AttachmentDto> listAttachments(UUID entityId) {
+        return attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("BUOY", entityId)
+                .stream().map(this::toAttachmentDto).toList();
+    }
+
+    @Transactional
+    public void deleteAttachment(UUID entityId, UUID attachmentId) {
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc phao tiêu này");
+        }
+        String fileName = attachment.getFileName();
+        final String entityType = "BUOY";
+        List<Attachment> existingAtts = attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc(entityType, entityId);
+        String oldFilesSummary = existingAtts.stream()
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        String newFilesSummary = existingAtts.stream()
+                .filter(att -> !att.getId().equals(attachmentId))
+                .map(Attachment::getFileName)
+                .filter(fn -> fn != null && !fn.isBlank())
+                .map(String::trim)
+                .collect(Collectors.joining(", "));
+
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(attachment.getFilePath()));
+        } catch (Exception e) {
+            // ignore file deletion failure; the DB record is still removed
+        }
+        attachmentRepository.delete(attachment);
+
+        // Ghi nhật ký xóa "Tài liệu đính kèm" (chuẩn /beacon-stations) — chỉ khi bản ghi ĐÃ DUYỆT
+        Buoy buoy = buoyRepo.findById(entityId).orElse(null);
+        if (buoy != null && (isApprovedStatus(buoy.getStatus())
+                || buoy.getApprovalStatus() == ApprovalStatus.APPROVED
+                || buoy.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+            if (infraHistoryRepo != null) {
+                String oldVal = (oldFilesSummary == null || oldFilesSummary.isBlank()) ? null : oldFilesSummary.trim();
+                String newVal = (newFilesSummary == null || newFilesSummary.isBlank()) ? null : newFilesSummary.trim();
+                infraHistoryRepo.save(InfrastructureHistory.builder()
+                        .refId(entityId)
+                        .refType(InfrastructureType.BUOY)
+                        .approvalLevel(ApprovalLevel.LEVEL_0)
+                        .status(InfrastructureHistoryStatus.ATTACHMENT_DELETED)
+                        .approvedBy(SecurityUtils.getCurrentUserId())
+                        .approvedDate(LocalDateTime.now())
+                        .changedField("Tài liệu đính kèm")
+                        .approvalContent("Xóa tệp: " + fileName)
+                        .previousValue(oldVal != null ? oldVal : "—")
+                        .newValue(newVal != null ? newVal : "—")
+                        .build());
+            }
+        }
+    }
+
+    public Attachment getAttachment(UUID entityId, UUID attachmentId) {
+        buoyRepo.findById(entityId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phao tiêu: " + entityId));
+        Attachment attachment = attachmentRepository.findById(attachmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file: " + attachmentId));
+        if (!"BUOY".equalsIgnoreCase(attachment.getEntityType()) || !attachment.getEntityId().equals(entityId)) {
+            throw new IllegalArgumentException("File không thuộc phao tiêu này");
+        }
+        return attachment;
+    }
+
+    private AttachmentDto toAttachmentDto(Attachment entity) {
+        AttachmentDto dto = new AttachmentDto();
+        dto.setId(entity.getId());
+        dto.setEntityType(entity.getEntityType());
+        dto.setEntityId(entity.getEntityId());
+        dto.setFileName(entity.getFileName());
+        dto.setFilePath(entity.getFilePath());
+        dto.setFileSize(entity.getFileSize());
+        dto.setContentType(entity.getContentType());
+        dto.setUploadedBy(entity.getUploadedBy());
+        dto.setUploadedAt(entity.getUploadedAt());
+        return dto;
     }
 
 }

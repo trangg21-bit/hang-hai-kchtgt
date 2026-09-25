@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -40,15 +41,18 @@ public class NavigationChannelCreateRequest {
     private UUID operatingUnitId;
 
     @NotNull(message = "Tên luồng hàng hải là bắt buộc")
+    @Size(max = 255, message = "Tên luồng hàng hải tối đa 255 ký tự")
     private String channelName;
 
     private Integer provinceId;
 
+    @Size(max = 500, message = "Địa điểm chi tiết tối đa 500 ký tự")
     private String detailedLocation;
 
     @NotNull(message = "Tình trạng là bắt buộc")
     private ConditionStatus conditionStatus;
 
+    @Size(max = 500, message = "Trạm quản lý luồng tối đa 500 ký tự")
     private String managementStation;
 
     private Integer stationCount;
@@ -73,6 +77,7 @@ public class NavigationChannelCreateRequest {
 
     private LocalDate announcementDecisionDate;
 
+    @Size(max = 255, message = "Đơn vị ra quyết định công bố tối đa 255 ký tự")
     private String announcementDecisionIssuer;
 
     /** Tuyến luồng con (#22-#38). */

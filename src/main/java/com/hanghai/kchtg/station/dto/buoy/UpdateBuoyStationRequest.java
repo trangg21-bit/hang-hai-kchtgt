@@ -39,8 +39,7 @@ public class UpdateBuoyStationRequest {
     @Size(max = 100, message = "Đặc tính ánh sáng không được vượt quá 100 ký tự")
     private String lightCharacteristic;
 
-    @DecimalMin(value = "0.01", message = "Tầm nhìn xa phải lớn hơn hoặc bằng 0.01 hải lý")
-    @DecimalMax(value = "100.0", message = "Tầm nhìn xa phải nhỏ hơn hoặc bằng 100.0 hải lý")
+    @DecimalMin(value = "0.0", message = "Tầm nhìn xa không được âm")
     private Double range;
 
     @Size(max = 1000, message = "Ghi chú không được vượt quá 1000 ký tự")

@@ -66,7 +66,7 @@ describe('NavigationChannelForm — UI Format & Data Sync (/navigation-channel v
     expect(row4).toEqual(['provinceId', 'detailedLocation']);
   });
 
-  it('TC-ROUTE-05: Đảm bảo phân đoạn tuyến luồng hỗ trợ đầy đủ 17 trường kỹ thuật nghiệp vụ', () => {
+  it('TC-ROUTE-05: Đảm bảo phân đoạn tuyến luồng hỗ trợ đầy đủ 19 trường kỹ thuật nghiệp vụ', () => {
     const routeItem = {
       sequenceNo: 1,
       routeClassification: '1',
@@ -86,6 +86,8 @@ describe('NavigationChannelForm — UI Format & Data Sync (/navigation-channel v
       turningBasinRadiusMeters: 300,
       routeLatestMaintenanceYear: 2024,
       routeLatestDredgingVolumeCubicMeters: 50000,
+      protectionScope: 1500,
+      memo: 'Ghi nhớ phân đoạn luồng ưu tiên',
     };
 
     expect(routeItem.routeName).toBe('Đoạn phao 0 đến phao 19');
@@ -93,6 +95,8 @@ describe('NavigationChannelForm — UI Format & Data Sync (/navigation-channel v
     expect(routeItem.channelLengthKilometers).toBe(32);
     expect(routeItem.routeGrade).toBe(6);
     expect(routeItem.routeType).toBe(1);
+    expect(routeItem.protectionScope).toBe(1500);
+    expect(routeItem.memo).toBe('Ghi nhớ phân đoạn luồng ưu tiên');
   });
 
   it('TC-ROUTE-06: Đảm bảo format sinh mã tuyến luồng chuẩn [channelCode]-[sequenceNo]', () => {
@@ -108,8 +112,8 @@ describe('NavigationChannelForm — UI Format & Data Sync (/navigation-channel v
 
   it('TC-ROUTE-07: Chuẩn hóa payload routeDetails với sequenceNo tăng dần và trim space', () => {
     const rawRoutes = [
-      { routeName: '  Đoạn luồng 1  ', routeClassification: ' Công cộng ', turningBasinLocation: '  Vũng quay 1 ' },
-      { routeName: 'Đoạn luồng 2', routeClassification: '', turningBasinLocation: undefined },
+      { routeName: '  Đoạn luồng 1  ', routeClassification: ' Công cộng ', turningBasinLocation: '  Vũng quay 1 ', memo: '  Ghi nhớ 1  ', protectionScope: 100 },
+      { routeName: 'Đoạn luồng 2', routeClassification: '', turningBasinLocation: undefined, memo: undefined, protectionScope: undefined },
     ];
 
     const mappedRoutes = rawRoutes.map((r, i) => ({
@@ -118,16 +122,22 @@ describe('NavigationChannelForm — UI Format & Data Sync (/navigation-channel v
       routeClassification: r.routeClassification?.trim() || undefined,
       routeName: r.routeName.trim(),
       turningBasinLocation: r.turningBasinLocation?.trim() || undefined,
+      memo: r.memo?.trim() || undefined,
+      protectionScope: r.protectionScope != null ? Number(r.protectionScope) : undefined,
     }));
 
     expect(mappedRoutes[0].sequenceNo).toBe(1);
     expect(mappedRoutes[0].routeName).toBe('Đoạn luồng 1');
     expect(mappedRoutes[0].routeClassification).toBe('Công cộng');
     expect(mappedRoutes[0].turningBasinLocation).toBe('Vũng quay 1');
+    expect(mappedRoutes[0].memo).toBe('Ghi nhớ 1');
+    expect(mappedRoutes[0].protectionScope).toBe(100);
 
     expect(mappedRoutes[1].sequenceNo).toBe(2);
     expect(mappedRoutes[1].routeName).toBe('Đoạn luồng 2');
     expect(mappedRoutes[1].routeClassification).toBeUndefined();
+    expect(mappedRoutes[1].memo).toBeUndefined();
+    expect(mappedRoutes[1].protectionScope).toBeUndefined();
   });
 
   it('TC-ROUTE-08: Phân đoạn tuyến luồng hỗ trợ cấu trúc 2 Tab chuẩn ("Thông tin chung" và "Thông tin vị trí")', () => {
@@ -182,6 +192,46 @@ describe('NavigationChannelForm — UI Format & Data Sync (/navigation-channel v
     expect(DEFAULT_CHANNEL_GIS_SYMBOLS.some((s) => s.code === 'SYM-VTS')).toBe(true);
     expect(DEFAULT_CHANNEL_GIS_SYMBOLS.some((s) => s.code === 'SYM-PORT')).toBe(true);
   }, 60000);
+
+  it('TC-ROUTE-12: Phân loại tuyến luồng hỗ trợ danh mục dropdown 4 giá trị chuẩn', async () => {
+    const { ROUTE_CLASSIFICATION_OPTIONS, ROUTE_CLASSIFICATION_MAP } = await import('../../types/navigationChannel');
+    expect(ROUTE_CLASSIFICATION_OPTIONS).toHaveLength(4);
+    expect(ROUTE_CLASSIFICATION_OPTIONS).toEqual([
+      { value: '1', label: 'Đoạn' },
+      { value: '2', label: 'Vùng đón trả hoa tiêu' },
+      { value: '3', label: 'Vùng quay vũng tàu' },
+      { value: '4', label: 'Ga tránh tàu' },
+    ]);
+    expect(ROUTE_CLASSIFICATION_MAP['1']).toBe('Đoạn');
+    expect(ROUTE_CLASSIFICATION_MAP['2']).toBe('Vùng đón trả hoa tiêu');
+    expect(ROUTE_CLASSIFICATION_MAP['3']).toBe('Vùng quay vũng tàu');
+    expect(ROUTE_CLASSIFICATION_MAP['4']).toBe('Ga tránh tàu');
+  });
+
+  it('TC-ROUTE-13: Phân cấp luồng hỗ trợ danh mục dropdown 7 giá trị chuẩn', async () => {
+    const { ROUTE_GRADE_OPTIONS, ROUTE_GRADE_MAP } = await import('../../types/navigationChannel');
+    expect(ROUTE_GRADE_OPTIONS).toHaveLength(7);
+    expect(ROUTE_GRADE_OPTIONS).toEqual([
+      { value: 7, label: 'Luồng cấp đặc biệt' },
+      { value: 1, label: 'Luồng cấp I' },
+      { value: 2, label: 'Luồng cấp II' },
+      { value: 3, label: 'Luồng cấp III' },
+      { value: 4, label: 'Luồng cấp IV' },
+      { value: 5, label: 'Luồng cấp V' },
+      { value: 6, label: 'Luồng cấp VI' },
+    ]);
+    expect(ROUTE_GRADE_MAP[7]).toBe('Luồng cấp đặc biệt');
+    expect(ROUTE_GRADE_MAP[1]).toBe('Luồng cấp I');
+    expect(ROUTE_GRADE_MAP[6]).toBe('Luồng cấp VI');
+  });
+
+  it('TC-CONDITION-14: Tình trạng luồng hàng hải mặc định là Chưa khai thác/vận hành (NOT_YET_OPERATIONAL)', async () => {
+    const { CONDITION_STATUS_OPTIONS, CONDITION_STATUS_MAP } = await import('../../types/navigationChannel');
+    expect(CONDITION_STATUS_MAP['NOT_YET_OPERATIONAL']).toBe('Chưa khai thác/vận hành');
+    const defaultOption = CONDITION_STATUS_OPTIONS.find((opt) => opt.value === 'NOT_YET_OPERATIONAL');
+    expect(defaultOption).toBeDefined();
+    expect(defaultOption?.label).toBe('Chưa khai thác/vận hành');
+  });
 });
 
 

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,8 +22,10 @@ public class ChannelRouteDetailRequest {
 
     private Integer sequenceNo;
     private String routeClassification;
+    @Size(max = 255, message = "Tên tuyến luồng tối đa 255 ký tự")
     private String routeName;
     private Integer routeType;
+    @Size(max = 2000, message = "Vị trí vũng quay tàu tối đa 2000 ký tự")
     private String turningBasinLocation;
     private BigDecimal turningBasinRadiusMeters;
     private BigDecimal verticalClearanceMeters;
@@ -36,4 +39,20 @@ public class ChannelRouteDetailRequest {
     private BigDecimal routeLatestDredgingVolumeCubicMeters;
     private Integer routeLatestMaintenanceYear;
     private Integer routeGrade;
+    private BigDecimal protectionScope;
+    private String memo;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("protectionScopeMeters")
+    public void setProtectionScopeMeters(BigDecimal val) {
+        if (this.protectionScope == null) {
+            this.protectionScope = val;
+        }
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("notes")
+    public void setNotes(String val) {
+        if (this.memo == null) {
+            this.memo = val;
+        }
+    }
 }

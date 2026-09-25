@@ -60,7 +60,7 @@ describe('NavigationChannelDetailContent UI synchronization with /beacon-station
     );
 
     expect(html).toContain('Thông tin cơ bản &amp; Quản lý vận hành');
-    expect(html).toContain('Thông số kỹ thuật &amp; Năng lực khai thác');
+    expect(html).toContain('Thông tin trạm quản lý luồng &amp; phao tiêu');
     expect(html).toContain('Thông tin công bố mở, đưa vào sử dụng');
     expect(html).toContain('Thông tin phê duyệt');
   });

@@ -15,9 +15,8 @@ import type { Symbol as GisSymbol } from '../../services/symbolService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { LineObject } from '../../types/lineObject';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { organizationService } from '../../services/organizationService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
-import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
+import { FormOrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { portCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
 import {
@@ -254,11 +253,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     return () => { cancelled = true; };
   }, []);
 
-  // Dữ liệu cây đơn vị cho OrgUnitTreeSelect: ưu tiên organizations từ parent, fallback danh sách tự fetch
-  const orgUnitTreeData = useMemo<OrgUnitTreeOption[]>(() => {
-    if (organizations && organizations.length > 0) return organizations;
-    return orgUnitOptions.map((o) => ({ id: o.value, name: o.label }));
-  }, [organizations, orgUnitOptions]);
   const [portOptions, setPortOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPorts, setLoadingPorts] = useState(false);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
@@ -290,9 +284,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
     finally { setLoadingPorts(false); }
   }, []);
 
-  useEffect(() => {
-    (async () => { try { const r = await organizationService.list({ pageSize: 1000 }); setOrgUnitOptions((r.data || []).map((o: { id: string; name: string }) => ({ value: o.id, label: o.name }))); } catch { /* */ } })();
-  }, []);
+
 
   // GIS symbols cho trường Biểu tượng (giống BuoyListPage)
   useEffect(() => {
@@ -545,7 +537,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
           </div>
         </div>
         <Row gutter={[24, 0]}>
-          <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><OrgUnitTreeSelect organizations={orgUnitTreeData} placeholder="Chọn đơn vị quản lý" loading={orgUnitOptions.length === 0 && !(organizations && organizations.length > 0)} disabled={isEdit} showPath onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="orgUnitId" {...labelProps('Đơn vị quản lý')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị quản lý là bắt buộc' }]}><FormOrgUnitTreeSelect organizations={organizations && organizations.length > 0 ? organizations : undefined} placeholder="Chọn đơn vị quản lý" disabled={isEdit} showPath treeDefaultExpandAll={false} onChange={() => { form.setFieldsValue({ portId: undefined, code: undefined }); setCoordinateList([]); }} /></Form.Item></Col>
           <Col span={12}><Form.Item name="operatingOrgId" {...labelProps('Đơn vị khai thác')} required style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Đơn vị khai thác là bắt buộc' }]}><Select placeholder="Chọn đơn vị khai thác..." options={operatingOrgs.map(o => ({ value: o.id, label: o.name }))} showSearch optionFilterProp="label" allowClear style={selectStyle} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>

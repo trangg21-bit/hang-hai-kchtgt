@@ -570,24 +570,28 @@ public class PortService {
         // portName là trường BẮT BUỘC: xóa trắng phải báo lỗi rõ ràng cho người dùng,
         // TUYỆT ĐỐI không được âm thầm giữ lại giá trị cũ rồi vẫn trả về thành công —
         // đó chính là lỗi "xóa trường mà dữ liệu không hề thay đổi".
-        if (request.getPortName() != null) {
-            if (request.getPortName().isBlank()) {
+        if (request.isFieldPresent("portName")) {
+            if (request.getPortName() == null || request.getPortName().isBlank()) {
                 throw new IllegalArgumentException("Tên cảng biển không được để trống");
             }
             entity.setPortName(request.getPortName().trim());
         }
-        // Các DTO rút gọn (danh sách/GIS) có thể không gửi lại toàn bộ trường bắt buộc.
-        // Không cho payload thiếu ghi đè null lên dữ liệu đã duyệt qua nhiều lần chỉnh sửa.
-        if (request.getProvince() != null && !request.getProvince().isBlank()) {
-            entity.setProvince(request.getProvince().trim());
+        if (request.isFieldPresent("province")) {
+            entity.setProvince(request.getProvince());
         }
-
-        entity.setArea(request.getArea());
-        entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
-        // UpdatePortRequest hiện không theo dõi field presence, vì vậy null cũng là trạng thái
-        // của payload rút gọn không gửi orgUnitId. Giữ nguyên đơn vị cũ trong trường hợp này;
-        // validation bắt buộc được thực hiện ở form đầy đủ trước khi gửi.
-        if (request.getOrgUnitId() != null) {
+        if (request.isFieldPresent("area")) {
+            entity.setArea(request.getArea());
+        }
+        if (request.isFieldPresent("maxVesselCapacity")) {
+            entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
+        }
+        // orgUnitId là trường BẮT BUỘC khi được gửi trong payload (full-update form):
+        // gửi null (xóa trắng) phải báo lỗi rõ ràng thay vì âm thầm bỏ qua.
+        // Payload rút gọn (không gửi orgUnitId) thì giữ nguyên đơn vị quản lý hiện tại.
+        if (request.isFieldPresent("orgUnitId")) {
+            if (request.getOrgUnitId() == null) {
+                throw new IllegalArgumentException("Đơn vị quản lý không được để trống");
+            }
             UUID oldOrgUnitId = entity.getOrgUnitId();
             entity.setOrgUnitId(request.getOrgUnitId());
             if (!request.getOrgUnitId().equals(oldOrgUnitId)) {
@@ -605,15 +609,15 @@ public class PortService {
                 });
             }
         }
-        if (request.getPortGroup() != null) {
+        if (request.isFieldPresent("portGroup")) {
             entity.setPortGroup(request.getPortGroup());
         }
-        if (request.getMapSymbolId() != null) {
+        if (request.isFieldPresent("mapSymbolId")) {
             entity.setMapSymbolId(request.getMapSymbolId());
         }
         // operationalStatus: màn Cảng biển không có ô nhập cho trường này nên frontend
         // không thể xóa trắng; giữ nguyên giá trị cũ khi request không gửi giá trị.
-        if (request.getOperationalStatus() != null) {
+        if (request.isFieldPresent("operationalStatus") && request.getOperationalStatus() != null) {
             entity.setOperationalStatus(request.getOperationalStatus());
         }
         ApprovalStatus previousApprovalStatus = preImage.getApprovalStatus();
@@ -622,39 +626,73 @@ public class PortService {
 
         if (wasApproved) {
             entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else if (request.getApprovalStatus() != null) {
+        } else if (request.isFieldPresent("approvalStatus") && request.getApprovalStatus() != null) {
             entity.setApprovalStatus(request.getApprovalStatus());
         }
 
         // Update extended fields
-        entity.setDetailedLocation(request.getDetailedLocation());
-        if (request.getPortClass() != null) {
+        if (request.isFieldPresent("detailedLocation")) {
+            entity.setDetailedLocation(request.getDetailedLocation());
+        }
+        if (request.isFieldPresent("portClass")) {
             entity.setPortClass(request.getPortClass());
         }
-        if (request.getCoordinateSystem() != null) {
+        if (request.isFieldPresent("coordinateSystem")) {
             entity.setCoordinateSystem(request.getCoordinateSystem());
         }
-        if (request.getDisplayRule() != null) {
+        if (request.isFieldPresent("displayRule")) {
             entity.setDisplayRule(request.getDisplayRule());
         }
 
         // Update zobjDataSub fields
-        entity.setWaterAreaScope(request.getWaterAreaScope());
-        entity.setTotalBerths(request.getTotalBerths());
-        entity.setTotalAnchoragesTransshipment(request.getTotalAnchoragesTransshipment());
-        entity.setTotalPublicChannels(request.getTotalPublicChannels());
-        entity.setTotalDedicatedChannels(request.getTotalDedicatedChannels());
-        entity.setTotalPublicChannelLength(request.getTotalPublicChannelLength());
-        entity.setTotalDedicatedChannelLength(request.getTotalDedicatedChannelLength());
-        entity.setTotalBuoysBeacons(request.getTotalBuoysBeacons());
-        entity.setTotalDikes(request.getTotalDikes());
-        entity.setTotalDikeLength(request.getTotalDikeLength());
-        entity.setTotalLighthouses(request.getTotalLighthouses());
-        entity.setBuoyBerthCount(request.getBuoyBerthCount());
-        entity.setAnchorageCount(request.getAnchorageCount());
-        entity.setTransshipmentCount(request.getTransshipmentCount());
-        entity.setOtherWaterAreas(request.getOtherWaterAreas());
-        entity.setRemarks(request.getRemarks());
+        if (request.isFieldPresent("waterAreaScope")) {
+            entity.setWaterAreaScope(request.getWaterAreaScope());
+        }
+        if (request.isFieldPresent("totalBerths")) {
+            entity.setTotalBerths(request.getTotalBerths());
+        }
+        if (request.isFieldPresent("totalAnchoragesTransshipment")) {
+            entity.setTotalAnchoragesTransshipment(request.getTotalAnchoragesTransshipment());
+        }
+        if (request.isFieldPresent("totalPublicChannels")) {
+            entity.setTotalPublicChannels(request.getTotalPublicChannels());
+        }
+        if (request.isFieldPresent("totalDedicatedChannels")) {
+            entity.setTotalDedicatedChannels(request.getTotalDedicatedChannels());
+        }
+        if (request.isFieldPresent("totalPublicChannelLength")) {
+            entity.setTotalPublicChannelLength(request.getTotalPublicChannelLength());
+        }
+        if (request.isFieldPresent("totalDedicatedChannelLength")) {
+            entity.setTotalDedicatedChannelLength(request.getTotalDedicatedChannelLength());
+        }
+        if (request.isFieldPresent("totalBuoysBeacons")) {
+            entity.setTotalBuoysBeacons(request.getTotalBuoysBeacons());
+        }
+        if (request.isFieldPresent("totalDikes")) {
+            entity.setTotalDikes(request.getTotalDikes());
+        }
+        if (request.isFieldPresent("totalDikeLength")) {
+            entity.setTotalDikeLength(request.getTotalDikeLength());
+        }
+        if (request.isFieldPresent("totalLighthouses")) {
+            entity.setTotalLighthouses(request.getTotalLighthouses());
+        }
+        if (request.isFieldPresent("buoyBerthCount")) {
+            entity.setBuoyBerthCount(request.getBuoyBerthCount());
+        }
+        if (request.isFieldPresent("anchorageCount")) {
+            entity.setAnchorageCount(request.getAnchorageCount());
+        }
+        if (request.isFieldPresent("transshipmentCount")) {
+            entity.setTransshipmentCount(request.getTransshipmentCount());
+        }
+        if (request.isFieldPresent("otherWaterAreas")) {
+            entity.setOtherWaterAreas(request.getOtherWaterAreas());
+        }
+        if (request.isFieldPresent("remarks")) {
+            entity.setRemarks(request.getRemarks());
+        }
 
         // ── Handle PortInfrastructure list (replace) ──────────────────
         String oldInfraSummary = null;

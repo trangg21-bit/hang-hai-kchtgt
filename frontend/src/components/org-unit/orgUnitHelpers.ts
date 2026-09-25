@@ -230,10 +230,12 @@ export function buildOrgUnitTreeData(
   safeOptions.forEach((option) => {
     if (!option || option.id === undefined || option.id === null) return;
     const strId = String(option.id);
+    const title = option.code ? `${option.code} - ${option.name}` : option.name || strId;
     nodes.set(strId, {
       key: strId,
       value: strId,
-      title: option.code ? `${option.code} - ${option.name}` : option.name || strId,
+      title,
+      label: title,
       code: option.code,
       children: [],
     });

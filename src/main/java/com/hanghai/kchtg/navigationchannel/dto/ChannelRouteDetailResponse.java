@@ -38,4 +38,14 @@ public class ChannelRouteDetailResponse {
     private BigDecimal routeLatestDredgingVolumeCubicMeters;
     private Integer routeLatestMaintenanceYear;
     private Integer routeGrade;
+    private BigDecimal protectionScope;
+    private String memo;
+
+    public BigDecimal getProtectionScopeMeters() {
+        return protectionScope;
+    }
+
+    public String getNotes() {
+        return memo;
+    }
 }

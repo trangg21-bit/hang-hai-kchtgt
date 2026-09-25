@@ -35,7 +35,7 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class NavigationChannel extends BaseApprovableEntity {
 
-    @Column(name = "channel_name", nullable = false, length = 100)
+    @Column(name = "channel_name", nullable = false, length = 255)
     private String channelName;
 
     @Column(name = "channel_code", length = 50)
@@ -50,7 +50,7 @@ public class NavigationChannel extends BaseApprovableEntity {
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "condition_status", nullable = false, columnDefinition = "SMALLINT")
     @Builder.Default
-    private ConditionStatus conditionStatus = ConditionStatus.OPERATIONAL;
+    private ConditionStatus conditionStatus = ConditionStatus.NOT_YET_OPERATIONAL;
 
     @Column(name = "detailed_location", length = 500)
     private String detailedLocation;
@@ -94,7 +94,7 @@ public class NavigationChannel extends BaseApprovableEntity {
     @Column(name = "announcement_decision_date")
     private LocalDate announcementDecisionDate;
 
-    @Column(name = "announcement_decision_issuer", length = 500)
+    @Column(name = "announcement_decision_issuer", length = 255)
     private String announcementDecisionIssuer;
 
     @Column(name = "protection_scope_meters")

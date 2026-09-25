@@ -176,6 +176,22 @@ export const buoyCRUD = {
   async delete(id: string): Promise<void> {
     await buoyApi.deleteBuoy(id);
   },
+
+  async uploadAttachments(id: string, files: File[]): Promise<void> {
+    return buoyApi.uploadBuoyAttachments(id, files);
+  },
+
+  async listAttachments(id: string): Promise<any[]> {
+    return buoyApi.listBuoyAttachments(id);
+  },
+
+  async deleteAttachment(id: string, attachmentId: string): Promise<void> {
+    return buoyApi.deleteBuoyAttachment(id, attachmentId);
+  },
+
+  async downloadAttachment(id: string, attachmentId: string): Promise<Blob> {
+    return buoyApi.downloadBuoyAttachment(id, attachmentId);
+  },
 };
 
 // ── Approval (shared pattern for both BeaconStation & Buoy) ───────────

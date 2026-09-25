@@ -115,7 +115,6 @@ export function sanitizeNumberInput(
   const digitsBeforeDec = dec !== null ? countDigits(source.slice(0, dec.index)) : 0;
   const decAccepted = dec !== null && digitsBeforeDec > 0 && digitsBeforeDec <= integerLimit;
 
-
   let out = '';
   let totalDigits = 0;
   let integerDigits = 0;
@@ -129,7 +128,6 @@ export function sanitizeNumberInput(
         decUsed = true;
         out += ch;
       }
-
       continue;
     }
     if (!isDigit(ch)) continue;
@@ -138,7 +136,6 @@ export function sanitizeNumberInput(
       if (fractionDigits >= DECIMAL_MAX_FRACTION_DIGITS) continue;
       fractionDigits += 1;
     } else if (decAccepted) {
-
       if (integerDigits >= integerLimit) continue;
       integerDigits += 1;
     } else {
@@ -156,7 +153,6 @@ export function sanitizeNumberInput(
  * trong <input> (KHÔNG dùng form value: form cập nhật muộn hơn thao tác gõ).
  *
  * Cho phép cả dấu '.' và ',' khi `allowDecimal = true`.
-
  */
 export function decideKeyInput(params: {
   key: string;
@@ -209,7 +205,6 @@ export function decideKeyInput(params: {
     const fracDigitsAfter = countDigits(currentValue.slice(end));
     if (fracDigitsAfter > DECIMAL_MAX_FRACTION_DIGITS) {
       return 'block';
-
     }
 
     return 'allow';
@@ -247,7 +242,6 @@ export function decideKeyInput(params: {
   }
 
   return 'allow';
-
 }
 
 /**

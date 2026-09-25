@@ -179,6 +179,10 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   documentDate: 'Ngày văn bản',
   remarks: 'Ghi chú',
   note: 'Ghi chú',
+  notes: 'Ghi chú',
+  memo: 'Ghi nhớ',
+  protectionScope: 'Phạm vi bảo vệ luồng',
+  protectionScopeMeters: 'Phạm vi bảo vệ luồng (m)',
   description: 'Mô tả',
 
   // Attachments

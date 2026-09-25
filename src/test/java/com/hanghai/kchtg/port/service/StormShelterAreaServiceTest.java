@@ -28,33 +28,33 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.port.dto.anchorage.AnchorageResponse;
-import com.hanghai.kchtg.port.dto.anchorage.UpdateAnchorageRequest;
-import com.hanghai.kchtg.port.entity.Anchorage;
-import com.hanghai.kchtg.port.repository.AnchorageRepository;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
+import com.hanghai.kchtg.port.dto.stormshelter.StormShelterAreaResponse;
+import com.hanghai.kchtg.port.dto.stormshelter.UpdateStormShelterAreaRequest;
+import com.hanghai.kchtg.port.entity.StormShelterArea;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.repository.BuoyBerthRepository;
-import com.hanghai.kchtg.port.repository.MooringWaterAreaAnchorPointRepository;
-import com.hanghai.kchtg.port.repository.MooringWaterAreaRepository;
 import com.hanghai.kchtg.port.repository.PortRepository;
+import com.hanghai.kchtg.port.repository.StormShelterAreaRepository;
+import com.hanghai.kchtg.port.repository.StormShelterMooringWaterAreaAnchorPointRepository;
+import com.hanghai.kchtg.port.repository.StormShelterMooringWaterAreaRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
-import com.hanghai.kchtg.port.service.shared.UserResolverService;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class AnchorageServiceTest {
+class StormShelterAreaServiceTest {
 
     private static final UUID ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID PORT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Mock
-    private AnchorageRepository anchorageRepository;
+    private StormShelterAreaRepository stormShelterAreaRepository;
 
     @Mock
-    private MooringWaterAreaRepository mooringWaterAreaRepository;
+    private StormShelterMooringWaterAreaRepository stormShelterMooringWaterAreaRepository;
 
     @Mock
-    private MooringWaterAreaAnchorPointRepository mooringWaterAreaAnchorPointRepository;
+    private StormShelterMooringWaterAreaAnchorPointRepository stormShelterMooringWaterAreaAnchorPointRepository;
 
     @Mock
     private PortRepository portRepository;
@@ -63,13 +63,13 @@ class AnchorageServiceTest {
     private BuoyBerthRepository buoyBerthRepository;
 
     @Mock
+    private NavigationChannelRepository navigationChannelRepository;
+
+    @Mock
     private GisSpatialObjectService gisSpatialObjectService;
 
     @Mock
     private ChangeHistoryService changeHistoryService;
-
-    @Mock
-    private UserResolverService userResolverService;
 
     @Mock
     private PortCacheService portCacheService;
@@ -87,16 +87,16 @@ class AnchorageServiceTest {
     private InfrastructureHistoryRepository historyRepository;
 
     @InjectMocks
-    private AnchorageService service;
+    private StormShelterAreaService service;
 
-    private Anchorage entity;
+    private StormShelterArea entity;
 
     @BeforeEach
     void setUp() {
-        entity = Anchorage.builder()
+        entity = StormShelterArea.builder()
                 .id(ID)
-                .anchorageCode("HP-ND-001")
-                .anchorageName("Khu neo Hải Phòng")
+                .stormShelterCode("HP-TTB-001")
+                .stormShelterName("Khu tránh bão Hải Phòng")
                 .portId(PORT_ID)
                 .approvalStatus(ApprovalStatus.DRAFT)
                 .build();
@@ -116,14 +116,14 @@ class AnchorageServiceTest {
         mockSpatial.setGeometryType(GisGeometryType.POINT);
         mockSpatial.setCoordinates("106.123 20.456");
 
-        when(anchorageRepository.findById(ID)).thenReturn(Optional.of(entity));
-        when(anchorageRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stormShelterAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(stormShelterAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
-        when(mooringWaterAreaRepository.findByAnchorageId(ID)).thenReturn(Collections.emptyList());
+        when(stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(ID)).thenReturn(Collections.emptyList());
 
-        UpdateAnchorageRequest req = new UpdateAnchorageRequest();
+        UpdateStormShelterAreaRequest req = new UpdateStormShelterAreaRequest();
         req.setId(ID);
-        req.setAnchorageName("Khu neo Hải Phòng");
+        req.setStormShelterName("Khu tránh bão Hải Phòng");
         req.setGeometryType(null);
         req.setCoordinates(null);
         req.setLongitude(null);
@@ -132,7 +132,7 @@ class AnchorageServiceTest {
         req.setCoordinateSystem(null);
         req.setDisplayRule(null);
 
-        AnchorageResponse result = service.update(req);
+        StormShelterAreaResponse result = service.update(req);
 
         assertNotNull(result);
         assertNull(entity.getSpatialId());
@@ -146,49 +146,6 @@ class AnchorageServiceTest {
     }
 
     @Test
-    void update_whenFieldsCleared_shouldSetFieldsToNull() {
-        entity.setDetailedLocation("Vị trí cũ");
-        entity.setShapeDescription("Hình dạng cũ");
-        entity.setDesignWaterDepth("Độ sâu TK cũ");
-        entity.setCurrentWaterDepth("Độ sâu HT cũ");
-        entity.setBottomElevationDesign("Cao trình cũ");
-        entity.setMaxVesselDWT("Trọng tải cũ");
-        entity.setRemarks("Ghi chú cũ");
-        entity.setPublicDecision("Quyết định cũ");
-        entity.setInvestmentAgreement("Thỏa thuận cũ");
-
-        when(anchorageRepository.findById(ID)).thenReturn(Optional.of(entity));
-        when(anchorageRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
-
-        UpdateAnchorageRequest req = UpdateAnchorageRequest.builder()
-                .id(ID)
-                .anchorageName("Khu neo Hải Phòng")
-                .detailedLocation("   ")
-                .shapeDescription("")
-                .designWaterDepth("   ")
-                .currentWaterDepth("")
-                .bottomElevationDesign("   ")
-                .maxVesselDWT("")
-                .remarks("   ")
-                .publicDecision("")
-                .investmentAgreement("   ")
-                .build();
-
-        AnchorageResponse result = service.update(req);
-
-        assertNotNull(result);
-        assertNull(result.getDetailedLocation());
-        assertNull(result.getShapeDescription());
-        assertNull(result.getDesignWaterDepth());
-        assertNull(result.getCurrentWaterDepth());
-        assertNull(result.getBottomElevationDesign());
-        assertNull(result.getMaxVesselDWT());
-        assertNull(result.getRemarks());
-        assertNull(result.getPublicDecision());
-        assertNull(result.getInvestmentAgreement());
-    }
-
-    @Test
     void update_whenCoordinatesProvidedWithoutGeometryType_shouldInferGeometryTypeAndNotClearLocation() {
         UUID spatialId = UUID.randomUUID();
         entity.setSpatialId(spatialId);
@@ -198,26 +155,26 @@ class AnchorageServiceTest {
         mockSpatial.setGeometryType(GisGeometryType.POLYGON);
         mockSpatial.setCoordinates("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))");
 
-        when(anchorageRepository.findById(ID)).thenReturn(Optional.of(entity));
-        when(anchorageRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stormShelterAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(stormShelterAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
         when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockSpatial);
 
-        UpdateAnchorageRequest req = new UpdateAnchorageRequest();
+        UpdateStormShelterAreaRequest req = new UpdateStormShelterAreaRequest();
         req.setId(ID);
-        req.setAnchorageName("Khu neo Hải Phòng");
+        req.setStormShelterName("Khu tránh bão Hải Phòng");
         req.setCoordinates("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))");
         req.setGeometryType(null); // Không truyền geometryType tường minh
 
-        AnchorageResponse result = service.update(req);
+        StormShelterAreaResponse result = service.update(req);
 
         assertNotNull(result);
         assertEquals(spatialId, entity.getSpatialId());
         verify(gisSpatialObjectService, never()).delete(any());
         verify(gisSpatialObjectService).createOrUpdate(
                 eq(spatialId),
-                eq("Khu neo Hải Phòng"),
+                eq("Khu tránh bão Hải Phòng"),
                 any(),
                 eq(GisGeometryType.POLYGON),
                 any(),
@@ -239,60 +196,95 @@ class AnchorageServiceTest {
         mockSpatial.setGeometryType(GisGeometryType.POINT);
         mockSpatial.setCoordinates("SRID=4326;POINT (106.685678 20.841234)");
 
-        when(anchorageRepository.findById(ID)).thenReturn(Optional.of(entity));
-        when(anchorageRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stormShelterAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(stormShelterAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
         when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(mockSpatial);
 
-        UpdateAnchorageRequest req = new UpdateAnchorageRequest();
+        UpdateStormShelterAreaRequest req = new UpdateStormShelterAreaRequest();
         req.setId(ID);
-        req.setAnchorageName("Khu neo Hải Phòng");
+        req.setStormShelterName("Khu tránh bão Hải Phòng");
         req.setCoordinates("SRID=4326;POINT (106.685678 20.841234)");
 
-        AnchorageResponse result = service.update(req);
+        StormShelterAreaResponse result = service.update(req);
 
         assertNotNull(result);
         assertEquals(spatialId, entity.getSpatialId());
         verify(gisSpatialObjectService, never()).delete(any());
-        assertEquals(GisGeometryType.POINT, result.getGeometryType());
+        verify(gisSpatialObjectService).createOrUpdate(
+                eq(spatialId),
+                eq("Khu tránh bão Hải Phòng"),
+                any(),
+                eq(GisGeometryType.POINT),
+                any(),
+                eq("POINT (106.685678 20.841234)"),
+                eq(ID),
+                any()
+        );
         assertNotNull(result.getLongitude());
         assertNotNull(result.getLatitude());
-        assertEquals(0, new java.math.BigDecimal("106.685678").compareTo(result.getLongitude()));
-        assertEquals(0, new java.math.BigDecimal("20.841234").compareTo(result.getLatitude()));
     }
 
     @Test
-    void update_whenLocationFieldsNotSent_shouldPreserveExistingLocation() {
+    void update_whenOnlyGeneralInfoEdited_shouldPreserveSpatialAndLocationData() {
         UUID spatialId = UUID.randomUUID();
+        UUID mapSymbolId = UUID.randomUUID();
         entity.setSpatialId(spatialId);
-        entity.setMapSymbolId(UUID.randomUUID());
+        entity.setMapSymbolId(mapSymbolId);
         entity.setCoordinateSystem(1);
         entity.setDisplayRule(1);
 
         GisSpatialObject mockSpatial = new GisSpatialObject();
         mockSpatial.setId(spatialId);
-        mockSpatial.setGeometryType(GisGeometryType.POINT);
-        mockSpatial.setCoordinates("POINT (106.685678 20.841234)");
+        mockSpatial.setGeometryType(GisGeometryType.POLYGON);
+        mockSpatial.setCoordinates("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))");
 
-        when(anchorageRepository.findById(ID)).thenReturn(Optional.of(entity));
-        when(anchorageRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(stormShelterAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(stormShelterAreaRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
 
-        // Chỉ update remarks, không đụng tới GIS fields
-        UpdateAnchorageRequest req = new UpdateAnchorageRequest();
+        // Request CHỈ sửa tên và ghi chú, KHÔNG truyền các trường vị trí (coordinates, geometryType, mapSymbolId...)
+        UpdateStormShelterAreaRequest req = new UpdateStormShelterAreaRequest();
         req.setId(ID);
+        req.setStormShelterName("Khu tránh bão Hải Phòng Mới");
         req.setRemarks("Ghi chú mới");
 
-        AnchorageResponse result = service.update(req);
+        StormShelterAreaResponse result = service.update(req);
 
         assertNotNull(result);
+        assertEquals("Khu tránh bão Hải Phòng Mới", entity.getStormShelterName());
+        assertEquals("Ghi chú mới", entity.getRemarks());
+        // Tọa độ và spatialId được bảo toàn nguyên vẹn
         assertEquals(spatialId, entity.getSpatialId());
-        assertNotNull(entity.getMapSymbolId());
+        assertEquals(mapSymbolId, entity.getMapSymbolId());
         assertEquals(1, entity.getCoordinateSystem());
         assertEquals(1, entity.getDisplayRule());
         verify(gisSpatialObjectService, never()).delete(any());
-        assertEquals(GisGeometryType.POINT, result.getGeometryType());
-        assertEquals("POINT (106.685678 20.841234)", result.getCoordinates());
+        verify(gisSpatialObjectService, never()).createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(spatialId, result.getSpatialId());
+        assertEquals(GisGeometryType.POLYGON, result.getGeometryType());
+        assertEquals("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))", result.getCoordinates());
+    }
+
+    @Test
+    void toResponse_whenGeometryTypeNullInSpatial_shouldInferFromCoordinates() {
+        UUID spatialId = UUID.randomUUID();
+        entity.setSpatialId(spatialId);
+
+        GisSpatialObject mockSpatial = new GisSpatialObject();
+        mockSpatial.setId(spatialId);
+        mockSpatial.setGeometryType(null); // geometryType trong GIS DB bị null
+        mockSpatial.setCoordinates("POLYGON ((106.1 20.1, 107.1 20.1, 107.1 21.1, 106.1 21.1, 106.1 20.1))");
+
+        when(stormShelterAreaRepository.findById(ID)).thenReturn(Optional.of(entity));
+        when(gisSpatialObjectService.findById(spatialId)).thenReturn(Optional.of(mockSpatial));
+
+        StormShelterAreaResponse res = service.getById(ID);
+
+        assertNotNull(res);
+        assertEquals(GisGeometryType.POLYGON, res.getGeometryType());
+        assertEquals(1, res.getCoordinateSystem());
+        assertEquals(1, res.getDisplayRule());
     }
 }

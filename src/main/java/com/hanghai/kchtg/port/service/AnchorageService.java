@@ -234,10 +234,23 @@ public class AnchorageService {
         if (request.isFieldPresent("investmentAgreement"))
             entity.setInvestmentAgreement(trimToNull(request.getInvestmentAgreement()));
 
-        boolean hasGeometryType = request.getGeometryType() != null;
-        boolean hasCoordinates = coordinates != null && !coordinates.trim().isEmpty();
-        boolean shouldClearLocation = (request.isFieldPresent("geometryType") || request.isFieldPresent("coordinates"))
-                && (!hasGeometryType || !hasCoordinates);
+        GisGeometryType geomType = request.getGeometryType();
+        if (geomType == null && coordinates != null && !coordinates.isBlank()) {
+            String clean = coordinates.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+            if (clean.startsWith("POLYGON")) {
+                geomType = GisGeometryType.POLYGON;
+            } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                geomType = GisGeometryType.LINE;
+            } else {
+                geomType = GisGeometryType.POINT;
+            }
+        }
+
+        boolean hasCoordinates = coordinates != null && !coordinates.isBlank();
+        boolean hasGeometryType = geomType != null;
+        boolean shouldClearLocation = (request.isFieldPresent("coordinates") || request.isFieldPresent("geometryType"))
+                && !hasCoordinates
+                && (request.getGeometryType() == null);
 
         if (shouldClearLocation) {
             entity.setMapSymbolId(null);
@@ -283,14 +296,13 @@ public class AnchorageService {
         }
 
         Anchorage saved = anchorageRepository.saveAndFlush(entity);
-        persistGisAndMooring(saved, request.getGeometryType(), coordinates,
+        persistGisAndMooring(saved, geomType, coordinates,
                 request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas(), shouldClearLocation, hasGeometryType && hasCoordinates);
 
         // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
             if (hasGeometryType && hasCoordinates) {
-                GisGeometryType geomType = request.getGeometryType() != null
-                        ? request.getGeometryType() : GisGeometryType.POINT;
+                GisGeometryType effectiveGeomType = geomType != null ? geomType : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
@@ -298,11 +310,11 @@ public class AnchorageService {
                             (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
-                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                boolean typeChanged = oldGeomType != null && oldGeomType != effectiveGeomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("Anchorage", saved.getId(), "Loại đối tượng GIS",
                             oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
-                            geometryTypeLabel(geomType), actorId);
+                            geometryTypeLabel(effectiveGeomType), actorId);
                 }
             } else if (shouldClearLocation && (oldWkt != null || oldGeomType != null)) {
                 if (oldWkt != null && !oldWkt.trim().isEmpty()) {
@@ -796,9 +808,24 @@ public class AnchorageService {
             response.setSpatialId(spatialObj.getId());
             if (spatialObj.getGeometryType() != null) {
                 response.setGeometryType(spatialObj.getGeometryType());
+            } else if (spatialObj.getCoordinates() != null) {
+                String clean = spatialObj.getCoordinates().trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+                if (clean.startsWith("POLYGON")) {
+                    response.setGeometryType(GisGeometryType.POLYGON);
+                } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                    response.setGeometryType(GisGeometryType.LINE);
+                } else {
+                    response.setGeometryType(GisGeometryType.POINT);
+                }
             }
             response.setCoordinates(spatialObj.getCoordinates());
             parseLatLng(spatialObj.getCoordinates(), response);
+            if (response.getCoordinateSystem() == null) {
+                response.setCoordinateSystem(1);
+            }
+            if (response.getDisplayRule() == null) {
+                response.setDisplayRule(1);
+            }
         }
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
@@ -817,7 +844,7 @@ public class AnchorageService {
     private void parseLatLng(String coordinates, AnchorageResponse response) {
         if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String trimmed = coordinates.trim();
+            String trimmed = coordinates.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim();
             if (trimmed.toUpperCase().startsWith("POINT")) {
                 int start = trimmed.indexOf('(') + 1;
                 int end = trimmed.indexOf(')', start);
@@ -885,13 +912,22 @@ public class AnchorageService {
                                       boolean shouldClear, boolean shouldUpdate) {
         if (shouldUpdate) {
             String wkt = coordinates;
+            if (wkt != null) {
+                wkt = wkt.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim();
+            }
             if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
                 wkt = "POINT(" + longitude + " " + latitude + ")";
             }
             if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
                 GisGeometryType geomType = geometryType;
+                UUID currentSpatialId = saved.getSpatialId();
+                if (currentSpatialId == null && saved.getId() != null) {
+                    currentSpatialId = gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.ANCHORAGE_AREA)
+                            .map(GisSpatialObject::getId)
+                            .orElse(null);
+                }
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                        saved.getSpatialId(), saved.getAnchorageName(), "ANCHORAGE_" + saved.getAnchorageCode(),
+                        currentSpatialId, saved.getAnchorageName(), "ANCHORAGE_" + saved.getAnchorageCode(),
                         geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
                         InfrastructureType.ANCHORAGE_AREA);
                 saved.setSpatialId(spatialObj.getId());
