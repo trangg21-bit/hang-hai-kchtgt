@@ -1320,8 +1320,8 @@ export default function AnchorageListPage() {
       },
       {
         label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-        cellTitle: (r: Anchorage) => resolveOrgLevel2Name(organizations, r?.orgUnitId) || orgMap.get(r?.orgUnitId || '') || '',
-        render: (v: string | null, r: Anchorage) => renderCellWithTooltip(resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || null, true),
+        cellTitle: (r: Anchorage) => orgMap.get(r?.orgUnitId || '') || (r as any).orgUnitName || resolveOrgLevel2Name(organizations, r?.orgUnitId) || '',
+        render: (v: string | null, r: Anchorage) => renderCellWithTooltip(orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || resolveOrgLevel2Name(organizations, r.orgUnitId) || null, true),
       },
       {
         label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,

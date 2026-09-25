@@ -1252,7 +1252,10 @@ export default function StormShelterListPage() {
       },
       {
         label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-        render: (v: string | null, r: StormShelterArea) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span>,
+        render: (v: string | null, r: StormShelterArea) => {
+          const name = orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || resolveOrgLevel2Name(organizations, r.orgUnitId) || '';
+          return <span style={{ fontWeight: fontWeightBold }} title={name}>{name}</span>;
+        },
       },
       {
         label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,

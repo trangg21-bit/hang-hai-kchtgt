@@ -70,15 +70,8 @@ export function resolveOrgLevel2Name(
   if (!orgUnitId || !Array.isArray(orgUnits) || orgUnits.length === 0) return undefined;
   const flat = flattenOrgUnits(orgUnits);
   const byId = new Map<string, OrgUnitTreeOption>(flat.map((o) => [String(o.id).toLowerCase(), o]));
-  const chain: OrgUnitTreeOption[] = [];
-  let cur: OrgUnitTreeOption | undefined = byId.get(String(orgUnitId).toLowerCase());
-  let guard = 0;
-  while (cur && guard++ < 30) {
-    chain.unshift(cur);
-    cur = cur.parentId ? byId.get(String(cur.parentId).toLowerCase()) : undefined;
-  }
-  const level2 = chain.length >= 2 ? chain[1] : chain[0];
-  return level2 ? level2.name : undefined;
+  const target = byId.get(String(orgUnitId).toLowerCase());
+  return target ? target.name : undefined;
 }
 
 /**

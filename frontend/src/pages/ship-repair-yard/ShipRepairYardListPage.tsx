@@ -1456,9 +1456,9 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
         dataIndex: 'orgUnitId',
         width: 260,
         sortable: true,
-        cellTitle: (record: ShipRepairYard) => resolveOrgLevel2Name(organizations, record?.orgUnitId) || orgMap.get(record?.orgUnitId || '') || '',
+        cellTitle: (record: ShipRepairYard) => orgMap.get(record?.orgUnitId || '') || (record as any).orgUnitName || resolveOrgLevel2Name(organizations, record?.orgUnitId) || '',
         render: (_v: string | null, record: ShipRepairYard) => {
-          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || null;
+          const name = orgMap.get(record.orgUnitId || '') || (record as any).orgUnitName || resolveOrgLevel2Name(organizations, record.orgUnitId) || null;
           return renderCellWithTooltip(name, true);
         },
       },

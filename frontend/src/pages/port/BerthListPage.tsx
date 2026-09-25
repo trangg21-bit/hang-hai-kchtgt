@@ -1153,9 +1153,9 @@ export default function BerthList() {
           </div>
         ) },
       { key: 'orgUnitId', label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', width: 260, sortable: true,
-        cellTitle: (record: Berth) => resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '',
+        cellTitle: (record: Berth) => orgMap.get(record.orgUnitId || '') || record.orgUnitName || resolveOrgLevel2Name(organizations, record.orgUnitId) || '',
         render: (_v: string | null, record: Berth) => {
-          const name = resolveOrgLevel2Name(organizations, record.orgUnitId) || orgMap.get(record.orgUnitId || '') || '';
+          const name = orgMap.get(record.orgUnitId || '') || record.orgUnitName || resolveOrgLevel2Name(organizations, record.orgUnitId) || '';
           return <span style={{ fontWeight: fontWeightBold }} title={name}>{name}</span>;
         } },
       { key: 'structureType', label: 'Loại kết cấu bến cảng', dataIndex: 'structureType', width: 240, sortable: true,

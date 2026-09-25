@@ -1243,9 +1243,9 @@ export default function TransferAreaListPage() {
         key: 'orgUnitId',
         width: 260,
         sortable: true,
-        cellTitle: (r: TransferArea) => resolveOrgLevel2Name(organizations, r?.orgUnitId) || orgMap.get(r?.orgUnitId || '') || '',
+        cellTitle: (r: TransferArea) => orgMap.get(r?.orgUnitId || '') || (r as any).orgUnitName || resolveOrgLevel2Name(organizations, r?.orgUnitId) || '',
         render: (v: string | null, r: TransferArea) => {
-          const name = resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || null;
+          const name = orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || resolveOrgLevel2Name(organizations, r.orgUnitId) || null;
           return renderCellWithTooltip(name, true);
         },
       },
