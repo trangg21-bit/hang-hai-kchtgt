@@ -1221,10 +1221,7 @@ public class PortService {
         Port port = portRepository.findById(portId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + portId));
 
-        // Only allow deletion when port is in draft/pending state
-        if (port.getApprovalStatus() != null && port.getApprovalStatus() == com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED) {
-            throw new IllegalArgumentException("Chỉ có thể xóa file đính kèm khi cảng biển ở trạng thái nháp");
-        }
+        // Allow deletion for all statuses (approved record deletion skips history)
 
         PortAttachment attachment = portAttachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy file đính kèm với id: " + attachmentId));
@@ -1361,7 +1358,7 @@ public class PortService {
     }
 
     @Transactional
-    public void deleteAttachmentGeneric(UUID portId, UUID attId, UUID userId) {
+    public void deleteAttachmentGeneric(UUID portId, UUID attId, UUID userId, Boolean skipHistory) {
         Attachment a = attachmentRepository.findById(attId).orElseThrow(() -> new EntityNotFoundException("Không tìm thấy: " + attId));
 
         // 1. Summary danh sách file trước khi xóa
@@ -1380,9 +1377,18 @@ public class PortService {
                 .map(String::trim)
                 .collect(Collectors.joining(", "));
 
-        try { java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(a.getFilePath())); } catch (Exception e) { log.warn("Xóa thất bại: {}", a.getFilePath()); }
+        try {
+            java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get(a.getFilePath()));
+        } catch (Exception e) {
+            log.warn("Xóa file thất bại: {}", a.getFilePath());
+        }
         attachmentRepository.delete(a);
-        recordAttachmentHistory(portId, userId, oldFilesSummary, newFilesSummary, a.getFileName(), InfrastructureHistoryStatus.ATTACHMENT_DELETED, false);
+        recordAttachmentHistory(portId, userId, oldFilesSummary, newFilesSummary, a.getFileName(),
+                InfrastructureHistoryStatus.ATTACHMENT_DELETED, skipHistory);
+    }
+
+    public void deleteAttachmentGeneric(UUID portId, UUID attId, UUID userId) {
+        deleteAttachmentGeneric(portId, attId, userId, null);
     }
 
     /**
