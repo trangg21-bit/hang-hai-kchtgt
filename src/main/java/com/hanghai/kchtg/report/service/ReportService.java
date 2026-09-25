@@ -3926,6 +3926,18 @@ public class ReportService {
                     arrResult = buildDynamicResultList(points, request.getReportCode());
                 }
 
+                // These workbooks are statutory matrix forms: every business row already
+                // exists in the template. Repeating the first expression row corrupts the
+                // layout (duplicated headings/year labels and shifted merged cells).
+                if (isFixedLayoutReport(request.getReportCode())) {
+                    renderFixedLayoutReport(srcSheet, destSheet, arrResult, replacements);
+                    copyMergedRegions(srcSheet, destSheet, true, 0, 0);
+
+                    boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                    finalizeWorkbookSheet(workbook);
+                    return outputWorkbook(workbook, destSheet, isExcel);
+                }
+
                 int N = arrResult.size();
                 int offset = Math.max(0, N - 1);
 
@@ -4016,7 +4028,7 @@ public class ReportService {
                         if (cell != null && cell.getCellType() == CellType.STRING) {
                             String val = cell.getStringCellValue();
 
-                            if (val != null && val.contains("item.")) {
+                            if (val != null && isTemplateDataExpression(val)) {
                                 templateRowIdx = r;
 
                                 break;
@@ -4060,10 +4072,7 @@ public class ReportService {
                                 if (srcCell.getCellType() == CellType.STRING) {
                                     String expr = srcCell.getStringCellValue();
 
-                                    if (expr != null && (expr.contains("table.")
-                                            || expr.contains("this.getCateOtherText") || expr.contains("item.")
-                                            || expr.contains("zobjComReport") || expr.contains("zobjDataDefault")
-                                            || expr.contains("thiz.") || expr.contains("jrf."))) {
+                                    if (isTemplateDataExpression(expr)) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -4118,10 +4127,7 @@ public class ReportService {
                                                 continue;
                                             }
 
-                                            if (expr.contains("item.") || expr.contains("table.")
-                                                    || expr.contains("this.getCateOtherText")
-                                                    || expr.contains("zobjComReport") || expr.contains("zobjDataDefault")
-                                                    || expr.contains("thiz.") || expr.contains("jrf.")) {
+                                            if (isTemplateDataExpression(expr)) {
                                                 Object val = resolveExpression(expr, item);
 
                                                 if (val != null) {
@@ -4170,10 +4176,7 @@ public class ReportService {
                                 if (srcCell.getCellType() == CellType.STRING) {
                                     String expr = srcCell.getStringCellValue();
 
-                                    if (expr != null && (expr.contains("table.")
-                                            || expr.contains("this.getCateOtherText") || expr.contains("item.")
-                                            || expr.contains("zobjComReport") || expr.contains("zobjDataDefault")
-                                            || expr.contains("thiz.") || expr.contains("jrf."))) {
+                                    if (isTemplateDataExpression(expr)) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(arrResult.size() - 1);
 
@@ -4623,6 +4626,20 @@ public class ReportService {
 
         String cleanExpr = expr.replace("${", "").replace("}", "").trim();
 
+        Matcher fieldMatcher = Pattern.compile(
+                "(?:item|entry\\.value\\[0]|table\\.value\\[0])\\.([A-Za-z0-9_]+)(?:\\.asText\\(\\))?",
+                Pattern.CASE_INSENSITIVE).matcher(cleanExpr);
+        if (fieldMatcher.find()) {
+            String fieldName = fieldMatcher.group(1);
+            if (item.containsKey(fieldName)) {
+                return item.get(fieldName);
+            }
+        }
+
+        if (cleanExpr.contains("charAt(idx)")) {
+            return "";
+        }
+
         if (item.containsKey(cleanExpr)) {
             return item.get(cleanExpr);
         }
@@ -4646,6 +4663,26 @@ public class ReportService {
             }
         }
 
+        // Fixed statutory forms store data under user-facing column labels while
+        // legacy templates use Java property names. Bridge the two contracts here.
+        String lower = cleanExpr.toLowerCase(java.util.Locale.ROOT);
+        if (lower.contains("hangnhat")) return item.getOrDefault("Hạng 1", 0);
+        if (lower.contains("hanghai")) return item.getOrDefault("Hạng 2", 0);
+        if (lower.contains("hangba")) return item.getOrDefault("Hạng 3", 0);
+        if (lower.contains("soluongchieckybaocao")) return item.getOrDefault("Số lượng (Chiếc)", 0);
+        if (lower.contains("tongtrongtaidwtkybaocao")) return item.getOrDefault("Trọng tải toàn phần (DWT)", 0);
+        if (lower.contains("tongdungtichgtkybaocao")) return item.getOrDefault("Tổng dung tích (GT)", 0);
+        if (lower.contains("nanglucnambaocao")) return item.getOrDefault("Công suất thiết kế (Triệu tấn/năm)", 0);
+        if (lower.contains("nanglucnamtruoc")) return item.getOrDefault("Năng lực năm trước", 0);
+        if (lower.contains("kehoachnam")) return item.getOrDefault("Kế hoạch năm", 0);
+        if (lower.contains("uocthuchienthangbaocao")) return item.getOrDefault("Thực hiện tháng này", 0);
+        if (lower.contains("luyketudaunamdenhetthangbaocao")) return item.getOrDefault("Lũy kế từ đầu năm", 0);
+        if (lower.contains("luykecungkynamtruoc")) return item.getOrDefault("Lũy kế cùng kỳ năm trước", 0);
+        if (lower.contains("thuchiennamtruoc")) return item.getOrDefault("Thực hiện năm trước", 0);
+        if (lower.contains("thuchiennambaocao") || lower.contains("thuchiennam")) {
+            return item.getOrDefault("Thực hiện năm báo cáo", item.getOrDefault("Thực hiện năm", 0));
+        }
+
         // Dynamic fallbacks
 
         if (cleanExpr.contains("ten") || cleanExpr.contains("loai") || cleanExpr.contains("Ten")
@@ -4665,6 +4702,101 @@ public class ReportService {
         return null;
     }
 
+    private boolean isFixedLayoutReport(String reportCode) {
+        if (reportCode == null) return false;
+        String code = reportCode.toUpperCase(java.util.Locale.ROOT);
+        return java.util.Set.of(
+                "F-170", "BCPTTV_185",
+                "F-171", "BCPTTV_186",
+                "F-176", "BCTT48_191",
+                "F-177", "BCTT48_192",
+                "F-178", "BCTT48_193",
+                "F-179", "BCTT48_194").contains(code);
+    }
+
+    private void renderFixedLayoutReport(Sheet srcSheet, Sheet destSheet,
+            List<Map<String, Object>> sourceRows, Map<String, String> replacements) {
+        List<Map<String, Object>> dataRows = sourceRows == null ? new ArrayList<>()
+                : sourceRows.stream()
+                        .filter(row -> !"section".equalsIgnoreCase(String.valueOf(row.get("_rowType"))))
+                        .toList();
+        int expressionRowIndex = 0;
+
+        for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+            Row srcRow = srcSheet.getRow(r);
+            if (srcRow == null) continue;
+
+            Row destRow = destSheet.createRow(r);
+            destRow.setHeight(srcRow.getHeight());
+            boolean expressionRow = false;
+            for (Cell srcCell : srcRow) {
+                if (srcCell.getCellType() == CellType.STRING
+                        && isTemplateDataExpression(srcCell.getStringCellValue())) {
+                    expressionRow = true;
+                    break;
+                }
+            }
+
+            Map<String, Object> item = expressionRowIndex < dataRows.size()
+                    ? dataRows.get(expressionRowIndex)
+                    : new HashMap<>();
+
+            for (Cell srcCell : srcRow) {
+                Cell destCell = destRow.createCell(srcCell.getColumnIndex());
+                destCell.setCellStyle(srcCell.getCellStyle());
+
+                if (srcCell.getCellType() == CellType.STRING) {
+                    String value = srcCell.getStringCellValue();
+                    if (isTemplateDataExpression(value)) {
+                        Object resolved = resolveExpression(value, item);
+                        setResolvedCellValue(destCell, resolved);
+                        continue;
+                    }
+                    if (value != null && value.startsWith("=")) {
+                        destCell.setCellFormula(value.substring(1));
+                        continue;
+                    }
+                }
+                if (srcCell.getCellType() == CellType.FORMULA) {
+                    destCell.setCellFormula(srcCell.getCellFormula());
+                    continue;
+                }
+                copyCell(srcCell, destCell, replacements);
+            }
+
+            if (expressionRow) expressionRowIndex++;
+        }
+    }
+
+    private void setResolvedCellValue(Cell cell, Object value) {
+        if (value instanceof Number number) {
+            double numericValue = number.doubleValue();
+            cell.setCellValue(numericValue);
+            setNumericCellFormat(cell, numericValue);
+        } else if (value == null || String.valueOf(value).isBlank()) {
+            cell.setCellValue(0);
+            setNumericCellFormat(cell, 0);
+        } else {
+            cell.setCellValue(String.valueOf(value));
+        }
+    }
+
+    private boolean isTemplateDataExpression(String expression) {
+        if (expression == null) {
+            return false;
+        }
+        return expression.contains("item.")
+                || expression.contains("table.")
+                || expression.contains("entry.value")
+                || expression.contains("entry.key")
+                || expression.contains("charAt(idx)")
+                || expression.contains("this.getCateOtherText")
+                || expression.contains("zobjComReport")
+                || expression.contains("zobjDataDefault")
+                || expression.contains("thiz.")
+                || expression.contains("jrf.");
+    }
+
     // ==========================================
 
     // EXPORT HELPER METHODS
@@ -4677,6 +4809,10 @@ public class ReportService {
         }
 
         String id = reportCodeStr.toUpperCase();
+
+        if (id.matches("(?:BCC|BCKCHT|BCDL|BCPTTV|BCDN|BCTT48|BCCNDB)_\\d+N?")) {
+            return id;
+        }
 
         if ("F-180N".equals(id))
             return "BCDL_180N";
@@ -4837,8 +4973,8 @@ public class ReportService {
     }
 
     private Map<String, String> buildReplacements(ReportPreviewRequest request, int reportYear) {
-        // [COMMENTED] Hardidd org name — resolved from DB below
-        String orgName = ""; // was: "Cục Hàng hải và Đường thủy Việt Nam"
+        // Default org name is Cục Hàng hải và Đường thủy Việt Nam
+        String orgName = "Cục Hàng hải và Đường thủy Việt Nam";
 
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().isBlank()
         /* && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId()) */) {
@@ -4860,6 +4996,12 @@ public class ReportService {
             periodText = "Năm " + reportYear;
         }
 
+        LocalDate lastYearStart = request.getStartDate() != null ? request.getStartDate().minusYears(1) : null;
+        LocalDate lastYearEnd = request.getEndDate() != null ? request.getEndDate().minusYears(1) : null;
+        String ssThoiGianText = (lastYearStart != null && lastYearEnd != null)
+                ? "Từ " + lastYearStart + " đến " + lastYearEnd
+                : "";
+
         Map<String, String> replacements = new HashMap<>();
 
         replacements.put("${fkDonViBcText}", orgName);
@@ -4876,6 +5018,12 @@ public class ReportService {
         replacements.put("${dateReportText}", "ngày " + LocalDate.now().getDayOfMonth() + " tháng "
                 + LocalDate.now().getMonthValue() + " năm " + LocalDate.now().getYear());
         replacements.put("${bcThoiGian}", periodText);
+        replacements.put("${ssThoiGian}", ssThoiGianText);
+        replacements.put("${bcNgayNhan}", "Ngày 01 tháng 3 năm sau");
+        int reportMonth = request.getStartDate() != null
+                ? request.getStartDate().getMonthValue()
+                : LocalDate.now().getMonthValue();
+        replacements.put("${bcThoiGianThangNam}", String.format("Tháng %02d năm %d", reportMonth, reportYear));
 
         // F-143 label
 
@@ -5503,6 +5651,8 @@ public class ReportService {
     }
 
     private byte[] outputWorkbook(Workbook workbook, Sheet destSheet, boolean isExcel) throws Exception {
+        materializeTemplateFormulas(destSheet);
+        clearUnresolvedTemplateExpressions(destSheet);
         if (isExcel) {
             try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
                 workbook.write(baos);
@@ -5584,6 +5734,10 @@ public class ReportService {
         try {
             if (formula.startsWith("=")) {
                 formula = formula.substring(1).trim();
+            }
+
+            if (formula.matches("(?i).*(?:IFERROR|ROUND|SUMPRODUCT).*")) {
+                return;
             }
 
             // 1. Replace VALUE(X99) with just the numeric reference X99 first
@@ -6023,6 +6177,108 @@ public class ReportService {
         return result;
     }
 
+    /**
+     * Legacy VMD workbooks contain Excel expressions as plain text without a
+     * leading '='. Evaluate them after the destination sheet is complete and
+     * persist the result so PDF rendering never prints formula source text.
+     */
+    private void materializeTemplateFormulas(Sheet sheet) {
+        Map<Cell, CellValue> evaluatedValues = new LinkedHashMap<>();
+        FormulaEvaluator evaluator = sheet.getWorkbook().getCreationHelper().createFormulaEvaluator();
+
+        for (Row row : sheet) {
+            for (Cell cell : row) {
+                if (cell.getCellType() == CellType.FORMULA) {
+                    String formula = normalizeLegacyFormula(cell.getCellFormula());
+                    cell.setCellFormula(formula);
+                    continue;
+                }
+                if (cell.getCellType() != CellType.STRING) {
+                    continue;
+                }
+                String value = cell.getStringCellValue();
+                if (!isLegacyFormulaText(value)) {
+                    continue;
+                }
+                String formula = normalizeLegacyFormula(value);
+                try {
+                    cell.setCellFormula(formula);
+                } catch (IllegalArgumentException error) {
+                    log.warn("Invalid report template formula at {}: {}", cell.getAddress(), formula);
+                    cell.setCellValue(0);
+                }
+            }
+        }
+
+        evaluator.clearAllCachedResultValues();
+        for (Row row : sheet) {
+            for (Cell cell : row) {
+                if (cell.getCellType() == CellType.FORMULA) {
+                    try {
+                        CellValue value = evaluator.evaluate(cell);
+                        if (value != null) {
+                            evaluatedValues.put(cell, value);
+                        }
+                    } catch (RuntimeException error) {
+                        log.warn("Unable to evaluate report formula at {}: {}", cell.getAddress(), cell.getCellFormula());
+                        cell.removeFormula();
+                        cell.setCellValue(0);
+                        setNumericCellFormat(cell, 0);
+                    }
+                }
+            }
+        }
+
+        evaluatedValues.forEach((cell, value) -> {
+            cell.removeFormula();
+            switch (value.getCellType()) {
+                case NUMERIC -> {
+                    double number = value.getNumberValue();
+                    cell.setCellValue(number);
+                    setNumericCellFormat(cell, number);
+                }
+                case STRING -> cell.setCellValue(value.getStringValue());
+                case BOOLEAN -> cell.setCellValue(value.getBooleanValue());
+                case BLANK -> cell.setBlank();
+                case ERROR -> {
+                    log.warn("Report formula evaluated to an error at {}", cell.getAddress());
+                    cell.setCellValue(0);
+                    setNumericCellFormat(cell, 0);
+                }
+                default -> cell.setBlank();
+            }
+        });
+    }
+
+    private boolean isLegacyFormulaText(String value) {
+        if (value == null) {
+            return false;
+        }
+        return value.trim().matches("(?i)^(?:IFERROR|ROUND|SUMPRODUCT|SUM|VALUE)\\s*\\(.*");
+    }
+
+    private String normalizeLegacyFormula(String value) {
+        String formula = value.trim();
+        formula = formula.replaceAll("(?i)SUMPRODUCT\\s*\\(\\s*VALUE\\s*\\(([^)]+)\\)\\s*\\)", "SUM($1)");
+        formula = formula.replaceAll("(?i)VALUE\\s*\\(\\s*([A-Z]+\\d+)\\s*\\)", "$1");
+        return formula;
+    }
+
+    private void clearUnresolvedTemplateExpressions(Sheet sheet) {
+        for (Row row : sheet) {
+            for (Cell cell : row) {
+                if (cell.getCellType() != CellType.STRING) {
+                    continue;
+                }
+                String value = cell.getStringCellValue();
+                if (value != null && value.contains("${")) {
+                    log.warn("Clearing unresolved report template expression at {}: {}", cell.getAddress(), value);
+                    cell.setBlank();
+                }
+            }
+        }
+    }
+
     private void copyCell(Cell srcCell, Cell destCell, Map<String, String> replacements) {
         if (srcCell == null)
             return;
@@ -6055,8 +6311,7 @@ public class ReportService {
                                 break;
                             } catch (NumberFormatException e) {
                                 if (repVal == null || repVal.isBlank()) {
-                                    destCell.setCellValue(0);
-                                    setNumericCellFormat(destCell, 0);
+                                    destCell.setCellValue("");
                                 } else {
                                     destCell.setCellValue(repVal);
                                 }
@@ -6078,13 +6333,10 @@ public class ReportService {
                     }
 
                     if (val.startsWith("=")) {
-                        destCell.setCellFormula(val.substring(1));
-                        // Use Java-side resolveFormulaCell() which strips VALUE(), reads
-                        // referenced cell values, computes arithmetic, and replaces the formula
-                        // with a plain numeric value. POI's evaluateFormulaCell() fails on
-                        // VALUE() and corrupts the cell to ERROR type, causing formula text
-                        // to show in PDF export.
-                        resolveFormulaCell(destCell);
+                        destCell.setCellFormula(shiftFormulaRows(
+                                val.substring(1), destCell.getRowIndex() - srcCell.getRowIndex()));
+                        // Resolve only after the complete sheet has been populated. Many
+                        // legacy formulas reference helper cells later in the same row.
                         break;
                     }
 
@@ -6111,7 +6363,8 @@ public class ReportService {
 
             case FORMULA:
                 String formulaText = srcCell.getCellFormula();
-                destCell.setCellFormula(formulaText);
+                destCell.setCellFormula(shiftFormulaRows(
+                        formulaText, destCell.getRowIndex() - srcCell.getRowIndex()));
                 // BCC_157 template stores placeholders as FORMULA cells (not STRING)
                 // e.g. formula="${zobjComReport.assetOpeningOriginalCost.asText()}"
                 // We must check if this is actually a placeholder, not a real formula
@@ -6135,8 +6388,8 @@ public class ReportService {
                         }
                     }
                 } else {
-                    // Real Excel formula — resolve with Java compute
-                    resolveFormulaCell(destCell);
+                    // Real Excel formula: evaluation is deferred until outputWorkbook(),
+                    // after every referenced cell and shifted row is available.
                 }
 
                 break;
@@ -6157,6 +6410,31 @@ public class ReportService {
 
                 break;
         }
+    }
+
+    private String shiftFormulaRows(String formula, int rowDelta) {
+        if (formula == null || rowDelta == 0) return formula;
+        Matcher singleCellTotal = Pattern.compile(
+                "(?i)^SUMPRODUCT\\s*\\(\\s*VALUE\\s*\\(\\s*(\\$?[A-Z]{1,3})(\\d+)\\s*\\)\\s*\\)$")
+                .matcher(formula.trim());
+        if (rowDelta > 0 && singleCellTotal.matches()) {
+            int firstRow = Integer.parseInt(singleCellTotal.group(2));
+            return "SUM(" + singleCellTotal.group(1) + firstRow + ":"
+                    + singleCellTotal.group(1) + (firstRow + rowDelta) + ")";
+        }
+        Matcher matcher = Pattern.compile("(\\$?[A-Z]{1,3})(\\$?)(\\d+)").matcher(formula);
+        StringBuffer shifted = new StringBuffer();
+        while (matcher.find()) {
+            if ("$".equals(matcher.group(2))) {
+                matcher.appendReplacement(shifted, Matcher.quoteReplacement(matcher.group()));
+                continue;
+            }
+            int shiftedRow = Math.max(1, Integer.parseInt(matcher.group(3)) + rowDelta);
+            String replacement = matcher.group(1) + matcher.group(2) + shiftedRow;
+            matcher.appendReplacement(shifted, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(shifted);
+        return shifted.toString();
     }
 
     /**
@@ -6538,6 +6816,23 @@ public class ReportService {
         return true;
     }
 
+    private boolean isRowCoveredByMerge(Sheet sheet, boolean[][] visited, int r, int maxCols) {
+        if (r < visited.length) {
+            for (int c = 0; c < maxCols && c < visited[r].length; c++) {
+                if (visited[r][c]) {
+                    return true;
+                }
+            }
+        }
+        for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+            org.apache.poi.ss.util.CellRangeAddress region = sheet.getMergedRegion(i);
+            if (region.getFirstRow() == r && region.getLastRow() > r) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private byte[] convertExcelToPdf(Sheet sheet) {
         return convertExcelToPdf(sheet, false);
     }
@@ -6741,7 +7036,9 @@ public class ReportService {
                 Row row = sheet.getRow(r);
 
                 if (row == null || isRowBlank(row, maxCols)) {
-                    continue;
+                    if (!isRowCoveredByMerge(sheet, visited, r, maxCols)) {
+                        continue;
+                    }
                 }
 
                 boolean isTable = isTableRow(sheet, r);
@@ -6750,7 +7047,7 @@ public class ReportService {
                     if (visited[r][c])
                         continue;
 
-                    Cell cell = row.getCell(c);
+                    Cell cell = row != null ? row.getCell(c) : null;
 
                     org.apache.poi.ss.util.CellRangeAddress mergedRegion = null;
 
@@ -6775,7 +7072,10 @@ public class ReportService {
                         pdfCell = new com.itextpdf.layout.element.Cell();
                     }
 
-                    pdfCell.setPadding(2f);
+                    pdfCell.setPaddingTop(1.5f);
+                    pdfCell.setPaddingBottom(1.5f);
+                    pdfCell.setPaddingLeft(2.5f);
+                    pdfCell.setPaddingRight(2.5f);
 
                     if (cell != null && cell.getCellStyle() != null) {
                         CellStyle style = cell.getCellStyle();
@@ -6901,7 +7201,10 @@ public class ReportService {
                         valText = formatter.formatCellValue(cell);
                     }
 
-                    pdfCell.add(new com.itextpdf.layout.element.Paragraph(valText));
+                    com.itextpdf.layout.element.Paragraph p = new com.itextpdf.layout.element.Paragraph(valText);
+                    p.setMargin(0);
+                    p.setMultipliedLeading(1.15f);
+                    pdfCell.add(p);
 
                     if (valText != null) {
                         String clean = valText.trim();

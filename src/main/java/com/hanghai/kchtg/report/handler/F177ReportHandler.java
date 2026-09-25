@@ -47,7 +47,7 @@ public class F177ReportHandler extends BaseReportHandler {
                 "Thực hiện tháng này", "Thực hiện tháng trước", "Lũy kế từ đầu năm", "So với cùng kỳ (%)"
         );
 
-        List<Map<String, Object>> rows = loadRows(targetUnitId, reportYear, period);
+        List<Map<String, Object>> rows = loadRows(targetUnitId, reportYear, period, request.getStartDate());
 
         BigDecimal totalMonth = BigDecimal.ZERO;
         for (Map<String, Object> r : rows) {
@@ -67,10 +67,10 @@ public class F177ReportHandler extends BaseReportHandler {
     public List<Map<String, Object>> getExportData(ReportPreviewRequest request, int reportYear) {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         String period = request.getReportPeriod() != null ? request.getReportPeriod() : "MONTHLY";
-        return loadRows(targetUnitId, reportYear, period);
+        return loadRows(targetUnitId, reportYear, period, request.getStartDate());
     }
 
-    private List<Map<String, Object>> loadRows(UUID orgUnitId, int reportYear, String period) {
+    private List<Map<String, Object>> loadRows(UUID orgUnitId, int reportYear, String period, LocalDate startDate) {
         Optional<ReportRecord> recordOpt = reportRecordService.findSnapshot(orgUnitId, "F-177", reportYear, period);
         if (recordOpt.isPresent() && recordOpt.get().getReportData() != null) {
             try {
@@ -78,15 +78,34 @@ public class F177ReportHandler extends BaseReportHandler {
             } catch (Exception ignored) {
             }
         }
-        return getDefaultRows(orgUnitId, reportYear);
+        int reportMonth = startDate != null ? startDate.getMonthValue() : requestMonth(period, reportYear);
+        return getDefaultRows(orgUnitId, reportYear, reportMonth);
     }
 
-    private List<Map<String, Object>> getDefaultRows(UUID orgUnitId, int reportYear) {
-        LocalDate start = LocalDate.of(reportYear, 1, 1);
-        LocalDate end = LocalDate.of(reportYear, 1, 31);
-        List<ShipPortCall> ships = aggregationService.getFilteredShipPortCalls(orgUnitId, start, end);
-        List<InlandWaterwayPortCall> boats = aggregationService.getFilteredInlandPortCalls(orgUnitId, start, end);
-        Map<String, BigDecimal> m = aggregationService.aggregateCargoMetrics(ships, boats);
+    private int requestMonth(String period, int reportYear) {
+        try {
+            if (period != null && period.matches(".*(?:0?[1-9]|1[0-2]).*")) {
+                java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?:^|\\D)(0?[1-9]|1[0-2])(?:\\D|$)").matcher(period);
+                if (matcher.find()) return Integer.parseInt(matcher.group(1));
+            }
+        } catch (RuntimeException ignored) {
+        }
+        return LocalDate.now().getYear() == reportYear ? LocalDate.now().getMonthValue() : 12;
+    }
+
+    private List<Map<String, Object>> getDefaultRows(UUID orgUnitId, int reportYear, int reportMonth) {
+        LocalDate monthStart = LocalDate.of(reportYear, reportMonth, 1);
+        LocalDate monthEnd = monthStart.plusMonths(1).minusDays(1);
+        Map<String, BigDecimal> month = aggregationService.aggregateCargoMetrics(
+                aggregationService.getFilteredShipPortCalls(orgUnitId, monthStart, monthEnd),
+                aggregationService.getFilteredInlandPortCalls(orgUnitId, monthStart, monthEnd));
+        Map<String, BigDecimal> yearToDate = aggregationService.aggregateCargoMetrics(
+                aggregationService.getFilteredShipPortCalls(orgUnitId, LocalDate.of(reportYear, 1, 1), monthEnd),
+                aggregationService.getFilteredInlandPortCalls(orgUnitId, LocalDate.of(reportYear, 1, 1), monthEnd));
+        LocalDate priorEnd = LocalDate.of(reportYear - 1, reportMonth, 1).plusMonths(1).minusDays(1);
+        Map<String, BigDecimal> priorYearToDate = aggregationService.aggregateCargoMetrics(
+                aggregationService.getFilteredShipPortCalls(orgUnitId, LocalDate.of(reportYear - 1, 1, 1), priorEnd),
+                aggregationService.getFilteredInlandPortCalls(orgUnitId, LocalDate.of(reportYear - 1, 1, 1), priorEnd));
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
@@ -102,13 +121,12 @@ public class F177ReportHandler extends BaseReportHandler {
                 r.put("So với cùng kỳ (%)", "");
                 r.put("_rowType", "section");
             } else {
-                BigDecimal cur = m.getOrDefault(def.metricKey, BigDecimal.ZERO);
-                BigDecimal prev = cur.multiply(BigDecimal.valueOf(0.95));
-                BigDecimal ytd = cur.multiply(BigDecimal.valueOf(2.5));
+                BigDecimal cur = month.getOrDefault(def.metricKey, BigDecimal.ZERO);
+                BigDecimal ytd = yearToDate.getOrDefault(def.metricKey, BigDecimal.ZERO);
                 r.put("Thực hiện tháng này", cur);
-                r.put("Thực hiện tháng trước", prev);
+                r.put("Kế hoạch năm", BigDecimal.ZERO);
                 r.put("Lũy kế từ đầu năm", ytd);
-                r.put("So với cùng kỳ (%)", BigDecimal.valueOf(105.2));
+                r.put("Lũy kế cùng kỳ năm trước", priorYearToDate.getOrDefault(def.metricKey, BigDecimal.ZERO));
             }
             rows.add(r);
         }

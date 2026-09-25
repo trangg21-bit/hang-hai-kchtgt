@@ -84,9 +84,12 @@ public class F178ReportHandler extends BaseReportHandler {
     private List<Map<String, Object>> getDefaultRows(UUID orgUnitId, int reportYear) {
         LocalDate start = LocalDate.of(reportYear, 1, 1);
         LocalDate end = LocalDate.of(reportYear, 12, 31);
-        List<ShipPortCall> ships = aggregationService.getFilteredShipPortCalls(orgUnitId, start, end);
-        List<InlandWaterwayPortCall> boats = aggregationService.getFilteredInlandPortCalls(orgUnitId, start, end);
-        Map<String, BigDecimal> m = aggregationService.aggregateCargoMetrics(ships, boats);
+        Map<String, BigDecimal> current = aggregationService.aggregateCargoMetrics(
+                aggregationService.getFilteredShipPortCalls(orgUnitId, start, end),
+                aggregationService.getFilteredInlandPortCalls(orgUnitId, start, end));
+        Map<String, BigDecimal> previous = aggregationService.aggregateCargoMetrics(
+                aggregationService.getFilteredShipPortCalls(orgUnitId, start.minusYears(1), end.minusYears(1)),
+                aggregationService.getFilteredInlandPortCalls(orgUnitId, start.minusYears(1), end.minusYears(1)));
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
@@ -103,14 +106,13 @@ public class F178ReportHandler extends BaseReportHandler {
                 r.put("So với kế hoạch (%)", "");
                 r.put("_rowType", "section");
             } else {
-                BigDecimal cur = m.getOrDefault(def.metricKey, BigDecimal.ZERO);
-                BigDecimal last = cur.multiply(BigDecimal.valueOf(0.92));
-                BigDecimal plan = cur.multiply(BigDecimal.valueOf(1.05));
-                r.put("Kế hoạch năm", plan);
+                BigDecimal cur = current.getOrDefault(def.metricKey, BigDecimal.ZERO);
+                BigDecimal last = previous.getOrDefault(def.metricKey, BigDecimal.ZERO);
+                r.put("Kế hoạch năm", BigDecimal.ZERO);
                 r.put("Thực hiện năm báo cáo", cur);
                 r.put("Thực hiện năm trước", last);
-                r.put("So với năm trước (%)", BigDecimal.valueOf(108.7));
-                r.put("So với kế hoạch (%)", BigDecimal.valueOf(95.2));
+                r.put("So với năm trước (%)", BigDecimal.ZERO);
+                r.put("So với kế hoạch (%)", BigDecimal.ZERO);
             }
             rows.add(r);
         }
