@@ -2210,24 +2210,22 @@ export default function RadarStationList() {
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -2242,27 +2240,23 @@ export default function RadarStationList() {
       cellTitle: (record: RadarStationResponse) => record.stationName || '',
       render: (name: string | undefined, record: RadarStationResponse) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <Tooltip title={name || undefined} placement="topLeft">
-            <a
-              title={name}
-              onClick={() => openDetailDrawer(record)}
-              style={{
-                ...themeTokenChk.cellTitleStyle,
-                display: 'block',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {name || null}
-            </a>
-          </Tooltip>
+          <a
+            title={name}
+            onClick={() => openDetailDrawer(record)}
+            style={{
+              ...themeTokenChk.cellTitleStyle,
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name || null}
+          </a>
           {record.code && (
-            <Tooltip title={record.code} placement="topLeft">
-              <span style={{ ...themeTokenChk.cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
-                {record.code}
-              </span>
-            </Tooltip>
+            <span style={{ ...themeTokenChk.cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+              {record.code}
+            </span>
           )}
         </div>
       ),
@@ -2349,9 +2343,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -2368,9 +2360,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -2387,9 +2377,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -2406,9 +2394,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>

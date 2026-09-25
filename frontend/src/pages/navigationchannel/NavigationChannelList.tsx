@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { Input, Select, DatePicker, Modal, Button, Tooltip } from 'antd';
+import { Input, Select, DatePicker, Modal, Button } from 'antd';
 import dayjs, { type Dayjs } from 'dayjs';
 import { message } from '../../components/ToastNotification';
 import { navigationChannelCRUD, navigationChannelApproval } from '../../services/navigationChannelService';
@@ -751,24 +751,22 @@ export default function NavigationChannelList() {
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -805,53 +803,47 @@ export default function NavigationChannelList() {
           return (
             <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {canView ? (
-                <Tooltip title={name || undefined} placement="topLeft">
-                  <a
-                    title={name}
-                    onClick={() => openDetail(record)}
-                    style={{
-                      ...cellTitleStyle,
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {name || null}
-                  </a>
-                </Tooltip>
+                <a
+                  title={name}
+                  onClick={() => openDetail(record)}
+                  style={{
+                    ...cellTitleStyle,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {name || null}
+                </a>
               ) : (
-                <Tooltip title={name || undefined} placement="topLeft">
-                  <span
-                    title={name}
-                    style={{
-                      ...cellTitleStyle,
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      cursor: 'default',
-                    }}
-                  >
-                    {name || null}
-                  </span>
-                </Tooltip>
+                <span
+                  title={name}
+                  style={{
+                    ...cellTitleStyle,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    cursor: 'default',
+                  }}
+                >
+                  {name || null}
+                </span>
               )}
               {record.channelCode && (
-                <Tooltip title={record.channelCode} placement="topLeft">
-                  <span
-                    style={{
-                      ...cellSubtitleStyle,
-                      display: 'block',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                    title={record.channelCode}
-                  >
-                    {record.channelCode}
-                  </span>
-                </Tooltip>
+                <span
+                  style={{
+                    ...cellSubtitleStyle,
+                    display: 'block',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={record.channelCode}
+                >
+                  {record.channelCode}
+                </span>
               )}
             </div>
           );
@@ -937,21 +929,19 @@ export default function NavigationChannelList() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name ? (
-                <Tooltip title={name} placement="topLeft">
-                  <div
-                    title={name}
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: textPrimary,
-                      fontSize: fontSizeMd,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {name}
-                  </div>
-                </Tooltip>
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
               ) : (
                 <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
               )}
@@ -980,21 +970,19 @@ export default function NavigationChannelList() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name ? (
-                <Tooltip title={name} placement="topLeft">
-                  <div
-                    title={name}
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: textPrimary,
-                      fontSize: fontSizeMd,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {name}
-                  </div>
-                </Tooltip>
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
               ) : (
                 <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
               )}
@@ -1023,21 +1011,19 @@ export default function NavigationChannelList() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name ? (
-                <Tooltip title={name} placement="topLeft">
-                  <div
-                    title={name}
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: textPrimary,
-                      fontSize: fontSizeMd,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {name}
-                  </div>
-                </Tooltip>
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
               ) : (
                 <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
               )}
@@ -1066,21 +1052,19 @@ export default function NavigationChannelList() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name ? (
-                <Tooltip title={name} placement="topLeft">
-                  <div
-                    title={name}
-                    style={{
-                      fontWeight: fontWeightBold,
-                      color: textPrimary,
-                      fontSize: fontSizeMd,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {name}
-                  </div>
-                </Tooltip>
+                <div
+                  title={name}
+                  style={{
+                    fontWeight: fontWeightBold,
+                    color: textPrimary,
+                    fontSize: fontSizeMd,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {name}
+                </div>
               ) : (
                 <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}></div>
               )}

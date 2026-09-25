@@ -11,7 +11,6 @@ import {
     Radio,
     Select,
     Space,
-    Tooltip,
     Pagination as AntPagination,
 } from 'antd';
 import dayjs from 'dayjs';
@@ -1396,24 +1395,22 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -1438,21 +1435,17 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
         cellTitle: (record: ShipRepairYard) => record.shipRepairYardName || '',
         render: (v: string, record: ShipRepairYard) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <Tooltip title={v || undefined} placement="topLeft">
-              <a
-                title={v}
-                onClick={() => openDetailDrawer(record)}
-                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                {v}
-              </a>
-            </Tooltip>
+            <a
+              title={v}
+              onClick={() => openDetailDrawer(record)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {v}
+            </a>
             {record.shipRepairYardCode && (
-              <Tooltip title={record.shipRepairYardCode} placement="topLeft">
-                <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.shipRepairYardCode}>
-                  {record.shipRepairYardCode}
-                </span>
-              </Tooltip>
+              <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.shipRepairYardCode}>
+                {record.shipRepairYardCode}
+              </span>
             )}
           </div>
         ),
@@ -1530,9 +1523,7 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
@@ -1552,9 +1543,7 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
@@ -1574,9 +1563,7 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>
@@ -1596,9 +1583,7 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {cleanDate && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{cleanDate}</span>}
             </div>

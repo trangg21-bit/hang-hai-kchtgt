@@ -11,7 +11,6 @@ import {
     Modal,
     Select,
     Space,
-    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -933,24 +932,22 @@ export default function DryPortListPage() {
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -976,24 +973,20 @@ export default function DryPortListPage() {
         cellTitle: (record: DryPort) => record.dryPortName || '',
         render: (_: unknown, record: DryPort) => (
           <div style={{ minWidth: 0, overflow: 'hidden' }}>
-            <Tooltip title={record.dryPortName || undefined} placement="topLeft">
-              <a
-                title={record.dryPortName}
-                onClick={() => openDetailModal(record)}
-                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                {record.dryPortName || ''}
-              </a>
-            </Tooltip>
+            <a
+              title={record.dryPortName}
+              onClick={() => openDetailModal(record)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {record.dryPortName || ''}
+            </a>
             {record.dryPortCode && (
-              <Tooltip title={record.dryPortCode} placement="topLeft">
-                <span
-                  title={record.dryPortCode}
-                  style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
-                  {record.dryPortCode}
-                </span>
-              </Tooltip>
+              <span
+                title={record.dryPortCode}
+                style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              >
+                {record.dryPortCode}
+              </span>
             )}
           </div>
         ),
@@ -1095,11 +1088,9 @@ export default function DryPortListPage() {
           return (
             <div style={{ lineHeight: '1.35', minWidth: 0, overflow: 'hidden' }}>
               {name ? (
-                <Tooltip title={name} placement="topLeft">
-                  <div title={name} style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {name}
-                  </div>
-                </Tooltip>
+                <div title={name} style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {name}
+                </div>
               ) : null}
               <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
                 {cleanDate}

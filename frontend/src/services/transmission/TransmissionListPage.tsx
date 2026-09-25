@@ -18,7 +18,6 @@ import {
     Select,
     Space,
     Tabs,
-    Tooltip,
     Typography,
 } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -49,6 +48,7 @@ import * as themeTokenChk from "../../themetokenchk";
 import { cellSubtitleStyle, cellTitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
+import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
@@ -786,14 +786,12 @@ const TransmissionListPage = () => {
       const renderInfoStack = (name: string | null | undefined, date: string | null | undefined) => (
         <div style={{ lineHeight: "1.35", overflow: "hidden" }}>
           {name ? (
-            <Tooltip title={name} placement="topLeft">
-              <div
-                title={name}
-                style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-              >
-                {name}
-              </div>
-            </Tooltip>
+            <div
+              title={name}
+              style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+            >
+              {name}
+            </div>
           ) : (
             <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
           )}
@@ -809,23 +807,21 @@ const TransmissionListPage = () => {
       ) => {
         if (!text) return null;
         return (
-          <Tooltip title={text} placement="topLeft">
-            <span
-              style={{
-                ...tableMetaStyle,
-                fontWeight: isBold ? fontWeightBold : undefined,
-                display: "inline-block",
-                maxWidth: "100%",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                verticalAlign: "middle",
-              }}
-              title={text}
-            >
-              {text}
-            </span>
-          </Tooltip>
+          <span
+            style={{
+              ...tableMetaStyle,
+              fontWeight: isBold ? fontWeightBold : undefined,
+              display: "inline-block",
+              maxWidth: "100%",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              verticalAlign: "middle",
+            }}
+            title={text}
+          >
+            {text}
+          </span>
         );
       };
 
@@ -855,35 +851,29 @@ const TransmissionListPage = () => {
         render: (val: string, record: TransmissionResponse) => (
           <div style={{ minWidth: 0, overflow: "hidden" }}>
             {hasPerm?.("transmission:read") ? (
-              <Tooltip title={val || undefined} placement="topLeft">
-                <button
-                  type="button"
-                  className="kcht-cell-title"
-                  onClick={() => {
-                    setSelectedRecord(record);
-                    setDetailDrawerOpen(true);
-                  }}
-                  style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
-                  title={val || undefined}
-                >
-                  {val || "—"}
-                </button>
-              </Tooltip>
+              <button
+                type="button"
+                className="kcht-cell-title"
+                onClick={() => {
+                  setSelectedRecord(record);
+                  setDetailDrawerOpen(true);
+                }}
+                style={{ ...cellTitleStyle, background: "none", border: "none", padding: 0, textAlign: "left", fontFamily: "inherit", width: "100%" }}
+                title={val || undefined}
+              >
+                {val || "—"}
+              </button>
             ) : (
-              <Tooltip title={val || undefined} placement="topLeft">
-                <span
-                  className="kcht-cell-title"
-                  style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
-                  title={val || undefined}
-                >
-                  {val || null}
-                </span>
-              </Tooltip>
+              <span
+                className="kcht-cell-title"
+                style={{ ...cellTitleStyle, cursor: "default", width: "100%", display: "inline-block" }}
+                title={val || undefined}
+              >
+                {val || null}
+              </span>
             )}
             {record.deviceCode && (
-              <Tooltip title={record.deviceCode} placement="topLeft">
-                <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
-              </Tooltip>
+              <span className="kcht-cell-code" style={{ ...cellSubtitleStyle }} title={record.deviceCode}>{record.deviceCode}</span>
             )}
           </div>
         ),

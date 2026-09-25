@@ -12,7 +12,6 @@ import {
     Modal,
     Select,
     Space,
-    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1119,9 +1118,7 @@ export default function TransferAreaListPage() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
@@ -1142,9 +1139,7 @@ export default function TransferAreaListPage() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
@@ -1165,9 +1160,7 @@ export default function TransferAreaListPage() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>
@@ -1178,31 +1171,28 @@ export default function TransferAreaListPage() {
   }, [userMap]);
 
 
-
   const renderCellWithTooltip = (
     text: string | null | undefined,
     isBold?: boolean
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -1229,24 +1219,20 @@ export default function TransferAreaListPage() {
         cellTitle: (record: TransferArea) => record.transferAreaName || '',
         render: (v: string, record: TransferArea) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            <Tooltip title={v || undefined} placement="topLeft">
-              <a
-                title={v || ''}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openDetailDrawer(record);
-                }}
-                style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
-              >
-                {v || ''}
-              </a>
-            </Tooltip>
+            <a
+              title={v || ''}
+              onClick={(e) => {
+                e.stopPropagation();
+                openDetailDrawer(record);
+              }}
+              style={{ ...cellTitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+            >
+              {v || ''}
+            </a>
             {record.transferAreaCode && (
-              <Tooltip title={record.transferAreaCode} placement="topLeft">
-                <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.transferAreaCode}>
-                  {record.transferAreaCode}
-                </span>
-              </Tooltip>
+              <span style={{ ...cellSubtitleStyle, display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={record.transferAreaCode}>
+                {record.transferAreaCode}
+              </span>
             )}
           </div>
         ),
@@ -1336,9 +1322,7 @@ export default function TransferAreaListPage() {
           return (
             <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
               {name && (
-                <Tooltip title={name} placement="topLeft">
-                  <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                </Tooltip>
+                <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
               )}
               {date && <span style={{ opacity: 0.85, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date}</span>}
             </div>

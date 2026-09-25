@@ -51,10 +51,10 @@ public class DikeRevetmentResponse {
     private ApprovalStatus approvalStatus;
     private Boolean isApprovedLevel1;
     private UUID approverLevel1;
-    private LocalDate approvedDateLevel1;
+    private LocalDateTime approvedDateLevel1;
     private Boolean isApprovedLevel2;
     private UUID approverLevel2;
-    private LocalDate approvedDateLevel2;
+    private LocalDateTime approvedDateLevel2;
     private String rejectionReason;
     private Boolean isDeleted;
     private LocalDateTime createdAt;

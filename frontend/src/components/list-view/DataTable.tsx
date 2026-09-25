@@ -44,6 +44,33 @@ function withHeaderSafeWidth(column: any): any {
   return required > column.width ? { ...column, width: required } : column;
 }
 
+function isUuid(val: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+}
+
+function extractTextFromNode(node: React.ReactNode): string {
+  if (node == null || typeof node === 'boolean') return '';
+  if (typeof node === 'string' || typeof node === 'number') return String(node).trim();
+  if (Array.isArray(node)) {
+    return node.map(extractTextFromNode).filter(Boolean).join(' ').trim();
+  }
+  if (React.isValidElement(node)) {
+    const type = node.type;
+    const typeName = typeof type === 'string' ? type : (type as any)?.displayName || (type as any)?.name || '';
+    if (/button|dropdown|input|select|checkbox|radio|icon/i.test(typeName)) {
+      return '';
+    }
+    const props = node.props as any;
+    if (props?.title && typeof props.title === 'string' && props.title.trim()) {
+      return props.title.trim();
+    }
+    if (props?.children) {
+      return extractTextFromNode(props.children);
+    }
+  }
+  return '';
+}
+
 const actionColumnCellStyle: React.CSSProperties = {
   width: ACTION_COLUMN_WIDTH,
   minWidth: ACTION_COLUMN_WIDTH,
@@ -75,7 +102,7 @@ export interface DataTableColumn {
   dataIndex?: string;
   sorter?: boolean | ((a: any, b: any) => number);
   sortOrder?: 'ascend' | 'descend' | null;
-  cellTitle?: (record: any) => string;
+  cellTitle?: ((record: any) => string) | ((value: any, record: any) => string) | string | false;
   fixed?: 'left' | 'right';
   /** Mặc định true (cắt chữ "..."); đặt false để header/cell wrap hiển thị đủ chữ. */
   ellipsis?: boolean;
@@ -459,25 +486,49 @@ userSelect: 'none',
         } : undefined,
       }),
       title: <span style={{ whiteSpace: 'nowrap' }}>{((col as any).title ?? col.label)}</span>,
-      onCell: (record: any) => {
+      onCell: (record: any, rowIndex?: number) => {
         let cellTitleText: string | undefined = undefined;
-        if (col.cellTitle) {
-          try {
-            const dataKey = col.dataIndex || col.key;
-            const val = dataKey && record ? record[dataKey] : undefined;
-            if (col.cellTitle.length >= 2) {
-              cellTitleText = (col.cellTitle as any)(val, record);
-            } else {
-              cellTitleText = col.cellTitle(record);
+        const dataKey = col.dataIndex || col.key;
+        const isControlCol = col.key === 'actions' || col.key === 'stt' || col.key === 'selection' || col.isDummy;
+
+        if (!isControlCol) {
+          if (col.cellTitle !== undefined) {
+            if (typeof col.cellTitle === 'function') {
+              try {
+                const val = dataKey && record ? record[dataKey] : undefined;
+                if (col.cellTitle.length >= 2) {
+                  cellTitleText = (col.cellTitle as any)(val, record);
+                } else {
+                  cellTitleText = col.cellTitle(record);
+                }
+              } catch {
+                cellTitleText = undefined;
+              }
+            } else if (typeof col.cellTitle === 'string') {
+              cellTitleText = col.cellTitle;
             }
-          } catch {
-            cellTitleText = undefined;
-          }
-        } else if (!col.render && dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object') {
-          const raw = String(record[dataKey]);
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
-          if (!isUuid) {
-            cellTitleText = raw;
+          } else {
+            // Intelligent fallback matching /berth standard:
+            // 1) If col.render is defined, extract text from rendered node
+            if (col.render) {
+              try {
+                const val = dataKey && record ? record[dataKey] : undefined;
+                const rendered = col.render(val, record, rowIndex ?? 0);
+                const extracted = extractTextFromNode(rendered);
+                if (extracted && extracted !== '—' && extracted !== '-' && !isUuid(extracted)) {
+                  cellTitleText = extracted;
+                }
+              } catch {
+                cellTitleText = undefined;
+              }
+            }
+            // 2) If still undefined, fallback to record[dataKey] if primitive
+            if (!cellTitleText && dataKey && record && record[dataKey] != null && typeof record[dataKey] !== 'object' && typeof record[dataKey] !== 'boolean') {
+              const raw = String(record[dataKey]).trim();
+              if (raw && raw !== '—' && raw !== '-' && !isUuid(raw)) {
+                cellTitleText = raw;
+              }
+            }
           }
         }
         return {
