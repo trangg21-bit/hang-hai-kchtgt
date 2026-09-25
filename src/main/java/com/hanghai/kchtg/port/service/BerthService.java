@@ -310,6 +310,8 @@ public class BerthService {
         FieldWriteGuard.validateObject(request);
         Berth entity = berthRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + request.getId()));
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        approvalService.assertCanEdit(entity, operatorId, InfrastructureType.PORT_TERMINAL);
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -419,13 +421,16 @@ public class BerthService {
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
-        // Actor thật từ SecurityContext — nếu truyền "system", ChangeHistoryService
-        // fallback auth.getName() (= username, không phải UUID) → approvedBy null → drawer hiện "—"
-        UUID operatorId = SecurityUtils.getCurrentUserId();
+        if (operatorId == null) {
+            operatorId = SecurityUtils.getCurrentUserId();
+        }
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            ApprovalStatus targetStatus = ("APPROVED".equalsIgnoreCase(request.getSaveAction()) || "SAVE_AND_APPROVE".equalsIgnoreCase(request.getSaveAction()))
+                    ? ApprovalStatus.APPROVED_LEVEL1
+                    : ApprovalStatus.PENDING_APPROVAL;
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.PORT_TERMINAL, targetStatus, operatorId);
         } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
         }
@@ -703,13 +708,13 @@ public class BerthService {
                 entity.setSubmittedForApprovalBy(curUserId != null ? curUserId.toString() : null);
                 entity.setSubmittedAt(now);
                 entity.setSubmittedBy(curUserId);
-                if (curUserId != null && (approvalService.isDepartmentLevelUser(curUserId) || approvalService.hasApproveC1Permission(curUserId, InfrastructureType.PORT_TERMINAL))) {
+                if (curUserId != null && approvalService.isDepartmentLevelUser(curUserId)) {
                     entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
                     entity.setPortAuthorityApprovedAt(now);
                     entity.setPortAuthorityApprovedBy(curUserId.toString());
                     entity.setApprovedDateLevel1(now);
                     entity.setApproverLevel1(curUserId);
-                    entity.setLevel1ApprovalContent("Cán bộ có thẩm quyền cấp Chi cục/Cảng vụ duyệt và chuyển cấp Cục");
+                    entity.setLevel1ApprovalContent("Cấp Cục gửi trực tiếp");
                 } else {
                     entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
                 }

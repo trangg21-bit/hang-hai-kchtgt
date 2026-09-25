@@ -1,14 +1,27 @@
 import { useState, useCallback, useEffect, useMemo, memo, type FC } from 'react';
-import { Form, Input, Spin, Button, Select, Tree, Tabs, Empty, Checkbox, Drawer, Row, Col } from 'antd';
+import { Form, Input, Spin, Button, Select, Tree, Tabs, Empty, Checkbox, Row, Col } from 'antd';
+import AppDrawer from '../../components/shared/AppDrawer';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined,
   ExclamationCircleOutlined, EyeOutlined, LockOutlined, UnlockOutlined,
-  SearchOutlined, CloseOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
-import { getPermissionTreeKeys, getVisiblePermissionKeys, handleTreeCheck, isHiddenPermission, isStructuralNodeKey, usePermissions } from '../../hooks/usePermissions';
+import {
+  filterTreeByOrgLevel,
+  getPermissionTreeKeys,
+  getVisiblePermissionKeys,
+  handleTreeCheck,
+  isC1PermissionKey,
+  isC2PermissionKey,
+  isHiddenPermission,
+  isStructuralNodeKey,
+  resolveOrgLevel,
+  usePermissions,
+  type OrgLevel,
+} from '../../hooks/usePermissions';
 import type { MenuTreeNode } from '../../types/permission';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -19,16 +32,16 @@ import Pagination from '../../components/list-view/Pagination';
 import SidebarFilterField from '../../components/list-view/SidebarFilterField';
 import { groupService } from '../../services/groupService';
 import type { Group, GroupMember, CreateGroupPayload, UpdateGroupPayload } from '../../services/groupService';
-import { organizationService } from '../../services/organizationService';
+import { organizationService, type Organization } from '../../services/organizationService';
 import { vtsSystemCRUD } from '../../services/vtsSystemService';
 import { userService } from '../../services/userService';
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import {
   actionPrimary, textSecondary,
-  fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
+  fontWeightBold, fontWeightMedium, fontSizeMd,
   radiusMd, radiusPill, spaceFormField, spaceMd,
   statusOperational, statusCritical, surfaceCard, borderDefault,
-  drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle, drawerTabBarStyle,
+  drawerTitleStyle, drawerFormScrollStyle, drawerTabBarStyle,
   primaryButtonStyle, outlineButtonStyle, inputStyle, selectStyle, textAreaStyle,
   cellTitleStyle, cellSubtitleStyle,
 } from '../../themetokenchk';
@@ -40,7 +53,8 @@ import { PERMISSIONS } from '../../constants/permissions';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
 const { confirm } = modal;
-const drawerProps = { styles: drawerStyles, maskClosable: false };
+
+type MenuTreeNodeWithSearch = MenuTreeNode & { _searchStr: string; children?: MenuTreeNodeWithSearch[] };
 
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 const NON_INHERITABLE_GROUP_PERMISSIONS = new Set(['user:permission', '*']);
@@ -73,7 +87,7 @@ const PermissionSearchBar: FC<{ onSearch: (val: string) => void }> = memo(({ onS
 });
 
 export default function GroupList() {
-  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -96,8 +110,8 @@ export default function GroupList() {
   const [sortField, setSortField] = useState<string | null>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
 
-  const sortOrderFor = (key: string): 'ascend' | 'descend' | null =>
-    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null);
+  const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
+    (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);
 
   const serverSideSorter = () => 0;
 
@@ -142,6 +156,7 @@ export default function GroupList() {
   const [permissionLoading, setPermissionLoading] = useState(false);
   const [permissionSaving, setPermissionSaving] = useState(false);
   const [orgTree, setOrgTree] = useState<OrgUnitTreeOption[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
@@ -163,39 +178,51 @@ export default function GroupList() {
     finally { setIsLoading(false); }
   }, [page, pageSize, search, code, filterStatus, filterOrganizationId, sortField, sortDirection]);
 
-  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+  useEffect(() => {
+    queueMicrotask(() => {
+      fetchGroups();
+    });
+  }, [fetchGroups]);
 
   useEffect(() => {
     if (!detailGroup) {
-      setDetailTab('info');
-      setDetailMembersOnly(false);
-      setDetailMembers([]);
-      setDetailMembersPage(1);
-      setDetailMembersSearchInput('');
-      setDetailMembersSearch('');
-      setAddMemberDrawerOpen(false);
+      queueMicrotask(() => {
+        setDetailTab('info');
+        setDetailMembersOnly(false);
+        setDetailMembers([]);
+        setDetailMembersPage(1);
+        setDetailMembersSearchInput('');
+        setDetailMembersSearch('');
+        setAddMemberDrawerOpen(false);
+      });
       return;
     }
-    setDetailMembersPage(1);
-  }, [detailGroup?.id]);
+    queueMicrotask(() => {
+      setDetailMembersPage(1);
+    });
+  }, [detailGroup]);
 
   useEffect(() => {
     if (!detailGroup || detailTab !== 'members') return;
     let cancelled = false;
-    setDetailMembersLoading(true);
-    setDetailMembersError(null);
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setDetailMembersLoading(true);
+        setDetailMembersError(null);
+      }
+    });
     void groupService.getMembers(detailGroup.id, { page: detailMembersPage, pageSize: detailMembersPageSize, search: detailMembersSearch || undefined })
       .then((response) => { if (!cancelled) { setDetailMembers(response.data); setDetailMembersTotal(response.total); } })
       .catch((err: unknown) => { if (!cancelled) setDetailMembersError(err instanceof Error ? err.message : 'Không thể tải danh sách thành viên'); })
       .finally(() => { if (!cancelled) setDetailMembersLoading(false); });
     return () => { cancelled = true; };
-  }, [detailGroup?.id, detailMembersPage, detailMembersPageSize, detailMembersReload, detailMembersSearch, detailTab]);
+  }, [detailGroup, detailMembersPage, detailMembersPageSize, detailMembersReload, detailMembersSearch, detailTab]);
 
   const fetchExistingMemberIds = useCallback(async () => {
     if (!detailGroup) return [];
     const response = await groupService.getMembers(detailGroup.id, { page: 1, pageSize: 1000 });
     return response.data.map((member) => member.userId);
-  }, [detailGroup?.id]);
+  }, [detailGroup]);
 
   const fetchAddMemberOptions = useCallback(async (excludedIds: string[]) => {
     setAddMemberSearchLoading(true);
@@ -210,7 +237,7 @@ export default function GroupList() {
             label: `${user.fullName} (${user.username})`,
           }))
       );
-    } catch (_) {
+    } catch {
       setAddMemberOptions([]);
     } finally {
       setAddMemberSearchLoading(false);
@@ -255,18 +282,20 @@ export default function GroupList() {
     let mounted = true;
     (async () => {
       try {
-        let orgs: any[] = await organizationService.getTree();
+        let orgs: Organization[] = await organizationService.getTree();
         if (!orgs || orgs.length === 0) {
           orgs = await organizationService.getAll();
         }
         if (!orgs || orgs.length === 0) {
-          orgs = await vtsSystemCRUD.getScopedOrgUnitOptions();
+          const fallbackOptions = await vtsSystemCRUD.getScopedOrgUnitOptions();
+          orgs = fallbackOptions as unknown as Organization[];
         }
         if (mounted && Array.isArray(orgs)) {
-          setOrgTree(orgs.map((org: any) => ({
+          setOrganizations(orgs);
+          setOrgTree(orgs.map((org: Organization) => ({
             id: String(org.id),
-            name: org.name || org.unitName || org.tenDonVi || 'Đơn vị',
-            code: org.code || org.maDonVi,
+            name: org.name || (org as { unitName?: string }).unitName || (org as { tenDonVi?: string }).tenDonVi || 'Đơn vị',
+            code: org.code || (org as { maDonVi?: string }).maDonVi,
             parentId: org.parentId ? String(org.parentId) : undefined,
           })));
         }
@@ -305,9 +334,10 @@ export default function GroupList() {
       addMemberForm.resetFields();
       setAddMemberDrawerOpen(false);
       setDetailMembersReload((v) => v + 1);
-    } catch (err: any) {
-      if (err?.errorFields) return;
-      toast.error(err instanceof Error ? err.message : 'Lỗi khi thêm thành viên');
+    } catch (err: unknown) {
+      const errorObj = err as { errorFields?: unknown; message?: string };
+      if (errorObj?.errorFields) return;
+      toast.error(errorObj?.message || 'Lỗi khi thêm thành viên');
     } finally {
       setAddMemberSubmitting(false);
     }
@@ -346,7 +376,10 @@ export default function GroupList() {
       if (editingGroup) { await groupService.update(editingGroup.id, payload as UpdateGroupPayload); toast.success('Đã cập nhật nhóm'); }
       else { await groupService.create(payload as CreateGroupPayload); toast.success('Đã tạo thành công'); }
       setModalOpen(false); fetchGroups();
-    } catch (err: any) { if (!err.errorFields) toast.error(err?.message || 'Thao tác thất bại'); } finally { setSubmitting(false); }
+    } catch (err: unknown) {
+      const errorObj = err as { errorFields?: unknown; message?: string };
+      if (!errorObj?.errorFields) toast.error(errorObj?.message || 'Thao tác thất bại');
+    } finally { setSubmitting(false); }
   }, [editingGroup, form, fetchGroups]);
 
   const handleLock = useCallback((group: Group) => {
@@ -360,19 +393,42 @@ export default function GroupList() {
     });
   }, [fetchGroups]);
 
+  const targetGroupOrgLevel = useMemo<OrgLevel>(() => {
+    if (!permissionGroup) return 'ALL';
+    return resolveOrgLevel(permissionGroup.organizationId, permissionGroup.organizationName, organizations);
+  }, [permissionGroup, organizations]);
+
   const openPermissionModal = useCallback(async (group: Group) => {
-    setPermissionGroup(group); setAppliedPermissionSearch(''); setPermissionLoading(true);
-    try { const permissions = await groupService.getPermissions(group.id); setSelectedPermissionKeys((permissions || []).filter((p: string) => !isHiddenPermission(p))); }
-    catch (err: unknown) { setPermissionGroup(null); toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền'); }
-    finally { setPermissionLoading(false); }
-  }, []);
+    setPermissionGroup(group);
+    setAppliedPermissionSearch('');
+    setPermissionLoading(true);
+    try {
+      const groupLevel = resolveOrgLevel(group.organizationId, group.organizationName, organizations);
+      const permissions = await groupService.getPermissions(group.id);
+      let clean = (permissions || []).filter((p: string) => !isHiddenPermission(p));
+      if (groupLevel === 'CANG_VU') {
+        clean = clean.filter((p: string) => !isC2PermissionKey(p));
+      } else if (groupLevel === 'CUC') {
+        clean = clean.filter((p: string) => !isC1PermissionKey(p));
+      }
+      setSelectedPermissionKeys(clean);
+    } catch (err: unknown) {
+      setPermissionGroup(null);
+      toast.error(err instanceof Error ? err.message : 'Không thể tải phân quyền');
+    } finally {
+      setPermissionLoading(false);
+    }
+  }, [organizations]);
 
   const handlePermissionSave = useCallback(async () => {
-    if (!permissionGroup) return; setPermissionSaving(true);
+    if (!permissionGroup) return;
+    setPermissionSaving(true);
     try {
       const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
       const selected = selectedPermissionKeys.filter((key) => {
         if (isStructuralNodeKey(key) || NON_INHERITABLE_GROUP_PERMISSIONS.has(key)) return false;
+        if (targetGroupOrgLevel === 'CANG_VU' && isC2PermissionKey(key)) return false;
+        if (targetGroupOrgLevel === 'CUC' && isC1PermissionKey(key)) return false;
         return validCodes.size === 0 || validCodes.has(key.toLowerCase());
       });
       await groupService.updatePermissions(permissionGroup.id, selected);
@@ -385,7 +441,7 @@ export default function GroupList() {
     } finally {
       setPermissionSaving(false);
     }
-  }, [permissionGroup, selectedPermissionKeys, fetchGroups, apiPermissions, validCodesSet]);
+  }, [permissionGroup, selectedPermissionKeys, fetchGroups, apiPermissions, validCodesSet, targetGroupOrgLevel]);
 
 
   const assignablePermissionTree = useMemo(() => {
@@ -423,18 +479,19 @@ export default function GroupList() {
       });
     };
 
-    return transformTree(rawPermissionTree);
-  }, [rawPermissionTree]);
+    const transformed = transformTree(rawPermissionTree);
+    return filterTreeByOrgLevel(transformed, targetGroupOrgLevel);
+  }, [rawPermissionTree, targetGroupOrgLevel]);
 
   const indexedGroupPermissionTree = useMemo(() => {
-    const attachMeta = (nodes: readonly MenuTreeNode[]): any[] => nodes.map((n) => ({ ...n, _searchStr: normalizeSearchText(`${n.title} ${n.key}`), children: n.children ? attachMeta(n.children) : [] }));
+    const attachMeta = (nodes: readonly MenuTreeNode[]): MenuTreeNodeWithSearch[] => nodes.map((n) => ({ ...n, _searchStr: normalizeSearchText(`${n.title} ${n.key}`), children: n.children ? attachMeta(n.children) : [] }));
     return attachMeta(assignablePermissionTree);
   }, [assignablePermissionTree]);
 
   const permissionTreeData = useMemo(() => {
     const keyword = normalizeSearchText(appliedPermissionSearch);
     if (!keyword) return assignablePermissionTree;
-    const filter = (nodes: any[]): MenuTreeNode[] => nodes.flatMap((n) => {
+    const filter = (nodes: MenuTreeNodeWithSearch[]): MenuTreeNode[] => nodes.flatMap((n) => {
       if (n._searchStr.includes(keyword)) return [{ ...n, children: n.children || [] }];
       const children = filter(n.children || []);
       return children.length ? [{ ...n, children }] : [];
@@ -456,7 +513,7 @@ export default function GroupList() {
   const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
 
   const rowActions = useCallback((record: Group) => {
-    const acts: any[] = [];
+    const acts: Array<{ key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }> = [];
     if (hasPerm(PERMISSIONS.GROUP.READ)) acts.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => handleViewDetail(record) });
     if (hasPerm(PERMISSIONS.GROUP.EDIT)) acts.push({ key: 'edit', label: 'Sửa thông tin', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     if (hasPerm(PERMISSIONS.GROUP.LOCK)) acts.push({ key: 'lock', label: record.status === 'active' ? 'Khóa nhóm' : 'Mở khóa nhóm', icon: record.status === 'active' ? <LockOutlined /> : <UnlockOutlined />, onClick: () => handleLock(record) });
@@ -487,7 +544,7 @@ export default function GroupList() {
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('name'),
-      render: (_: any, record: Group) => (
+      render: (_: unknown, record: Group) => (
         <div
           style={{
             cursor: hasPerm(PERMISSIONS.GROUP.READ) ? 'pointer' : 'default',
@@ -565,7 +622,7 @@ export default function GroupList() {
       label: 'TRẠNG THÁI',
       dataIndex: 'status',
       width: 140,
-      align: 'center' as const,
+      align: 'left' as const,
       sortable: true,
       sorter: serverSideSorter,
       sortOrder: sortOrderFor('status'),
@@ -579,7 +636,7 @@ export default function GroupList() {
               display: 'inline-block',
               padding: '2px 10px',
               borderRadius: radiusPill,
-              fontSize: fontSizeSm,
+              fontSize: fontSizeMd,
               fontWeight: fontWeightMedium,
               backgroundColor: `${color}15`,
               border: `1px solid ${color}40`,
@@ -592,10 +649,10 @@ export default function GroupList() {
         );
       },
     },
-  ], [page, pageSize, handleViewDetail, hasPerm, sortField, sortDirection]);
+  ], [page, pageSize, handleViewDetail, hasPerm, sortOrderFor]);
 
   const detailMemberColumns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 64, align: 'center' as const, sortable: false, render: (_v: any, _r: any, idx: number) => (detailMembersPage - 1) * detailMembersPageSize + idx + 1 },
+    { key: 'sequenceNo', label: 'STT', width: 64, align: 'center' as const, sortable: false, render: (_v: unknown, _r: unknown, idx: number) => (detailMembersPage - 1) * detailMembersPageSize + idx + 1 },
     { key: 'fullName', label: 'Họ tên', dataIndex: 'fullName', width: 220, sortable: false },
     { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 180, sortable: false },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 240, sortable: false },
@@ -635,39 +692,129 @@ export default function GroupList() {
   );
 
   const headerActions = useMemo(() => {
-    const acts: any[] = [];
+    const acts: Array<{
+      key: string;
+      label: string;
+      variant: 'primary' | 'outline' | 'subtle';
+      icon?: React.ReactNode;
+      onClick: () => void;
+    }> = [];
     if (hasPerm(PERMISSIONS.GROUP.CREATE)) acts.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: openCreateModal });
     return acts;
   }, [hasPerm, openCreateModal]);
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
+      <div className="groups-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <style>{`
+          .groups-page-wrapper,
+          .groups-page-wrapper .ant-table,
+          .groups-page-wrapper .ant-table-cell,
+          .groups-page-wrapper .ant-table-thead > tr > th,
+          .groups-page-wrapper .ant-table-tbody > tr > td,
+          .groups-page-wrapper .ant-input,
+          .groups-page-wrapper .ant-select,
+          .groups-page-wrapper .ant-select-selection-item,
+          .groups-page-wrapper .ant-btn,
+          .groups-page-wrapper .ant-pagination,
+          .groups-page-wrapper .ant-pagination-item,
+          .groups-page-wrapper .ant-pagination-total-text,
+          .groups-page-wrapper .ant-breadcrumb,
+          .groups-page-wrapper .ant-form-item-label > label,
+          .groups-drawer-scope,
+          .groups-drawer-scope .ant-drawer-content,
+          .groups-drawer-scope .ant-tabs-tab,
+          .groups-drawer-scope .chk-detail-label,
+          .groups-drawer-scope .chk-detail-value,
+          .groups-drawer-scope .ant-table,
+          .groups-drawer-scope .ant-table-cell,
+          .groups-drawer-scope .ant-btn,
+          .groups-drawer-scope .ant-select,
+          .groups-drawer-scope .ant-input,
+          .groups-drawer-scope .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
+
+          /* Responsive StatusTabs */
+          .groups-page-wrapper div:has(> button[aria-pressed]) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            justify-content: safe center !important;
+            align-items: center !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
+          }
+          .groups-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+            height: 4px !important;
+            display: block !important;
+          }
+          .groups-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 999px !important;
+          }
+          .groups-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 999px !important;
+          }
+          .groups-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+          }
+          .groups-page-wrapper div:has(> button[aria-pressed]) > button {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            padding: 4px 2px !important;
+          }
+        `}</style>
         <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý nhóm' }]} actions={headerActions} />
         <FilterTableLayout hideFilterToggle onFilterApply={handleFilterSearch} onFilterReset={handleFilterReset} loading={isLoading} error={isError} onRetry={fetchGroups} filterContent={filterContent} statusTabs={[{ key: 'all', label: 'Tất cả', count: countActive + countInactive, color: colors.primary, active: !filterStatus }, { key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' }, { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusCritical, active: filterStatus === 'inactive' }]} onStatusTabChange={handleTabChange}>
           {renderContent()}
         </FilterTableLayout>
 
-        <Drawer {...drawerProps} size="50%" open={!!detailGroup} onClose={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }} title={<span style={drawerTitleStyle}>{detailMembersOnly ? 'Thành viên nhóm' : 'Chi tiết nhóm'} - {detailGroup?.name ?? ''}</span>} extra={<Button type="text" onClick={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={null}>
+        <AppDrawer size="50%" open={!!detailGroup} onClose={() => { setDetailGroup(null); setAddMemberDrawerOpen(false); }} rootClassName="groups-drawer-scope" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{detailMembersOnly ? 'Thành viên nhóm' : 'Chi tiết nhóm'} - {detailGroup?.name ?? ''}</span>} footer={null}>
           {detailGroup && (
             <Spin spinning={detailLoading}>
               {detailError ? <ErrorState message={detailError} onRetry={() => { void openDetail(detailGroup, detailTab as 'info' | 'members', detailMembersOnly); }} /> : (
                 <div style={drawerFormScrollStyle}>
-                  <Tabs tabBarStyle={detailMembersOnly ? { display: 'none' } : drawerTabBarStyle} animated={false} activeKey={detailTab} onChange={setDetailTab} items={[...(!detailMembersOnly ? [{ key: 'info', label: 'Thông tin chung', children: (<div style={{ paddingTop: spaceMd }}><div className="chk-detail-grid"><div className="chk-detail-row"><span className="chk-detail-label">Đơn vị</span><span className="chk-detail-value">{detailGroup.organizationName || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Tên nhóm</span><span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{detailGroup.name}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Mã nhóm</span><span className="chk-detail-value">{detailGroup.code || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Trạng thái</span><span className="chk-detail-value"><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeSm, fontWeight: fontWeightMedium, backgroundColor: detailGroup.status === 'active' ? `${statusOperational}15` : `${statusCritical}15`, border: detailGroup.status === 'active' ? `1px solid ${statusOperational}40` : `1px solid ${statusCritical}40`, color: detailGroup.status === 'active' ? statusOperational : statusCritical }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span></span></div><div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Mô tả</span><span className="chk-detail-value">{detailGroup.description || 'Chưa có mô tả'}</span></div></div><div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} /><span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Thông tin hệ thống</span></div><div className="chk-detail-grid"><div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{detailGroup.updatedByName || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div></div></div>) }] : []), { key: 'members', label: 'Danh sách thành viên', children: (<div style={{ paddingTop: spaceMd }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spaceMd, marginBottom: spaceMd }}><Input allowClear prefix={<SearchOutlined style={{ color: textSecondary }} />} value={detailMembersSearchInput} placeholder="Nhập từ khóa tìm kiếm" onChange={(e) => { const v = e.target.value; setDetailMembersSearchInput(v); if (!v) { setDetailMembersSearch(''); setDetailMembersPage(1); } }} onPressEnter={handleDetailMembersSearch} style={{ ...inputStyle, width: 360, maxWidth: '100%', borderRadius: radiusPill, height: 40 }} />{hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) && (<Button type={addMemberDrawerOpen ? 'default' : 'primary'} icon={<PlusOutlined />} onClick={() => { if (addMemberDrawerOpen) { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); } else { openAddMemberDrawer(); } }} style={addMemberDrawerOpen ? outlineButtonStyle : primaryButtonStyle}>{addMemberDrawerOpen ? 'Ẩn thêm thành viên' : 'Thêm thành viên'}</Button>)}</div>{addMemberDrawerOpen && (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, marginBottom: spaceMd, background: surfaceCard }}><Form form={addMemberForm} layout="vertical"><Form.Item name="userIds" {...labelProps('Chọn người dùng')} style={{ marginBottom: spaceMd }} rules={[{ validator: (_, val: any) => { if (!val || !Array.isArray(val) || val.length === 0) { return Promise.reject(new Error('Vui lòng chọn ít nhất một người dùng')); } if (val.length > 100) { return Promise.reject(new Error('Mỗi lần chỉ được thêm tối đa 100 người dùng')); } return Promise.resolve(); } }]}> <Select mode="multiple" showSearch placeholder="Chọn người dùng" options={addMemberOptions} filterOption={(input, option) => normalizeSearchText(option?.label ?? '').includes(normalizeSearchText(input))} maxTagCount="responsive" loading={addMemberSearchLoading} style={{ borderRadius: radiusPill, minHeight: 40 }} /></Form.Item><div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceMd }}><Button onClick={() => { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); }} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleAddMembers} loading={addMemberSubmitting} style={primaryButtonStyle}>Thêm</Button></div></Form></div>)}<Spin spinning={detailMembersLoading}>{detailMembersError ? <ErrorState message={detailMembersError} onRetry={() => setDetailMembersReload((v) => v + 1)} /> : (<><DataTable columns={detailMemberColumns} dataSource={detailMembers} rowKey="userId" rowActions={hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? detailMemberActions : undefined} scroll={{ x: 'max-content' }} emptyState={<EmptyState description={detailMembersSearch ? 'Không tìm thấy thành viên phù hợp' : 'Chưa có thành viên nào'} />} />{detailMembersTotal > 0 && (<Pagination total={detailMembersTotal} current={detailMembersPage} pageSize={detailMembersPageSize} pageSizeOptions={[10, 20, 50, 100]} onChange={handleDetailMembersPageChange} />)}</>)}</Spin></div>) }]} />
+                  <Tabs tabBarStyle={detailMembersOnly ? { display: 'none' } : drawerTabBarStyle} animated={false} activeKey={detailTab} onChange={setDetailTab} items={[...(!detailMembersOnly ? [{ key: 'info', label: 'Thông tin chung', children: (<div style={{ paddingTop: spaceMd }}><div className="chk-detail-grid"><div className="chk-detail-row"><span className="chk-detail-label">Đơn vị</span><span className="chk-detail-value">{detailGroup.organizationName || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Tên nhóm</span><span className="chk-detail-value" style={{ fontWeight: fontWeightBold, color: colors.sidebarBg }}>{detailGroup.name}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Mã nhóm</span><span className="chk-detail-value">{detailGroup.code || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Trạng thái</span><span className="chk-detail-value"><span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium, backgroundColor: detailGroup.status === 'active' ? `${statusOperational}15` : `${statusCritical}15`, border: detailGroup.status === 'active' ? `1px solid ${statusOperational}40` : `1px solid ${statusCritical}40`, color: detailGroup.status === 'active' ? statusOperational : statusCritical }}>{STATUS_LABELS[detailGroup.status] || detailGroup.status}</span></span></div><div className="chk-detail-row chk-detail-row--full"><span className="chk-detail-label">Mô tả</span><span className="chk-detail-value">{detailGroup.description || 'Chưa có mô tả'}</span></div></div><div style={{ marginTop: 20, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}><span style={{ display: 'inline-block', width: 4, height: 16, borderRadius: 2, backgroundColor: actionPrimary }} /><span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Thông tin hệ thống</span></div><div className="chk-detail-grid"><div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{detailGroup.updatedByName || '—'}</span></div><div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{detailGroup.updatedAt ? dayjs(detailGroup.updatedAt).format('DD/MM/YYYY HH:mm:ss') : '—'}</span></div></div></div>) }] : []), { key: 'members', label: 'Danh sách thành viên', children: (<div style={{ paddingTop: spaceMd }}><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: spaceMd, marginBottom: spaceMd }}><Input allowClear prefix={<SearchOutlined style={{ color: textSecondary }} />} value={detailMembersSearchInput} placeholder="Nhập từ khóa tìm kiếm" onChange={(e) => { const v = e.target.value; setDetailMembersSearchInput(v); if (!v) { setDetailMembersSearch(''); setDetailMembersPage(1); } }} onPressEnter={handleDetailMembersSearch} style={{ ...inputStyle, width: 360, maxWidth: '100%', borderRadius: radiusPill, height: 40 }} />{hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) && (<Button type={addMemberDrawerOpen ? 'default' : 'primary'} icon={<PlusOutlined />} onClick={() => { if (addMemberDrawerOpen) { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); } else { openAddMemberDrawer(); } }} style={addMemberDrawerOpen ? outlineButtonStyle : primaryButtonStyle}>{addMemberDrawerOpen ? 'Ẩn thêm thành viên' : 'Thêm thành viên'}</Button>)}</div>{addMemberDrawerOpen && (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, marginBottom: spaceMd, background: surfaceCard }}><Form form={addMemberForm} layout="vertical"><Form.Item name="userIds" {...labelProps('Chọn người dùng')} style={{ marginBottom: spaceMd }} rules={[{ validator: (_, val: unknown) => { if (!val || !Array.isArray(val) || val.length === 0) { return Promise.reject(new Error('Vui lòng chọn ít nhất một người dùng')); } if (val.length > 100) { return Promise.reject(new Error('Mỗi lần chỉ được thêm tối đa 100 người dùng')); } return Promise.resolve(); } }]}> <Select mode="multiple" showSearch placeholder="Chọn người dùng" options={addMemberOptions} filterOption={(input, option) => normalizeSearchText(option?.label ?? '').includes(normalizeSearchText(input))} maxTagCount="responsive" loading={addMemberSearchLoading} style={{ borderRadius: radiusPill, minHeight: 40 }} /></Form.Item><div style={{ display: 'flex', justifyContent: 'flex-end', gap: spaceMd }}><Button onClick={() => { setAddMemberDrawerOpen(false); addMemberForm.resetFields(); }} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleAddMembers} loading={addMemberSubmitting} style={primaryButtonStyle}>Thêm</Button></div></Form></div>)}<Spin spinning={detailMembersLoading}>{detailMembersError ? <ErrorState message={detailMembersError} onRetry={() => setDetailMembersReload((v) => v + 1)} /> : (<><DataTable columns={detailMemberColumns} dataSource={detailMembers} rowKey="userId" rowActions={hasPerm(PERMISSIONS.GROUP_MEMBER.MANAGE) ? detailMemberActions : undefined} scroll={{ x: 'max-content' }} emptyState={<EmptyState description={detailMembersSearch ? 'Không tìm thấy thành viên phù hợp' : 'Chưa có thành viên nào'} />} />{detailMembersTotal > 0 && (<Pagination total={detailMembersTotal} current={detailMembersPage} pageSize={detailMembersPageSize} pageSizeOptions={[10, 20, 50, 100]} onChange={handleDetailMembersPageChange} />)}</>)}</Spin></div>) }]} />
                 </div>
               )}
             </Spin>
           )}
-        </Drawer>
+        </AppDrawer>
 
-        <Drawer {...drawerProps} size="50%" open={!!permissionGroup} onClose={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} title={<span style={drawerTitleStyle}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>} extra={<Button type="text" onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={outlineButtonStyle}>Đóng</Button><Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button></div>}>
-          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full"><div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}><div style={{ flexShrink: 0, marginBottom: spaceMd }}><PermissionSearchBar onSearch={setAppliedPermissionSearch} /></div>{permissionTreeData.length === 0 && !permissionLoading ? <Empty description="Không tìm thấy quyền phù hợp" /> : (<div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}><div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div><div style={{ marginBottom: spaceMd, flexShrink: 0 }}><Checkbox checked={allGroupPermissionsSelected} indeterminate={someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={() => setSelectedPermissionKeys(allGroupPermissionsSelected || someGroupPermissionsSelected ? [] : allGroupPermissionKeys)}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox></div><div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}><Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c, info) => { const next = handleTreeCheck(c, info, selectedPermissionKeys, permissionTreeData, validCodesSet); setSelectedPermissionKeys(next); }} /></div></div>)}</div></Spin>
+        <AppDrawer size="50%" open={!!permissionGroup} onClose={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} rootClassName="groups-drawer-scope" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Phân quyền chức năng cho nhóm{permissionGroup ? `: ${permissionGroup.name}` : ''}</span>} footer={<><Button onClick={() => { setPermissionGroup(null); setAppliedPermissionSearch(''); }} style={outlineButtonStyle}>Đóng</Button><Button type="primary" loading={permissionSaving} onClick={handlePermissionSave} style={primaryButtonStyle}>Lưu</Button></>}>
+          <Spin spinning={permissionLoading} wrapperClassName="chk-h-full">
+            <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)', padding: '16px 0 8px 0' }}>
+              <div style={{ flexShrink: 0, marginBottom: spaceMd }}>
+                <PermissionSearchBar onSearch={setAppliedPermissionSearch} />
+              </div>
+              {permissionTreeData.length === 0 && !permissionLoading ? (
+                <Empty description="Không tìm thấy quyền phù hợp" />
+              ) : (
+                <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusMd, padding: spaceMd, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', background: surfaceCard }}>
+                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceMd, flexShrink: 0 }}>Danh sách chức năng</div>
+                  <div style={{ marginBottom: spaceMd, flexShrink: 0 }}>
+                    <Checkbox checked={allGroupPermissionsSelected} indeterminate={someGroupPermissionsSelected} disabled={permissionLoading || allGroupPermissionKeys.length === 0} onChange={() => setSelectedPermissionKeys(allGroupPermissionsSelected || someGroupPermissionsSelected ? [] : allGroupPermissionKeys)}>HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI</Checkbox>
+                  </div>
+                  <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                    <Tree checkable defaultExpandAll treeData={permissionTreeData} checkedKeys={getVisiblePermissionKeys(selectedPermissionKeys, permissionTreeData)} onCheck={(c, info) => { const next = handleTreeCheck(c, info, selectedPermissionKeys, permissionTreeData, validCodesSet); setSelectedPermissionKeys(next); }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </Spin>
+        </AppDrawer>
 
-        </Drawer>
-
-        <Drawer {...drawerProps} size="50%" open={modalOpen} onClose={() => setModalOpen(false)} title={<span style={drawerTitleStyle}>{editingGroup ? 'Sửa thông tin nhóm' : 'Thêm mới nhóm'}</span>} extra={<Button type="text" onClick={() => setModalOpen(false)} style={drawerCloseBtnStyle}><CloseOutlined style={{ fontSize: 14, color: textSecondary }} /></Button>} footer={<div style={drawerFooterStyle}><Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button></div>}>
+        <AppDrawer size="50%" open={modalOpen} onClose={() => setModalOpen(false)} rootClassName="groups-drawer-scope" title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingGroup ? 'Sửa thông tin nhóm' : 'Thêm mới nhóm'}</span>} footer={<><Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button><Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button></>}>
           <Spin spinning={submitting}><Tabs tabBarStyle={drawerTabBarStyle} animated={false} items={[{ key: 'general', label: 'Thông tin chung', children: (<div style={drawerFormScrollStyle}><Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}><Row gutter={[24, 0]}><Col span={12}><Form.Item name="organizationId" {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: !editingGroup, message: 'Vui lòng chọn đơn vị' }]}><OrgUnitTreeSelect organizations={orgTree} placeholder="Chọn đơn vị" showSearch disabled={!!editingGroup} allowClear style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} /></Form.Item></Col><Col span={12}><Form.Item name="name" {...labelProps('Tên nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }, { min: 2, max: 100, message: 'Tên nhóm phải từ 2 đến 100 ký tự' }]}><Input placeholder="Nhập tên nhóm" maxLength={100} showCount style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} /></Form.Item></Col><Col span={12}><Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} normalize={(v) => String(v ?? '').trim().toUpperCase()} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }, { min: 2, max: 30, message: 'Mã nhóm phải từ 2 đến 30 ký tự' }, { pattern: /^[A-Z0-9_]+$/, message: 'Mã nhóm chỉ gồm chữ hoa, số và dấu gạch dưới' }]}><Input placeholder="Nhập mã nhóm" maxLength={30} showCount disabled={!!editingGroup} style={{ ...inputStyle, borderRadius: radiusPill, height: 40 }} /></Form.Item></Col><Col span={12}><Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}><Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} style={{ ...selectStyle, borderRadius: radiusPill, height: 40, width: '100%' }} /></Form.Item></Col><Col span={24}><Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }} rules={[{ max: 1000, message: 'Mô tả tối đa 1000 ký tự' }]}><Input.TextArea rows={3} placeholder="Nhập mô tả" maxLength={1000} showCount style={textAreaStyle} /></Form.Item></Col></Row></Form></div>) }]} /></Spin>
-        </Drawer>
+        </AppDrawer>
       </div>
     </ThemeTokenProvider>
   );

@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.entity.EntityFields;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -48,6 +49,7 @@ public class WaterZoneService {
     private final PortCacheService portCacheService;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
     private final OrgUnitCacheService orgUnitCacheService;
+    private final InfrastructureApprovalService infrastructureApprovalService;
 
     @Transactional
     public WaterZoneResponse create(CreateWaterZoneRequest request) {
@@ -192,6 +194,8 @@ public class WaterZoneService {
         FieldWriteGuard.validateObject(request);
         WaterZone entity = waterZoneRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + request.getId()));
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        infrastructureApprovalService.assertCanEdit(entity, currentUserId, InfrastructureType.WATER_AREA);
 
         WaterZone snapshot = WaterZone.builder()
                 .waterZoneCode(entity.getWaterZoneCode())
@@ -263,7 +267,9 @@ public class WaterZoneService {
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            infrastructureApprovalService.handleApprovedRecordEdit(entity, InfrastructureType.WATER_AREA, request.getApprovalStatus(), currentUserId);
+        } else if (request.getApprovalStatus() != null) {
+            entity.setApprovalStatus(request.getApprovalStatus());
         }
 
         WaterZone saved = waterZoneRepository.save(entity);

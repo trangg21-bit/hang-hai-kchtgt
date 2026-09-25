@@ -22,20 +22,32 @@ import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
 
     @Query("""
-        SELECT new com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse(v.id, v.code, v.systemName, v.orgUnitId)
+        SELECT new com.hanghai.kchtg.vtssystem.dto.VtsSystemOptionResponse(v.id, v.code, v.systemName, v.orgUnitId, v.portId)
         FROM VtsSystem v
         WHERE v.deletedAt IS NULL
           AND (v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED OR v.approvalStatus = com.hanghai.kchtg.common.entity.ApprovalStatus.APPROVED_LEVEL2)
           AND (:scopeEnabled = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :scopeOrgUnitIds)
-          AND (:orgFiltered = false OR v.orgUnitId IS NULL OR v.orgUnitId IN :targetOrgUnitIds)
+          AND (:orgFiltered = false OR v.orgUnitId IN :targetOrgUnitIds)
+          AND (:portFiltered = false OR v.portId = :portId)
         ORDER BY LOWER(v.systemName) ASC
     """)
     List<VtsSystemOptionResponse> findOptions(
         @Param("scopeEnabled") boolean scopeEnabled,
         @Param("scopeOrgUnitIds") Collection<UUID> scopeOrgUnitIds,
         @Param("orgFiltered") boolean orgFiltered,
-        @Param("targetOrgUnitIds") Collection<UUID> targetOrgUnitIds
+        @Param("targetOrgUnitIds") Collection<UUID> targetOrgUnitIds,
+        @Param("portFiltered") boolean portFiltered,
+        @Param("portId") UUID portId
     );
+
+    default List<VtsSystemOptionResponse> findOptions(
+        boolean scopeEnabled,
+        Collection<UUID> scopeOrgUnitIds,
+        boolean orgFiltered,
+        Collection<UUID> targetOrgUnitIds
+    ) {
+        return findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds, false, null);
+    }
 
     @Query("SELECT t FROM VtsSystem t WHERE t.approvalStatus = :approvalStatus AND t.deletedAt IS NULL")
     List<VtsSystem> findByApprovalStatusAndIsDeletedFalse(@Param("approvalStatus") ApprovalStatus approvalStatus);

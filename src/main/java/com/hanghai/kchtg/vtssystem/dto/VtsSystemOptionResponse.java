@@ -18,4 +18,9 @@ public class VtsSystemOptionResponse {
     private String code;
     private String name;
     private UUID orgUnitId;
+    private UUID portId;
+
+    public VtsSystemOptionResponse(UUID id, String code, String name, UUID orgUnitId) {
+        this(id, code, name, orgUnitId, null);
+    }
 }

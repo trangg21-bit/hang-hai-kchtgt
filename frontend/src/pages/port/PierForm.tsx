@@ -23,6 +23,8 @@ import { symbolService } from '../../services/symbolService';
 import api from '../../services/api';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { OPERATIONAL_FUNCTION_OPTIONS, splitOperationalFunctionCodes } from '../../constants/operationalFunction';
@@ -570,9 +572,31 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
         )
       : undefined;
 
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
+
     onSubmittingChange?.(true);
     try {
-      const payload: Record<string, unknown> = { pierCode: vals.pierCode?.trim(), pierName: vals.pierName?.trim(), berthId: vals.berthId, portId: vals.portId || undefined, navigationChannelId: vals.navigationChannelId || undefined, length: vals.length != null ? Number(vals.length) : undefined, width: vals.width != null ? Number(vals.width) : undefined, operationalFunction: Array.isArray(vals.operationalFunction) ? (vals.operationalFunction.length > 0 ? vals.operationalFunction.join(',') : undefined) : (vals.operationalFunction || undefined), operationalStatus: vals.operationalStatus || undefined, province: vals.province || undefined, detailedLocation: vals.detailedLocation || undefined, constructionGrade: vals.constructionGrade ?? undefined, structureType: vals.structureType ?? undefined, currentWaterDepth: vals.currentWaterDepth || undefined, designBedElevation: vals.designBedElevation || undefined, publishedVesselDWT: vals.publishedVesselDWT || undefined, maintenanceApprovalDate: fmtMonthYear(vals.maintenanceApprovalDate), safetyAssessmentDate: fmtMonthYear(vals.safetyAssessmentDate), lastInspectionDate: fmtMonthYear(vals.lastInspectionDate), operatingPierCount: vals.operatingPierCount ?? undefined, publishedPierCount: vals.publishedPierCount ?? undefined, investmentAgreementPierCount: vals.investmentAgreementPierCount ?? undefined, cargoThroughput: vals.cargoThroughput != null ? Number(vals.cargoThroughput) : undefined, receivesLargeVessel: vals.receivesLargeVessel ?? undefined, documentNumber: vals.documentNumber || undefined, documentDate: vals.documentDate ? dayjs(vals.documentDate).format('YYYY-MM-DD') : undefined, openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DD') : undefined, openingDecision: vals.openingDecision || undefined, investmentAgreementDoc: vals.investmentAgreementDoc || undefined, waterAreaNeutralScope: vals.waterAreaNeutralScope || undefined, geometryType: currentGeometryType || undefined, mapSymbolId: currentMapSymbolId || undefined, coordinateSystem: currentCoordSys, displayRule: currentDisplayRule };
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('pier:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('pier:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
+      const payload: Record<string, unknown> = { pierCode: vals.pierCode?.trim(), pierName: vals.pierName?.trim(), berthId: vals.berthId, portId: vals.portId || undefined, navigationChannelId: vals.navigationChannelId || undefined, length: vals.length != null ? Number(vals.length) : undefined, width: vals.width != null ? Number(vals.width) : undefined, operationalFunction: Array.isArray(vals.operationalFunction) ? (vals.operationalFunction.length > 0 ? vals.operationalFunction.join(',') : undefined) : (vals.operationalFunction || undefined), operationalStatus: vals.operationalStatus || undefined, province: vals.province || undefined, detailedLocation: vals.detailedLocation || undefined, constructionGrade: vals.constructionGrade ?? undefined, structureType: vals.structureType ?? undefined, currentWaterDepth: vals.currentWaterDepth || undefined, designBedElevation: vals.designBedElevation || undefined, publishedVesselDWT: vals.publishedVesselDWT || undefined, maintenanceApprovalDate: fmtMonthYear(vals.maintenanceApprovalDate), safetyAssessmentDate: fmtMonthYear(vals.safetyAssessmentDate), lastInspectionDate: fmtMonthYear(vals.lastInspectionDate), operatingPierCount: vals.operatingPierCount ?? undefined, publishedPierCount: vals.publishedPierCount ?? undefined, investmentAgreementPierCount: vals.investmentAgreementPierCount ?? undefined, cargoThroughput: vals.cargoThroughput != null ? Number(vals.cargoThroughput) : undefined, receivesLargeVessel: vals.receivesLargeVessel ?? undefined, documentNumber: vals.documentNumber || undefined, documentDate: vals.documentDate ? dayjs(vals.documentDate).format('YYYY-MM-DD') : undefined, openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DD') : undefined, openingDecision: vals.openingDecision || undefined, investmentAgreementDoc: vals.investmentAgreementDoc || undefined, waterAreaNeutralScope: vals.waterAreaNeutralScope || undefined, geometryType: currentGeometryType || undefined, mapSymbolId: currentMapSymbolId || undefined, coordinateSystem: currentCoordSys, displayRule: currentDisplayRule, ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}) };
       // Process GPS coordinates into WKT format (chuẩn VTS CHK — serializeCoordinatesToWkt)
       if (validCoords.length > 0) {
         const first = validCoords[0];

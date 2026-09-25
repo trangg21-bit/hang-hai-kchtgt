@@ -610,6 +610,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   };
 
   const selectedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const selectedPortId = Form.useWatch('portId', form);
   const effectiveOrgUnitId = selectedOrgUnitId || record?.orgUnitId;
 
   const filteredPortOptions = useMemo(() => {
@@ -630,11 +631,14 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
       list = list.filter((v) => v.id === record?.vtsSystemId || (v.orgUnitId && allowedIds.has(String(v.orgUnitId))));
     }
+    if (selectedPortId) {
+      list = list.filter((v) => v.id === record?.vtsSystemId || (v.portId && String(v.portId) === String(selectedPortId)));
+    }
     if (record?.vtsSystemId && !list.some((v) => v.id === record.vtsSystemId)) {
-      list = [{ id: record.vtsSystemId, name: record.vtsSystemName || record.vtsSystemId, code: (record as any).vtsSystemCode }, ...list];
+      list = [{ id: record.vtsSystemId, name: record.vtsSystemName || record.vtsSystemId, code: (record as any).vtsSystemCode, portId: (record as any).portId }, ...list];
     }
     return list;
-  }, [vtsSystemOptions, effectiveOrgUnitId, orgUnits, record?.vtsSystemId, record?.vtsSystemName]);
+  }, [vtsSystemOptions, effectiveOrgUnitId, orgUnits, selectedPortId, record?.vtsSystemId, record?.vtsSystemName]);
 
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
@@ -711,11 +715,41 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
             : createSuccessMsg,
         );
       } else if (editId) {
+        const isApprovedRecord =
+          initialData?.approvalStatus === ApprovalStatus.APPROVED ||
+          initialData?.approvalStatus === 'APPROVED_LEVEL2' ||
+          record?.approvalStatus === ApprovalStatus.APPROVED ||
+          record?.approvalStatus === 'APPROVED_LEVEL2';
+
+        if (isApprovedRecord) {
+          const isDirty = form.isFieldsTouched();
+          if (!isDirty && pendingFiles.length === 0 && pendingDeletedAttachments.length === 0) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        let targetApprovalStatus: ApprovalStatus | undefined;
+        if (isApprovedRecord) {
+          if (act === 'submit') {
+            targetApprovalStatus = ApprovalStatus.PENDING_APPROVAL;
+          } else if (act === 'approve') {
+            targetApprovalStatus = kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm
+              ? ApprovalStatus.APPROVED
+              : ApprovalStatus.APPROVED_LEVEL1;
+          }
+        } else if (act === 'approve') {
+          targetApprovalStatus = kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm
+            ? ApprovalStatus.APPROVED
+            : ApprovalStatus.APPROVED_LEVEL1;
+        }
+
         // "Lưu và phê duyệt" là đúng một lần cập nhật để không tạo hai lịch sử
         // cho cùng một thao tác sửa.
         await vtsOperationCenterService.update(editId, {
           ...payload,
-          ...(act === 'approve' ? { approvalStatus: ApprovalStatus.APPROVED } : {}),
+          ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
         } as UpdateVtsOperationCenterRequest);
         if (pendingDeletedAttachments.length > 0) {
           const deletionResults = await Promise.allSettled(
@@ -729,7 +763,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           ]);
           if (uploadResults.some((result) => result.status === 'rejected')) attachmentPartialFailure = true;
         }
-        if (act === 'submit') {
+        if (act === 'submit' && !isApprovedRecord) {
           await vtsOperationCenterService.submit(editId);
         }
         setPendingFiles([]);
@@ -925,6 +959,16 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                   value: p.id,
                                   label: p.portCode ? `${p.portCode} - ${p.portName}` : (p.portName || p.id),
                                 }))}
+                                onChange={(val) => {
+                                  form.setFieldValue('portId', val);
+                                  const currentVtsId = form.getFieldValue('vtsSystemId');
+                                  if (currentVtsId) {
+                                    const currentVts = vtsSystemOptions.find((v) => v.id === currentVtsId);
+                                    if (val && currentVts?.portId && String(currentVts.portId) !== String(val)) {
+                                      form.setFieldValue('vtsSystemId', undefined);
+                                    }
+                                  }
+                                }}
                                 style={selectStyle}
                               />
                             </Form.Item>

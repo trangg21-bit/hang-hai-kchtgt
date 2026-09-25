@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ma trận nút bấm & Quy trình phê duyệt 2 cấp KCHT</title>
+    <style>
+        :root {
+            --primary: #0E4A86;
+            --primary-light: #EBF3FC;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --bg-page: #F8FAFC;
+            --bg-card: #FFFFFF;
+            
+            --status-draft: #64748B;
+            --status-pending: #D97706;
+            --status-c1: #0284C7;
+            --status-approved: #16A34A;
+            --status-rejected: #DC2626;
+            --status-archived: #94A3B8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            line-height: 1.5;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .header-title h1 {
+            font-size: 22px;
+            color: var(--primary);
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+
+        .header-title p {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .print-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .print-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .section-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #F1F5F9;
+            padding: 14px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .badge-pill {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+
+        .badge-draft { background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
+        .badge-pending { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+        .badge-c1 { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
+        .badge-approved { background: #DCFCE7; color: #15803D; border: 1px solid #BBF7D0; }
+        .badge-rejected { background: #FEE2E2; color: #B91C1C; border: 1px solid #FECACA; }
+        .badge-archived { background: #F8FAFC; color: #64748B; border: 1px solid #E2E8F0; }
+
+        .btn-preview {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .btn-default { background: #FFFFFF; color: #334155; border: 1px solid #CBD5E1; }
+        .btn-primary { background: #0E6FD6; color: #FFFFFF; border: 1px solid #0E6FD6; }
+        .btn-success { background: #1BAF7A; color: #FFFFFF; border: 1px solid #1BAF7A; }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        th {
+            background: #F8FAFC;
+            color: #475569;
+            font-weight: 700;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: top;
+        }
+
+        tr:nth-child(even) td {
+            background-color: #FAFAFA;
+        }
+
+        tr:hover td {
+            background-color: #F1F5F9;
+        }
+
+        .text-bold { font-weight: 600; color: #0F172A; }
+        .text-muted { color: #64748B; font-size: 12px; }
+        .notice-box {
+            background: #EFF6FF;
+            border-left: 4px solid #3B82F6;
+            padding: 12px 18px;
+            margin: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: #1E40AF;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .print-btn { display: none; }
+            .section-card { box-shadow: none; page-break-inside: avoid; margin-bottom: 16px; }
+            .header-card { box-shadow: none; border-bottom: 2px solid #0E4A86; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header-card">
+            <div class="header-title">
+                <h1>TÀI LIỆU MA TRẬN NÚT BẤM & QUY TRÌNH PHÊ DUYỆT 2 CẤP KCHT</h1>
+                <p>Thống nhất giữa Phân tích Nghiệp vụ (BA) và Đội ngũ Kỹ thuật (Dev) | Cập nhật: 25/09/2026</p>
+            </div>
+            <div>
+                <button class="print-btn" onclick="window.print()">
+                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
+                        <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
+                    </svg>
+                    In / Xuất PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- 1. Danh mục 7 Trạng thái -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>1. BẢNG ĐỐI CHIẾU 7 TRẠNG THÁI PHÊ DUYỆT CHUẨN (APPROVAL STATUS)</h2>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 180px;">Mã Enum (Code)</th>
+                            <th style="width: 80px; text-align: center;">Mã số</th>
+                            <th style="width: 260px;">Tên tiếng Việt hiển thị chuẩn</th>
+                            <th>Ý nghĩa & Phạm vi áp dụng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>DRAFT</code></td>
+                            <td style="text-align: center;"><b>0</b></td>
+                            <td><span class="badge-pill badge-draft">Lưu tạm</span></td>
+                            <td>Lưu nháp nội bộ trong đơn vị quản lý, chưa gửi vào quy trình phê duyệt</td>
+                        </tr>
+                        <tr>
+                            <td><code>PENDING_APPROVAL</code></td>
+                            <td style="text-align: center;"><b>2</b></td>
+                            <td><span class="badge-pill badge-pending">Chờ phê duyệt cấp Cảng vụ/Chi cục</span></td>
+                            <td>Đã gửi, đang chờ Lãnh đạo Cảng vụ/Chi cục xét duyệt (Vòng 1)</td>
+                        </tr>
+                        <tr>
+                            <td><code>APPROVED_LEVEL1</code></td>
+                            <td style="text-align: center;"><b>3</b></td>
+                            <td><span class="badge-pill badge-c1">Chờ phê duyệt cấp Cục</span></td>
+                            <td>Cảng vụ đã duyệt thông qua (hoặc Cục gửi duyệt), đang chờ Lãnh đạo Cục phê duyệt (Vòng 2)</td>
+                        </tr>
+                        <tr>
+                            <td><code>APPROVED</code></td>
+                            <td style="text-align: center;"><b>5</b></td>
+                            <td><span class="badge-pill badge-approved">Đã phê duyệt</span></td>
+                            <td>Cục đã phê duyệt chính thức, hồ sơ có hiệu lực thi hành đầy đủ</td>
+                        </tr>
+                        <tr>
+                            <td><code>REJECTED_LEVEL1</code></td>
+                            <td style="text-align: center;"><b>8</b></td>
+                            <td><span class="badge-pill badge-rejected">Từ chối cấp Cảng vụ/Chi cục</span></td>
+                            <td>Bị Lãnh đạo Cảng vụ/Chi cục từ chối trả về (bắt buộc nhập lý do)</td>
+                        </tr>
+                        <tr>
+                            <td><code>REJECTED_LEVEL2</code></td>
+                            <td style="text-align: center;"><b>9</b></td>
+                            <td><span class="badge-pill badge-rejected">Từ chối cấp Cục</span></td>
+                            <td>Bị Lãnh đạo Cục từ chối trả về (bắt buộc nhập lý do)</td>
+                        </tr>
+                        <tr>
+                            <td><code>ARCHIVED</code></td>
+                            <td style="text-align: center;"><b>7</b></td>
+                            <td><span class="badge-pill badge-archived">Đã xóa</span></td>
+                            <td>Đã xóa mềm / Lưu trữ lịch sử (không hiển thị trên danh sách chính, tra cứu tại tab Tất cả)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 2. Form Tạo mới -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>2. FORM TẠO MỚI (CREATE DRAWER FOOTER)</h2>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 170px;">Tên nút bấm</th>
+                            <th style="width: 200px;">Kiểu dáng UI</th>
+                            <th style="width: 240px;">Đối tượng hiển thị</th>
+                            <th style="width: 220px;">Điều kiện hiển thị</th>
+                            <th style="width: 280px;">Trạng thái sau khi bấm (Kết quả)</th>
+                            <th>Ghi chú nghiệp vụ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="btn-preview btn-default">Lưu tạm</span></td>
+                            <td>Nút Default (Viền xám, bo cong)</td>
+                            <td>Mọi cán bộ có quyền tạo (<code>:create</code>)</td>
+                            <td>Luôn hiển thị khi mở form tạo mới</td>
+                            <td><span class="badge-pill badge-draft">DRAFT (0) - Lưu tạm</span></td>
+                            <td>Lưu nháp nội bộ đơn vị quản lý, chưa đưa vào luồng phê duyệt</td>
+                        </tr>
+                        <tr>
+                            <td><span class="btn-preview btn-primary">Lưu và gửi phê duyệt</span></td>
+                            <td>Nút Primary (Xanh dương #0E6FD6)</td>
+                            <td>Mọi cán bộ có quyền tạo (<code>:create</code>)</td>
+                            <td>Luôn hiển thị khi mở form tạo mới</td>
+                            <td>
+                                <div>• <b>Cán bộ Cảng vụ:</b><br><span class="badge-pill badge-pending" style="margin: 2px 0 6px 0;">PENDING_APPROVAL (2) - Chờ phê duyệt cấp Cảng vụ/Chi cục</span></div>
+                                <div>• <b>Lãnh đạo Cảng vụ (có C1) / Chuyên viên Cục:</b><br><span class="badge-pill badge-c1" style="margin: 2px 0;">APPROVED_LEVEL1 (3) - Chờ phê duyệt cấp Cục</span></div>
+                            </td>
+                            <td>Tạo hồ sơ và chuyển ngay vào luồng phê duyệt tương ứng với cấp quản lý</td>
+                        </tr>
+                        <tr>
+                            <td><span class="btn-preview btn-success">Lưu và phê duyệt</span></td>
+                            <td>Nút Success (Xanh lá #1BAF7A)</td>
+                            <td><b>Chỉ Lãnh đạo Cục</b> có quyền C2 (<code>:approvec2</code>)</td>
+                            <td>Tài khoản thuộc cấp Cục VÀ có quyền duyệt C2</td>
+                            <td><span class="badge-pill badge-approved">APPROVED (5) - Đã phê duyệt</span></td>
+                            <td>Tạo mới và phê duyệt ban hành chính thức ngay lập tức (hiệu lực ngay)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. Form Chỉnh sửa -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>3. FORM CHỈNH SỬA (EDIT DRAWER FOOTER)</h2>
+            </div>
+            <div class="notice-box">
+                <b>Nguyên tắc bảo vệ dữ liệu:</b> Hồ sơ đang ở trạng thái <b>Chờ phê duyệt</b> (<code>PENDING_APPROVAL</code>, <code>APPROVED_LEVEL1</code>) hoặc <b>Đã xóa</b> (<code>ARCHIVED</code>) sẽ bị khóa chỉnh sửa hoàn toàn để đảm bảo tính toàn vẹn hồ sơ.
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 170px;">Tên nút bấm</th>
+                            <th style="width: 180px;">Kiểu dáng UI</th>
+                            <th style="width: 250px;">Trạng thái trước khi sửa</th>
+                            <th style="width: 220px;">Đối tượng hiển thị</th>
+                            <th style="width: 280px;">Trạng thái sau khi bấm (Kết quả)</th>
+                            <th>Ghi chú nghiệp vụ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="btn-preview btn-default">Lưu tạm</span></td>
+                            <td>Nút Default (Viền xám)</td>
+                            <td>
+                                <span class="badge-pill badge-draft">DRAFT (0)</span><br>
+                                <span class="badge-pill badge-rejected" style="margin: 2px 0;">REJECTED_LEVEL1 (8)</span><br>
+                                <span class="badge-pill badge-rejected">REJECTED_LEVEL2 (9)</span>
+                            </td>
+                            <td>Cán bộ có quyền sửa (<code>:update</code>)</td>
+                            <td><span class="badge-pill badge-draft">DRAFT (0) - Lưu tạm</span></td>
+                            <td>Cập nhật thông tin sửa đổi và tiếp tục giữ ở trạng thái nháp nội bộ</td>
+                        </tr>
+                        <tr>
+                            <td><span class="btn-preview btn-primary">Lưu và gửi phê duyệt</span></td>
+                            <td>Nút Primary (Xanh dương #0E6FD6)</td>
+                            <td>
+                                <span class="badge-pill badge-draft">DRAFT (0)</span><br>
+                                <span class="badge-pill badge-rejected" style="margin: 2px 0;">REJECTED_LEVEL1 (8)</span><br>
+                                <span class="badge-pill badge-rejected">REJECTED_LEVEL2 (9)</span>
+                            </td>
+                            <td>Cán bộ có quyền sửa (<code>:update</code>)</td>
+                            <td>
+                                <div>• <b>Cán bộ Cảng vụ:</b><br><span class="badge-pill badge-pending" style="margin: 2px 0 6px 0;">PENDING_APPROVAL (2) - Chờ Cảng vụ duyệt</span></div>
+                                <div>• <b>Lãnh đạo Cảng vụ (có C1) / Chuyên viên Cục:</b><br><span class="badge-pill badge-c1" style="margin: 2px 0;">APPROVED_LEVEL1 (3) - Chờ Cục duyệt</span></div>
+                            </td>
+                            <td>Cập nhật dữ liệu sửa đổi và gửi lại lên cấp có thẩm quyền phê duyệt</td>
+                        </tr>
+                        <tr>
+                            <td><span class="btn-preview btn-success">Lưu và phê duyệt</span></td>
+                            <td>Nút Success (Xanh lá #1BAF7A)</td>
+                            <td><span class="badge-pill badge-approved">APPROVED (5) - Đã phê duyệt</span></td>
+                            <td><b>Chỉ Lãnh đạo Cục</b> có quyền C2 (<code>:approvec2</code>)</td>
+                            <td><span class="badge-pill badge-approved">APPROVED (5) - Đã phê duyệt</span></td>
+                            <td>Cập nhật trực tiếp hồ sơ đang có hiệu lực (Quy tắc 12/T12), lưu vết lịch sử thay đổi</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. Thao tác dòng (Row Actions) -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>4. MENU THAO TÁC DÒNG DANH SÁCH (ROW ACTIONS - DROPDOWN 3 CHẤM)</h2>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Tên thao tác</th>
+                            <th style="width: 240px;">Trạng thái áp dụng</th>
+                            <th style="width: 270px;">Phân quyền & Điều kiện hiển thị</th>
+                            <th style="width: 250px;">Trạng thái kết quả sau thực hiện</th>
+                            <th>Hành vi & Giao diện</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="text-bold">Xem chi tiết</span></td>
+                            <td>Mọi trạng thái</td>
+                            <td>Mọi người dùng có quyền xem màn hình</td>
+                            <td><i>Không đổi</i></td>
+                            <td>Mở Drawer Xem chi tiết ở chế độ chỉ đọc (View-only)</td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #0E6FD6;">Chỉnh sửa</span></td>
+                            <td>
+                                <span class="badge-pill badge-draft">DRAFT (0)</span> 
+                                <span class="badge-pill badge-rejected">REJECTED_1/2</span><br>
+                                <span class="badge-pill badge-approved" style="margin-top: 4px;">APPROVED (5)</span> (chỉ cấp Cục)
+                            </td>
+                            <td>
+                                • Với <code>DRAFT</code>, <code>REJECTED_...</code>: Cần quyền <code>:update</code><br>
+                                • Với <code>APPROVED</code>: Cần quyền <code>:approvec2</code> cấp Cục
+                            </td>
+                            <td>Tùy theo nút bấm trong Form Chỉnh sửa</td>
+                            <td>Mở Drawer Chỉnh sửa dữ liệu. Hồ sơ đang chờ duyệt hoặc đã xóa bị ẩn thao tác sửa</td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #0E6FD6;">Gửi phê duyệt</span></td>
+                            <td>
+                                <span class="badge-pill badge-draft">DRAFT (0)</span> 
+                                <span class="badge-pill badge-rejected">REJECTED_LEVEL1</span>
+                                <span class="badge-pill badge-rejected">REJECTED_LEVEL2</span>
+                            </td>
+                            <td>Có quyền <code>:update</code></td>
+                            <td>
+                                • Cán bộ Cảng vụ: $ightarrow$ <span class="badge-pill badge-pending">PENDING_APPROVAL (2)</span><br>
+                                • LĐ Cảng vụ / CV Cục: $ightarrow$ <span class="badge-pill badge-c1">APPROVED_LEVEL1 (3)</span>
+                            </td>
+                            <td>Gửi duyệt nhanh ngay trên danh sách mà không cần mở form sửa</td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #16A34A;">Phê duyệt C1</span></td>
+                            <td><span class="badge-pill badge-pending">PENDING_APPROVAL (2)</span><br><span class="text-muted">(Chờ phê duyệt cấp Cảng vụ/Chi cục)</span></td>
+                            <td>Cán bộ cấp Cảng vụ có quyền <code>:approvec1</code> VÀ <b>không phải là người tạo/gửi</b> (Quy tắc 4 mắt)</td>
+                            <td><span class="badge-pill badge-c1">APPROVED_LEVEL1 (3)</span><br><span class="text-muted">(Chờ phê duyệt cấp Cục)</span></td>
+                            <td>Hiển thị Popup xác nhận/nhập nội dung duyệt cấp Cảng vụ</td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #DC2626;">Từ chối C1</span></td>
+                            <td><span class="badge-pill badge-pending">PENDING_APPROVAL (2)</span><br><span class="text-muted">(Chờ phê duyệt cấp Cảng vụ/Chi cục)</span></td>
+                            <td>Cán bộ cấp Cảng vụ có quyền <code>:approvec1</code> VÀ <b>không phải là người tạo/gửi</b></td>
+                            <td><span class="badge-pill badge-rejected">REJECTED_LEVEL1 (8)</span><br><span class="text-muted">(Từ chối cấp Cảng vụ/Chi cục)</span></td>
+                            <td>Hiển thị Popup <b>BẮT BUỘC nhập lý do từ chối</b></td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #16A34A;">Phê duyệt C2</span></td>
+                            <td><span class="badge-pill badge-c1">APPROVED_LEVEL1 (3)</span><br><span class="text-muted">(Chờ phê duyệt cấp Cục)</span></td>
+                            <td>Cán bộ cấp Cục có quyền <code>:approvec2</code></td>
+                            <td><span class="badge-pill badge-approved">APPROVED (5)</span><br><span class="text-muted">(Đã phê duyệt chính thức)</span></td>
+                            <td>Hiển thị Popup xác nhận/nhập nội dung phê duyệt cấp Cục</td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #DC2626;">Từ chối C2</span></td>
+                            <td><span class="badge-pill badge-c1">APPROVED_LEVEL1 (3)</span><br><span class="text-muted">(Chờ phê duyệt cấp Cục)</span></td>
+                            <td>Cán bộ cấp Cục có quyền <code>:approvec2</code></td>
+                            <td><span class="badge-pill badge-rejected">REJECTED_LEVEL2 (9)</span><br><span class="text-muted">(Từ chối cấp Cục)</span></td>
+                            <td>Hiển thị Popup <b>BẮT BUỘC nhập lý do từ chối</b></td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold" style="color: #DC2626;">Xóa</span></td>
+                            <td><span class="badge-pill badge-draft">Chỉ DRAFT (0)</span><br><span class="text-muted">(Lưu tạm)</span></td>
+                            <td>Có quyền <code>:delete</code></td>
+                            <td><span class="badge-pill badge-archived">ARCHIVED (7)</span><br><span class="text-muted">(Đã xóa)</span></td>
+                            <td>Hiển thị Modal Confirm cảnh báo xóa mềm. <b>Tuyệt đối KHÔNG cho phép xóa hồ sơ APPROVED hay đang chờ duyệt</b></td>
+                        </tr>
+                        <tr>
+                            <td><span class="text-bold">Lịch sử</span></td>
+                            <td>Mọi trạng thái</td>
+                            <td>Mọi người dùng có quyền truy cập</td>
+                            <td><i>Không đổi</i></td>
+                            <td>Mở Drawer Lịch sử thay đổi (Audit Trail)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 5. Header & Drawer Chi tiết -->
+        <div class="section-card">
+            <div class="section-header">
+                <h2>5. THANH CÔNG CỤ ĐẦU TRANG & DRAWER XEM CHI TIẾT</h2>
+            </div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 250px;">Vị trí & Thành phần</th>
+                            <th style="width: 280px;">Kiểu dáng & Trực quan</th>
+                            <th style="width: 260px;">Điều kiện hiển thị</th>
+                            <th>Mô tả hành vi & Quy chuẩn</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>Thêm mới</b><br><span class="text-muted">(ScreenHeader)</span></td>
+                            <td><span class="btn-preview btn-primary">Thêm mới</span> (bo tròn 999px)</td>
+                            <td>Người dùng có quyền <code>:create</code></td>
+                            <td>Mở Drawer Tạo mới hồ sơ với form nhập liệu chuẩn</td>
+                        </tr>
+                        <tr>
+                            <td><b>Xuất Excel</b><br><span class="text-muted">(ScreenHeader)</span></td>
+                            <td><span class="btn-preview btn-default">Xuất Excel</span> (bo tròn 999px)</td>
+                            <td>Người dùng có quyền <code>:export</code></td>
+                            <td>Xuất file Excel dữ liệu theo bộ lọc tìm kiếm và phạm vi DataScope của tài khoản</td>
+                        </tr>
+                        <tr>
+                            <td><b>Toggle Thông tin phê duyệt</b><br><span class="text-muted">(Tab Thông tin chung Drawer)</span></td>
+                            <td>Khung mở rộng (Collapse / Card)</td>
+                            <td>Hiển thị trong Drawer Xem chi tiết</td>
+                            <td>Hiển thị đầy đủ thông tin: Người gửi, ngày gửi; Người duyệt C1, ngày duyệt C1, nội dung/lý do; Người duyệt C2, ngày duyệt C2, nội dung/lý do</td>
+                        </tr>
+                        <tr>
+                            <td><b>Xem Lịch sử thay đổi</b><br><span class="text-muted">(Row Actions)</span></td>
+                            <td>Drawer Lịch sử thay đổi riêng biệt</td>
+                            <td>Mọi người dùng</td>
+                            <td>Truy vấn từ bảng tập trung <code>infrastructure_history</code>. <b>Không tạo thêm tab rời "Thông tin log cập nhật"</b> trong Drawer chi tiết</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

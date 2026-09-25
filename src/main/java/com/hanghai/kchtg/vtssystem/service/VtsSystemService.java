@@ -1207,16 +1207,15 @@ public class VtsSystemService {
         VtsSystem entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong
-        // vòng duyệt
-        approvalService.assertEditable(entity);
+        UUID effectiveUserId = userId != null ? userId : entity.getCreatedBy();
+
+        // Quy tắc R3 & R4: cấm sửa khi đang trong vòng duyệt, hồ sơ APPROVED chỉ sửa khi có C1 hoặc C2
+        approvalService.assertCanEdit(entity, effectiveUserId, InfrastructureType.VTS_SYSTEM);
 
         DataScopeContext scope = resolveDataScope();
         if (scope.enabled()) {
             validateAllowedOrgUnit(scope, entity.getOrgUnitId(), "Đơn vị quản lý");
         }
-
-        UUID effectiveUserId = userId != null ? userId : entity.getCreatedBy();
 
         Map<String, String> previousValues = new LinkedHashMap<>();
         Map<String, String> customNewValues = new LinkedHashMap<>();
@@ -1583,8 +1582,7 @@ public class VtsSystemService {
         LocalDateTime now = LocalDateTime.now();
 
         if (wasApproved) {
-            // Keep approved status when editing already approved records
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.VTS_SYSTEM, request.getApprovalStatus(), effectiveUserId);
         } else if (request.getApprovalStatus() != null) {
             ApprovalStatus requestedStatus = request.getApprovalStatus();
             entity.setApprovalStatus(requestedStatus);
@@ -2660,6 +2658,10 @@ public class VtsSystemService {
     }
 
     public List<VtsSystemOptionResponse> getOptions(UUID orgUnitId) {
+        return getOptions(orgUnitId, null);
+    }
+
+    public List<VtsSystemOptionResponse> getOptions(UUID orgUnitId, UUID portId) {
         OrgUnitScopeService.Scope userScope = orgUnitScopeService != null ? orgUnitScopeService.currentUserScope()
                 : OrgUnitScopeService.Scope.all();
         boolean scopeEnabled = userScope != null && !userScope.unrestricted();
@@ -2673,6 +2675,7 @@ public class VtsSystemService {
                     : List.of(orgUnitId);
         }
 
-        return repository.findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds);
+        boolean portFiltered = portId != null;
+        return repository.findOptions(scopeEnabled, scopeOrgUnitIds, orgFiltered, targetOrgUnitIds, portFiltered, portId);
     }
 }

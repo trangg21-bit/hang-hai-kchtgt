@@ -19,6 +19,10 @@ async function globalSetup(config: FullConfig) {
     await page.goto(`${baseURL}/login`, { waitUntil: 'networkidle' });
     await page.fill('input[placeholder*="đăng nhập"]', 'admin');
     await page.fill('input[placeholder*="mật khẩu"]', 'Asdqwe@123');
+    const captcha = page.locator('input[placeholder*="5 số bảo vệ"], input[placeholder*="mã bảo vệ"]');
+    if (await captcha.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await captcha.fill('00000');
+    }
     await page.click('button[type="submit"]');
     await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 });
     console.log('[Global Setup] Login successful, current URL:', page.url());

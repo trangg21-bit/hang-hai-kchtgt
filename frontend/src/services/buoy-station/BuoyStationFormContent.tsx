@@ -20,6 +20,8 @@ import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganiz
 import { OrgUnitTreeSelect, normalizeSearchText, type OrgUnitTreeOption } from '../../components/org-unit';
 import { portCRUD } from '../../services/portService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import {
   createBuoyStation, updateBuoyStation, generateBuoyStationCode,
 } from './api';
@@ -238,6 +240,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
   onFinish,
 }, ref) {
   const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const [orgUnitOptions, setOrgUnitOptions] = useState<Array<{ value: string; label: string }>>([]);
   const [operatingOrgs, setOperatingOrgs] = useState<Array<{ id: string; name: string; code: string }>>(DEFAULT_OPERATING_ORGANIZATIONS);
   useEffect(() => {
@@ -428,6 +431,14 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       }
       return;
     }
+    const wasApproved = isEdit && (entityData?.approvalStatus === 'APPROVED' || entityData?.approvalStatus === 'APPROVED_L2' || entityData?.approvalStatus === 'APPROVED_LEVEL2' || entityData?.approvalStatus === 'PUBLISHED' || entityData?.status === 'APPROVED' || entityData?.status === 'PUBLISHED');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
     const code = String(values.code ?? '').trim();
     const name = String(values.name ?? '').trim();
     if (!name) { toast.error('Tên nhà trạm là bắt buộc'); return; }
@@ -493,6 +504,22 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       // NGUYÊN hình học cũ và vẫn trả về thành công — đúng lỗi "xóa triệt để mà không có gì thay đổi".
       if (manualCoords.length === 0) p.coordinates = '';
       let sid: string | undefined;
+      const isCuc = isCucLevelUser(currentUser);
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('buoystation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('buoystation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+      if (targetApprovalStatus) {
+        p.approvalStatus = targetApprovalStatus;
+        p.status = targetApprovalStatus;
+      }
+
       p.action = saveAction === 'DRAFT' ? 'draft' : saveAction === 'APPROVED' ? 'approved' : 'submit';
       if (isEdit && entityData?.id) {
         await updateBuoyStation(entityData.id, p as unknown as CreateBuoyStationRequest);
@@ -503,7 +530,6 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         sid = (r as { id?: string })?.id;
       }
       toast.success(saveAction === 'DRAFT' ? 'Lưu nháp thành công' : saveAction === 'UPDATE' ? 'Cập nhật thành công' : saveAction === 'APPROVED' ? 'Phê duyệt thành công' : 'Gửi phê duyệt thành công');
-      const wasApproved = isEdit && (entityData?.approvalStatus === 'APPROVED' || entityData?.approvalStatus === 'APPROVED_L2' || entityData?.approvalStatus === 'PUBLISHED');
 
       if (sid && pendingDeletedAttachmentIds.length > 0) {
         for (const attId of pendingDeletedAttachmentIds) {
@@ -529,7 +555,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       }
       onFinish(true);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : 'Có lỗi xảy ra'); }
-  }, [form, isEdit, entityData, coordinateList, uploadedFiles, pendingDeletedAttachmentIds, onFinish]);
+  }, [form, isEdit, entityData, coordinateList, uploadedFiles, pendingDeletedAttachmentIds, onFinish, currentUser, hasPerm]);
 
   useImperativeHandle(ref, () => ({ submit: (saveAction: SaveAction) => void handleSave(saveAction) }), [handleSave]);
 

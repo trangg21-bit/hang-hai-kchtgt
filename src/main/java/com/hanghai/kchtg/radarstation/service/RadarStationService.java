@@ -253,7 +253,7 @@ public class RadarStationService {
         }
 
         // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
-        approvalService.assertEditable(entity);
+        approvalService.assertCanEdit(entity, updatedBy, InfrastructureType.RADAR_STATION);
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
         if (request.getOrgUnitId() != null) {
@@ -343,8 +343,13 @@ public class RadarStationService {
         }
 
         if (wasApproved) {
-            approvalService.requireApproveC2Permission(updatedBy, "radarstation:approvec2");
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            ApprovalStatus targetStatus = request.getApprovalStatus();
+            if (targetStatus == null && request.getSaveAction() != null) {
+                targetStatus = "SUBMIT".equalsIgnoreCase(request.getSaveAction()) ? ApprovalStatus.APPROVED_LEVEL1 : ApprovalStatus.DRAFT;
+            }
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.RADAR_STATION, targetStatus, updatedBy);
+        } else if (request.getApprovalStatus() != null) {
+            entity.setApprovalStatus(request.getApprovalStatus());
         }
 
         RadarStation saved = repository.save(entity);

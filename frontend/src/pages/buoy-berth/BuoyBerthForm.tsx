@@ -34,8 +34,9 @@ import { buoyBerthCRUD, portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import type { Symbol as IconSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt, parseWktToCoordinates, dmsToDd } from '../../utils/gisGeometry';
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -698,9 +699,31 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         )
       : undefined;
 
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return false;
+      }
+    }
+
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('buoy-berth:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('buoy-berth:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const toNumber = (v: unknown): number | string | undefined => {
         if (v == null) return undefined;
         const str = String(v).trim();
@@ -736,6 +759,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
         geometryType: currentGeometryType || undefined, mapSymbolId: currentMapSymbolId || undefined,
         coordinateSystem: (values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) != null && !isNaN(Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem'))) ? Number(values.coordinateSystem ?? form.getFieldValue('coordinateSystem')) : (currentGeometryType ? 1 : undefined),
         displayRule: (values.displayRule ?? form.getFieldValue('displayRule')) != null && !isNaN(Number(values.displayRule ?? form.getFieldValue('displayRule'))) ? Number(values.displayRule ?? form.getFieldValue('displayRule')) : (currentGeometryType ? 1 : undefined),
+        ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       finalizePayloadForSubmit(payload);

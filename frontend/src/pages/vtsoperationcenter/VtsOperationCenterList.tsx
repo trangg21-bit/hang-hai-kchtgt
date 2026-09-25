@@ -202,7 +202,7 @@ export default function VtsOperationCenterList() {
 
   const [orgUnitOptions, setOrgUnitOptions] = useState<OrgUnitTreeOption[]>([]);
   const [portOptions, setPortOptions] = useState<Array<{ id: string; portName?: string; portCode?: string; orgUnitId?: string }>>([]);
-  const [vtsSystemOptions, setVtsSystemOptions] = useState<Array<{ id: string; name?: string; code?: string; orgUnitId?: string }>>([]);
+  const [vtsSystemOptions, setVtsSystemOptions] = useState<Array<{ id: string; name?: string; code?: string; orgUnitId?: string; portId?: string }>>([]);
   const [filterValues, setFilterValues] = useState<Record<string, unknown>>({});
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
@@ -320,10 +320,16 @@ export default function VtsOperationCenterList() {
   }, [portOptions, orgUnitOptions, filterValues.orgUnitId]);
 
   const filteredVtsSystemOptions = useMemo(() => {
-    if (!filterValues.orgUnitId) return vtsSystemOptions;
-    const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId as string);
-    return vtsSystemOptions.filter((v) => v.orgUnitId && allowedIds.has(String(v.orgUnitId)));
-  }, [vtsSystemOptions, orgUnitOptions, filterValues.orgUnitId]);
+    let list = vtsSystemOptions;
+    if (filterValues.orgUnitId) {
+      const allowedIds = resolveOrgSubtreeIds(orgUnitOptions, filterValues.orgUnitId as string);
+      list = list.filter((v) => v.orgUnitId && allowedIds.has(String(v.orgUnitId)));
+    }
+    if (filterValues.portId) {
+      list = list.filter((v) => v.portId && String(v.portId) === String(filterValues.portId));
+    }
+    return list;
+  }, [vtsSystemOptions, orgUnitOptions, filterValues.orgUnitId, filterValues.portId]);
 
   const fetchData = useCallback(async () => {
     const requestId = ++listRequestId.current;
@@ -977,7 +983,20 @@ export default function VtsOperationCenterList() {
                         normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
                       }
                       value={filterValues.portId as string | undefined}
-                      onChange={(value) => setFilterValues((prev) => ({ ...prev, portId: value }))}
+                      onChange={(value) => {
+                        setFilterValues((prev) => {
+                          const next = { ...prev, portId: value };
+                          if (prev.vtsSystemId) {
+                            const curVts = vtsSystemOptions.find((v) => v.id === prev.vtsSystemId);
+                            if (value && curVts?.portId && String(curVts.portId) !== String(value)) {
+                              next.vtsSystemId = undefined;
+                              setFilterVtsSystemId(undefined);
+                            }
+                          }
+                          return next;
+                        });
+                        setFilterPortId(value);
+                      }}
                       options={filteredPortOptions.map((p) => ({
                         value: p.id,
                         label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id),

@@ -25,6 +25,8 @@ import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { userService } from '../../services/userService';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
@@ -1084,8 +1086,30 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         )
       : null;
 
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return false;
+      }
+    }
+
     onSubmittingChange?.(true);
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('anchorage:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('anchorage:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const provinceIndex = VIETNAM_PROVINCES.indexOf(vals.provinceId);
       const provinceNumber = provinceIndex >= 0 ? provinceIndex + 1 : undefined;
 
@@ -1160,6 +1184,7 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : (isEdit ? null : null),
         coordinates: hasGeom ? (wktCoordinates || null) : (isEdit ? null : null),
         mooringWaterAreas: mooringPayload,
+        ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
 
       if (saveAction !== 'UPDATE') {

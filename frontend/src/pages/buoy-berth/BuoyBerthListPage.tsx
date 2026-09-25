@@ -26,6 +26,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import api from '../../services/api';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
@@ -1567,66 +1568,20 @@ export default function BuoyBerthList() {
         onClose={closeFormDrawer}
         afterOpenChange={(open) => { if (!open) { setEditBuoyBerthId(undefined); setEditBaseStatus(undefined); } }}
         extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={<div style={drawerFooterStyle}>{(() => {
-          const st = !editBuoyBerthId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
-          if (st === 'APPROVED') {
-            return (
-              <Button
-                htmlType="button"
-                type="primary"
-                onClick={() => { setActionType('approve'); buoyBerthFormRef.current?.submit('APPROVED'); }}
-                loading={submitting && actionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            );
-          }
-          if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
-            return (
-              <Button
-                htmlType="button"
-                type="primary"
-                onClick={() => { setActionType('submit'); buoyBerthFormRef.current?.submit('SUBMIT'); }}
-                loading={submitting && actionType === 'submit'}
-                style={primaryButtonStyle}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-            );
-          }
-          // Lưu tạm hoặc tạo mới: 3 nút.
-          return (
-            <>
-              <Button
-                htmlType="button"
-                onClick={() => { setActionType('draft'); buoyBerthFormRef.current?.submit('DRAFT'); }}
-                loading={submitting && actionType === 'draft'}
-                style={outlineButtonStyle}
-              >
-                Lưu tạm
-              </Button>
-              <Button
-                htmlType="button"
-                type="primary"
-                onClick={() => { setActionType('submit'); buoyBerthFormRef.current?.submit('SUBMIT'); }}
-                loading={submitting && actionType === 'submit'}
-                style={primaryButtonStyle}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-              <Button
-                htmlType="button"
-                type="primary"
-                onClick={() => { setActionType('approve'); buoyBerthFormRef.current?.submit('APPROVED'); }}
-                loading={submitting && actionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            </>
-          );
-        })()}</div>}
+        footer={
+          <KchtFormFooter
+            mode={editBuoyBerthId ? 'edit' : 'create'}
+            resource="buoy-berth"
+            record={editBuoyBerthId ? { approvalStatus: editBaseStatus } : undefined}
+            loading={submitting}
+            activeAction={actionType as any}
+            onCancel={closeFormDrawer}
+            onSubmit={(action) => {
+              setActionType(action);
+              buoyBerthFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+            }}
+          />
+        }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
           body: { padding: '0 24px 12px 24px' },

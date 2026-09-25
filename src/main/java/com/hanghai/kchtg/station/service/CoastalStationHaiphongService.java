@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -646,16 +647,16 @@ public class CoastalStationHaiphongService {
         LocalDateTime effectiveFrom = (finalApprovalAt != null && (fromDate == null || fromDate.isBefore(finalApprovalAt)))
                 ? finalApprovalAt
                 : fromDate;
-        org.springframework.data.domain.Pageable pageable =
+        Pageable pageable =
                 (page != null && pageSize != null && page >= 0 && pageSize > 0)
-                        ? org.springframework.data.domain.PageRequest.of(page, pageSize)
-                        : org.springframework.data.domain.Pageable.unpaged();
+                        ? PageRequest.of(page, pageSize)
+                        : Pageable.unpaged();
 
         return historyService.getHistory(
                         InfrastructureType.HANOI_STATION, entity.getId(), code,
-                        List.of(com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.CREATED,
-                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.APPROVED,
-                                com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus.REJECTED),
+                        List.of(InfrastructureHistoryStatus.CREATED,
+                                InfrastructureHistoryStatus.APPROVED,
+                                InfrastructureHistoryStatus.REJECTED),
                         new String[] { "Thông tin", "Phê duyệt", "Cập nhật thông tin đài TTXLTT" },
                         keyword, effectiveFrom, toDate, pageable)
                 .stream()
@@ -669,8 +670,10 @@ public class CoastalStationHaiphongService {
                     r.setPreviousValue(h.getPreviousValue());
                     r.setNewValue(h.getNewValue());
                     r.setChangedBy(h.getChangedBy());
-                    // Header lịch sử luôn là đơn vị quản lý của hồ sơ, không phải đơn vị hiện tại của tài khoản sửa.
-                    r.setOrgUnitName(managementOrgUnitName);
+                    // Đơn vị của tài khoản người dùng thực hiện cập nhật (Đơn vị account); fallback về đơn vị quản lý hồ sơ
+                    r.setOrgUnitName(h.getOrgUnitName() != null && !h.getOrgUnitName().isBlank()
+                            ? h.getOrgUnitName()
+                            : managementOrgUnitName);
                     r.setChangedAt(h.getChangedAt());
                     return r;
                 })

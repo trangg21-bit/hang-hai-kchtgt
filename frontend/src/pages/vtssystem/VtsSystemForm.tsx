@@ -715,13 +715,42 @@ export default function VtsSystemForm({
         toast.success(msg);
         onSuccess?.();
       } else if (editId) {
+        const isApprovedRecord =
+          initialData?.approvalStatus === ApprovalStatus.APPROVED ||
+          initialData?.approvalStatus === 'APPROVED_LEVEL2' ||
+          record?.approvalStatus === ApprovalStatus.APPROVED ||
+          record?.approvalStatus === 'APPROVED_LEVEL2';
+
+        if (isApprovedRecord) {
+          // Bắt buộc chỉnh sửa ít nhất 1 trường thông tin (Rule R4)
+          const isDirty = form.isFieldsTouched();
+          if (!isDirty && pendingFiles.length === 0 && pendingDeletedAttachments.length === 0) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        let targetApprovalStatus: ApprovalStatus | undefined;
+        if (isApprovedRecord) {
+          if (actionTypeRef.current === 'submit') {
+            targetApprovalStatus = ApprovalStatus.PENDING_APPROVAL;
+          } else if (actionTypeRef.current === 'approve') {
+            targetApprovalStatus = kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm
+              ? ApprovalStatus.APPROVED
+              : ApprovalStatus.APPROVED_LEVEL1;
+          }
+        } else if (actionTypeRef.current === 'approve') {
+          targetApprovalStatus = kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm
+            ? ApprovalStatus.APPROVED
+            : ApprovalStatus.APPROVED_LEVEL1;
+        }
+
         // "Lưu và phê duyệt" phải là đúng một lần cập nhật. Gọi PUT hai lần
         // làm cùng một thao tác sinh hai mốc lịch sử/thay đổi dữ liệu.
         await vtsSystemCRUD.update(editId, {
           ...payload,
-          ...(actionTypeRef.current === 'approve'
-            ? { approvalStatus: ApprovalStatus.APPROVED }
-            : {}),
+          ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
         } as UpdateVtsSystemRequest);
         if (pendingDeletedAttachments.length > 0) {
           try {
@@ -737,7 +766,7 @@ export default function VtsSystemForm({
             console.warn('Failed to upload some pending files on edit', uploadErr);
           }
         }
-        if (actionTypeRef.current === 'submit') {
+        if (actionTypeRef.current === 'submit' && !isApprovedRecord) {
           await vtsSystemApproval.submit(editId);
         }
         setPendingFiles([]);

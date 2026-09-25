@@ -25,4 +25,5 @@ public class UpdateWaterZoneRequest {
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;
+    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
 }

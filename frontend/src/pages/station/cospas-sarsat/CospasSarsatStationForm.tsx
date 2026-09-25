@@ -42,6 +42,7 @@ import { checkCanSaveAndApprove } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
+import { KchtFormFooter } from '../../../components/kcht/KchtFormFooter';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
@@ -776,6 +777,13 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
         coordinates: hasGisCoordinates ? (wkt ?? null) : null,
       };
       const isApprovedRecord = String(recordData?.approvalStatus || '').toUpperCase() === 'APPROVED';
+      if (isApprovedRecord) {
+        const isDirty = form.isFieldsTouched() || pendingFiles.length > 0 || pendingDeletedAttachments.length > 0;
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          return;
+        }
+      }
 
       if (isCreate) {
         const created = await cospasSarsatStationService.create(payload);
@@ -851,81 +859,28 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       return null;
     }
 
-    const isApprovedRecord = String(recordData?.approvalStatus || '').toUpperCase() === 'APPROVED';
-
     if (isCreate) {
       return (
-        <>
-          <Button
-            style={{ ...outlineButtonStyle, borderRadius: radiusPill, borderColor: actionPrimary, color: actionPrimary }}
-            loading={submitting && actionType === 'draft'}
-            onClick={() => handleSave('DRAFT')}
-          >
-            Lưu tạm
-          </Button>
-          <Button
-            type="primary"
-            style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
-            loading={submitting && actionType === 'submit'}
-            onClick={() => handleSave('SUBMIT')}
-          >
-            Lưu và gửi phê duyệt
-          </Button>
-          {canApproveL2 && (
-            <Button
-              style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill }}
-              loading={submitting && actionType === 'approve'}
-              onClick={() => handleSave('APPROVE')}
-            >
-              Lưu và phê duyệt
-            </Button>
-          )}
-        </>
+        <KchtFormFooter
+          mode="create"
+          resource="coastalstationcospassarsat"
+          loading={submitting}
+          activeAction={actionType as any}
+          onSubmit={(act) => handleSave(act === 'draft' ? 'DRAFT' : act === 'submit' ? 'SUBMIT' : 'APPROVE')}
+        />
       );
     }
 
     if (isEdit) {
-      if (isApprovedRecord && canApproveL2) {
-        return (
-          <>
-            <Button
-              style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill }}
-              loading={submitting && actionType === 'approve'}
-              onClick={() => handleSave('APPROVE')}
-            >
-              Lưu và phê duyệt
-            </Button>
-          </>
-        );
-      }
-
       return (
-        <>
-          <Button
-            style={{ ...outlineButtonStyle, borderRadius: radiusPill, borderColor: actionPrimary, color: actionPrimary }}
-            loading={submitting && actionType === 'draft'}
-            onClick={() => handleSave('DRAFT')}
-          >
-            Lưu tạm
-          </Button>
-          <Button
-            type="primary"
-            style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
-            loading={submitting && actionType === 'submit'}
-            onClick={() => handleSave('SUBMIT')}
-          >
-            Lưu và gửi phê duyệt
-          </Button>
-          {canApproveL2 && (
-            <Button
-              style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill }}
-              loading={submitting && actionType === 'approve'}
-              onClick={() => handleSave('APPROVE')}
-            >
-              Lưu và phê duyệt
-            </Button>
-          )}
-        </>
+        <KchtFormFooter
+          mode="edit"
+          resource="coastalstationcospassarsat"
+          record={recordData || initialData}
+          loading={submitting}
+          activeAction={actionType as any}
+          onSubmit={(act) => handleSave(act === 'draft' ? 'DRAFT' : act === 'submit' ? 'SUBMIT' : 'APPROVE')}
+        />
       );
     }
 

@@ -412,6 +412,14 @@ export default function WaterZoneListPage() {
 
   const handleUpdateFinish = async (values: any) => {
     if (!selectedRecord) return;
+    const wasApproved = selectedRecord?.approvalStatus === 'APPROVED' || selectedRecord?.approvalStatus === 'DA_PHE_DUYET';
+    if (wasApproved) {
+      const isDirty = updateForm.isFieldsTouched();
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
     try {
       const parsed = vungNuocUpdateSchema.parse({
         id: selectedRecord.id,

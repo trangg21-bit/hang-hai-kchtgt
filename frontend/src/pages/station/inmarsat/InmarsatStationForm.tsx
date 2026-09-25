@@ -43,7 +43,9 @@ import {
 } from '../../../themetokenchk';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
+import { FormOrgUnitTreeSelect, resolveDefaultFormOrgUnitId, normalizeSearchText } from '../../../components/org-unit';
 import AppDrawer from '../../../components/shared/AppDrawer';
+import { KchtFormFooter, type KchtFormActionType } from '../../../components/kcht/KchtFormFooter';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
@@ -652,6 +654,16 @@ export default function InmarsatStationForm({
 
   const handleFinish = async (values: any) => {
     const act = actionTypeRef.current;
+    if (!isCreateMode) {
+      const wasApproved = String(record?.approvalStatus || '').toUpperCase() === 'APPROVED';
+      if (wasApproved) {
+        const isDirty = form.isFieldsTouched() || pendingFiles.length > 0 || pendingDeletedAttachments.length > 0;
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          return;
+        }
+      }
+    }
     setGpsError(null);
 
     const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? record?.geometryType;
@@ -785,82 +797,32 @@ export default function InmarsatStationForm({
       }
       footer={
         isDetailMode ? null : (
-          <>
-            {isCreateMode ? (
-              <>
-                {canCreate && (
-                  <>
-                    <Button
-                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'draft'}
-                      style={outlineButtonStyle}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  </>
-                )}
-                {canApproveL2 && canCreate && (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            ) : (
-              <>
-                {canUpdate && (!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
-                  <>
-                    <Button
-                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'draft'}
-                      style={outlineButtonStyle}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  </>
-                )}
-                {canApproveL2 ? (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                ) : canUpdate ? (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'draft'}
-                    style={primaryButtonStyle}
-                  >
-                    Cập nhật
-                  </Button>
-                ) : null}
-              </>
-            )}
-          </>
+          isCreateMode ? (
+            <KchtFormFooter
+              mode="create"
+              resource="coastalstationinmarsat"
+              loading={isSubmitting}
+              activeAction={actionType as any}
+              onSubmit={(act) => {
+                actionTypeRef.current = act;
+                setActionType(act as any);
+                form.submit();
+              }}
+            />
+          ) : (
+            <KchtFormFooter
+              mode="edit"
+              resource="coastalstationinmarsat"
+              record={record || initialData}
+              loading={isSubmitting}
+              activeAction={actionType as any}
+              onSubmit={(act) => {
+                actionTypeRef.current = act;
+                setActionType(act as any);
+                form.submit();
+              }}
+            />
+          )
         )
       }
     >

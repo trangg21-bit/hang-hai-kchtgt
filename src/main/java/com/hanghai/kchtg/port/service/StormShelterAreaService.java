@@ -7,6 +7,7 @@ import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -78,6 +79,7 @@ public class StormShelterAreaService {
     private final StormShelterMooringWaterAreaAnchorPointRepository stormShelterMooringWaterAreaAnchorPointRepository;
     private final ChangeHistoryService changeHistoryService;
     private final InfrastructureHistoryRepository historyRepository;
+    private final InfrastructureApprovalService approvalService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -146,6 +148,11 @@ public class StormShelterAreaService {
     public StormShelterAreaResponse update(UpdateStormShelterAreaRequest request) {
         StormShelterArea entity = stormShelterAreaRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy khu tránh, trú bão với id: " + request.getId()));
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể chỉnh sửa khu tránh, trú bão đã bị xóa");
+        }
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        approvalService.assertCanEdit(entity, operatorId, InfrastructureType.STORM_SHELTER_AREA);
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -209,13 +216,18 @@ public class StormShelterAreaService {
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            ApprovalStatus targetStatus = request.getApprovalStatus();
+            if (targetStatus == null && request.getSaveAction() != null) {
+                targetStatus = "SUBMIT".equalsIgnoreCase(request.getSaveAction()) ? ApprovalStatus.APPROVED_LEVEL1 : ApprovalStatus.DRAFT;
+            }
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.STORM_SHELTER_AREA, targetStatus, operatorId);
         } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
+        } else if (request.getApprovalStatus() != null) {
+            entity.setApprovalStatus(request.getApprovalStatus());
         }
 
         // Actor thật từ SecurityContext — nếu truyền "system", approvedBy = null và drawer hiện "—"
-        UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
         // Tọa độ + loại hình GIS cũ (WKT) trước khi persistGisAndMooring ghi đè spatial object
@@ -916,24 +928,34 @@ public class StormShelterAreaService {
     }
 
     private void applySaveAction(StormShelterArea entity, String action) {
-        String currentUserId = SecurityUtils.getCurrentUserId() != null ? SecurityUtils.getCurrentUserId().toString() : "system";
+        UUID curUserId = SecurityUtils.getCurrentUserId();
+        String currentUserId = curUserId != null ? curUserId.toString() : "system";
+        LocalDateTime now = LocalDateTime.now();
         switch (action) {
             case "DRAFT":
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalAt(now);
                 entity.setSubmittedForApprovalBy(currentUserId);
+                entity.setRejectionReason(null);
+                if (curUserId != null && approvalService.isDepartmentLevelUser(curUserId)) {
+                    entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                    entity.setPortAuthorityApprovedAt(now);
+                    entity.setPortAuthorityApprovedBy(currentUserId);
+                    entity.setLevel1ApprovalContent("Cấp Cục gửi trực tiếp");
+                } else {
+                    entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                }
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
-                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalAt(now);
                 entity.setSubmittedForApprovalBy(currentUserId);
-                entity.setPortAuthorityApprovedAt(LocalDateTime.now());
+                entity.setPortAuthorityApprovedAt(now);
                 entity.setPortAuthorityApprovedBy(currentUserId);
-                entity.setDepartmentApprovedAt(LocalDateTime.now());
+                entity.setDepartmentApprovedAt(now);
                 entity.setDepartmentApprovedBy(currentUserId);
                 break;
             default:

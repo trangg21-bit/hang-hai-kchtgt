@@ -69,20 +69,21 @@ public class InfrastructureApprovalService {
                     + currentStatus.getLabel());
         }
 
-        // Kiểm tra cấp đơn vị của người gửi hoặc người gửi có quyền phê duyệt cấp 1 (Rule 14 cập nhật)
+        // Kiểm tra cấp đơn vị của người gửi (Đặc tả 25/09/2026):
+        // Cấp Cục gửi -> Vào thẳng "Chờ Cục duyệt" (APPROVED_LEVEL1, bỏ vòng 1)
+        // Cấp Cảng vụ / Chi cục gửi -> Chờ Cảng vụ duyệt (PENDING_APPROVAL)
         boolean isDepartmentLevel = isDepartmentLevelUser(userId);
-        boolean hasC1 = hasApproveC1Permission(userId, refType);
 
         ApprovalStatus nextStatus;
-        if (isDepartmentLevel || hasC1) {
-            // Cấp Cục gửi hoặc Cán bộ cấp Cảng vụ/Chi cục có quyền C1 gửi -> Vào thẳng "Chờ Cục duyệt" (APPROVED_LEVEL1)
+        if (isDepartmentLevel) {
+            // Cấp Cục gửi -> Vào thẳng "Chờ Cục duyệt" (APPROVED_LEVEL1, bỏ vòng 1)
             nextStatus = ApprovalStatus.APPROVED_LEVEL1;
             entity.setApproverLevel1(userId);
             entity.setApprovedDateLevel1(LocalDateTime.now());
             if (content != null && !content.trim().isEmpty()) {
                 entity.setLevel1ApprovalContent(content.trim());
             } else {
-                entity.setLevel1ApprovalContent(isDepartmentLevel ? "Cấp Cục gửi trực tiếp" : "Cấp Cảng vụ/Chi cục phê duyệt và gửi Cục");
+                entity.setLevel1ApprovalContent("Cấp Cục gửi trực tiếp");
             }
         } else {
             // Cấp Cảng vụ / Chi cục gửi -> Chờ Cảng vụ duyệt (PENDING_APPROVAL)
@@ -126,9 +127,9 @@ public class InfrastructureApprovalService {
         }
 
         if (isRejectDecision(decision)) {
-            // Từ chối vòng 1 (T07) - Bắt buộc lý do
-            if (reason == null || reason.trim().isEmpty()) {
-                throw new IllegalArgumentException("Lý do từ chối là bắt buộc");
+            // Từ chối vòng 1 (T07) - Bắt buộc lý do tối thiểu 10 ký tự (Quy tắc 25/09)
+            if (reason == null || reason.trim().length() < 10) {
+                throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
             }
             entity.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL1);
             entity.setRejectionReason(reason.trim());
@@ -152,12 +153,18 @@ public class InfrastructureApprovalService {
 
     /**
      * Phê duyệt Vòng 2 (Cục) (T08, T09).
-     * Áp dụng nguyên tắc: Người duyệt C2 không được trùng người duyệt C1.
+     * Áp dụng nguyên tắc: Người duyệt C2 không được trùng người duyệt C1 khi C1 do Cảng vụ/Chi cục duyệt.
+     * Chặn 2 lớp: Chỉ tài khoản cấp Cục mới được duyệt C2. Bỏ nguyên tắc 4 mắt (cho phép tự duyệt C2).
      */
     @Transactional
     public void approveC2(ApprovableEntity entity, InfrastructureType refType, String decision, String reason, UUID userId) {
         if (entity == null) {
             throw new IllegalArgumentException("Dữ liệu hồ sơ không được để trống");
+        }
+
+        // Lớp bảo vệ 2: Chỉ tài khoản thuộc cấp Cục mới có quyền phê duyệt cấp 2
+        if (!isDepartmentLevelUser(userId)) {
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ tài khoản thuộc cấp Cục mới có quyền phê duyệt cấp 2");
         }
 
         ApprovalStatus currentStatus = entity.getApprovalStatus();
@@ -172,15 +179,10 @@ public class InfrastructureApprovalService {
             throw new IllegalStateException("Người phê duyệt cấp Cục không được trùng với người phê duyệt cấp Chi cục");
         }
 
-        // Quy tắc chống tự duyệt: Đối với tài khoản cấp dưới, người tạo không được tự phê duyệt
-        if (!isDepartmentLevelUser(userId) && entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
-            throw new IllegalStateException("Người tạo hồ sơ không được tự phê duyệt bản ghi");
-        }
-
         if (isRejectDecision(decision)) {
-            // Từ chối vòng 2 (T09) - Bắt buộc lý do
-            if (reason == null || reason.trim().isEmpty()) {
-                throw new IllegalArgumentException("Lý do từ chối là bắt buộc");
+            // Từ chối vòng 2 (T09) - Bắt buộc lý do tối thiểu 10 ký tự (Quy tắc 25/09)
+            if (reason == null || reason.trim().length() < 10) {
+                throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
             }
             entity.setApprovalStatus(ApprovalStatus.REJECTED_LEVEL2);
             entity.setRejectionReason(reason.trim());
@@ -457,6 +459,96 @@ public class InfrastructureApprovalService {
                     || perms.contains(r + ":approve");
         }
         return perms.stream().anyMatch(p -> p.endsWith(":approvec1") || p.endsWith(":approvel1") || p.endsWith(":approve:c1"));
+    }
+
+    public boolean hasApproveC2Permission(UUID userId, InfrastructureType refType) {
+        if (!isDepartmentLevelUser(userId)) {
+            return false;
+        }
+        Set<String> perms = SecurityUtils.getCurrentUserPermissions();
+        if ((perms == null || perms.isEmpty()) && userId != null) {
+            try {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    perms = user.getAllPermissions();
+                }
+            } catch (Exception e) {
+                log.warn("Không thể tải quyền của người dùng {}: {}", userId, e.getMessage());
+            }
+        }
+        if (perms == null || perms.isEmpty()) {
+            return false;
+        }
+        if (perms.contains("*") || perms.contains("admin:all")) {
+            return true;
+        }
+        String resource = resolveResourceKey(refType);
+        if (resource != null && !resource.isBlank()) {
+            String r = resource.toLowerCase();
+            return perms.contains(r + ":approvec2")
+                    || perms.contains(r + ":approve_level2")
+                    || perms.contains(r + ":approvel2")
+                    || perms.contains(r + ":approve:c2");
+        }
+        return perms.stream().anyMatch(p -> p.endsWith(":approvec2") || p.endsWith(":approvel2") || p.endsWith(":approve:c2"));
+    }
+
+    /**
+     * Kiểm tra quyền sửa hồ sơ KCHT theo Rule R3 & R4 (quy chuẩn 25/09/2026).
+     * Hồ sơ APPROVED: chỉ tài khoản có quyền C1 hoặc C2 mới được phép sửa.
+     */
+    public void assertCanEdit(ApprovableEntity entity, UUID userId, InfrastructureType refType) {
+        assertEditable(entity);
+        if (entity != null && (entity.getApprovalStatus() == ApprovalStatus.APPROVED || entity.getApprovalStatus() == ApprovalStatus.APPROVED_LEVEL2)) {
+            boolean hasC2 = hasApproveC2Permission(userId, refType);
+            boolean hasC1 = hasApproveC1Permission(userId, refType);
+            if (!hasC2 && !hasC1) {
+                throw new AccessDeniedException("Tài khoản không có quyền phê duyệt cấp 1 hoặc cấp 2 để chỉnh sửa hồ sơ đã duyệt");
+            }
+        }
+    }
+
+    /**
+     * Xử lý chuyển đổi trạng thái khi sửa hồ sơ Đã duyệt (Rule R4a & R4b đặc tả 25/09/2026):
+     * - Cục (có approvec2) -> giữ nguyên APPROVED
+     * - Cảng vụ (có approvec1, luồng 2 cấp) -> quay lại luồng duyệt:
+     *   + nếu requestedStatus == APPROVED_LEVEL1 ("Lưu và phê duyệt") -> APPROVED_LEVEL1 (tự duyệt C1, chờ Cục duyệt C2)
+     *   + nếu requestedStatus == PENDING_APPROVAL hoặc khác ("Lưu và gửi phê duyệt") -> PENDING_APPROVAL (chờ Cảng vụ duyệt C1)
+     */
+    @Transactional
+    public void handleApprovedRecordEdit(ApprovableEntity entity, InfrastructureType refType, ApprovalStatus requestedStatus, UUID userId) {
+        if (entity == null) return;
+        boolean hasC2 = hasApproveC2Permission(userId, refType);
+        LocalDateTime now = LocalDateTime.now();
+        if (hasC2) {
+            // Rule R4a: Cấp Cục có quyền C2 -> Giữ nguyên trạng thái APPROVED
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        } else {
+            // Rule R4b: Cấp Cảng vụ/Chi cục có quyền C1 -> Chuyển về luồng duyệt
+            if (requestedStatus == ApprovalStatus.APPROVED_LEVEL1) {
+                // "Lưu và phê duyệt" (tự duyệt C1) -> Chờ Cục duyệt C2
+                entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                entity.setSubmittedAt(now);
+                entity.setSubmittedBy(userId);
+                entity.setApproverLevel1(userId);
+                entity.setApprovedDateLevel1(now);
+                entity.setLevel1ApprovalContent("Cấp Cảng vụ/Chi cục chỉnh sửa và phê duyệt C1");
+                entity.setApproverLevel2(null);
+                entity.setApprovedDateLevel2(null);
+                entity.setLevel2ApprovalContent(null);
+            } else {
+                // "Lưu và gửi phê duyệt" -> Chờ Cảng vụ duyệt C1
+                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                entity.setSubmittedAt(now);
+                entity.setSubmittedBy(userId);
+                entity.setApproverLevel1(null);
+                entity.setApprovedDateLevel1(null);
+                entity.setLevel1ApprovalContent(null);
+                entity.setApproverLevel2(null);
+                entity.setApprovedDateLevel2(null);
+                entity.setLevel2ApprovalContent(null);
+            }
+        }
     }
 
     public static String resolveResourceKey(InfrastructureType refType) {

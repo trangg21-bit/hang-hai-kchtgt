@@ -62,6 +62,7 @@ import Pagination from '../../components/list-view/Pagination';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
+import { KchtFormFooter } from '../../components/kcht/KchtFormFooter';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import {
   statusOperational,
@@ -1505,60 +1506,15 @@ export default function BuoyStationListPage() {
         afterOpenChange={(open) => { if (!open) { setEditRecord(null); } }}
         footer={
           <div style={drawerFooterStyle}>
-            {(() => {
-              const st = !editRecord ? 'DRAFT' : (editRecord.status ? String(editRecord.status).toUpperCase() : 'DRAFT');
-              if (st === 'PUBLISHED' || st === 'APPROVED' || st === 'APPROVED_L2') {
-                return (
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => createFormRef.current?.submit('APPROVED')}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                );
-              }
-              if (st === 'REJECTED' || st === 'REJECTED_L1' || st === 'REJECTED_L2') {
-                return (
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => createFormRef.current?.submit('SUBMIT')}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                );
-              }
-              return (
-                <>
-                  <Button
-                    htmlType="button"
-                    onClick={() => createFormRef.current?.submit('DRAFT')}
-                    style={outlineButtonStyle}
-                  >
-                    Lưu tạm
-                  </Button>
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => createFormRef.current?.submit('SUBMIT')}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => createFormRef.current?.submit('APPROVED')}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                </>
-              );
-            })()}
+            <KchtFormFooter
+              resource="buoystation"
+              isEdit={!!editRecord}
+              status={editRecord?.approvalStatus || editRecord?.status}
+              onCancel={() => { setCreateOpen(false); setCreateUploaded([]); setCreateExisting([]); createForm.resetFields(); closeEmbeddedAction(); }}
+              onSubmit={(action) => {
+                createFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'approve' ? 'APPROVED' : 'SUBMIT');
+              }}
+            />
           </div>
         }
         styles={{

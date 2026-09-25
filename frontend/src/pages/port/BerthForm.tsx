@@ -35,9 +35,10 @@ import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { berthCRUD, portCRUD } from '../../services/portService';
 import { symbolService, type Symbol } from '../../services/symbolService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { userService } from '../../services/userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt, dmsToDd } from '../../utils/gisGeometry';
 
 const labelProps = (text: string) => ({
@@ -504,6 +505,15 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     const validCoords = coordResult.validCoords;
     const wktCoordinates = serializeCoordinatesToWkt(validCoords, values.geometryType || 'POINT');
 
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
+
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
@@ -516,6 +526,19 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         return isNaN(num) ? undefined : num;
       };
       const provinceName: string | undefined = values.provinceId;
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('berth:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('berth:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const payload: Record<string, unknown> = {
         berthCode: String(values.berthCode || '').trim() || undefined,
         berthName,
@@ -545,6 +568,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
         mapSymbolId: symbolIdVal || undefined,
         coordinateSystem: currentCoordSys != null ? Number(currentCoordSys) : undefined,
         displayRule: currentDisplayRule != null ? Number(currentDisplayRule) : undefined,
+        ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       // Lưu ý: dòng dưới chỉ dọn key `undefined` (trường không gửi). Các ô người dùng XÓA TRẮNG
@@ -554,7 +578,6 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       let createdBerthId: string | undefined;
       if (isEdit && id) { await api.put('/v1/berths', { ...payload, id }); createdBerthId = id; }
       else { const res = await api.post('/v1/berths', payload); createdBerthId = res.data?.data?.id ?? res.data?.id; }
-      const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
       if (createdBerthId && pendingDeletedAttachmentIds.length > 0) {
         for (const attId of pendingDeletedAttachmentIds) {
           await api.delete(`/v1/berths/${createdBerthId}/attachments/${attId}`, {

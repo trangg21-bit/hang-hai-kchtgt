@@ -206,7 +206,36 @@ input:-webkit-autofill:active {
   height: 100% !important;
   overflow-x: auto !important;
   overflow-y: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(15, 23, 42, 0.18) transparent !important;
 }
+
+.list-view-table .ant-table-content::-webkit-scrollbar,
+.list-view-table .ant-table-body::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.list-view-table .ant-table-content::-webkit-scrollbar-thumb,
+.list-view-table .ant-table-body::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18) !important;
+  border-radius: 999px !important;
+}
+
+.list-view-table .ant-table-content::-webkit-scrollbar-thumb:hover,
+.list-view-table .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.3) !important;
+}
+
+.list-view-table .ant-table-content::-webkit-scrollbar-track,
+.list-view-table .ant-table-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.list-view-table .ant-table-tbody > tr:last-child > td {
+  padding-bottom: 12px !important;
+}
+
 
 .list-view-table .ant-table-thead > tr > th {
   position: sticky !important;

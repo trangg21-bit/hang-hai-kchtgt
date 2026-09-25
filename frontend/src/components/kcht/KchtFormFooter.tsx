@@ -137,35 +137,58 @@ export const KchtFormFooter: React.FC<KchtFormFooterProps> = ({
               >
                 Lưu và gửi phê duyệt
               </Button>
+              {canDirectApproveCurrentRecord && (
+                <Button
+                  type="primary"
+                  onClick={() => onSubmit('approve')}
+                  loading={loading && activeAction === 'approve'}
+                  disabled={loading && activeAction !== 'approve'}
+                  style={{
+                    ...primaryButtonStyle,
+                    background: statusOperational,
+                    borderColor: statusOperational,
+                    borderRadius: radiusPill,
+                    height: 40,
+                  }}
+                >
+                  Lưu và phê duyệt
+                </Button>
+              )}
             </>
           )}
-          {canDirectApproveCurrentRecord ? (
-            <Button
-              type="primary"
-              onClick={() => onSubmit('approve')}
-              loading={loading && activeAction === 'approve'}
-              disabled={loading && activeAction !== 'approve'}
-              style={{
-                ...primaryButtonStyle,
-                background: statusOperational,
-                borderColor: statusOperational,
-                borderRadius: radiusPill,
-                height: 40,
-              }}
-            >
-              Lưu và phê duyệt
-            </Button>
-          ) : canEditRecord ? (
-            <Button
-              type="primary"
-              onClick={() => onSubmit('update')}
-              loading={loading && activeAction === 'update'}
-              disabled={loading && activeAction !== 'update'}
-              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Cập nhật
-            </Button>
-          ) : null}
+
+          {canEditRecord && (st === 'APPROVED' || st === 'APPROVED_LEVEL2') && (
+            <>
+              {/* Rule R4b: Cấp Cảng vụ/Chi cục (C1) sửa hồ sơ Đã duyệt -> hiện thêm nút Lưu và gửi phê duyệt để quay lại C1 */}
+              {!perms.isCucLevel && perms.hasApproveL1Perm && perms.approvalLevels !== 1 && (
+                <Button
+                  type="primary"
+                  onClick={() => onSubmit('submit')}
+                  loading={loading && activeAction === 'submit'}
+                  disabled={loading && activeAction !== 'submit'}
+                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                >
+                  Lưu và gửi phê duyệt
+                </Button>
+              )}
+              {/* Rule R4a (Cục) / Rule R4b (Cảng vụ tự duyệt C1) / Rule R4c (1 cấp): Nút Lưu và phê duyệt */}
+              <Button
+                type="primary"
+                onClick={() => onSubmit('approve')}
+                loading={loading && activeAction === 'approve'}
+                disabled={loading && activeAction !== 'approve'}
+                style={{
+                  ...primaryButtonStyle,
+                  background: statusOperational,
+                  borderColor: statusOperational,
+                  borderRadius: radiusPill,
+                  height: 40,
+                }}
+              >
+                Lưu và phê duyệt
+              </Button>
+            </>
+          )}
         </>
       )}
     </>

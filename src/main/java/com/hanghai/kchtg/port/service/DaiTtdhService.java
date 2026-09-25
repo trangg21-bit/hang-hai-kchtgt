@@ -9,6 +9,7 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -62,6 +63,7 @@ public class DaiTtdhService {
     private final GisSpatialObjectService gisSpatialObjectService;
     private final ChangeHistoryService changeHistoryService;
     private final InfrastructureHistoryRepository historyRepository;
+    private final InfrastructureApprovalService approvalService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -113,6 +115,11 @@ public class DaiTtdhService {
     public DaiTtdhResponse update(UpdateDaiTtdhRequest request) {
         DaiTtdh entity = daiTtdhRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy đài TTDH với id: " + request.getId()));
+        if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+            throw new IllegalStateException("Không thể chỉnh sửa đài TTDH đã bị xóa");
+        }
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        approvalService.assertCanEdit(entity, operatorId, InfrastructureType.DAI_TTDH);
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -206,12 +213,17 @@ public class DaiTtdhService {
         }
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            ApprovalStatus targetStatus = request.getApprovalStatus();
+            if (targetStatus == null && request.getSaveAction() != null) {
+                targetStatus = "SUBMIT".equalsIgnoreCase(request.getSaveAction()) ? ApprovalStatus.APPROVED_LEVEL1 : ApprovalStatus.DRAFT;
+            }
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.DAI_TTDH, targetStatus, operatorId);
         } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
+        } else if (request.getApprovalStatus() != null) {
+            entity.setApprovalStatus(request.getApprovalStatus());
         }
 
-        UUID operatorId = SecurityUtils.getCurrentUserId();
         String actorId = operatorId != null ? operatorId.toString() : currentActorId(null);
         if (actorId == null) {
             org.springframework.security.core.Authentication auth =
@@ -612,23 +624,32 @@ public class DaiTtdhService {
     private void applySaveAction(DaiTtdh entity, String action) {
         UUID currentUserId = SecurityUtils.getCurrentUserId();
         String actor = currentUserId != null ? currentUserId.toString() : null;
+        LocalDateTime now = LocalDateTime.now();
         switch (action) {
             case "DRAFT":
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalAt(now);
                 entity.setSubmittedForApprovalBy(actor);
+                entity.setRejectionReason(null);
+                if (currentUserId != null && approvalService.isDepartmentLevelUser(currentUserId)) {
+                    entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                    entity.setPortAuthorityApprovedAt(now);
+                    entity.setPortAuthorityApprovedBy(actor);
+                    entity.setLevel1ApprovalContent("Cấp Cục gửi trực tiếp");
+                } else {
+                    entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                }
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":
                 entity.setApprovalStatus(ApprovalStatus.APPROVED);
-                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                entity.setSubmittedForApprovalAt(now);
                 entity.setSubmittedForApprovalBy(actor);
-                entity.setPortAuthorityApprovedAt(LocalDateTime.now());
+                entity.setPortAuthorityApprovedAt(now);
                 entity.setPortAuthorityApprovedBy(actor);
-                entity.setDepartmentApprovedAt(LocalDateTime.now());
+                entity.setDepartmentApprovedAt(now);
                 entity.setDepartmentApprovedBy(actor);
                 break;
             default:

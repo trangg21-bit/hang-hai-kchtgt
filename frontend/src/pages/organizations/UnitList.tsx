@@ -1,19 +1,19 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dayjs from 'dayjs';
-import { Form, Input, Select, Spin, Button, Row, Col, Drawer, Dropdown, Tabs } from 'antd';
+import { Form, Input, Select, Spin, Button, Row, Col, Dropdown, Tabs } from 'antd';
+import AppDrawer from '../../components/shared/AppDrawer';
 import {
   PlusOutlined,
   ExclamationCircleOutlined,
   MoreOutlined,
   DownOutlined,
   RightOutlined,
-  CloseOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import { organizationService, RANK_OPTIONS, RANK_LABELS, fromApiOperationalStatus } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 import type { Organization, OrgUnitRankName, CandidateParent } from '../../services/organizationService';
-import { usePermissionStore } from '../../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import SidebarFilterField from '../../components/list-view/SidebarFilterField';
@@ -23,7 +23,7 @@ import {
   fontWeightBold, fontWeightMedium, fontSizeSm, fontSizeMd,
   radiusMd, radiusPill, spaceFormField, spaceMd, spaceSm, spaceXs, spaceLg,
   statusOperational, statusCritical, surfaceCard, borderDefault,
-  drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle, drawerTabBarStyle,
+  drawerTitleStyle, drawerFormScrollStyle, drawerTabBarStyle,
   primaryButtonStyle, outlineButtonStyle, inputStyle, selectStyle, textAreaStyle, icons,
 } from '../../themetokenchk';
 import { colors } from '../../themetokenchk';
@@ -32,6 +32,8 @@ import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
 import { normalizeSearchText } from '../../components/org-unit';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/common';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
+
+type OrgWithCreator = Organization & { updatedByName?: string; createdByName?: string };
 
 const STATUS_COLORS: Record<string, string> = { active: statusOperational, inactive: statusCritical };
 const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
@@ -55,7 +57,7 @@ function fmtDate(iso?: string) {
 }
 
 export default function UnitList() {
-  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
   const [nameInput, setNameInput] = useState('');
   const [searchName, setSearchName] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -83,7 +85,11 @@ export default function UnitList() {
   const toggleExpand = useCallback((id: string) => {
     setExpandedKeys(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -103,7 +109,11 @@ export default function UnitList() {
     } catch { setIsError(true); }
     finally { setIsLoading(false); }
   }, []);
-  useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
+  useEffect(() => {
+    queueMicrotask(() => {
+      fetchOrgs();
+    });
+  }, [fetchOrgs]);
   useEffect(() => {
     (async () => {
       try {
@@ -111,7 +121,9 @@ export default function UnitList() {
         const map = new Map<string, string>();
         resp.data.forEach((u) => { map.set(u.id, u.fullName || u.username || u.id); });
         setUserMap(map);
-      } catch { }
+      } catch {
+        // ignore user list fetch failure
+      }
     })();
   }, []);
 
@@ -154,7 +166,7 @@ export default function UnitList() {
       operationalStatus: opStatus,
       rank: org.rank,
       updatedAt: fmtDate(org.updatedAt || org.createdAt),
-      updatedBy: fmtUser(org.updatedBy, userMap, (org as any).updatedByName || (org as any).createdByName),
+      updatedBy: fmtUser(org.updatedBy, userMap, (org as OrgWithCreator).updatedByName || (org as OrgWithCreator).createdByName),
     });
     setModalOpen(true);
   }, [form, userMap]);
@@ -191,8 +203,9 @@ export default function UnitList() {
       }
       setModalOpen(false);
       fetchOrgs();
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || 'Thao tác thất bại';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = errorObj?.response?.data?.message || errorObj?.message || 'Thao tác thất bại';
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -202,7 +215,9 @@ export default function UnitList() {
   useEffect(() => {
     if (!modalOpen || isViewing) return;
     let active = true;
-    setLoadingCandidates(true);
+    queueMicrotask(() => {
+      if (active) setLoadingCandidates(true);
+    });
     organizationService.getCandidateParents(editingOrg?.id)
       .then((candidates) => {
         if (active) setCandidateParents(candidates);
@@ -241,8 +256,9 @@ export default function UnitList() {
           await organizationService.delete(org.id);
           toast.success('Xóa đơn vị thành công');
           fetchOrgs();
-        } catch (err: any) {
-          const msg = err?.response?.data?.message || err?.message || 'Xóa đơn vị thất bại';
+        } catch (err: unknown) {
+          const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+          const msg = errorObj?.response?.data?.message || errorObj?.message || 'Xóa đơn vị thất bại';
           toast.error(msg);
         }
       }
@@ -250,7 +266,7 @@ export default function UnitList() {
   }, [fetchOrgs]);
 
   const getActions = (record: Organization) => {
-    const items: any[] = [];
+    const items: Array<{ key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }> = [];
     if (hasPerm('orgunit:read')) {
       items.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openViewModal(record) });
     }
@@ -362,12 +378,18 @@ export default function UnitList() {
     : visibleRows;
 
   const headerActions = useMemo(() => {
-    const actions: any[] = [];
+    const actions: Array<{
+      key: string;
+      label: string;
+      variant: 'primary' | 'outline' | 'subtle';
+      icon?: React.ReactNode;
+      onClick: () => void;
+    }> = [];
     if (hasPerm('orgunit:create') || hasPerm('orgunit:manage')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
-        variant: 'primary' as const,
+        variant: 'primary',
         icon: <PlusOutlined />,
         onClick: openCreateModal,
       });
@@ -376,8 +398,69 @@ export default function UnitList() {
   }, [hasPerm, openCreateModal]);
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
+      <div className="units-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <style>{`
+          .units-page-wrapper,
+          .units-page-wrapper .ant-table,
+          .units-page-wrapper .ant-table-cell,
+          .units-page-wrapper .ant-table-thead > tr > th,
+          .units-page-wrapper .ant-table-tbody > tr > td,
+          .units-page-wrapper .ant-input,
+          .units-page-wrapper .ant-select,
+          .units-page-wrapper .ant-select-selection-item,
+          .units-page-wrapper .ant-btn,
+          .units-page-wrapper .ant-breadcrumb,
+          .units-page-wrapper .ant-form-item-label > label,
+          .units-drawer-scope,
+          .units-drawer-scope .ant-drawer-content,
+          .units-drawer-scope .ant-tabs-tab,
+          .units-drawer-scope .chk-detail-label,
+          .units-drawer-scope .chk-detail-value,
+          .units-drawer-scope .ant-btn,
+          .units-drawer-scope .ant-select,
+          .units-drawer-scope .ant-input,
+          .units-drawer-scope .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
+
+          /* Responsive StatusTabs */
+          .units-page-wrapper div:has(> button[aria-pressed]) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            justify-content: safe center !important;
+            align-items: center !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
+          }
+          .units-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+            height: 4px !important;
+            display: block !important;
+          }
+          .units-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 999px !important;
+          }
+          .units-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 999px !important;
+          }
+          .units-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+          }
+          .units-page-wrapper div:has(> button[aria-pressed]) > button {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            padding: 4px 2px !important;
+          }
+        `}</style>
         <ScreenHeader
           breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý đơn vị' }]}
           actions={headerActions}
@@ -420,7 +503,8 @@ export default function UnitList() {
                   const color = STATUS_COLORS[statusKey] || textTertiary;
                   const rankLabel = RANK_LABELS[org.rank as OrgUnitRankName] ?? '—';
                   const updatedAtText = fmtDate(org.updatedAt || org.createdAt);
-                  const updatedByText = fmtUser(org.updatedBy, userMap, (org as any).updatedByName || (org as any).createdByName);
+                  const updatedByText = fmtUser(org.updatedBy, userMap, (org as OrgWithCreator).updatedByName || (org as OrgWithCreator).createdByName);
+                  const canView = hasPerm('orgunit:read') || hasPerm('orgunit:view') || hasPerm('orgunit:manage');
                   return (
                     <div key={org.id} style={{ display: 'flex', alignItems: 'center', minHeight: 48, padding: `0 ${spaceMd}px`, borderBottom: `1px solid ${borderDefault}` }}>
                       <div style={{ flex: 1, minWidth: 260, display: 'flex', alignItems: 'center', paddingLeft: depth * spaceLg, paddingRight: spaceSm, overflow: 'hidden' }}>
@@ -437,6 +521,9 @@ export default function UnitList() {
                         />
                         <span
                           title={org.name}
+                          onClick={() => {
+                            if (canView) openViewModal(org);
+                          }}
                           style={{
                             flex: 1,
                             minWidth: 0,
@@ -444,9 +531,10 @@ export default function UnitList() {
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
-                            color: textPrimary,
+                            color: canView ? actionPrimary : textPrimary,
                             fontWeight: depth === 0 ? fontWeightBold : fontWeightMedium,
                             fontSize: fontSizeMd,
+                            cursor: canView ? 'pointer' : 'default',
                           }}
                         >
                           {org.name}
@@ -548,41 +636,22 @@ export default function UnitList() {
           )}
         </FilterTableLayout>
 
-        <Drawer
+        <AppDrawer
           size="50%"
-          placement="right"
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          closable={false}
-          styles={drawerStyles}
+          rootClassName="units-drawer-scope"
           title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={drawerTitleStyle}>
-                {isViewing ? `Xem chi tiết — ${editingOrg?.name || 'Đơn vị'}` : (editingOrg ? 'Chỉnh sửa đơn vị' : 'Thêm mới đơn vị')}
-              </span>
-              <Button
-                type="text"
-                onClick={() => setModalOpen(false)}
-                style={{
-                  ...drawerCloseBtnStyle,
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-              </Button>
-            </div>
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              {isViewing ? `Xem chi tiết — ${editingOrg?.name || 'Đơn vị'}` : (editingOrg ? 'Chỉnh sửa đơn vị' : 'Thêm mới đơn vị')}
+            </span>
           }
           footer={
             isViewing ? null : (
-              <div style={drawerFooterStyle}>
+              <>
                 <Button onClick={() => setModalOpen(false)} style={outlineButtonStyle}>Hủy</Button>
                 <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>
-              </div>
+              </>
             )
           }
         >
@@ -634,7 +703,7 @@ export default function UnitList() {
                         </div>
 
                         <div className="chk-detail-grid">
-                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{fmtUser(editingOrg.updatedBy, userMap, (editingOrg as any).updatedByName || (editingOrg as any).createdByName)}</span></div>
+                          <div className="chk-detail-row"><span className="chk-detail-label">Cán bộ cập nhật</span><span className="chk-detail-value">{fmtUser(editingOrg.updatedBy, userMap, (editingOrg as OrgWithCreator).updatedByName || (editingOrg as OrgWithCreator).createdByName)}</span></div>
                           <div className="chk-detail-row"><span className="chk-detail-label">Ngày cập nhật</span><span className="chk-detail-value">{fmtDate(editingOrg.updatedAt || editingOrg.createdAt)}</span></div>
                         </div>
                       </div>
@@ -707,7 +776,7 @@ export default function UnitList() {
               ]}
             />
           </Spin>
-        </Drawer>
+        </AppDrawer>
       </div>
     </ThemeTokenProvider>
   );

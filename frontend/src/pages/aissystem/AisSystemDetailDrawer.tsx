@@ -5,13 +5,12 @@ import {
   Space,
   Button,
   Empty,
+  Spin,
 } from 'antd';
 import dayjs from 'dayjs';
 import type {
   AisSystemResponse,
-  AisSystemAttachment,
 } from '../../types/aisSystem';
-import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
 import { UNIT_OF_MEASURE_MAP } from '../../types/aisSystem';
 import { aisSystemService } from '../../services/aisSystemService';
 import {
@@ -22,7 +21,6 @@ import { getProvinceNameById } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { colors } from '../../theme';
 import {
-  radiusMd,
   fontSizeMd,
   fontWeightBold,
   borderDefault,
@@ -30,58 +28,11 @@ import {
   spaceSm,
   drawerCloseBtnStyle,
   drawerTitleStyle,
-  statusCritical,
-  DRAWER_TABLE_SCROLL_Y,
   statusBadgeStyle,
   getVtsConditionStatusColor,
   getVtsConditionStatusLabel,
 } from '../../themetokenchk';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import DetailTable from '../../components/shared/DetailTable';
-
-interface CoordinateItem {
-  latitude: number | null;
-  longitude: number | null;
-}
-
-const formatDms = (dd: number | null | undefined) => {
-  if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
-  const abs = Math.abs(dd);
-  const d = Math.floor(abs);
-  const m = Math.floor((abs - d) * 60);
-  const s = parseFloat(((abs - d - m / 60) * 3600).toFixed(2));
-  return `${d}°${m}'${s}"`;
-};
-
-const parseWktToCoordinates = (wkt?: string): CoordinateItem[] => {
-  if (!wkt) return [];
-  try {
-    const upper = wkt.toUpperCase().trim();
-    if (upper.startsWith('POINT')) {
-      const match = upper.match(/POINT\s*\(\s*([^\s)]+)\s+([^)]+)\s*\)/i);
-      if (match) {
-        return [{ longitude: parseFloat(match[1]), latitude: parseFloat(match[2]) }];
-      }
-    } else if (upper.startsWith('LINESTRING')) {
-      const match = upper.match(/LINESTRING\s*\(([^)]+)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    } else if (upper.startsWith('POLYGON')) {
-      const match = upper.match(/POLYGON\s*\(\(([^)]+)\)\)/i);
-      if (match) {
-        return match[1].split(',').map((pt) => {
-          const parts = pt.trim().split(/\s+/);
-          return { longitude: parseFloat(parts[0]), latitude: parseFloat(parts[1]) };
-        });
-      }
-    }
-  } catch (e) {}
-  return [];
-};
 
 const renderConditionStatusBadge = (status?: ConditionStatus | string | number) => {
   if (!status && status !== 0) return '—';
@@ -109,20 +60,15 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
   onClose,
 }) => {
   const [detail, setDetail] = useState<AisSystemResponse | null>(null);
-  const [attachments, setAttachments] = useState<AisSystemAttachment[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
 
   const loadData = async (id: string) => {
     try {
       setLoading(true);
-      const [detailData, attList] = await Promise.all([
-        aisSystemService.getById(id),
-        aisSystemService.listAttachments(id),
-      ]);
+      const detailData = await aisSystemService.getById(id);
       setDetail(detailData);
-      setAttachments(attList || []);
-    } catch (err: any) {
+    } catch {
       toast.error('Không thể tải chi tiết hệ thống AIS');
     } finally {
       setLoading(false);
@@ -135,12 +81,10 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
       loadData(item.id);
     } else {
       setDetail(null);
-      setAttachments([]);
     }
   }, [visible, item]);
 
   const record = detail || item;
-  const parsedCoords = parseWktToCoordinates(record?.coordinates);
 
   const isDraft = record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
 
@@ -175,13 +119,17 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
               <span className="detail-value">{record?.name || '—'}</span>
             </div>
 
-            {/* 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm radar */}
+            {/* Đơn vị quản lý, Thuộc loại hạ tầng & Thuộc hạ tầng */}
             <div className="detail-row">
               <span className="detail-label">Đơn vị quản lý</span>
               <span className="detail-value">{record?.orgUnitName || '—'}</span>
             </div>
             <div className="detail-row">
-              <span className="detail-label">Thuộc TTDH VTS / Trạm radar</span>
+              <span className="detail-label">Thuộc loại hạ tầng</span>
+              <span className="detail-value">{record?.vtsOperationCenterId ? 'TTDH VTS' : record?.radarStationId ? 'Trạm radar' : '—'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Thuộc hạ tầng</span>
               <span className="detail-value">{record?.vtsOperationCenterName || record?.radarStationName || '—'}</span>
             </div>
 
@@ -389,11 +337,13 @@ export const AisSystemDetailDrawer: React.FC<AisSystemDetailDrawerProps> = ({
         .detail-value .ant-tag { margin-left: -6px !important; }
         .ant-tabs-nav { margin-bottom: 0 !important; }
       `}</style>
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-      />
+      <Spin spinning={loading}>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={tabItems}
+        />
+      </Spin>
     </Drawer>
   );
 };

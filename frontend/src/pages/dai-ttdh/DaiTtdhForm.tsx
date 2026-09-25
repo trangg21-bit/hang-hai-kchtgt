@@ -19,6 +19,8 @@ import { symbolService, type Symbol as IconSymbol } from '../../services/symbolS
 import api from '../../services/api';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
@@ -584,8 +586,35 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
       ? serializeCoordinatesToWkt(coordsFormatted, vals.geometryType || 'POINT')
       : undefined;
 
+    const wasApproved = isEdit && (
+      existingData?.approvalStatus === 'APPROVED' ||
+      existingData?.approvalStatus === 'APPROVED_LEVEL2' ||
+      existingData?.approvalStatus === 'PUBLISHED' ||
+      existingData?.approvalStatus === 'APPROVED_L2'
+    );
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
+
     onSubmittingChange?.(true);
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('daittdh:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('daittdh:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const provinceIndex = vals.provinceId
         ? (typeof vals.provinceId === 'number' ? vals.provinceId : VIETNAM_PROVINCES.indexOf(vals.provinceId) + 1)
         : undefined;
@@ -609,6 +638,9 @@ const DaiTtdhForm = forwardRef<any, DaiTtdhFormProps>(({ form, id, onFinish, onS
         coordinateSystem: currentCoordSys ?? null,
         displayRule: currentDisplayRule ?? null,
       };
+      if (targetApprovalStatus) {
+        payload.approvalStatus = targetApprovalStatus;
+      }
       (payload as any).latitude = coordsFormatted.length > 0 ? coordsFormatted[0].latitude : null;
       (payload as any).longitude = coordsFormatted.length > 0 ? coordsFormatted[0].longitude : null;
       (payload as any).coordinates = wktCoordinates ?? null;

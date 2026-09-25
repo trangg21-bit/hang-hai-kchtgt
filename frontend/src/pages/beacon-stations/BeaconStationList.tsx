@@ -40,6 +40,7 @@ import { VIETNAM_PROVINCE_OPTIONS, getProvinceNameById } from '../../types/commo
 import { portCRUD } from '../../services/portService';
 import { symbolService, type Symbol as MapSymbol } from '../../services/symbolService';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -2824,45 +2825,19 @@ export default function BeaconStationList() {
         destroyOnHidden
         onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button
-              onClick={() => {
-                actionTypeRef.current = 'draft';
-                setActionType('draft');
-                createFormRef.current?.submit('draft');
-              }}
-              loading={submitting && actionType === 'draft'}
-              style={outlineButtonStyle}
-            >
-              Lưu tạm
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                actionTypeRef.current = 'submit';
-                setActionType('submit');
-                createFormRef.current?.submit('submit');
-              }}
-              loading={submitting && actionType === 'submit'}
-              style={primaryButtonStyle}
-            >
-              Lưu và gửi phê duyệt
-            </Button>
-            {canApproveDirect && (
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'approved';
-                  setActionType('approved');
-                  createFormRef.current?.submit('approved');
-                }}
-                loading={submitting && actionType === 'approved'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            )}
-          </div>
+          <KchtFormFooter
+            mode="create"
+            resource="beaconstation"
+            loading={submitting}
+            activeAction={actionType === 'approved' ? 'approve' : (actionType as any)}
+            onCancel={() => { setCreateDrawerVisible(false); createForm.resetFields(); }}
+            onSubmit={(action) => {
+              const act = action === 'approve' ? 'approved' : action;
+              actionTypeRef.current = act as any;
+              setActionType(act as any);
+              createFormRef.current?.submit(act);
+            }}
+          />
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -2893,62 +2868,20 @@ export default function BeaconStationList() {
         open={!!editingRecord && !isDetailMode}
         onClose={() => { setEditingRecord(null); updateForm.resetFields(); }}
         footer={
-          <div style={drawerFooterStyle}>
-            {editingRecord && ['APPROVED', 'APPROVED_L2', 'APPROVED_LEVEL2', 'PUBLISHED'].includes(editingRecord.status) ? (
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'approved';
-                  setActionType('approved');
-                  editFormRef.current?.submit('approved');
-                }}
-                loading={submitting && actionType === 'approved'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            ) : (
-              <>
-                <Button
-                  onClick={() => {
-                    actionTypeRef.current = 'draft';
-                    setActionType('draft');
-                    editFormRef.current?.submit('draft');
-                  }}
-                  loading={submitting && actionType === 'draft'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    actionTypeRef.current = 'submit';
-                    setActionType('submit');
-                    editFormRef.current?.submit('submit');
-                  }}
-                  loading={submitting && actionType === 'submit'}
-                  style={primaryButtonStyle}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                {canApproveDirect && (
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      actionTypeRef.current = 'approved';
-                      setActionType('approved');
-                      editFormRef.current?.submit('approved');
-                    }}
-                    loading={submitting && actionType === 'approved'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
+          <KchtFormFooter
+            mode="edit"
+            resource="beaconstation"
+            record={editingRecord ? { approvalStatus: editingRecord.status } : undefined}
+            loading={submitting}
+            activeAction={actionType === 'approved' ? 'approve' : (actionType as any)}
+            onCancel={() => { setEditingRecord(null); updateForm.resetFields(); }}
+            onSubmit={(action) => {
+              const act = action === 'approve' ? 'approved' : action;
+              actionTypeRef.current = act as any;
+              setActionType(act as any);
+              editFormRef.current?.submit(act);
+            }}
+          />
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

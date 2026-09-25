@@ -40,6 +40,7 @@ import { VIETNAM_PROVINCE_OPTIONS, getProvinceLabel } from '../../types/common';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { useAuthStore } from '../../store/authStore';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import RejectionModal from '../../components/shared/RejectionModal';
@@ -475,21 +476,51 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           toast.success('Đã tạo mới trạm radar');
         }
       } else if (id && isEditMode) {
-        const updated = await radarStationCRUD.update(id, payload);
+        const isApprovedRecord =
+          record?.approvalStatus === 'APPROVED' ||
+          record?.approvalStatus === 'APPROVED_LEVEL2' ||
+          (record as any)?.status === 'APPROVED';
+
+        if (isApprovedRecord) {
+          const isDirty =
+            form.isFieldsTouched() ||
+            uploadedFiles.some((f) => f.originFileObj);
+          if (!isDirty) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
+        const isCuc = isCucLevelUser(currentUser);
+        let targetApprovalStatus: string | undefined = undefined;
+        if (isApprovedRecord) {
+          if (submitMode === 'submit') {
+            targetApprovalStatus = 'PENDING_APPROVAL';
+          } else if (submitMode === 'approve') {
+            targetApprovalStatus = (isCuc && hasPerm('radarstation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+          }
+        } else if (submitMode === 'approve') {
+          targetApprovalStatus = (isCuc && hasPerm('radarstation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+
+        const updatePayload: RadarStationUpdateRequest = {
+          ...payload,
+          ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
+        };
+
+        const updated = await radarStationCRUD.update(id, updatePayload);
         const savedId = updated.id || id;
         if (window.parent && (window.parent as WindowWithCache).kchtDetailCache) {
           (window.parent as WindowWithCache).kchtDetailCache![id] = updated;
         }
-        if (submitMode !== 'save' && savedId) {
-          const submitted = await radarStationApproval.submitForApproval(savedId);
-          if (submitMode === 'approve' && (submitted.status === 'APPROVED_LEVEL1' || submitted.approvalStatus === 'APPROVED_LEVEL1')) {
-            await radarStationApproval.approveLevel2(savedId);
-            toast.success('Đã phê duyệt');
-          } else if (submitMode === 'approve') {
-            toast.info('Đã cập nhật và gửi phê duyệt — hồ sơ đang chờ Cảng vụ/Chi cục duyệt');
-          } else {
-            toast.success('Đã cập nhật và gửi phê duyệt trạm radar');
-          }
+        if (submitMode !== 'save' && savedId && !isApprovedRecord) {
+          await radarStationApproval.submitForApproval(savedId);
+          toast.success(submitMode === 'approve' ? 'Lưu và phê duyệt thành công' : 'Đã cập nhật và gửi phê duyệt trạm radar');
+        } else if (submitMode === 'approve') {
+          toast.success('Lưu và phê duyệt trạm radar thành công');
+        } else if (submitMode === 'submit') {
+          toast.success('Lưu và gửi phê duyệt trạm radar thành công');
         } else {
           toast.success('Đã cập nhật trạm radar');
         }
@@ -1201,38 +1232,18 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           width={isDetailMode ? 900 : 760}
           maskClosable={false}
           footer={
-            isDetailMode ? null : isEditMode ? (
-              <>
-                <Button type="primary" onClick={() => handleSubmit('save')} loading={isSubmitting} style={primaryButtonStyle}>
-                  Cập nhật
-                </Button>
-                {canResubmit && (
-                  <>
-                    <Button onClick={() => handleSubmit('submit')} loading={isSubmitting} style={outlineButtonStyle}>
-                      Lưu và gửi phê duyệt
-                    </Button>
-                    {canSaveAndApprove && (
-                      <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
-                        Lưu và phê duyệt
-                      </Button>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <Button onClick={() => handleSubmit('save')} loading={isSubmitting} style={outlineButtonStyle}>
-                  Lưu tạm
-                </Button>
-                <Button type="primary" onClick={() => handleSubmit('submit')} loading={isSubmitting} style={primaryButtonStyle}>
-                  Lưu và gửi phê duyệt
-                </Button>
-                {canSaveAndApprove && (
-                  <Button type="primary" onClick={() => handleSubmit('approve')} loading={isSubmitting} style={primaryButtonStyle}>
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
+            isDetailMode ? null : (
+              <KchtFormFooter
+                mode={isCreateMode ? 'create' : 'edit'}
+                resource="radarstation"
+                record={record}
+                loading={isSubmitting}
+                activeAction={actionType === 'save' ? 'draft' : actionType as any}
+                onCancel={onCancel}
+                onSubmit={(action) => {
+                  handleSubmit(action === 'draft' ? 'save' : action);
+                }}
+              />
             )
           }
         >
@@ -1282,39 +1293,16 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
             <Button style={outlineButtonStyle} onClick={isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/radar-station')}>
               Hủy
             </Button>
-            {isEditMode ? (
-              <>
-                <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('save')} loading={isSubmitting}>
-                  Cập nhật
-                </Button>
-                {canResubmit && (
-                  <>
-                    <Button style={outlineButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
-                      Lưu và gửi phê duyệt
-                    </Button>
-                    {canSaveAndApprove && (
-                      <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
-                        Lưu và phê duyệt
-                      </Button>
-                    )}
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <Button style={outlineButtonStyle} onClick={() => handleSubmit('save')} loading={isSubmitting}>
-                  Lưu tạm
-                </Button>
-                <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('submit')} loading={isSubmitting}>
-                  Lưu và gửi phê duyệt
-                </Button>
-                {canSaveAndApprove && (
-                  <Button type="primary" style={primaryButtonStyle} onClick={() => handleSubmit('approve')} loading={isSubmitting}>
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            )}
+            <KchtFormFooter
+              mode={isCreateMode ? 'create' : 'edit'}
+              resource="radarstation"
+              record={record}
+              loading={isSubmitting}
+              activeAction={actionType === 'save' ? 'draft' : actionType as any}
+              onSubmit={(action) => {
+                handleSubmit(action === 'draft' ? 'save' : action);
+              }}
+            />
           </Space>
         )}
       </div>

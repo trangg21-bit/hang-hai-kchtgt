@@ -267,15 +267,9 @@ public class NavigationChannelService {
         // hồ sơ đang `PENDING_APPROVAL`/`APPROVED_LEVEL1` (người nhập đổi được nội dung sau khi cán
         // bộ đã đọc — cán bộ ký duyệt vào nội dung mình chưa từng xem), và CẤM sửa khi `APPROVED`
         // (mất thao tác T12 "Lưu và phê duyệt"). Nay dùng chung `assertEditable`.
-        approvalService.assertEditable(nc);
         ApprovalStatus currentStatus = nc.getApprovalStatus() != null ? nc.getApprovalStatus() : ApprovalStatus.DRAFT;
-
-        // Quy tắc 12 (approval-2-level-spec.md mục 3.9 - T12 "Lưu và phê duyệt"):
-        // Hồ sơ Đã duyệt chỉ được phép sửa bởi người có quyền phê duyệt cấp Cục (approvec2).
         boolean isApprovedFlow = (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2);
-        if (isApprovedFlow || req.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            approvalService.requireApproveC2Permission(updatedBy, "navigationchannel:approvec2");
-        }
+        approvalService.assertCanEdit(nc, updatedBy, InfrastructureType.NAVIGATION_CHANNEL);
 
         // BR-038-04: nếu đổi đơn vị quản lý phải nằm trong phạm vi được phân quyền
         if (req.getOrgUnitId() != null && !Objects.equals(req.getOrgUnitId(), nc.getOrgUnitId())
@@ -457,10 +451,10 @@ public class NavigationChannelService {
         // Hồ sơ Đã duyệt khi sửa qua "Lưu và phê duyệt" giữ nguyên trạng thái APPROVED và ghi nhận thông tin duyệt.
         // Hồ sơ Bị trả về sau khi sửa thì quay về Lưu tạm (DRAFT) để người nhập gửi lại.
         if (isApprovedFlow || req.getApprovalStatus() == ApprovalStatus.APPROVED) {
-            approvalService.recordSaveAndApprove(
+            approvalService.handleApprovedRecordEdit(
                     nc,
                     InfrastructureType.NAVIGATION_CHANNEL,
-                    "Update and approve directly",
+                    req.getApprovalStatus(),
                     updatedBy);
         } else if (currentStatus != ApprovalStatus.DRAFT) {
             nc.setApprovalStatus(ApprovalStatus.DRAFT);

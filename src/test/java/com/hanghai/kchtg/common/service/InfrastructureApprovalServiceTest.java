@@ -69,8 +69,18 @@ class InfrastructureApprovalServiceTest {
         cvUser.setId(userIdCangVu);
         cvUser.setOrgUnit(cvOrg);
 
+        User c1User = new User();
+        c1User.setId(userIdC1);
+        c1User.setOrgUnit(cvOrg);
+
+        User c2User = new User();
+        c2User.setId(userIdC2);
+        c2User.setOrgUnit(cucOrg);
+
         lenient().when(userRepository.findById(userIdCuc)).thenReturn(Optional.of(cucUser));
         lenient().when(userRepository.findById(userIdCangVu)).thenReturn(Optional.of(cvUser));
+        lenient().when(userRepository.findById(userIdC1)).thenReturn(Optional.of(c1User));
+        lenient().when(userRepository.findById(userIdC2)).thenReturn(Optional.of(c2User));
     }
 
     private static class TestEntity implements ApprovableEntity {
@@ -164,14 +174,18 @@ class InfrastructureApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("Reject C1 thiếu lý do -> Ném ngoại lệ IllegalArgumentException")
+    @DisplayName("Reject C1 thiếu lý do hoặc dưới 10 ký tự -> Ném ngoại lệ IllegalArgumentException")
     void testRejectC1_MissingReason() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
 
         assertThatThrownBy(() -> approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, "REJECTED", "", userIdC1))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Lý do từ chối là bắt buộc");
+                .hasMessageContaining("Lý do từ chối phải có ít nhất 10 ký tự");
+
+        assertThatThrownBy(() -> approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, "REJECTED", "Quá ngắn", userIdC1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Lý do từ chối phải có ít nhất 10 ký tự");
     }
 
     @Test
@@ -190,28 +204,54 @@ class InfrastructureApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("Approve C2 vi phạm chống tự duyệt (trùng người duyệt C1) -> Ném ngoại lệ IllegalStateException")
+    @DisplayName("Chặn 2 lớp C2: Người duyệt C1 thuộc Cảng vụ cố duyệt C2 -> Ném ngoại lệ AccessDeniedException")
     void testApproveC2_ViolationFourEyes_SameApprover() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApproverLevel1(userIdC1);
 
         assertThatThrownBy(() -> approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C2", userIdC1))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Người phê duyệt cấp Cục không được trùng");
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("Chỉ tài khoản thuộc cấp Cục");
     }
 
     @Test
-    @DisplayName("Approve C2 vi phạm chống tự duyệt (người tạo tự duyệt) -> Ném ngoại lệ IllegalStateException")
-    void testApproveC2_ViolationFourEyes_CreatorSelfApprove() {
+    @DisplayName("Bỏ 4 mắt: Cán bộ Cảng vụ tự tạo hồ sơ và tự duyệt C1 -> Thành công")
+    void testApproveC1_CreatorCanSelfApprove() {
+        TestEntity entity = new TestEntity();
+        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+        entity.setCreatedBy(userIdC1);
+
+        approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Cán bộ tự phê duyệt C1", userIdC1);
+
+        assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
+        assertThat(entity.getApproverLevel1()).isEqualTo(userIdC1);
+    }
+
+    @Test
+    @DisplayName("Chặn 2 lớp C2: Tài khoản ngoài cấp Cục duyệt C2 -> Ném AccessDeniedException")
+    void testApproveC2_NonDepartmentUser_ThrowsAccessDeniedException() {
+        TestEntity entity = new TestEntity();
+        entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+        entity.setApproverLevel1(userIdC1);
+
+        assertThatThrownBy(() -> approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C2", userIdCangVu))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("Chỉ tài khoản thuộc cấp Cục");
+    }
+
+    @Test
+    @DisplayName("Bỏ 4 mắt: Cán bộ Cục tự tạo hồ sơ và tự duyệt C2 -> Thành công")
+    void testApproveC2_CreatorCanSelfApprove() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
         entity.setApproverLevel1(userIdC1);
         entity.setCreatedBy(userIdC2);
 
-        assertThatThrownBy(() -> approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C2", userIdC2))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Người tạo hồ sơ không được tự phê duyệt");
+        approvalService.approveC2(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Đã thẩm định xong", userIdC2);
+
+        assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(entity.getApproverLevel2()).isEqualTo(userIdC2);
     }
 
     @Test

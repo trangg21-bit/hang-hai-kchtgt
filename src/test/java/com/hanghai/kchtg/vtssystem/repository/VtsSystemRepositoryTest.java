@@ -386,6 +386,29 @@ class VtsSystemRepositoryTest {
         assertFalse(optionCodes.contains("VTS-OPT5"));
     }
 
+    @Test
+    void testFindOptionsWithPortId() {
+        UUID portA = UUID.randomUUID();
+        UUID portB = UUID.randomUUID();
+
+        VtsSystem sysA = createVtsSystemWithCodeAndName("VTS-PORTA", "VTS Port A");
+        sysA.setApprovalStatus(ApprovalStatus.APPROVED);
+        sysA.setPortId(portA);
+        repository.save(sysA);
+
+        VtsSystem sysB = createVtsSystemWithCodeAndName("VTS-PORTB", "VTS Port B");
+        sysB.setApprovalStatus(ApprovalStatus.APPROVED);
+        sysB.setPortId(portB);
+        repository.save(sysB);
+
+        entityManager.flush();
+
+        var optionsPortA = repository.findOptions(false, List.of(), false, List.of(), true, portA);
+        assertEquals(1, optionsPortA.size());
+        assertEquals("VTS-PORTA", optionsPortA.get(0).getCode());
+        assertEquals(portA, optionsPortA.get(0).getPortId());
+    }
+
     // Helper methods
 
     private VtsSystem createVtsSystem(String code) {

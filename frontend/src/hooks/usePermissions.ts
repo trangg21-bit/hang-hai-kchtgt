@@ -8,6 +8,128 @@ import {
   normalizePermissionKey,
 } from '../store/permissionStore';
 
+export type OrgLevel = 'CUC' | 'CANG_VU' | 'ALL';
+
+export interface OrgUnitLike {
+  id: string;
+  code?: string;
+  name?: string;
+  level?: number;
+  parentId?: string;
+  rank?: string;
+  type?: string;
+}
+
+/**
+ * Xác định cấp đơn vị: Cấp Cục / Trung ương ('CUC') vs Cấp Chi cục / Cảng vụ ('CANG_VU').
+ * Khớp hoàn toàn với cơ chế phân cấp Backend (InfrastructureApprovalService.isDepartmentLevelUser).
+ */
+export function resolveOrgLevel(
+  orgUnitId?: string | null,
+  orgUnitName?: string | null,
+  organizations?: readonly OrgUnitLike[]
+): OrgLevel {
+  if (orgUnitId && organizations && organizations.length > 0) {
+    const org = organizations.find((o) => String(o.id) === String(orgUnitId));
+    if (org) {
+      const code = String(org.code || '').toUpperCase().trim();
+      const name = String(org.name || '').toLowerCase().trim();
+      const rank = String(org.rank || '').toUpperCase().trim();
+      const type = String(org.type || '').toUpperCase().trim();
+
+      const isCuc =
+        org.level === 1 ||
+        !org.parentId ||
+        rank === 'DEPARTMENT' ||
+        rank === 'MINISTRY' ||
+        type === 'DEPARTMENT' ||
+        type === 'GENERAL_DEPARTMENT' ||
+        code === 'G17' ||
+        code === 'G17.43' ||
+        name.includes('cục hàng hải') ||
+        name.includes('bộ giao thông') ||
+        name.includes('bộ gtvt');
+
+      return isCuc ? 'CUC' : 'CANG_VU';
+    }
+  }
+
+  const name = String(orgUnitName || '').toLowerCase().trim();
+  if (name) {
+    if (name.includes('cục hàng hải') || name.includes('bộ giao thông') || name.includes('bộ gtvt')) {
+      return 'CUC';
+    }
+    if (name.includes('cảng vụ') || name.includes('chi cục')) {
+      return 'CANG_VU';
+    }
+  }
+
+  return 'ALL';
+}
+
+export function isC1PermissionKey(key: string): boolean {
+  const lower = String(key).toLowerCase();
+  const parts = lower.split(':');
+  const action = parts[parts.length - 1];
+  return (
+    action === 'approvec1' ||
+    action === 'approve_level1' ||
+    action === 'approvel1' ||
+    action === 'approve:c1' ||
+    lower === 'approvec1'
+  );
+}
+
+export function isC2PermissionKey(key: string): boolean {
+  const lower = String(key).toLowerCase();
+  const parts = lower.split(':');
+  const action = parts[parts.length - 1];
+  return (
+    action === 'approvec2' ||
+    action === 'approve_level2' ||
+    action === 'approvel2' ||
+    action === 'approve:c2' ||
+    lower === 'approvec2'
+  );
+}
+
+/**
+ * Lọc cây phân quyền theo cấp đơn vị của tài khoản / nhóm:
+ * - Cấp Chi cục / Cảng vụ ('CANG_VU'): Ẩn hoàn toàn các quyền phê duyệt Cấp 2 (:approvec2)
+ * - Cấp Cục / Cơ quan chủ quản ('CUC'): Ẩn hoàn toàn các quyền phê duyệt Cấp 1 (:approvec1)
+ * - Tự động thu gọn các module / domain nếu rỗng sau khi lọc
+ */
+export function filterTreeByOrgLevel(
+  nodes: readonly MenuTreeNode[],
+  orgLevel: OrgLevel
+): MenuTreeNode[] {
+  if (orgLevel === 'ALL') return [...nodes];
+
+  const filterNode = (node: MenuTreeNode): MenuTreeNode | null => {
+    const key = String(node.key);
+    if (!node.children || node.children.length === 0) {
+      if (orgLevel === 'CANG_VU' && isC2PermissionKey(key)) return null;
+      if (orgLevel === 'CUC' && isC1PermissionKey(key)) return null;
+      return node;
+    }
+
+    const filteredChildren = node.children
+      .map(filterNode)
+      .filter((n): n is MenuTreeNode => n !== null);
+
+    if (filteredChildren.length === 0) {
+      return null;
+    }
+
+    return {
+      ...node,
+      children: filteredChildren,
+    };
+  };
+
+  return nodes.map(filterNode).filter((n): n is MenuTreeNode => n !== null);
+}
+
 /**
  * Ant Design Tree warns when checkedKeys contains nodes that are not present
  * in the current treeData (for example after filtering by permission name).

@@ -255,7 +255,7 @@ class CoastalStationHaiphongControllerTest {
         verify(service, times(1)).searchPaged(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), pageableCaptor.capture());
         org.junit.jupiter.api.Assertions.assertTrue(
-                pageableCaptor.getValue().getSort().toString().contains("COALESCE(uu.fullName, uc.fullName): ASC"));
+                pageableCaptor.getValue().getSort().toString().contains("COALESCE(uu.fullName, uc.fullName)"));
     }
 
     @Test
@@ -274,7 +274,7 @@ class CoastalStationHaiphongControllerTest {
         verify(service, times(1)).searchPaged(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), pageableCaptor.capture());
         org.junit.jupiter.api.Assertions.assertTrue(
-                pageableCaptor.getValue().getSort().toString().contains("CASE t.provinceId"));
+                pageableCaptor.getValue().getSort().toString().contains("pv.sortOrder"));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.hanghai.kchtg.station.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,9 +16,12 @@ import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitCacheService;
 import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongHistoryResponse;
 import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongRequest;
 import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongResponse;
+import com.hanghai.kchtg.station.dto.coastal.CoastalStationVTSHistoryResponse;
 import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
+import com.hanghai.kchtg.station.entity.StationHistoryActionType;
 import com.hanghai.kchtg.station.repository.CoastalStationHaiphongRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -163,6 +167,65 @@ class CoastalStationHaiphongServiceTest {
 
         CoastalStationHaiphong created = service.createStation(req);
         assertThat(created.getSymbolId()).isEqualTo(symbolUuid);
+    }
+
+    @Test
+    void getHistory_preservesAccountOrgUnitNameWhenPresent() {
+        UUID stationId = UUID.randomUUID();
+        UUID orgUnitId = UUID.randomUUID();
+        CoastalStationHaiphong station = station(stationId, ApprovalStatus.APPROVED);
+        station.setOrgUnitId(orgUnitId);
+        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(orgUnitCacheService.getName(orgUnitId)).thenReturn("Cục Hàng hải và Đường thủy Việt Nam");
+
+        CoastalStationVTSHistoryResponse historyItem = new CoastalStationVTSHistoryResponse();
+        historyItem.setId(UUID.randomUUID());
+        historyItem.setStationCode("HP-001");
+        historyItem.setActionType(StationHistoryActionType.UPDATE);
+        historyItem.setChangedField("name");
+        historyItem.setPreviousValue("Tên cũ");
+        historyItem.setNewValue("Tên mới");
+        historyItem.setChangedBy("Nguyễn Văn An");
+        historyItem.setOrgUnitName("Bộ Giao thông Vận tải");
+        historyItem.setChangedAt(LocalDateTime.now());
+
+        when(historyService.getHistory(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(historyItem));
+
+        List<CoastalStationHaiphongHistoryResponse> result = service.getHistory(stationId, 0, 20, null, null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getOrgUnitName()).isEqualTo("Bộ Giao thông Vận tải");
+        assertThat(result.get(0).getChangedBy()).isEqualTo("Nguyễn Văn An");
+    }
+
+    @Test
+    void getHistory_fallbackToManagementOrgUnitWhenAccountOrgUnitNull() {
+        UUID stationId = UUID.randomUUID();
+        UUID orgUnitId = UUID.randomUUID();
+        CoastalStationHaiphong station = station(stationId, ApprovalStatus.APPROVED);
+        station.setOrgUnitId(orgUnitId);
+        when(repository.findById(stationId)).thenReturn(Optional.of(station));
+        when(orgUnitCacheService.getName(orgUnitId)).thenReturn("Cục Hàng hải và Đường thủy Việt Nam");
+
+        CoastalStationVTSHistoryResponse historyItem = new CoastalStationVTSHistoryResponse();
+        historyItem.setId(UUID.randomUUID());
+        historyItem.setStationCode("HP-001");
+        historyItem.setActionType(StationHistoryActionType.UPDATE);
+        historyItem.setChangedField("name");
+        historyItem.setPreviousValue("Tên cũ");
+        historyItem.setNewValue("Tên mới");
+        historyItem.setChangedBy("Hệ thống");
+        historyItem.setOrgUnitName(null);
+        historyItem.setChangedAt(LocalDateTime.now());
+
+        when(historyService.getHistory(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(historyItem));
+
+        List<CoastalStationHaiphongHistoryResponse> result = service.getHistory(stationId, 0, 20, null, null, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getOrgUnitName()).isEqualTo("Cục Hàng hải và Đường thủy Việt Nam");
     }
 
     private CoastalStationHaiphong station(UUID id, ApprovalStatus approvalStatus) {

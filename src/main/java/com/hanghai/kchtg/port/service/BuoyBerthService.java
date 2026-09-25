@@ -9,6 +9,7 @@ import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.OperatingUnitRepository;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
@@ -65,6 +66,7 @@ public class BuoyBerthService {
     private final ChangeHistoryService changeHistoryService;
     private final InfrastructureHistoryRepository historyRepository;
     private final OperatingUnitRepository operatingUnitRepository;
+    private final InfrastructureApprovalService approvalService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -141,6 +143,8 @@ public class BuoyBerthService {
     public BuoyBerthResponse update(UpdateBuoyBerthRequest request) {
         BuoyBerth entity = buoyBerthRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến phao với id: " + request.getId()));
+        UUID operatorId = SecurityUtils.getCurrentUserId();
+        approvalService.assertCanEdit(entity, operatorId, InfrastructureType.BUOY_BERTH);
 
         String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null
@@ -212,12 +216,17 @@ public class BuoyBerthService {
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            ApprovalStatus targetStatus = ("APPROVED".equalsIgnoreCase(request.getSaveAction()) || "SAVE_AND_APPROVE".equalsIgnoreCase(request.getSaveAction()))
+                    ? ApprovalStatus.APPROVED_LEVEL1
+                    : ApprovalStatus.PENDING_APPROVAL;
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.BUOY_BERTH, targetStatus, operatorId);
         } else if (request.getSaveAction() != null) {
             applySaveAction(entity, request.getSaveAction());
         }
 
-        UUID operatorId = SecurityUtils.getCurrentUserId();
+        if (operatorId == null) {
+            operatorId = SecurityUtils.getCurrentUserId();
+        }
         String actorId = operatorId != null ? operatorId.toString() : "system";
 
         entity.setUpdatedAt(LocalDateTime.now());
@@ -705,16 +714,29 @@ public class BuoyBerthService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+                UUID curUserId = SecurityUtils.getCurrentUserId();
+                LocalDateTime now = LocalDateTime.now();
+                entity.setSubmittedForApprovalAt(now);
                 entity.setSubmittedForApprovalBy(actorId);
-                entity.setPortAuthorityApprovedAt(null);
-                entity.setPortAuthorityApprovedBy(null);
-                entity.setPortAuthorityApprovalContent(null);
-                entity.setDepartmentApprovedAt(null);
-                entity.setDepartmentApprovedBy(null);
-                entity.setDepartmentApprovalContent(null);
-                entity.setRejectionReason(null);
+                entity.setSubmittedAt(now);
+                entity.setSubmittedBy(curUserId);
+                if (curUserId != null && approvalService.isDepartmentLevelUser(curUserId)) {
+                    entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                    entity.setPortAuthorityApprovedAt(now);
+                    entity.setPortAuthorityApprovedBy(actorId);
+                    entity.setApprovedDateLevel1(now);
+                    entity.setApproverLevel1(curUserId);
+                    entity.setLevel1ApprovalContent("Cấp Cục gửi trực tiếp");
+                } else {
+                    entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                    entity.setPortAuthorityApprovedAt(null);
+                    entity.setPortAuthorityApprovedBy(null);
+                    entity.setPortAuthorityApprovalContent(null);
+                    entity.setDepartmentApprovedAt(null);
+                    entity.setDepartmentApprovedBy(null);
+                    entity.setDepartmentApprovalContent(null);
+                    entity.setRejectionReason(null);
+                }
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":

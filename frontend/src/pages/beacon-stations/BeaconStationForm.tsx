@@ -38,8 +38,9 @@ import { portCRUD } from '../../services/portService';
 import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import type { Symbol as MapSymbol } from '../../services/symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import {
   GEOMETRY_POINT_COUNT,
   parseWktToCoordinates,
@@ -637,10 +638,39 @@ export default forwardRef(function BeaconStationForm(
       ? serializeCoordinatesToWkt(validCoords, currentGeometryType || 'POINT')
       : null;
 
+    const wasApproved = isEdit && (
+      initialData?.status === 'APPROVED' ||
+      initialData?.status === 'APPROVED_LEVEL2' ||
+      initialData?.status === 'PUBLISHED' ||
+      initialData?.status === 'APPROVED_L2' ||
+      initialData?.approvalStatus === 'APPROVED' ||
+      initialData?.approvalStatus === 'APPROVED_LEVEL2'
+    );
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
+
     setSubmitting(true);
     onSubmittingChange?.(true);
 
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (action === 'submit') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (action === 'approved') {
+          targetApprovalStatus = (isCuc && hasPerm('beaconstation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (action === 'approved') {
+        targetApprovalStatus = (isCuc && hasPerm('beaconstation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const toDate = (v: any) => (v ? (dayjs.isDayjs(v) ? v.toISOString() : String(v)) : (isEdit ? null : undefined));
       const cleanString = (val: any) => {
         if (val === null || val === undefined) return isEdit ? null : undefined;
@@ -696,6 +726,11 @@ export default forwardRef(function BeaconStationForm(
         latitude: hasGeom && validCoords.length > 0 ? validCoords[0].latitude : (isEdit ? null : undefined),
         longitude: hasGeom && validCoords.length > 0 ? validCoords[0].longitude : (isEdit ? null : undefined),
       };
+
+      if (targetApprovalStatus) {
+        payload.approvalStatus = targetApprovalStatus;
+        payload.status = targetApprovalStatus;
+      }
 
       Object.keys(payload).forEach((k) => {
         if (payload[k] === undefined) delete payload[k];

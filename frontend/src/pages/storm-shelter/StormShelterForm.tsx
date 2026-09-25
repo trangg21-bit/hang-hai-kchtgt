@@ -26,6 +26,8 @@ import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { userService } from '../../services/userService';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { OrgUnitTreeSelect, resolveOrgSubtreeIds } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
@@ -1091,8 +1093,30 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         )
       : undefined;
 
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return false;
+      }
+    }
+
     onSubmittingChange?.(true);
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('storm-shelter:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('storm-shelter:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const provinceIndex = VIETNAM_PROVINCES.indexOf(vals.provinceId);
       const provinceNumber = provinceIndex >= 0 ? provinceIndex + 1 : undefined;
 
@@ -1147,6 +1171,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         // spatial object; nếu key bị xóa thì server nhận null và GIỮ NGUYÊN hình học cũ.
         coordinates: wktCoordinates || '',
         mooringWaterAreas: mooringPayload,
+        ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
 
       if (saveAction !== 'UPDATE') {

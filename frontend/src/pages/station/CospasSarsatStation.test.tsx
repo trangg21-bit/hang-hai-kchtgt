@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import OrgUnitTreeSelect from '../../components/org-unit/OrgUnitTreeSelect';
 import { resolveDefaultOrgUnitId, resolveDefaultFormOrgUnitId } from '../../components/org-unit/useUserDefaultOrgUnit';
 import type { CoastalStationCospasSarsatResponse } from '../../services/station/types';
@@ -221,7 +222,11 @@ describe('OrgUnitTreeSelect & useUserDefaultOrgUnit', () => {
 
 describe('CospasSarsatStationList', () => {
   it('renders CospasSarsatStationList with standard and advanced filter controls', () => {
-    const html = renderToStaticMarkup(<CospasSarsatStationList />);
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <CospasSarsatStationList />
+      </MemoryRouter>
+    );
     expect(html).toContain('Tài sản KCHTGT');
     expect(html).toContain('Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam');
     expect(html).toContain('Thêm mới');
@@ -233,6 +238,8 @@ describe('CospasSarsatStationList', () => {
     expect(html).toContain('Tình trạng');
     // Nút toggle bộ lọc nâng cao
     expect(html).toContain('Mở rộng bộ lọc nâng cao');
+    // Cột bảng danh sách
+    expect(html).toContain('Cán bộ gửi phê duyệt');
   });
 });
 

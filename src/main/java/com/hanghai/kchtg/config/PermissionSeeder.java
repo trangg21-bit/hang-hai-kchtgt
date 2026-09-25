@@ -606,41 +606,18 @@ public class PermissionSeeder implements CommandLineRunner {
                                 "Xem lịch sử thay đổi trạm radar");
 
                 // 9.5 Hệ thống thông tin giám sát tàu thuyền VTS (VTS System)
-                seedPermission(definitions, "vts", "read", "Xem hệ thống VTS", "Tra cứu thông tin hệ thống VTS");
+                seedKchtModulePermissions(definitions, "vts", "hệ thống VTS");
                 seedPermission(definitions, "vts", "read:restricted", "Xem bản ghi hạn chế VTS",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của hệ thống VTS");
                 seedPermission(definitions, "vts", "read:confidential", "Xem bản ghi mật VTS",
                                 "Xem các bản ghi dữ liệu mức độ Mật của hệ thống VTS");
-                seedPermission(definitions, "vts", "create", "Thêm hệ thống VTS", "Tạo mới hệ thống VTS");
-                seedPermission(definitions, "vts", "update", "Cập nhật hệ thống VTS",
-                                "Chỉnh sửa thông tin hệ thống VTS");
-                seedPermission(definitions, "vts", "delete", "Xóa hệ thống VTS", "Xóa hệ thống VTS");
-                seedPermission(definitions, "vts", "approvec1", "Phê duyệt C1 hệ thống VTS",
-                                "Phê duyệt cấp 1 hệ thống VTS");
-                seedPermission(definitions, "vts", "approvec2", "Phê duyệt C2 hệ thống VTS",
-                                "Phê duyệt cấp 2 hệ thống VTS");
-                seedPermission(definitions, "vts", "history", "Lịch sử phê duyệt hệ thống VTS",
-                                "Xem lịch sử thay đổi hệ thống VTS");
 
                 // 9.6 Trung tâm điều hành VTS (VTS Operation Center)
-                seedPermission(definitions, "vtsoperationcenter", "read", "Xem trung tâm điều hành VTS",
-                                "Tra cứu thông tin trung tâm điều hành VTS");
+                seedKchtModulePermissions(definitions, "vtsoperationcenter", "trung tâm điều hành VTS");
                 seedPermission(definitions, "vtsoperationcenter", "read:restricted", "Xem bản ghi hạn chế trung tâm VTS",
                                 "Xem các bản ghi dữ liệu mức độ Hạn chế của trung tâm điều hành VTS");
                 seedPermission(definitions, "vtsoperationcenter", "read:confidential", "Xem bản ghi mật trung tâm VTS",
                                 "Xem các bản ghi dữ liệu mức độ Mật của trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "create", "Thêm trung tâm điều hành VTS",
-                                "Tạo mới trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "update", "Cập nhật trung tâm điều hành VTS",
-                                "Chỉnh sửa thông tin trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "delete", "Xóa trung tâm điều hành VTS",
-                                "Xóa trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "approvec1", "Phê duyệt C1 trung tâm điều hành VTS",
-                                "Phê duyệt cấp 1 trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "approvec2", "Phê duyệt C2 trung tâm điều hành VTS",
-                                "Phê duyệt cấp 2 trung tâm điều hành VTS");
-                seedPermission(definitions, "vtsoperationcenter", "history", "Lịch sử phê duyệt trung tâm điều hành VTS",
-                                "Xem lịch sử thay đổi trung tâm điều hành VTS");
 
                 // 9.7 Hệ thống AIS (AIS System)
                 seedPermission(definitions, "aissystem", "read", "Xem hệ thống AIS",

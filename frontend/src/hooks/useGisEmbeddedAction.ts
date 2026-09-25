@@ -10,13 +10,14 @@ export function useGisEmbeddedAction() {
   const action: GisEmbeddedAction | null = rawAction === 'detail' || rawAction === 'edit'
     ? rawAction
     : null;
-  const isEmbeddedAction = window.self !== window.top
+  const isEmbeddedAction = typeof window !== 'undefined'
+    && window.self !== window.top
     && searchParams.get('embed') === 'gis-action'
     && action !== null
     && Boolean(recordId);
 
   const closeEmbeddedAction = useCallback(() => {
-    if (isEmbeddedAction) {
+    if (isEmbeddedAction && typeof window !== 'undefined') {
       window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
     }
   }, [isEmbeddedAction]);

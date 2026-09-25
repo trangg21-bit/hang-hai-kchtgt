@@ -6,7 +6,7 @@ import { useSearchParams } from 'react-router-dom';
 import { DataTable, ScreenHeader } from '../../../components/list-view';
 import FilterTableLayout from '../../../components/list-view/FilterTableLayout';
 import Pagination from '../../../components/list-view/Pagination';
-import { FilterOrgUnitTreeSelect, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
+import { FilterOrgUnitTreeSelect, flattenOrgUnits, normalizeSearchText, resolveDefaultOrgUnitId, type OrgUnitTreeOption } from '../../../components/org-unit';
 import ApprovalModal from '../../../components/shared/ApprovalModal';
 import ApprovalStatusBadge from '../../../components/shared/ApprovalStatusBadge';
 import { useStandardApprovalStatusTabs } from '../../../components/shared/approvalStatusTabs';
@@ -412,6 +412,27 @@ export default function HanoiStationList() {
     };
   }, []);
 
+  const flatOrgUnits = useMemo(() => flattenOrgUnits(orgUnits), [orgUnits]);
+
+  const resolveOrgUnitName = useCallback((orgUnitId?: string, orgUnitName?: string) => {
+    if (orgUnitName && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(orgUnitName)) return orgUnitName;
+    if (!orgUnitId) return '—';
+    if (orgUnitId === '00000000-0000-0000-0000-000000000017' || orgUnitId === 'G17') {
+      return 'Bộ Giao thông Vận tải';
+    }
+    const match = flatOrgUnits.find((u) => u.id === orgUnitId || u.code === orgUnitId);
+    return match ? match.name : (orgUnitName || '—');
+  }, [flatOrgUnits]);
+
+  const resolveOperatingOrgName = useCallback((opOrgId?: string, opOrgName?: string) => {
+    if (opOrgName && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(opOrgName)) return opOrgName;
+    if (!opOrgId) return '—';
+    const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === opOrgId || o.code === opOrgId);
+    if (found) return found.name;
+    const match = flatOrgUnits.find((u) => u.id === opOrgId || u.code === opOrgId);
+    return match ? match.name : '—';
+  }, [flatOrgUnits]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -580,13 +601,20 @@ export default function HanoiStationList() {
         // Lịch sử chỉ hiển thị lần cập nhật có thay đổi thực; bỏ các log workflow cũ không có delta.
         if (!performedAt || changes.length === 0) return;
 
+        const rawUnit = raw.orgUnitName
+          || (raw.changedBy && currentUser?.fullName && raw.changedBy === currentUser.fullName ? currentUser.orgUnitName : undefined)
+          || selectedRecord?.orgUnitName;
+        const displayUnitName = (rawUnit === '00000000-0000-0000-0000-000000000017' || rawUnit === 'G17')
+          ? 'Bộ Giao thông Vận tải'
+          : (resolveOrgUnitName(rawUnit, rawUnit) || rawUnit || '—');
+
         const groupKey = `${action}|${performedAt}|${raw.changedBy || raw.performedBy || ''}`;
         const entry = groupedEntries.get(groupKey) || {
           id: raw.id || groupKey,
           action,
           changedBy: raw.changedBy || raw.performedBy || raw.performedByName || raw.userName || '—',
           changedAt: performedAt,
-          orgUnitName: raw.orgUnitName || selectedRecord?.orgUnitName || '—',
+          orgUnitName: displayUnitName,
           note: raw.note || raw.comment || '',
           changes: [],
         };
@@ -686,22 +714,6 @@ export default function HanoiStationList() {
     setFilterUpdatedTo(undefined);
     setPage(1);
   };
-
-  const resolveOrgUnitName = useCallback((orgUnitId?: string, orgUnitName?: string) => {
-    if (orgUnitName && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(orgUnitName)) return orgUnitName;
-    if (!orgUnitId) return '—';
-    const match = orgUnits.find((u) => u.id === orgUnitId || u.code === orgUnitId);
-    return match ? match.name : '—';
-  }, [orgUnits]);
-
-  const resolveOperatingOrgName = useCallback((opOrgId?: string, opOrgName?: string) => {
-    if (opOrgName && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-/.test(opOrgName)) return opOrgName;
-    if (!opOrgId) return '—';
-    const found = DEFAULT_OPERATING_ORGANIZATIONS.find((o) => o.id === opOrgId || o.code === opOrgId);
-    if (found) return found.name;
-    const match = orgUnits.find((u) => u.id === opOrgId || u.code === opOrgId);
-    return match ? match.name : '—';
-  }, [orgUnits]);
 
   const sortOrderFor = useCallback((key: string): 'ascend' | 'descend' | null =>
     (sortField === key && sortDirection ? (sortDirection === 'asc' ? 'ascend' : 'descend') : null), [sortField, sortDirection]);

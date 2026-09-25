@@ -48,7 +48,9 @@ import { usePermissionStore } from "../../store/permissionStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { cellSubtitleStyle, cellTitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
+import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
+import { KchtFormFooter } from "../../components/kcht/KchtFormFooter";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { fmtNum, isYearField, formatYearValue } from "../../utils/numFmt";
@@ -120,7 +122,6 @@ import {
     borderDefault,
     colors,
     DRAWER_TABLE_SCROLL_Y,
-    drawerCloseBtnStyle,
     drawerFooterStyle,
     drawerProps,
     drawerTitleStyle,
@@ -1139,7 +1140,7 @@ const TransmissionListPage = () => {
       return formatYearValue(val);
     }
     if (fn === 'unitOfMeasure' || fn === 'Đơn vị tính') {
-      return formatUnitOfMeasure(Number(val));
+      return formatUnitOfMeasure(Number(val)) || val;
     }
     if (fn === 'coordinateSystem' || fn === 'Hệ quy chiếu') {
       const m: Record<string, string> = { '1': 'WGS 84', '2': 'VN-2000', '4326': 'WGS 84' };
@@ -1622,18 +1623,18 @@ const TransmissionListPage = () => {
                       return isCreate ? (
                         <div key={`${fn}-${ri}`} style={{ ...historyCreateRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                           <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : null}</div>
-                          <span title={nv ?? null} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                          <span title={nv ?? undefined} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
                             {renderCell(change.newValue) ?? (nv ?? null)}
                           </span>
                         </div>
                       ) : (
                         <div key={`${fn}-${ri}`} style={{ ...historyChangeRowStyle, paddingTop: ri > 0 ? spaceXs : 0 }}>
                           <div style={historyFieldLabelStyle}>{fn ? `${historyFieldName(fn)}:` : null}</div>
-                          <span title={ov ?? null} style={{ ...historyOldValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                          <span title={ov ?? undefined} style={{ ...historyOldValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
                             {renderCell(change.oldValue) ?? (ov ?? null)}
                           </span>
                           <span style={historyArrowStyle}>→</span>
-                          <span title={nv ?? null} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
+                          <span title={nv ?? undefined} style={{ ...historyNewValueStyle, ...(isGisHistoryField(fn) ? { whiteSpace: 'pre-line', lineHeight: 1.5 } : {}) }}>
                             {renderCell(change.newValue) ?? (nv ?? null)}
                           </span>
                         </div>
@@ -2709,8 +2710,9 @@ const TransmissionListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
+                            { label: 'Thuộc loại hạ tầng', value: selectedRecord.attachedInfrastructureType === 1 ? 'TTDH VTS' : selectedRecord.attachedInfrastructureType === 2 ? 'Trạm radar' : null },
+                            { label: 'Thuộc hạ tầng', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderTransmissionStatusBadge(st) : null; })() },
                             { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null },
@@ -3457,49 +3459,20 @@ const TransmissionListPage = () => {
         }}
         footer={
           <div style={drawerFooterStyle}>
-            <Button
-              onClick={() => {
-                actionTypeRef.current = 'draft';
-                setActionType('draft');
-                createFormRef.current?.submit('draft');
+            <KchtFormFooter
+              resource="transmission"
+              isEdit={false}
+              loading={submitting}
+              onCancel={() => {
+                setCreateModalOpen(false);
+                createForm.resetFields();
               }}
-              loading={submitting && actionType === 'draft'}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu tạm
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                actionTypeRef.current = 'submit';
-                setActionType('submit');
-                createFormRef.current?.submit('submit');
+              onSubmit={(action) => {
+                actionTypeRef.current = action === 'draft' ? 'draft' : action === 'approve' ? 'approve' : 'submit';
+                setActionType(actionTypeRef.current);
+                createFormRef.current?.submit(actionTypeRef.current);
               }}
-              loading={submitting && actionType === 'submit'}
-              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu và gửi phê duyệt
-            </Button>
-            {canSaveAndApprove && (
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'approve';
-                  setActionType('approve');
-                  createFormRef.current?.submit('approve');
-                }}
-                loading={submitting && actionType === 'approve'}
-                style={{
-                  ...primaryButtonStyle,
-                  background: statusOperational,
-                  borderColor: statusOperational,
-                  borderRadius: radiusPill,
-                  height: 40,
-                }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            )}
+            />
           </div>
         }
         styles={{
@@ -3542,74 +3515,22 @@ const TransmissionListPage = () => {
         }}
         footer={
           <div style={drawerFooterStyle}>
-            {updateTarget && ['APPROVED', 'APPROVED_L2', 'APPROVED_LEVEL2', 'PUBLISHED'].includes(updateTarget.approvalStatus || '') ? (
-              canSaveAndApprove && (
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    actionTypeRef.current = 'approve';
-                    setActionType('approve');
-                    editFormRef.current?.submit('approve');
-                  }}
-                  loading={submitting && actionType === 'approve'}
-                  style={{
-                    ...primaryButtonStyle,
-                    background: statusOperational,
-                    borderColor: statusOperational,
-                    borderRadius: radiusPill,
-                    height: 40,
-                  }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              )
-            ) : (
-              <>
-                <Button
-                  onClick={() => {
-                    actionTypeRef.current = 'draft';
-                    setActionType('draft');
-                    editFormRef.current?.submit('draft');
-                  }}
-                  loading={submitting && actionType === 'draft'}
-                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu tạm
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    actionTypeRef.current = 'submit';
-                    setActionType('submit');
-                    editFormRef.current?.submit('submit');
-                  }}
-                  loading={submitting && actionType === 'submit'}
-                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-                {canSaveAndApprove && (
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      actionTypeRef.current = 'approve';
-                      setActionType('approve');
-                      editFormRef.current?.submit('approve');
-                    }}
-                    loading={submitting && actionType === 'approve'}
-                    style={{
-                      ...primaryButtonStyle,
-                      background: statusOperational,
-                      borderColor: statusOperational,
-                      borderRadius: radiusPill,
-                      height: 40,
-                    }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            )}
+            <KchtFormFooter
+              resource="transmission"
+              isEdit={true}
+              status={updateTarget?.approvalStatus}
+              loading={submitting}
+              onCancel={() => {
+                setUpdateModalOpen(false);
+                setUpdateTarget(null);
+                updateForm.resetFields();
+              }}
+              onSubmit={(action) => {
+                actionTypeRef.current = action === 'draft' ? 'draft' : action === 'approve' ? 'approve' : 'submit';
+                setActionType(actionTypeRef.current);
+                editFormRef.current?.submit(actionTypeRef.current);
+              }}
+            />
           </div>
         }
         styles={{

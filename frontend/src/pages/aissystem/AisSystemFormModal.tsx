@@ -46,7 +46,6 @@ import {
   spaceFormField,
   formFieldStyle,
   formRowGutter,
-  spaceSm,
   radiusPill,
   inputStyle,
   selectStyle,
@@ -83,6 +82,11 @@ export const GEOMETRY_POINT_COUNT: Record<string, number> = {
   POLYGON: 3,
 };
 
+const ATTACHED_INFRA_TYPE_OPTIONS = [
+  { label: 'TTDH VTS', value: 1 },
+  { label: 'Trạm radar', value: 2 },
+];
+
 const ddToDms = (dd: number | null | undefined) => {
   if (dd == null || isNaN(dd)) return { d: 0, m: 0, s: 0 };
   const abs = Math.abs(dd);
@@ -118,7 +122,7 @@ const parseWktToCoordinates = (wkt?: string): CoordinateItem[] => {
         });
       }
     }
-  } catch (e) {}
+  } catch {}
   return [];
 };
 
@@ -179,6 +183,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
 
   const isEdit = !!item;
   const formOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
   const watchedGeom = Form.useWatch('geometryType', form) || 'POINT';
 
   const handleUploadAttachment = async (file: File) => {
@@ -266,17 +271,6 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
     return radarStations.filter((r) => r.orgUnitId && allowedIds.has(String(r.orgUnitId)));
   }, [radarStations, formOrgUnitId, orgUnits]);
 
-  const combinedLocationOptions = useMemo(() => [
-    {
-      label: 'Trung tâm điều hành VTS',
-      options: filteredOpCenters.map((c) => ({ value: c.id, label: c.name })),
-    },
-    {
-      label: 'Trạm radar',
-      options: filteredRadarStations.map((r) => ({ value: r.id, label: r.name })),
-    },
-  ], [filteredOpCenters, filteredRadarStations]);
-
   useEffect(() => {
     if (visible) {
       setActiveTab('basic');
@@ -313,11 +307,13 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
       }).catch(() => {});
 
       if (item) {
-        const initialLocId = item.vtsOperationCenterId || item.radarStationId;
+        const attachedType = item.vtsOperationCenterId ? 1 : item.radarStationId ? 2 : undefined;
+        const attachedId = item.vtsOperationCenterId || item.radarStationId || undefined;
         form.setFieldsValue({
           code: item.code,
           name: item.name,
-          locationId: initialLocId,
+          attachedInfrastructureType: attachedType,
+          attachedInfrastructureId: attachedId,
           vtsOperationCenterId: item.vtsOperationCenterId,
           radarStationId: item.radarStationId,
           operatingOrgId: item.operatingOrgId,
@@ -351,6 +347,8 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
           conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
           unitOfMeasure: UnitOfMeasure.SET,
           quantity: 1,
+          attachedInfrastructureType: undefined,
+          attachedInfrastructureId: undefined,
         });
         setAttachmentList([]);
         setCoordinateList([]);
@@ -360,12 +358,16 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
+            attachedInfrastructureType: undefined,
+            attachedInfrastructureId: undefined,
           });
         }).catch(() => {
           form.setFieldsValue({
             conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
             unitOfMeasure: UnitOfMeasure.SET,
             quantity: 1,
+            attachedInfrastructureType: undefined,
+            attachedInfrastructureId: undefined,
           });
         });
       }
@@ -473,18 +475,15 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             ? 'PENDING_APPROVAL'
             : 'APPROVED';
 
-      const selectedLocationId = values.locationId;
+      const attachedType = values.attachedInfrastructureType;
+      const attachedId = values.attachedInfrastructureId;
       let vtsOpCenterId: string | undefined = undefined;
       let radarStId: string | undefined = undefined;
 
-      if (selectedLocationId) {
-        if (opCenters.some((c) => c.id === selectedLocationId)) {
-          vtsOpCenterId = selectedLocationId;
-        } else if (radarStations.some((r) => r.id === selectedLocationId)) {
-          radarStId = selectedLocationId;
-        } else {
-          vtsOpCenterId = selectedLocationId;
-        }
+      if (attachedType === 1 && attachedId) {
+        vtsOpCenterId = attachedId;
+      } else if (attachedType === 2 && attachedId) {
+        radarStId = attachedId;
       }
 
       const payload: CreateAisSystemRequest = {
@@ -533,7 +532,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
         if (pendingFiles.length > 0) {
           try {
             await aisSystemService.uploadAttachments(savedId, pendingFiles);
-          } catch (e) {
+          } catch {
             toast.warning('Đã lưu thông tin nhưng tải tệp đính kèm thất bại');
           }
         }
@@ -548,7 +547,8 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             basic: [
               'code',
               'name',
-              'locationId',
+              'attachedInfrastructureType',
+              'attachedInfrastructureId',
               'operatingOrgId',
               'orgUnitId',
               'provinceId',
@@ -611,7 +611,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
             </Col>
           </Row>
 
-          {/* Row 2: 3. Đơn vị quản lý & 4. Thuộc TTDH VTS / Trạm radar */}
+          {/* Row 2: Đơn vị quản lý & Đơn vị khai thác */}
           <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
@@ -627,41 +627,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                   style={formTreeSelectStyle}
                   onChange={(val) => {
                     form.setFieldValue('orgUnitId', val);
-                    const curLoc = form.getFieldValue('locationId');
-                    const allowedIds = resolveOrgSubtreeIds(orgUnits, val);
-                    const inOpCenters = opCenters.some((c) => c.id === curLoc && c.orgUnitId && allowedIds.has(String(c.orgUnitId)));
-                    const inRadars = radarStations.some((r) => r.id === curLoc && r.orgUnitId && allowedIds.has(String(r.orgUnitId)));
-                    if (curLoc && !inOpCenters && !inRadars) {
-                      form.setFieldValue('locationId', undefined);
-                    }
+                    form.setFieldValue('attachedInfrastructureId', undefined);
                   }}
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item
-                name="locationId"
-                label="Thuộc TTDH VTS / Trạm radar"
-                rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS / Trạm radar' }]}
-                style={formFieldStyle}
-              >
-                <Select
-                  placeholder={formOrgUnitId ? 'Chọn TTDH VTS / Trạm radar' : 'Vui lòng chọn đơn vị quản lý trước'}
-                  disabled={!formOrgUnitId}
-                  options={combinedLocationOptions}
-                  style={selectStyle}
-                  showSearch
-                  allowClear
-                  filterOption={(input, option) =>
-                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
-                  }
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          {/* Row 3: 5. Đơn vị khai thác & 6. Địa điểm (Tỉnh/TP) */}
-          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="operatingOrgId"
@@ -678,6 +648,67 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 />
               </Form.Item>
             </Col>
+          </Row>
+
+          {/* Row 3: Thuộc loại hạ tầng & Thuộc hạ tầng */}
+          <Row gutter={formRowGutter}>
+            <Col span={12}>
+              <Form.Item
+                name="attachedInfrastructureType"
+                label="Thuộc loại hạ tầng"
+                rules={[{ required: true, message: 'Vui lòng chọn loại hạ tầng' }]}
+                style={formFieldStyle}
+              >
+                <Select
+                  placeholder="Chọn loại hạ tầng"
+                  allowClear
+                  options={ATTACHED_INFRA_TYPE_OPTIONS}
+                  onChange={(val) => {
+                    form.setFieldValue('attachedInfrastructureType', val);
+                    form.setFieldValue('attachedInfrastructureId', undefined);
+                  }}
+                  style={selectStyle}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="attachedInfrastructureId"
+                label="Thuộc hạ tầng"
+                rules={[{ required: true, message: 'Vui lòng chọn hạ tầng' }]}
+                style={formFieldStyle}
+              >
+                <Select
+                  placeholder={
+                    !formOrgUnitId
+                      ? 'Vui lòng chọn đơn vị quản lý trước'
+                      : watchedAttachedType === 2
+                        ? 'Chọn trạm Radar'
+                        : watchedAttachedType === 1
+                          ? 'Chọn Trung Tâm Điều Hành VTS'
+                          : 'Chọn loại hạ tầng trước'
+                  }
+                  disabled={!formOrgUnitId || (watchedAttachedType !== 1 && watchedAttachedType !== 2)}
+                  options={
+                    watchedAttachedType === 1
+                      ? filteredOpCenters.map((c) => ({ value: c.id, label: c.name }))
+                      : watchedAttachedType === 2
+                        ? filteredRadarStations.map((r) => ({ value: r.id, label: r.name }))
+                        : []
+                  }
+                  style={selectStyle}
+                  showSearch
+                  allowClear
+                  filterOption={(input, option) =>
+                    normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
+                  }
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* Row 4: Địa điểm (Tỉnh/TP) & Địa điểm chi tiết */}
+          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="provinceId"
@@ -696,10 +727,6 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 />
               </Form.Item>
             </Col>
-          </Row>
-
-          {/* Row 4: 7. Địa điểm chi tiết, 8. Đơn vị tính & 9. Số lượng */}
-          <Row gutter={formRowGutter}>
             <Col span={12}>
               <Form.Item
                 name="detailedLocation"
@@ -710,7 +737,11 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 <Input placeholder="Nhập địa điểm chi tiết" maxLength={500} showCount style={inputStyle} />
               </Form.Item>
             </Col>
-            <Col span={6}>
+          </Row>
+
+          {/* Row 5: Đơn vị tính & Số lượng */}
+          <Row gutter={formRowGutter}>
+            <Col span={12}>
               <Form.Item
                 name="unitOfMeasure"
                 label="Đơn vị tính"
@@ -724,7 +755,7 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
                 />
               </Form.Item>
             </Col>
-            <Col span={6}>
+            <Col span={12}>
               <Form.Item
                 name="quantity"
                 label="Số lượng"

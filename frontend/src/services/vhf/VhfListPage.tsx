@@ -89,6 +89,7 @@ import { PaginatedHistoryList } from "../../components/shared/HistoryPagination"
 import DetailTable from "../../components/shared/DetailTable";
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from "../../components/shared/InfrastructureAttachmentTab";
 import toast from "../../components/ToastNotification";
+import { KchtFormFooter } from "../../components/kcht/KchtFormFooter";
 import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
@@ -2624,49 +2625,21 @@ const validHistoryGroups = useMemo(() => {
           }}
           footer={
             <div style={drawerFooterStyle}>
-              <Button
-                onClick={() => {
-                  actionTypeRef.current = 'draft';
-                  setActionType('draft');
-                  vhfFormRef.current?.submit('DRAFT');
+              <KchtFormFooter
+                resource="vhf"
+                isEdit={false}
+                loading={submitting}
+                onCancel={() => {
+                  setCreateModalOpen(false);
+                  createForm.resetFields();
                 }}
-                loading={submitting && actionType === 'draft'}
-                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu tạm
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'submit';
-                  setActionType('submit');
-                  vhfFormRef.current?.submit('SUBMIT');
+                onSubmit={(action) => {
+                  const act = action === 'draft' ? 'draft' : action === 'approve' ? 'approve' : 'submit';
+                  actionTypeRef.current = act;
+                  setActionType(act);
+                  vhfFormRef.current?.submit(act === 'draft' ? 'DRAFT' : act === 'approve' ? 'APPROVED' : 'SUBMIT');
                 }}
-                loading={submitting && actionType === 'submit'}
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-              {canSaveAndApprove && (
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    actionTypeRef.current = 'approve';
-                    setActionType('approve');
-                    vhfFormRef.current?.submit('APPROVED');
-                  }}
-                  loading={submitting && actionType === 'approve'}
-                  style={{
-                    ...primaryButtonStyle,
-                    background: statusOperational,
-                    borderColor: statusOperational,
-                    borderRadius: radiusPill,
-                    height: 40,
-                  }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              )}
+              />
             </div>
           }
           styles={{
@@ -2714,55 +2687,23 @@ const validHistoryGroups = useMemo(() => {
           }}
           footer={
             <div style={drawerFooterStyle}>
-              {updateTarget?.approvalStatus !== 'APPROVED' && (
-                <Button
-                  onClick={() => {
-                    actionTypeRef.current = 'draft';
-                    setActionType('draft');
-                    editVhfFormRef.current?.submit('DRAFT');
-                  }}
-                  loading={submitting && actionType === 'draft'}
-                  style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu tạm
-                </Button>
-              )}
-              {(updateTarget?.approvalStatus === 'DRAFT' ||
-                updateTarget?.approvalStatus === 'REJECTED_LEVEL1' ||
-                updateTarget?.approvalStatus === 'REJECTED_LEVEL2') && (
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    actionTypeRef.current = 'submit';
-                    setActionType('submit');
-                    editVhfFormRef.current?.submit('SUBMIT');
-                  }}
-                  loading={submitting && actionType === 'submit'}
-                  style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-                >
-                  Lưu và gửi phê duyệt
-                </Button>
-              )}
-              {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    actionTypeRef.current = 'approve';
-                    setActionType('approve');
-                    editVhfFormRef.current?.submit('APPROVED');
-                  }}
-                  loading={submitting && actionType === 'approve'}
-                  style={{
-                    ...primaryButtonStyle,
-                    background: statusOperational,
-                    borderColor: statusOperational,
-                    borderRadius: radiusPill,
-                    height: 40,
-                  }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              )}
+              <KchtFormFooter
+                resource="vhf"
+                isEdit={true}
+                status={updateTarget?.approvalStatus}
+                loading={submitting}
+                onCancel={() => {
+                  setUpdateModalOpen(false);
+                  setUpdateTarget(null);
+                  updateForm.resetFields();
+                }}
+                onSubmit={(action) => {
+                  const act = action === 'draft' ? 'draft' : action === 'approve' ? 'approve' : 'submit';
+                  actionTypeRef.current = act;
+                  setActionType(act);
+                  editVhfFormRef.current?.submit(act === 'draft' ? 'DRAFT' : act === 'approve' ? 'APPROVED' : 'SUBMIT');
+                }}
+              />
             </div>
           }
           styles={{
@@ -2849,10 +2790,11 @@ const validHistoryGroups = useMemo(() => {
                               { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                               { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                               { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                              { label: 'Thuộc cảng biển', value: selectedRecord.seaportName || null },
-                              { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                               { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
+                              { label: 'Thuộc cảng biển', value: selectedRecord.seaportName || null },
                               { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
+                              { label: 'Thuộc loại hạ tầng', value: selectedRecord.attachedInfrastructureType === 1 ? 'TTDH VTS' : selectedRecord.attachedInfrastructureType === 2 ? 'Trạm radar' : null },
+                              { label: 'Thuộc hạ tầng', value: selectedRecord.attachedInfrastructureName || null },
                               {
                                 label: 'Tình trạng',
                                 value: (() => {

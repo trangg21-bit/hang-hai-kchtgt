@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.radarstation.dto;
 
 import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.validator.Decimal20_4;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.Size;
@@ -75,6 +76,12 @@ public class RadarStationUpdateRequest extends FieldPresenceTrackedRequest {
     private Integer displayRule;
 
     private String saveAction;
+    private ApprovalStatus approvalStatus;
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        markFieldPresent("approvalStatus");
+        this.approvalStatus = approvalStatus;
+    }
 
     public void setStationName(String stationName) {
         markFieldPresent("stationName");

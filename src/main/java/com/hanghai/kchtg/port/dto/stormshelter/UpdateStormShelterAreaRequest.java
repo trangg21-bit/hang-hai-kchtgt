@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.port.dto.stormshelter;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMin;
@@ -86,4 +87,5 @@ public class UpdateStormShelterAreaRequest {
     private List<StormShelterMooringWaterAreaRequest> mooringWaterAreas;
 
     private String saveAction;
+    private ApprovalStatus approvalStatus;
 }

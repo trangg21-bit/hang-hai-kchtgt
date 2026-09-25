@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.port.dto.transferarea;
 
 import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMin;
@@ -73,6 +74,12 @@ public class UpdateTransferAreaRequest extends FieldPresenceTrackedRequest {
 
     private List<TransferAreaMooringWaterAreaRequest> mooringWaterAreas;
     private String saveAction;
+    private ApprovalStatus approvalStatus;
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        markFieldPresent("approvalStatus");
+        this.approvalStatus = approvalStatus;
+    }
 
     public void setId(UUID id) {
         markFieldPresent("id");

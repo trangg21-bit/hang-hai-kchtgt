@@ -74,6 +74,7 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import type { Berth } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import BerthDetailContent from './BerthDetailContent';
@@ -1485,13 +1486,17 @@ export default function BerthList() {
         destroyOnHidden
         onClose={closeFormDrawer}
         footer={
-          <div style={drawerFooterStyle}>
-            <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); berthFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-            <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); berthFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-            {canSaveAndApprove && (
-              <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); berthFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
-            )}
-          </div>
+          <KchtFormFooter
+            mode="create"
+            resource="berth"
+            loading={submitting}
+            activeAction={actionType as any}
+            onSubmit={(action) => {
+              actionTypeRef.current = action;
+              setActionType(action);
+              berthFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+            }}
+          />
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -1522,92 +1527,19 @@ export default function BerthList() {
           }
         }}
         footer={
-          <div style={drawerFooterStyle}>
-            {(() => {
-              const st = (editBerthRecord?.approvalStatus || 'DRAFT').toUpperCase();
-              if (st === 'APPROVED' || st === 'DA_PHE_DUYET') {
-                return canSaveAndApprove ? (
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      actionTypeRef.current = 'approve';
-                      setActionType('approve');
-                      editBerthFormRef.current?.submit('APPROVED');
-                    }}
-                    loading={submitting && actionType === 'approve'}
-                    style={{
-                      ...primaryButtonStyle,
-                      background: statusOperational,
-                      borderColor: statusOperational,
-                    }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                ) : null;
-              }
-              if (['REJECTED_LEVEL1', 'REJECTED_LEVEL2', 'REJECTED', 'TU_CHOI'].includes(st)) {
-                return (
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      actionTypeRef.current = 'submit';
-                      setActionType('submit');
-                      editBerthFormRef.current?.submit('SUBMIT');
-                    }}
-                    loading={submitting && actionType === 'submit'}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                );
-              }
-              return (
-                <>
-                  <Button
-                    onClick={() => {
-                      actionTypeRef.current = 'draft';
-                      setActionType('draft');
-                      editBerthFormRef.current?.submit('DRAFT');
-                    }}
-                    loading={submitting && actionType === 'draft'}
-                    style={outlineButtonStyle}
-                  >
-                    Lưu tạm
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={() => {
-                      actionTypeRef.current = 'submit';
-                      setActionType('submit');
-                      editBerthFormRef.current?.submit('SUBMIT');
-                    }}
-                    loading={submitting && actionType === 'submit'}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                  {canSaveAndApprove && (
-                    <Button
-                      type="primary"
-                      onClick={() => {
-                        actionTypeRef.current = 'approve';
-                        setActionType('approve');
-                        editBerthFormRef.current?.submit('APPROVED');
-                      }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{
-                        ...primaryButtonStyle,
-                        background: statusOperational,
-                        borderColor: statusOperational,
-                      }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+          <KchtFormFooter
+            mode="edit"
+            resource="berth"
+            record={editBerthRecord}
+            loading={submitting}
+            activeAction={actionType as any}
+            onCancel={closeEditDrawer}
+            onSubmit={(action) => {
+              actionTypeRef.current = action;
+              setActionType(action);
+              editBerthFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+            }}
+          />
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

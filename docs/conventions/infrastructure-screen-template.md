@@ -489,7 +489,7 @@ chuyển trước, kèm migration bổ sung cột.
 > 
 > | # | Nút hành động | Kiểu hiển thị (Style Preset) | Màu sắc (Semantic Token) | Trạng thái phê duyệt đích | Hành vi nghiệp vụ |
 > | :-: | :--- | :--- | :--- | :---: | :--- |
-> | 1 | **`Lưu tạm`** | `outlineButtonStyle` | Nền trắng, viền & chữ Xanh Navy (`#12468C`) | `DRAFT` (0) | Lưu thông tin nháp, chỉ người tạo nhìn thấy, chưa gửi vào luồng phê duyệt |
+> | 1 | **`Lưu tạm`** | `outlineButtonStyle` | Nền trắng, viền & chữ Xanh Navy (`#12468C`) | `DRAFT` (0) | Lưu thông tin nháp trong nội bộ đơn vị quản lý, chưa gửi vào luồng phê duyệt |
 > | 2 | **`Lưu và gửi phê duyệt`** | `primaryButtonStyle` | Nền Xanh Dương (`#1B84FF`), chữ trắng | `PENDING_APPROVAL` (2) | Lưu bản ghi và lập tức chuyển trạng thái sang Chờ Cảng vụ/Chi cục duyệt (Vòng 1) |
 > | 3 | **`Lưu và phê duyệt`** | Primary Green Button | Nền Xanh Lá Cây `statusOperational` (`#1BAF7A` / `#00A389`), chữ trắng | `APPROVED` (5) | Dành cho cấp có thẩm quyền phê duyệt trực tiếp: Lưu và duyệt có hiệu lực ngay |
 > 

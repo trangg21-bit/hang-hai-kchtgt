@@ -27,6 +27,8 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import api from '../api';
 import toast from '../../components/ToastNotification';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../operatingOrganizationsData';
 import { fmtInputNumber } from '../../utils/numFmt';
 import { organizationService, type Organization } from '../organizationService';
@@ -292,6 +294,8 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
   const [activeTab, setActiveTab] = useState('info');
   const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const [existingStatus, setExistingStatus] = useState<string | null>(initialData?.approvalStatus || null);
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
 
   // Options
@@ -689,6 +693,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       try {
         const data: ScadaResponse = await fetchScadaById(id);
         if (!active) return;
+        setExistingStatus(data.approvalStatus);
         populateFormData(data);
 
         try {
@@ -770,6 +775,15 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
         return;
       }
 
+      const wasApproved = isEdit && (existingStatus === 'APPROVED' || existingStatus === 'APPROVED_LEVEL2' || existingStatus === 'APPROVED_L2' || existingStatus === 'PUBLISHED');
+      if (wasApproved) {
+        const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj);
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          return;
+        }
+      }
+
       const values = form.getFieldsValue(true);
       const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? undefined;
       const currentMapSymbolId = values.mapSymbolId !== undefined ? values.mapSymbolId : (form.getFieldValue('mapSymbolId') ?? undefined);
@@ -817,6 +831,18 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
       try {
         const pendingFiles = uploadedFiles.filter(f => f.originFileObj);
 
+        const isCuc = isCucLevelUser(currentUser);
+        let targetApprovalStatus: string | undefined = undefined;
+        if (wasApproved) {
+          if (saveAction === 'SUBMIT') {
+            targetApprovalStatus = 'PENDING_APPROVAL';
+          } else if (saveAction === 'APPROVED') {
+            targetApprovalStatus = (isCuc && hasPerm('scada:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+          }
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('scada:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+
         if (isEdit && id) {
           const payload: UpdateScadaRequest = {
             id,
@@ -843,7 +869,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             displayRule: hasGeom ? currentDisplayRule : null,
             geometryType: hasGeom ? (currentGeometryType as 'POINT' | 'LINE' | 'POLYGON') : null,
             coordinates: hasGeom && wkt ? wkt : null,
-            ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
+            ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
           };
 
           await updateScada(payload);
@@ -855,7 +881,7 @@ const ScadaForm = forwardRef<ScadaFormRef, ScadaFormProps>(({
             }
           }
 
-          if (saveAction === 'SUBMIT') {
+          if (saveAction === 'SUBMIT' && !wasApproved) {
             await submitScada(id);
           }
 

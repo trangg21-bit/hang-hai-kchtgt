@@ -13,6 +13,7 @@ import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsZoneRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitRank;
+import com.hanghai.kchtg.user.entity.User;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -80,6 +84,35 @@ class VtsSystemServiceTest {
         approvalService = new com.hanghai.kchtg.common.service.InfrastructureApprovalService(historyRepository, userRepository);
         org.springframework.test.util.ReflectionTestUtils.setField(service, "approvalService", approvalService);
 
+        OrgUnit cucOrg = OrgUnit.builder()
+                .name("Cục Hàng hải")
+                .level(1)
+                .rank(OrgUnitRank.DEPARTMENT)
+                .build();
+        User cucUser = new User();
+        cucUser.setId(UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        cucUser.setOrgUnit(cucOrg);
+        cucUser.setEffectivePermissionsSnapshot(java.util.Set.of("vts:update", "vts:approvec1", "vts:approvec2", "admin:all", "*"));
+
+        OrgUnit cvOrg = OrgUnit.builder()
+                .name("Cảng vụ Hàng hải")
+                .level(2)
+                .parentId(UUID.randomUUID())
+                .rank(OrgUnitRank.BRANCH)
+                .build();
+        User cvUser = new User();
+        cvUser.setId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        cvUser.setOrgUnit(cvOrg);
+        cvUser.setEffectivePermissionsSnapshot(java.util.Set.of("vts:update", "vts:approvec1"));
+
+        when(userRepository.findById(UUID.fromString("00000000-0000-0000-0000-000000000002"))).thenReturn(Optional.of(cucUser));
+        when(userRepository.findById(UUID.fromString("00000000-0000-0000-0000-000000000001"))).thenReturn(Optional.of(cvUser));
+        when(userRepository.findById(argThat(id -> id != null && !id.equals(UUID.fromString("00000000-0000-0000-0000-000000000001"))))).thenReturn(Optional.of(cucUser));
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(cucUser, "pass",
+                        List.of(new SimpleGrantedAuthority("vts:update"), new SimpleGrantedAuthority("vts:approvec2"), new SimpleGrantedAuthority("vts:approvec1"))));
+
         entity = VtsSystem.builder()
                 .systemName("VTS ABC")
                 .code("VTS-OLD")
@@ -98,6 +131,11 @@ class VtsSystemServiceTest {
                 .provinceId(1)
                 .maritimeNotice("TBHH 01")
                 .build();
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -369,13 +407,31 @@ class VtsSystemServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
 
+        // Rule R4a: Cấp Cục (user 2) sửa hồ sơ Đã duyệt -> Giữ nguyên APPROVED
         VtsSystemResponse response = service.update(TEST_ID, updateReq,
-                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
         assertNotNull(response);
         assertEquals(ApprovalStatus.APPROVED, entity.getApprovalStatus());
         verify(repository, times(1)).save(any());
         verify(historyRepository, times(1)).save(any());
+    }
+
+    @Test
+    void testUpdate_ApprovedEntity_ByCangVu_RevertsToWorkflow() {
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
+                .systemName("VTS Cảng vụ sửa").build();
+        when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
+        when(repository.save(any())).thenReturn(entity);
+        when(historyRepository.save(any())).thenReturn(mock(InfrastructureHistory.class));
+
+        // Rule R4b: Cấp Cảng vụ (user 1) sửa hồ sơ Đã duyệt -> Quay lại PENDING_APPROVAL
+        VtsSystemResponse response = service.update(TEST_ID, updateReq,
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+
+        assertNotNull(response);
+        assertEquals(ApprovalStatus.PENDING_APPROVAL, entity.getApprovalStatus());
     }
 
     @Test
@@ -526,9 +582,10 @@ class VtsSystemServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class,
+        org.springframework.security.access.AccessDeniedException ex = assertThrows(
+                org.springframework.security.access.AccessDeniedException.class,
                 () -> service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
-        assertTrue(ex.getMessage().contains("Người phê duyệt cấp Cục không được trùng"));
+        assertTrue(ex.getMessage().contains("Chỉ tài khoản thuộc cấp Cục"));
     }
 
     @Test

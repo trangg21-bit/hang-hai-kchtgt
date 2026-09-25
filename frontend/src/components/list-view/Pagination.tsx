@@ -133,9 +133,12 @@ const Pagination: React.FC<PaginationProps> = ({
               ? 'center'
               : 'flex-end',
         flexWrap: 'wrap',
+        flexShrink: 0,
         rowGap: 8,
         columnGap: compact ? 6 : spaceSm,
         padding: '8px 0',
+        marginTop: 6,
+        borderTop: `1px solid ${borderDefault}30`,
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',

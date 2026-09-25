@@ -17,9 +17,10 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import {
   colors,
   actionPrimary, textTertiary, surfaceCard,
-  fontSizeSm, fontSizeLg, fontWeightBold,
+  fontSizeSm, fontSizeLg, fontWeightBold, fontWeightMedium,
   spaceSm, spaceMd, spaceFormField, radiusPill,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
+  statusCritical,
   DRAWER_TABLE_SCROLL_Y,
 } from '../../themetokenchk';
 
@@ -160,7 +161,7 @@ const parseGisCoordinates = (record: PierDetail): Array<{ lat: number; lng: numb
 export default function PierDetailContent({
   selectedRecord, orgMap, portMap, berthOptions, symbolMap, symbolImageMap,
   detailFiles, ddToDms, approvalStyleMap, operationalStyleMap,
-  userMap, waterwayMap, berthDetail,
+  userMap, waterwayMap,
   infrastructureList = [],
   operationPlanList = [],
   maintenancePlanList = [],
@@ -506,7 +507,7 @@ export default function PierDetailContent({
                           <div className="chk-detail-row chk-detail-row--full">
                             <span className="chk-detail-label sec-col1-label">Trạng thái</span>
                             <span className="chk-detail-value">
-                              <span style={statusBadgeStyle(colors.statusCritical || '#E34948')}>
+                              <span style={statusBadgeStyle(statusCritical)}>
                                 Đã xóa
                               </span>
                             </span>
@@ -807,7 +808,7 @@ export default function PierDetailContent({
                       { title: 'Mã sự cố', dataIndex: 'incidentCode', key: 'code', render: (v, rec) => v || rec.code || '' },
                       { title: 'Loại sự cố', dataIndex: 'incidentType', key: 'type', render: (v, rec) => v || rec.type || '' },
                       { title: 'Địa điểm', dataIndex: 'location', key: 'location', render: (v) => v || '' },
-                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v) => fmtDateTime(v || rec.time || null) },
+                      { title: 'Thời gian', dataIndex: 'incidentTime', key: 'time', width: 150, align: 'left' as const, render: (v, rec: any) => fmtDateTime(v || rec?.time || null) },
                     ]}
                   />
                 )}

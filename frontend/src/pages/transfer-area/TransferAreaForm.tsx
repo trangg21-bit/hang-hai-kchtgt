@@ -25,6 +25,8 @@ import { symbolService, type Symbol as IconSymbol } from '../../services/symbolS
 import { userService } from '../../services/userService';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { OrgUnitTreeSelect } from '../../components/org-unit';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
@@ -1004,8 +1006,30 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
       }
     }
 
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return false;
+      }
+    }
+
     onSubmittingChange?.(true);
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('transfer-area:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('transfer-area:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const provinceIndex = VIETNAM_PROVINCES.indexOf(vals.provinceId);
       const provinceNumber = provinceIndex >= 0 ? provinceIndex + 1 : undefined;
 
@@ -1080,6 +1104,7 @@ const TransferAreaForm = forwardRef<TransferAreaFormHandle, TransferAreaFormProp
         longitude: geomType ? lng : (isEdit ? null : undefined),
         coordinates: geomType ? (wktCoordinates || (isEdit && initialCoordinatesRef.current ? initialCoordinatesRef.current : null)) : (isEdit ? null : undefined),
         mooringWaterAreas: mooringPayload,
+        ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
 
       if (saveAction !== 'UPDATE') {

@@ -495,7 +495,8 @@ public class PortService {
         FieldWriteGuard.validateObject(request);
         Port entity = portRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
-        infrastructureApprovalService.assertEditable(entity);
+        UUID currentUserId = SecurityUtils.getCurrentUserId();
+        infrastructureApprovalService.assertCanEdit(entity, currentUserId, com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT);
         if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
             throw new IllegalStateException("Không thể chỉnh sửa cảng biển đã bị xóa");
         }
@@ -621,7 +622,7 @@ public class PortService {
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
+            infrastructureApprovalService.handleApprovedRecordEdit(entity, com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT, request.getApprovalStatus(), currentUserId);
         } else if (request.getApprovalStatus() != null) {
             entity.setApprovalStatus(request.getApprovalStatus());
         }

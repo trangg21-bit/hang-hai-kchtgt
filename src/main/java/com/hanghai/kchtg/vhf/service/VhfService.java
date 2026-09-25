@@ -368,6 +368,10 @@ public class VhfService {
     UUID currentUserId = SecurityUtils.getCurrentUserId();
     Vhf entity = vhfRepository.findById(request.getId())
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống VHF với id: " + request.getId()));
+    if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
+      throw new IllegalStateException("Không thể chỉnh sửa bản ghi đã bị xóa");
+    }
+    approvalService.assertCanEdit(entity, currentUserId, InfrastructureType.VHF);
     validateAllowedOrgUnit(entity.getOrgUnitId());
     if (request.getOrgUnitId() != null) {
       validateAllowedOrgUnit(request.getOrgUnitId());
@@ -466,23 +470,16 @@ public class VhfService {
     }
 
     ApprovalStatus currentStatus = entity.getApprovalStatus();
-    boolean approvedEdit = false;
-    if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
-      if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.requireApproveC2Permission(currentUserId, "vhf:approvec2");
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setApprovalContentLevel2("Lưu và phê duyệt");
-        entity.setApprovedDateLevel2(LocalDateTime.now());
-        entity.setApproverLevel2(currentUserId);
-        approvedEdit = true;
-      } else {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-      }
+    boolean wasApproved = (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2);
+    if (wasApproved) {
+      approvalService.handleApprovedRecordEdit(entity, InfrastructureType.VHF, request.getApprovalStatus(), currentUserId);
+    } else if (request.getApprovalStatus() != null) {
+      entity.setApprovalStatus(request.getApprovalStatus());
     }
 
     Vhf saved = vhfRepository.save(entity);
 
-    if (approvedEdit && !previousValues.isEmpty()) {
+    if (wasApproved && !previousValues.isEmpty()) {
       LocalDateTime now = LocalDateTime.now();
       for (Map.Entry<String, String> entry : previousValues.entrySet()) {
         String field = entry.getKey();

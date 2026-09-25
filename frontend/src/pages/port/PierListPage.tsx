@@ -26,6 +26,7 @@ import toast from '../../components/ToastNotification';
 import { formatOperationalFunction, OPERATIONAL_FUNCTION_OPTIONS } from '../../constants/operationalFunction';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
 import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import api from '../../services/api';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import type { Organization } from '../../services/organizationService';
@@ -1301,17 +1302,20 @@ export default function PierListPage() {
       <AppDrawer rootClassName="pier-drawer-scope" className="pier-drawer-scope" width={DRAWER_WIDTH} title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editPierId ? 'Chỉnh sửa thông tin Cầu cảng' : 'Thêm mới Cầu cảng'}</span>} open={createDrawerVisible} destroyOnHidden
         onClose={closeFormDrawer}
         afterOpenChange={(open) => { if (!open) { setEditPierId(undefined); setEditBaseStatus(undefined); } }}
-        footer={<div style={drawerFooterStyle}>{(() => {
-          const st = !editPierId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
-          if (st === 'APPROVED') {
-            return canSaveAndApprove ? <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button> : null;
-          }
-          if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
-            return <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>;
-          }
-          // Lưu tạm hoặc tạo mới
-          return <><Button htmlType="button" onClick={() => { setActionType('draft'); pierFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button><Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); pierFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>{canSaveAndApprove && <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); pierFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}</>;
-        })()}</div>}
+        footer={
+          <KchtFormFooter
+            mode={editPierId ? 'edit' : 'create'}
+            resource="pier"
+            record={editPierId ? { approvalStatus: editBaseStatus } : undefined}
+            loading={submitting}
+            activeAction={actionType as any}
+            onCancel={closeFormDrawer}
+            onSubmit={(action) => {
+              setActionType(action);
+              pierFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+            }}
+          />
+        }
         styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}>
         <Form form={createForm} layout="vertical">
           <style>{requiredMarkStyle}</style>

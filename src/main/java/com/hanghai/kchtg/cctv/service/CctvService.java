@@ -325,6 +325,8 @@ public class CctvService {
       throw new IllegalStateException("Không thể chỉnh sửa bản ghi đã bị xóa");
     }
 
+    approvalService.assertCanEdit(entity, currentUserId, InfrastructureType.CCTV);
+
     validateAllowedOrgUnit(entity.getOrgUnitId());
     if (request.getOrgUnitId() != null) {
       validateAllowedOrgUnit(request.getOrgUnitId());
@@ -451,28 +453,11 @@ public class CctvService {
     // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26):
     // hồ sơ đang chờ duyệt được sửa và giữ nguyên trạng thái chờ duyệt.
     ApprovalStatus currentStatus = entity.getApprovalStatus();
-    boolean approvedEdit = false;
-    if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
-      // T12 — "Lưu và phê duyệt": request có approvalStatus=APPROVED thì giữ trạng thái
-      // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
-      // người duyệt/ngày duyệt; ngoài ra phải duyệt lại.
-      if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.requireApproveC2Permission(currentUserId, "cctv:approvec2");
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        if (entity.getApproverLevel1() == null) {
-          entity.setApproverLevel1(currentUserId);
-          entity.setApprovedDateLevel1(LocalDateTime.now());
-          entity.setApprovalContentLevel1("Cấp Cục phê duyệt trực tiếp");
-        }
-        entity.setApproverLevel2(currentUserId);
-        entity.setApprovedDateLevel2(LocalDateTime.now());
-        if (entity.getApprovalContentLevel2() == null || entity.getApprovalContentLevel2().isBlank()) {
-          entity.setApprovalContentLevel2("Lưu và phê duyệt");
-        }
-        approvedEdit = true;
-      } else {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-      }
+    boolean wasApproved = (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2);
+    if (wasApproved) {
+      approvalService.handleApprovedRecordEdit(entity, InfrastructureType.CCTV, request.getApprovalStatus(), currentUserId);
+    } else if (request.getApprovalStatus() != null) {
+      entity.setApprovalStatus(request.getApprovalStatus());
     }
 
     Cctv saved = cctvRepository.save(entity);
@@ -480,7 +465,7 @@ public class CctvService {
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
     // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
     // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
-    if (approvedEdit && !previousValues.isEmpty()) {
+    if (wasApproved && !previousValues.isEmpty()) {
       if (previousValues.containsKey("coordinates")) {
         String newCoordVal = (request.getCoordinates() != null && !request.getCoordinates().isBlank() && request.getGeometryType() != null)
             ? request.getCoordinates() : "Chưa có";

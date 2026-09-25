@@ -26,6 +26,7 @@ import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import api from '../../services/api';
 import { DEFAULT_OPERATING_ORGANIZATIONS } from '../../services/operatingOrganizationsData';
 import { organizationService, type Organization } from '../../services/organizationService';
@@ -1633,70 +1634,18 @@ export default function DaiTtdhListPage() {
           }}
           extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
-            <div style={drawerFooterStyle}>
-              {(() => {
-                const st = !editDaiTtdhId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
-                if (st === 'APPROVED' || st === 'APPROVED_LEVEL2') {
-                  return canSaveAndApprove ? (
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('approve'); daiTtdhFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
-                  ) : null;
-                }
-                if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
-                  return (
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('submit'); daiTtdhFormRef.current?.submit('SUBMIT'); }}
-                      loading={submitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  );
-                }
-                // Thêm mới hoặc Lưu tạm (DRAFT)
-                return (
-                  <>
-                    <Button
-                      htmlType="button"
-                      onClick={() => { setActionType('draft'); daiTtdhFormRef.current?.submit('DRAFT'); }}
-                      loading={submitting && actionType === 'draft'}
-                      style={outlineButtonStyle}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('submit'); daiTtdhFormRef.current?.submit('SUBMIT'); }}
-                      loading={submitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                    {canSaveAndApprove && (
-                      <Button
-                        htmlType="button"
-                        type="primary"
-                        onClick={() => { setActionType('approve'); daiTtdhFormRef.current?.submit('APPROVED'); }}
-                        loading={submitting && actionType === 'approve'}
-                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                      >
-                        Lưu và phê duyệt
-                      </Button>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+            <KchtFormFooter
+              mode={editDaiTtdhId ? 'edit' : 'create'}
+              resource="daittdh"
+              record={editDaiTtdhId ? { approvalStatus: editBaseStatus } : undefined}
+              loading={submitting}
+              activeAction={actionType as any}
+              onCancel={closeFormDrawer}
+              onSubmit={(action) => {
+                setActionType(action);
+                daiTtdhFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+              }}
+            />
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

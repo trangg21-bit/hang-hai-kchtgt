@@ -688,7 +688,7 @@ export default function CospasSarsatStationList() {
     },
     {
       key: 'submittedAt',
-      label: 'Ngày gửi phê duyệt',
+      label: 'Cán bộ gửi phê duyệt',
       dataIndex: 'submittedAt',
       width: 200,
       ellipsis: false,

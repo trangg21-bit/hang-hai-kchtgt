@@ -142,6 +142,7 @@ import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import { AppDrawer } from '../../components/shared/AppDrawer';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import PortForm from './PortForm';
 import PortDetailContent from './PortDetailContent';
 
@@ -882,7 +883,6 @@ export default function PortListPage() {
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
   const defaultOrgUnitId = useRef<string | undefined>(undefined);
   const [orgUnitReady, setOrgUnitReady] = useState(false);
   const [debouncedName, setDebouncedName] = useState('');
@@ -1712,6 +1712,33 @@ export default function PortListPage() {
         .filter(c => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
         .map(c => ({ latitude: dmToDd(c.latD, c.latM, c.latS), longitude: dmToDd(c.lngD, c.lngM, c.lngS) }));
 
+      const isApprovedRecord =
+        selectedRecord?.approvalStatus === 'APPROVED' ||
+        selectedRecord?.approvalStatus === 'APPROVED_LEVEL2';
+
+      if (isApprovedRecord) {
+        const isDirty =
+          updateForm.isFieldsTouched() ||
+          uploadFileList.some((f) => f.originFileObj) ||
+          pendingDeletedAttachmentIds.length > 0;
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      let targetApprovalStatus: string | undefined = undefined;
+      if (isApprovedRecord) {
+        if (editActionRef.current === 'submit') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (editActionRef.current === 'approve') {
+          targetApprovalStatus = (kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (editActionRef.current === 'approve') {
+        targetApprovalStatus = (kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const payload = {
         id: selectedRecord.id,
         portCode: clearableText(values.portCode),
@@ -1720,11 +1747,9 @@ export default function PortListPage() {
         area: clearableNumber(values.area),
         maxVesselCapacity: clearableNumber(values.khaNangTiepNhan),
         operationalStatus: clearableText(values.operationalStatus),
-        approvalStatus: editActionRef.current === 'approve'
+        approvalStatus: targetApprovalStatus || (editActionRef.current === 'approve'
           ? 'APPROVED'
-          : editActionRef.current === 'submit'
-            ? 'PENDING_APPROVAL'
-            : 'DRAFT',
+          : selectedRecord.approvalStatus),
         orgUnitId: clearableUuid(values.orgUnitId),
         portGroup: clearableNumber(values.portGroup),
         mapSymbolId: clearableText((values.gisLocation as any)?.mapSymbolId || values.mapSymbolId),
@@ -1757,7 +1782,7 @@ export default function PortListPage() {
         remarks: (values.remarks as string) || undefined,
       };
       const res = await import('./api').then((m) => m.updateCangBien(payload));
-      if (editActionRef.current === 'submit') {
+      if (editActionRef.current === 'submit' && !isApprovedRecord) {
         await submitCangBien(selectedRecord.id);
       }
       toast.success(
@@ -2187,7 +2212,8 @@ export default function PortListPage() {
         key: 'approvalStatus',
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
-        width: 170,
+        width: 260,
+        ellipsis: false,
         render: (v: string, record: CangBienResponse) => {
           if (isDeletedRecord(record)) {
             return (
@@ -2226,7 +2252,7 @@ export default function PortListPage() {
         key: 'updatedBy',
         label: 'Cán bộ cập nhật',
         dataIndex: 'updatedByName',
-        width: 190,
+        width: 215,
         ellipsis: false,
         sortable: true,
         sortOrder: (sortField === 'updatedByName' || sortField === 'updatedAt' || sortField === 'updatedBy') ? sortOrder : null,
@@ -2249,7 +2275,7 @@ export default function PortListPage() {
         key: 'submittedByName',
         label: 'Cán bộ gửi phê duyệt',
         dataIndex: 'submittedByName',
-        width: 200,
+        width: 215,
         ellipsis: false,
         sortable: true,
         sortOrder: (sortField === 'submittedByName' || sortField === 'submittedAt') ? sortOrder : null,
@@ -2524,8 +2550,7 @@ export default function PortListPage() {
           />
 
           <FilterTableLayout
-            filterCollapsed={filterCollapsed}
-            onToggleCollapse={() => setFilterCollapsed(!filterCollapsed)}
+            hideFilterToggle={true}
             onFilterApply={handleFilterApply}
             onFilterReset={handleFilterReset}
             loading={isLoading}
@@ -2559,43 +2584,41 @@ export default function PortListPage() {
                   options={[{ value: '5', label: 'Cấp đặc biệt' }, { value: '1', label: 'Cấp 1' }, { value: '2', label: 'Cấp 2' }, { value: '3', label: 'Cấp 3' }, { value: '4', label: 'Cấp 4' }]}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
               </div>
-              {filterCollapsed && (<>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Nhóm cảng biển</div>
-                  <Select placeholder="Chọn nhóm" allowClear
-                    value={filterValues.portGroup || undefined}
-                    onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
-                    options={[{ value: '1', label: 'Nhóm 1' }, { value: '2', label: 'Nhóm 2' }, { value: '3', label: 'Nhóm 3' }, { value: '4', label: 'Nhóm 4' }, { value: '5', label: 'Nhóm 5' }]}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Mã cảng biển</div>
-                  <Input placeholder="Tìm theo mã cảng biển..." allowClear
-                    value={filterValues.portCode || ''}
-                    onChange={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value }))}
-                    onBlur={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value.trim() }))}
-                    onPressEnter={handleFilterApply}
-                    style={{ borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
-                  <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
-                    filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                    value={filterValues.province || undefined}
-                    onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
-                    options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Ngày cập nhật</div>
-                  <DatePicker.RangePicker format="DD/MM/YYYY"
-                    placeholder={['Từ ngày', 'Đến ngày']} allowClear className="port-range-picker" classNames={{ popup: { root: 'range-single-panel' } }}
-                    value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
-                    onChange={(dates) => setFilterValues((prev) => ({ ...prev, updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined }))}
-                    style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: filterFontSize }} />
-                </div>
-                <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
-              </>)}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Nhóm cảng biển</div>
+                <Select placeholder="Chọn nhóm" allowClear
+                  value={filterValues.portGroup || undefined}
+                  onChange={(val) => setFilterValues((prev) => ({ ...prev, portGroup: val }))}
+                  options={[{ value: '1', label: 'Nhóm 1' }, { value: '2', label: 'Nhóm 2' }, { value: '3', label: 'Nhóm 3' }, { value: '4', label: 'Nhóm 4' }, { value: '5', label: 'Nhóm 5' }]}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Mã cảng biển</div>
+                <Input placeholder="Tìm theo mã cảng biển..." allowClear
+                  value={filterValues.portCode || ''}
+                  onChange={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value }))}
+                  onBlur={(e) => setFilterValues((prev) => ({ ...prev, portCode: e.target.value.trim() }))}
+                  onPressEnter={handleFilterApply}
+                  style={{ borderRadius: radiusPill, height: 40 }} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Địa điểm (Tỉnh/Thành phố)</div>
+                <Select placeholder="Chọn tỉnh/thành phố" allowClear showSearch
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  value={filterValues.province || undefined}
+                  onChange={(val) => setFilterValues((prev) => ({ ...prev, province: val }))}
+                  options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: filterFontSize, marginBottom: spaceSm }}>Ngày cập nhật</div>
+                <DatePicker.RangePicker format="DD/MM/YYYY"
+                  placeholder={['Từ ngày', 'Đến ngày']} allowClear className="port-range-picker" classNames={{ popup: { root: 'range-single-panel' } }}
+                  value={[filterValues.updatedFrom ? dayjs(filterValues.updatedFrom) : null, filterValues.updatedTo ? dayjs(filterValues.updatedTo) : null]}
+                  onChange={(dates) => setFilterValues((prev) => ({ ...prev, updatedFrom: dates?.[0] ? dates[0].format('YYYY-MM-DD 00:00:00') : undefined, updatedTo: dates?.[1] ? dates[1].format('YYYY-MM-DD 23:59:59') : undefined }))}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: filterFontSize }} />
+              </div>
+              <style>{`.port-range-picker .ant-picker-cell-selected .ant-picker-cell-inner{background:${actionPrimary}!important}.port-range-picker .ant-picker-ok button{background:${actionPrimary}!important;border-color:${actionPrimary}!important;border-radius:${radiusPill}px!important}.port-range-picker .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner{background:${actionPrimary}15!important;color:${actionPrimary}!important}.port-range-picker .ant-picker-today-btn{color:${actionPrimary}!important}.range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child{display:none!important}`}</style>
             </>}
             statusTabs={[
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
@@ -2661,7 +2684,7 @@ export default function PortListPage() {
                 setPage(1);
               }}
               resetScrollKey={`${page}_${activeStatusTab}_${filterApprovalStatus}_${filterOrgUnitId}_${resetScrollTrigger}`}
-              scroll={{ x: 2600 }}
+              scroll={{ x: 'max-content' }}
             />
             <Pagination total={total} current={page} pageSize={pageSize}
               onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
@@ -2685,11 +2708,17 @@ export default function PortListPage() {
           open={createModalVisible}
           onClose={() => { setCreateModalVisible(false); setInfraList([]); setWharfAreaList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
           footer={
-            <>
-              <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu tạm</Button>
-              <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); createForm.submit(); }} loading={submitting && actionType === 'submit'} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu và gửi phê duyệt</Button>
-              {canSaveAndApprove && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}>Lưu và phê duyệt</Button>}
-            </>
+            <KchtFormFooter
+              mode="create"
+              resource="port"
+              loading={submitting}
+              activeAction={actionType}
+              onSubmit={(action) => {
+                actionTypeRef.current = action;
+                setActionType(action);
+                createForm.submit();
+              }}
+            />
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -2771,17 +2800,18 @@ export default function PortListPage() {
           open={updateModalVisible}
           onClose={closeUpdateModal}
           footer={
-            <>
-              {!(selectedRecord?.approvalStatus === 'APPROVED' || selectedRecord?.approvalStatus === 'APPROVED_LEVEL2') && (
-                <>
-                  <Button htmlType="submit" loading={submitting && editAction === 'draft'} onClick={() => { setEditAction('draft'); editActionRef.current = 'draft'; updateForm.submit(); }} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu tạm</Button>
-                  <Button type="primary" htmlType="submit" loading={submitting && editAction === 'submit'} onClick={() => { setEditAction('submit'); editActionRef.current = 'submit'; updateForm.submit(); }} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu và gửi phê duyệt</Button>
-                </>
-              )}
-              {canSaveAndApprove && (
-                <Button type="primary" htmlType="submit" loading={submitting && editAction === 'approve'} onClick={() => { setEditAction('approve'); editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}>Lưu và phê duyệt</Button>
-              )}
-            </>
+            <KchtFormFooter
+              mode="edit"
+              resource="port"
+              record={selectedRecord}
+              loading={submitting}
+              activeAction={editAction}
+              onSubmit={(action) => {
+                setEditAction(action);
+                editActionRef.current = action;
+                updateForm.submit();
+              }}
+            />
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

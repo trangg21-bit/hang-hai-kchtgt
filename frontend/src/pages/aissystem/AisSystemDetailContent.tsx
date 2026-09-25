@@ -487,20 +487,20 @@ export default function AisSystemDetailContent({
                       </span>
                     </div>
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Thuộc TTDH VTS / Trạm radar</span>
-                      <span className="chk-detail-value">
-                        {record.attachedLocationName || record.vtsOperationCenterName || record.radarStationName || ''}
-                      </span>
+                      <span className="chk-detail-label sec-col2-label">Đơn vị khai thác</span>
+                      <span className="chk-detail-value">{record.operatingOrgName || ''}</span>
                     </div>
 
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Đơn vị khai thác</span>
-                      <span className="chk-detail-value">{record.operatingOrgName || ''}</span>
+                      <span className="chk-detail-label sec-col1-label">Thuộc loại hạ tầng</span>
+                      <span className="chk-detail-value">
+                        {record.vtsOperationCenterId ? 'TTDH VTS' : record.radarStationId ? 'Trạm radar' : ((record as any).attachedInfrastructureType === 1 ? 'TTDH VTS' : (record as any).attachedInfrastructureType === 2 ? 'Trạm radar' : '')}
+                      </span>
                     </div>
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Tình trạng</span>
+                      <span className="chk-detail-label sec-col2-label">Thuộc hạ tầng</span>
                       <span className="chk-detail-value">
-                        {renderConditionStatusBadge(record.conditionStatus)}
+                        {record.vtsOperationCenterName || record.radarStationName || record.attachedLocationName || (record as any).attachedInfrastructureName || ''}
                       </span>
                     </div>
 
@@ -511,18 +511,25 @@ export default function AisSystemDetailContent({
                       </span>
                     </div>
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Địa điểm chi tiết</span>
-                      <span className="chk-detail-value">{record.detailedLocation || ''}</span>
+                      <span className="chk-detail-label sec-col2-label">Tình trạng</span>
+                      <span className="chk-detail-value">
+                        {renderConditionStatusBadge(record.conditionStatus)}
+                      </span>
                     </div>
 
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Đơn vị tính</span>
+                      <span className="chk-detail-label sec-col1-label">Địa điểm chi tiết</span>
+                      <span className="chk-detail-value">{record.detailedLocation || ''}</span>
+                    </div>
+                    <div className="chk-detail-row">
+                      <span className="chk-detail-label sec-col2-label">Đơn vị tính</span>
                       <span className="chk-detail-value">
                         {record.unitOfMeasureLabel || (record.unitOfMeasure ? UNIT_OF_MEASURE_MAP[record.unitOfMeasure] : '')}
                       </span>
                     </div>
+
                     <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Số lượng</span>
+                      <span className="chk-detail-label sec-col1-label">Số lượng</span>
                       <span className="chk-detail-value">{record.quantity != null ? String(record.quantity) : ''}</span>
                     </div>
                   </div>

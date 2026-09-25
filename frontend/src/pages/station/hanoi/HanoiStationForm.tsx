@@ -46,6 +46,7 @@ import { checkCanSaveAndApprove } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
+import { KchtFormFooter } from '../../../components/kcht/KchtFormFooter';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
@@ -691,6 +692,16 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
           }
         }
       } else if (record?.id) {
+        const wasApproved = record?.approvalStatus === 'APPROVED' || (record as any)?.approvalStatus === 'APPROVED_LEVEL2';
+        if (wasApproved) {
+          const isDirty = form.isFieldsTouched() || pendingFiles.length > 0;
+          if (!isDirty) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         const updatePayload: UpdateHanoiStationRequest = {
           ...payload,
         };
@@ -723,95 +734,31 @@ export const HanoiStationForm: React.FC<HanoiStationFormProps> = ({
 
     if (isCreateMode) {
       return (
-        <>
-          {canCreate && (
-            <>
-              <Button
-                onClick={() => { actionTypeRef.current = 'draft'; form.submit(); }}
-                loading={isSubmitting && actionTypeRef.current === 'draft'}
-                style={outlineButtonStyle}
-              >
-                Lưu tạm
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => { actionTypeRef.current = 'submit'; form.submit(); }}
-                loading={isSubmitting && actionTypeRef.current === 'submit'}
-                style={primaryButtonStyle}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-            </>
-          )}
-          {canApproveL2 && canCreate && (
-            <Button
-              type="primary"
-              onClick={() => { actionTypeRef.current = 'approve'; form.submit(); }}
-              loading={isSubmitting && actionTypeRef.current === 'approve'}
-              style={{
-                ...primaryButtonStyle,
-                background: statusOperational,
-                borderColor: statusOperational,
-              }}
-            >
-              Lưu và phê duyệt
-            </Button>
-          )}
-        </>
+        <KchtFormFooter
+          mode="create"
+          resource="coastalstationhaiphong"
+          loading={isSubmitting}
+          activeAction={actionTypeRef.current}
+          onSubmit={(act) => {
+            actionTypeRef.current = act;
+            form.submit();
+          }}
+        />
       );
     }
 
-    const isDraftOrRejected = !record?.approvalStatus ||
-      record.approvalStatus === ApprovalStatus.DRAFT ||
-      record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 ||
-      record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2;
-
     return (
-      <>
-        {canUpdate && isDraftOrRejected && (
-          <>
-            <Button
-              onClick={() => { actionTypeRef.current = 'update'; form.submit(); }}
-              loading={isSubmitting && actionTypeRef.current === 'update'}
-              style={outlineButtonStyle}
-            >
-              Lưu tạm
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => { actionTypeRef.current = 'submit'; form.submit(); }}
-              loading={isSubmitting && actionTypeRef.current === 'submit'}
-              style={primaryButtonStyle}
-            >
-              Lưu và gửi phê duyệt
-            </Button>
-          </>
-        )}
-        {canApproveL2 && (
-          <Button
-            type="primary"
-            onClick={() => { actionTypeRef.current = 'approve'; form.submit(); }}
-            loading={isSubmitting && actionTypeRef.current === 'approve'}
-            style={{
-              ...primaryButtonStyle,
-              background: statusOperational,
-              borderColor: statusOperational,
-            }}
-          >
-            Lưu và phê duyệt
-          </Button>
-        )}
-        {canUpdate && !canApproveL2 && (
-          <Button
-            type="primary"
-            onClick={() => { actionTypeRef.current = 'update'; form.submit(); }}
-            loading={isSubmitting && actionTypeRef.current === 'update'}
-            style={primaryButtonStyle}
-          >
-            Cập nhật
-          </Button>
-        )}
-      </>
+      <KchtFormFooter
+        mode="edit"
+        resource="coastalstationhaiphong"
+        record={record}
+        loading={isSubmitting}
+        activeAction={actionTypeRef.current}
+        onSubmit={(act) => {
+          actionTypeRef.current = act;
+          form.submit();
+        }}
+      />
     );
   };
 

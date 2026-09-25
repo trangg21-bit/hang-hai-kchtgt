@@ -33,8 +33,9 @@ import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, n
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import type { Symbol as MapSymbol } from '../symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
   ddToDms, dmsToDd,
@@ -267,7 +268,9 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
   const [, setSubmitting] = useState(false);
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
+  const [existingStatus, setExistingStatus] = useState<string | null>(null);
   const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
@@ -456,6 +459,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
     (async () => {
       try {
         const data: CctvResponse = await fetchCctvById(id);
+        setExistingStatus(data.approvalStatus);
         const pts = parseWktToCoordinates(data.coordinates || undefined);
         setCoordinateList(pts.length > 0 ? pts.map(c => {
           const latDms = ddToDms(c.latitude);
@@ -631,6 +635,15 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       return;
     }
 
+    const wasApproved = isEdit && (existingStatus === 'APPROVED' || existingStatus === 'APPROVED_LEVEL2' || existingStatus === 'APPROVED_L2' || existingStatus === 'PUBLISHED');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj);
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
+
     if (values.operationalStatus === undefined || values.operationalStatus === null) {
       toast.error('Tình trạng hoạt động là bắt buộc');
       setActiveTabKey('general');
@@ -710,15 +723,29 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
         displayRule: currentGeometryType && currentDisplayRule != null ? Number(currentDisplayRule) || null : null,
       };
 
+      const isCuc = isCucLevelUser(currentUser);
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('cctv:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('cctv:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+      if (targetApprovalStatus) {
+        payload.approvalStatus = targetApprovalStatus;
+      }
+
       let targetId: string;
       if (isEdit && id) {
         targetId = id;
         await updateCctv({
           id,
           ...payload,
-          ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
         } as unknown as UpdateCctvRequest);
-        if (saveAction === 'SUBMIT') {
+        if (saveAction === 'SUBMIT' && !wasApproved) {
           await submitCctv(id);
         }
       } else {
@@ -754,7 +781,7 @@ export default forwardRef(function CctvForm({ form, id, onFinish, onSubmittingCh
       setSubmitting(false);
       onSubmittingChange?.(false);
     }
-  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish]);
+  }, [form, coordinateList, isEdit, id, uploadedFiles, onSubmittingChange, onFinish, currentUser, hasPerm, existingStatus]);
 
   const tabItems = [
     // Tab 1: Thông tin chung (đồng bộ cấu trúc 3 Section Cards như màn /berth)

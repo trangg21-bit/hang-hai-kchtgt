@@ -22,6 +22,8 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { SaveAction } from '../../types/port';
 import api from '../../services/api';
 import toast from '../../components/ToastNotification';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
@@ -631,9 +633,31 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
     }
     const validCoords = coordResult.validCoords;
     const wktCoordinates = vals.geometryType && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, vals.geometryType) : undefined;
+    const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return false;
+      }
+    }
+
     setSubmitting(true);
     onSubmittingChange?.(true);
     try {
+      const isCuc = isCucLevelUser(currentUser);
+      const hasPerm = usePermissionStore.getState().hasPermission;
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (saveAction === 'SUBMIT') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('shiprepairyard:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (saveAction === 'APPROVED') {
+        targetApprovalStatus = (isCuc && hasPerm('shiprepairyard:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const cleanString = (val: any) => {
         if (val === null || val === undefined) return isEdit ? null : undefined;
         const s = String(val).trim();
@@ -671,6 +695,7 @@ export default forwardRef(function ShipRepairYardForm({ form, id, onFinish, onSu
         mapSymbolId: currentGeometryType ? (symbolIdVal || null) : (isEdit ? null : null),
         coordinateSystem: currentGeometryType && currentCoordSys != null ? Number(currentCoordSys) : (isEdit ? null : null),
         displayRule: currentGeometryType ? (currentDisplayRule === 'Độ, phút, giây (DMS)' || currentDisplayRule === 1 ? 1 : (Number(currentDisplayRule) || null)) : (isEdit ? null : null),
+        ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
       if (saveAction !== 'UPDATE') (payload as any).saveAction = saveAction;
       Object.keys(payload).forEach(k => { if (payload[k] === undefined) delete payload[k]; });

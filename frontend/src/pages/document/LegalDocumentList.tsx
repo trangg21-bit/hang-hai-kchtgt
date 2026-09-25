@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Typography, Form, Input, DatePicker, Button, Upload, Spin, Select, Alert, Drawer, Row, Col } from 'antd';
+import { Typography, Form, Input, DatePicker, Button, Spin, Select, Alert, Row, Col, Tabs } from 'antd';
+import AppDrawer from '../../components/shared/AppDrawer';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  InboxOutlined,
   DownloadOutlined,
   EyeOutlined,
-  FileOutlined,
   HistoryOutlined,
 } from '@ant-design/icons';
 import {
@@ -35,13 +34,11 @@ import {
 } from '../../components/list-view';
 import CommonHistoryDrawer from '../../components/shared/CommonHistoryDrawer';
 import Pagination from '../../components/list-view/Pagination';
-import type { UploadFile, RcFile } from 'antd/es/upload/interface';
+import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import toast from '../../components/ToastNotification';
 import {
-  actionPrimary,
   textPrimary,
   textSecondary,
-  textTertiary,
   fontWeightBold,
   fontWeightMedium,
   fontSizeMd,
@@ -55,21 +52,34 @@ import {
   statusOperational,
   statusAttention,
   statusDraft,
-  radiusSm,
-  drawerProps,
-  DRAWER_WIDTH,
   drawerTitleStyle,
-  drawerCloseBtnStyle,
-  drawerFooterStyle,
-  primaryButtonStyle,
-  outlineButtonStyle,
   selectStyle,
   detailLabelColStyle,
   detailValueStyle,
 } from '../../tokens';
 import { colors } from '../../theme';
+import * as themeTokenChk from '../../themetokenchk';
+import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import {
+  cellTitleStyle,
+  getDatePickerProps,
+  getSidebarRangePickerProps,
+  drawerTabsStyle,
+  requiredMarkStyle,
+  textAreaStyle,
+  DRAWER_WIDTH,
+  primaryButtonStyle,
+  outlineButtonStyle,
+} from '../../themetokenchk';
+import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 
-const { Dragger } = Upload;
+function getErrorMessage(err: unknown, defaultMsg: string): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'object' && err !== null && 'message' in err && typeof (err as { message: unknown }).message === 'string') {
+    return (err as { message: string }).message;
+  }
+  return defaultMsg;
+}
 
 const DOCUMENT_TYPE_MAP: Record<string, string> = {
   DECISION: 'Quyết định',
@@ -120,30 +130,40 @@ export default function LegalDocumentList() {
   const [issueDateEnd, setIssueDateEnd] = useState<string | null>(null);
   const [issueDateStartInput, setIssueDateStartInput] = useState<string | null>(null);
   const [issueDateEndInput, setIssueDateEndInput] = useState<string | null>(null);
+  const [filterCollapsed, setFilterCollapsed] = useState(false);
+  const [isDraftSubmit, setIsDraftSubmit] = useState(false);
 
   const [dataSource, setDataSource] = useState<LegalDocumentResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
+  const [countAll, setCountAll] = useState(0);
+  const [countDraft, setCountDraft] = useState(0);
+  const [countEffective, setCountEffective] = useState(0);
+  const [countExpiring, setCountExpiring] = useState(0);
+  const [countExpired, setCountExpired] = useState(0);
   const [isError, setIsError] = useState(false);
   const [, setErrorMessage] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewing, setIsViewing] = useState(false);
+  const [drawerTabKey, setDrawerTabKey] = useState('general');
   const [editingItem, setEditingItem] = useState<LegalDocumentResponse | null>(null);
   const [history, setHistory] = useState<LegalDocumentHistoryResponse[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<LegalDocumentResponse | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [pendingAttachments, setPendingAttachments] = useState<UploadFile[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<InfrastructureAttachmentItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
 
-  const attachedFileList = useMemo(() => {
-    const existing = (editingItem?.attachedDocuments || []).map((doc) => ({
-      uid: doc.id,
-      name: doc.documentName,
-      status: 'done' as const,
-      size: doc.fileSize,
+  const combinedAttachments = useMemo<InfrastructureAttachmentItem[]>(() => {
+    const existing: InfrastructureAttachmentItem[] = (editingItem?.attachedDocuments || []).map((doc) => ({
+      id: String(doc.id),
+      fileName: doc.documentName,
+      fileSize: doc.fileSize,
+      uploadedDate: doc.uploadedAt ? dayjs(doc.uploadedAt).format('YYYY-MM-DD') : undefined,
+      uploadedByName: editingItem?.updatedByName || 'Cán bộ quản lý',
+      filePath: doc.filePath,
     }));
     return [...existing, ...pendingAttachments];
   }, [editingItem, pendingAttachments]);
@@ -175,31 +195,31 @@ export default function LegalDocumentList() {
       setCountExpired(expired);
       setCountAll(draft + effective + expiring + expired);
       setIsError(false);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Không thể tải danh sách văn bản pháp lý');
+    } catch (err: unknown) {
+      setErrorMessage(getErrorMessage(err, 'Không thể tải danh sách văn bản pháp lý'));
       setIsError(true);
     } finally {
       setLoading(false);
     }
   }, [page, pageSize, keyword, issuingAuthority, documentType, status, applicationArea, issueDateStart, issueDateEnd]);
 
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const [countAll, setCountAll] = useState(0);
-  const [countDraft, setCountDraft] = useState(0);
-  const [countEffective, setCountEffective] = useState(0);
-  const [countExpiring, setCountExpiring] = useState(0);
-  const [countExpired, setCountExpired] = useState(0);
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadData();
+    });
+  }, [loadData]);
 
   const handleView = useCallback((record: LegalDocumentResponse) => {
     setEditingItem(record);
     setIsViewing(true);
+    setDrawerTabKey('general');
     setIsModalOpen(true);
   }, []);
 
   const handleEdit = useCallback((record: LegalDocumentResponse) => {
     setEditingItem(record);
     setIsViewing(false);
+    setDrawerTabKey('general');
     setPendingAttachments([]);
     form.setFieldsValue({
       documentNumber: record.documentNumber,
@@ -220,6 +240,7 @@ export default function LegalDocumentList() {
   const handleCreate = useCallback(() => {
     setEditingItem(null);
     setIsViewing(false);
+    setDrawerTabKey('general');
     setPendingAttachments([]);
     form.resetFields();
     setIsModalOpen(true);
@@ -228,39 +249,43 @@ export default function LegalDocumentList() {
   const handleCancel = useCallback(() => {
     setIsModalOpen(false);
     setIsViewing(false);
+    setDrawerTabKey('general');
     setPendingAttachments([]);
     form.resetFields();
   }, [form]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (isDraft = false) => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
+      setIsDraftSubmit(isDraft);
       const payload: LegalDocumentCreateRequest = {
         ...values,
         issueDate: values.issueDate ? values.issueDate.format('YYYY-MM-DD') : '',
         effectiveDate: values.effectiveDate ? values.effectiveDate.format('YYYY-MM-DD') : '',
         expirationDate: values.expirationDate ? values.expirationDate.format('YYYY-MM-DD') : undefined,
+        draft: isDraft,
+        validityStatus: isDraft ? 'DRAFT' : (editingItem ? values.validityStatus : 'EFFECTIVE'),
       };
 
       let documentId: string;
       if (editingItem) {
         await updateLegalDocument(editingItem.id, payload);
         documentId = editingItem.id;
-        toast.success('Cập nhật văn bản pháp lý thành công!');
+        toast.success(isDraft ? 'Lưu tạm văn bản pháp lý thành công!' : 'Cập nhật văn bản pháp lý thành công!');
       } else {
         const created = await createLegalDocument(payload);
         documentId = created.id;
         setEditingItem(created);
-        toast.success('Tạo văn bản pháp lý thành công!');
+        toast.success(isDraft ? 'Lưu tạm văn bản pháp lý thành công!' : 'Tạo văn bản pháp lý thành công!');
       }
 
       for (const pendingFile of pendingAttachments) {
         if (!pendingFile.originFileObj) continue;
         try {
           await uploadLegalDocumentAttachment(documentId, pendingFile.originFileObj);
-        } catch (err: any) {
-          toast.error(err.message || 'Lỗi tải lên tệp đính kèm');
+        } catch (err: unknown) {
+          toast.error(getErrorMessage(err, 'Lỗi tải lên tệp đính kèm'));
         }
       }
 
@@ -268,11 +293,15 @@ export default function LegalDocumentList() {
       setPendingAttachments([]);
       form.resetFields();
       loadData();
-    } catch (err: any) {
-      if (err.errorFields) return;
-      toast.error(err.message || 'Có lỗi xảy ra khi lưu văn bản');
+    } catch (err: unknown) {
+      if (typeof err === 'object' && err !== null && 'errorFields' in err) {
+        setDrawerTabKey('general');
+        return;
+      }
+      toast.error(getErrorMessage(err, 'Có lỗi xảy ra khi lưu văn bản'));
     } finally {
       setSubmitting(false);
+      setIsDraftSubmit(false);
     }
   }, [editingItem, form, pendingAttachments, loadData]);
 
@@ -281,8 +310,8 @@ export default function LegalDocumentList() {
       await deleteLegalDocument(id);
       toast.success('Xóa văn bản pháp lý thành công!');
       loadData();
-    } catch (err: any) {
-      toast.error(err.message || 'Lỗi khi xóa văn bản');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Lỗi khi xóa văn bản'));
     }
   }, [loadData]);
 
@@ -300,17 +329,99 @@ export default function LegalDocumentList() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast.error(err.message || 'Lỗi tải PDF');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Lỗi tải PDF'));
     }
   }, []);
 
-  const handleDownloadAttachment = useCallback(async (documentId: string, attachmentId: string, fileName: string) => {
+  const handleAttachmentUpload = useCallback(async (file: File) => {
+    const ALLOWED_EXTS = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (!ALLOWED_EXTS.includes(ext)) {
+      toast.error('Định dạng tệp không được hỗ trợ (chỉ chấp nhận PDF, Word, ảnh)');
+      return false;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Kích thước mỗi tệp không được vượt quá 10MB');
+      return false;
+    }
+
+    if (editingItem?.id) {
+      try {
+        const result = await uploadLegalDocumentAttachment(editingItem.id, file);
+        if (result) {
+          setEditingItem((prev) => prev ? {
+            ...prev,
+            attachedDocuments: [...(prev.attachedDocuments || []), result],
+          } : prev);
+          toast.success(`Đã tải lên: ${file.name}`);
+        }
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err, 'Lỗi tải lên tệp đính kèm'));
+        return false;
+      }
+      return;
+    }
+
+    const nowIso = dayjs().toISOString();
+    const newUid = `local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    setPendingAttachments((prev) => [
+      ...prev,
+      {
+        id: newUid,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        uploadedByName: 'Cán bộ quản lý',
+        uploadedDate: nowIso,
+        originFileObj: file,
+        file,
+      },
+    ]);
+    toast.success(`Đã thêm tệp: ${file.name}`);
+  }, [editingItem]);
+
+  const handleAttachmentDelete = useCallback(async (attachmentId: string) => {
+    const isLocal = pendingAttachments.some((f) => f.id === attachmentId);
+    if (isLocal) {
+      setPendingAttachments((prev) => prev.filter((f) => f.id !== attachmentId));
+      toast.success('Đã xóa tệp đính kèm');
+      return;
+    }
+
+    if (editingItem?.id) {
+      try {
+        await deleteLegalDocumentAttachment(editingItem.id, attachmentId);
+        setEditingItem((prev) => prev ? {
+          ...prev,
+          attachedDocuments: (prev.attachedDocuments || []).filter((d) => d.id !== attachmentId),
+        } : prev);
+        toast.success('Đã xóa tệp đính kèm');
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err, 'Lỗi khi xóa tệp đính kèm'));
+      }
+    }
+  }, [editingItem, pendingAttachments]);
+
+  const handleDownloadAttachment = useCallback(async (attachmentId: string, fileName: string) => {
+    const pending = pendingAttachments.find((f) => f.id === attachmentId || f.fileName === fileName);
+    if (pending?.originFileObj) {
+      const url = URL.createObjectURL(pending.originFileObj);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    if (!editingItem?.id) return;
     try {
-      const resp = await api.get(`/v1/legal-documents/${documentId}/attachments/${attachmentId}/download`, {
+      const resp = await api.get(`/v1/legal-documents/${editingItem.id}/attachments/${attachmentId}/download`, {
         responseType: 'blob',
       });
-      const blob = resp.data;
+      const blob = new Blob([resp.data]);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -319,10 +430,18 @@ export default function LegalDocumentList() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      toast.error(err.message || 'Không thể tải xuống tệp đính kèm');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Không thể tải xuống tệp đính kèm'));
     }
-  }, []);
+  }, [editingItem, pendingAttachments]);
+
+  const handleLoadPreviewAttachment = useCallback(async (attachmentId: string): Promise<Blob | string> => {
+    if (!editingItem?.id) throw new Error('Chưa có ID văn bản');
+    const resp = await api.get(`/v1/legal-documents/${editingItem.id}/attachments/${attachmentId}/download`, {
+      responseType: 'blob',
+    });
+    return resp.data;
+  }, [editingItem]);
 
   const handleHistory = useCallback(async (record: LegalDocumentResponse) => {
     setSelectedHistoryRecord(record);
@@ -330,8 +449,8 @@ export default function LegalDocumentList() {
     setHistoryLoading(true);
     try {
       setHistory(await fetchLegalDocumentHistory(record.id));
-    } catch (err: any) {
-      toast.error(err.message || 'Không thể tải lịch sử văn bản');
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, 'Không thể tải lịch sử văn bản'));
     } finally {
       setHistoryLoading(false);
     }
@@ -381,7 +500,22 @@ export default function LegalDocumentList() {
     { key: 'documentNumber', label: 'Số hiệu văn bản', dataIndex: 'documentNumber', width: 160, sortable: true },
     {
       key: 'documentName', label: 'Tên văn bản pháp lý', dataIndex: 'documentName', width: 280, sortable: true,
-      render: (text: string) => <Typography.Text strong>{text}</Typography.Text>
+      render: (text: string, record: LegalDocumentResponse) => (
+        <div
+          style={{
+            cursor: hasPerm('document:read') ? 'pointer' : 'default',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+          onClick={() => {
+            if (hasPerm('document:read')) handleView(record);
+          }}
+          title={text || ''}
+        >
+          <span style={cellTitleStyle}>{text || '—'}</span>
+        </div>
+      ),
     },
     {
       key: 'issueDate', label: 'Ngày ban hành', dataIndex: 'issueDate', width: 130, sortable: true, align: 'center' as const,
@@ -398,22 +532,35 @@ export default function LegalDocumentList() {
     { key: 'issuingAuthority', label: 'Cơ quan ban hành', dataIndex: 'issuingAuthority', width: 200, sortable: true },
     { key: 'signer', label: 'Người ký', dataIndex: 'signer', width: 140 },
     {
-      key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, align: 'center' as const,
+      key: 'validityStatus', label: 'Trạng thái', dataIndex: 'validityStatus', width: 150, align: 'left' as const,
       render: (val: string) => {
         const color = VALIDITY_STATUS_COLOR[val] || textSecondary;
         const label = VALIDITY_STATUS_MAP[val] || val || '';
-        return <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: spaceXs, padding: `${spaceXs}px ${spaceSm}px`,
-          border: `1px solid ${color}40`, borderRadius: radiusPill, fontSize: fontSizeMd, fontWeight: fontWeightMedium,
-          background: `${color}15`, color,
-        }}>{label}</span>;
-      }
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: spaceXs,
+              padding: '2px 10px',
+              border: `1px solid ${color}40`,
+              borderRadius: radiusPill,
+              fontSize: fontSizeMd,
+              fontWeight: fontWeightMedium,
+              background: `${color}15`,
+              color,
+            }}
+          >
+            {label}
+          </span>
+        );
+      },
     },
     {
       key: 'updatedDate', label: 'Ngày cập nhật', dataIndex: 'updatedDate', width: 150, sortable: true, align: 'center' as const,
       render: (val: string) => formatDate(val)
     },
-  ], [page, pageSize]);
+  ], [page, pageSize, hasPerm, handleView]);
 
   const rowActions = useCallback((record: LegalDocumentResponse) => {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
@@ -447,24 +594,11 @@ export default function LegalDocumentList() {
     <>
       <div style={{ marginBottom: spaceFormField, marginTop: spaceMd }}>
         <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Tìm kiếm</div>
-        <Input placeholder="Tìm theo tên văn bản..." allowClear
+        <Input placeholder="Nhập số hiệu, tên văn bản" allowClear
           value={keywordInput}
+          maxLength={200}
           onChange={(e) => setKeywordInput(e.target.value)}
           onPressEnter={handleFilterSearch}
-          style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Cơ quan</div>
-        <Input placeholder="Cơ quan ban hành..." allowClear
-          value={issuingAuthorityInput}
-          onChange={(e) => setIssuingAuthorityInput(e.target.value)}
-          style={{ borderRadius: radiusPill, height: 40 }} />
-      </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Phạm vi</div>
-        <Input placeholder="Phạm vi áp dụng..." allowClear
-          value={applicationAreaInput}
-          onChange={(e) => setApplicationAreaInput(e.target.value)}
           style={{ borderRadius: radiusPill, height: 40 }} />
       </div>
       <div style={{ marginBottom: spaceFormField }}>
@@ -491,17 +625,46 @@ export default function LegalDocumentList() {
           <Select.Option value="EXPIRED">Đã hết hiệu lực</Select.Option>
         </Select>
       </div>
-      <div style={{ marginBottom: spaceFormField }}>
-        <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Ngày ban hành</div>
-        <DatePicker.RangePicker
-          value={issueDateStartInput && issueDateEndInput ? [dayjs(issueDateStartInput), dayjs(issueDateEndInput)] : null}
-          onChange={(dates) => {
-            setIssueDateStartInput(dates ? dates[0]?.format('YYYY-MM-DD') || null : null);
-            setIssueDateEndInput(dates ? dates[1]?.format('YYYY-MM-DD') || null : null);
-          }}
-          style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-        />
-      </div>
+
+      {/* Bộ lọc nâng cao: chỉ mở khi bấm nút phễu lọc ở footer Sidebar */}
+      {filterCollapsed && (
+        <>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Cơ quan ban hành</div>
+            <Input placeholder="Nhập cơ quan ban hành" allowClear
+              value={issuingAuthorityInput}
+              maxLength={200}
+              onChange={(e) => setIssuingAuthorityInput(e.target.value)}
+              onPressEnter={handleFilterSearch}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Phạm vi áp dụng</div>
+            <Input placeholder="Nhập phạm vi áp dụng" allowClear
+              value={applicationAreaInput}
+              maxLength={100}
+              onChange={(e) => setApplicationAreaInput(e.target.value)}
+              onPressEnter={handleFilterSearch}
+              style={{ borderRadius: radiusPill, height: 40 }} />
+          </div>
+          <div style={{ marginBottom: spaceFormField }}>
+            <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceXs }}>Khoảng ngày ban hành</div>
+            <DatePicker.RangePicker
+              format="DD/MM/YYYY"
+              placeholder={['Từ ngày', 'Đến ngày']}
+              allowClear
+              {...getSidebarRangePickerProps({
+                value: issueDateStartInput && issueDateEndInput ? [dayjs(issueDateStartInput), dayjs(issueDateEndInput)] : null,
+                onChange: (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
+                  setIssueDateStartInput(dates?.[0] ? dates[0].format('YYYY-MM-DD') : null);
+                  setIssueDateEndInput(dates?.[1] ? dates[1].format('YYYY-MM-DD') : null);
+                },
+                style: { width: '100%', borderRadius: radiusPill, height: 40 },
+              })}
+            />
+          </div>
+        </>
+      )}
     </>
   );
 
@@ -518,16 +681,20 @@ export default function LegalDocumentList() {
           ? 'Không tìm thấy văn bản pháp lý nào phù hợp'
           : 'Chưa có văn bản pháp lý nào'} />}
       />
-      {dataSource.length > 0 && (
-        <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
-      )}
+      <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
     </>;
   };
 
   const headerActions = useMemo(() => {
-    const actions: any[] = [];
+    const actions: Array<{
+      key: string;
+      label: string;
+      variant: 'primary' | 'outline' | 'subtle';
+      icon?: React.ReactNode;
+      onClick: () => void;
+    }> = [];
     if (hasPerm('document:create')) {
-      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: handleCreate });
+      actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary', icon: <PlusOutlined />, onClick: handleCreate });
     }
     return actions;
   }, [hasPerm, handleCreate]);
@@ -552,99 +719,255 @@ export default function LegalDocumentList() {
   ] : [];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
-      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Văn bản pháp lý' }]} actions={headerActions} />
-      <FilterTableLayout
-        hideFilterToggle
-        onFilterApply={handleFilterSearch}
-        onFilterReset={handleFilterReset}
-        loading={loading}
-        error={isError}
-        onRetry={loadData}
-        filterContent={filterContent}
-        statusTabs={statusTabs}
-        onStatusTabChange={handleTabChange}
-      >
-        {renderContent()}
-      </FilterTableLayout>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
+      <div className="legal-documents-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <style>{`
+          .legal-documents-page-wrapper,
+          .legal-documents-page-wrapper .ant-table,
+          .legal-documents-page-wrapper .ant-table-cell,
+          .legal-documents-page-wrapper .ant-table-thead > tr > th,
+          .legal-documents-page-wrapper .ant-table-tbody > tr > td,
+          .legal-documents-page-wrapper .ant-input,
+          .legal-documents-page-wrapper .ant-select,
+          .legal-documents-page-wrapper .ant-select-selection-item,
+          .legal-documents-page-wrapper .ant-btn,
+          .legal-documents-page-wrapper .ant-pagination,
+          .legal-documents-page-wrapper .ant-pagination-item,
+          .legal-documents-page-wrapper .ant-pagination-total-text,
+          .legal-documents-page-wrapper .ant-breadcrumb,
+          .legal-documents-page-wrapper .ant-form-item-label > label,
+          .legal-documents-drawer-scope,
+          .legal-documents-drawer-scope .ant-drawer-content,
+          .legal-documents-drawer-scope .ant-tabs-tab,
+          .legal-documents-drawer-scope .chk-detail-label,
+          .legal-documents-drawer-scope .chk-detail-value,
+          .legal-documents-drawer-scope .ant-table,
+          .legal-documents-drawer-scope .ant-table-cell,
+          .legal-documents-drawer-scope .ant-btn,
+          .legal-documents-drawer-scope .ant-select,
+          .legal-documents-drawer-scope .ant-input,
+          .legal-documents-drawer-scope .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
 
-      <Drawer
-        {...drawerProps}
-        width={DRAWER_WIDTH}
-        title={
-          <span style={drawerTitleStyle}>
-            {isViewing
-              ? 'Chi tiết văn bản pháp lý'
-              : (editingItem ? 'Chỉnh sửa văn bản pháp lý' : 'Thêm mới văn bản pháp lý')}
-          </span>
-        }
-        open={isModalOpen}
-        onClose={handleCancel}
-        extra={<Button type="text" onClick={handleCancel} style={drawerCloseBtnStyle}>✕</Button>}
-        footer={
-          isViewing ? null : (
-            <div style={drawerFooterStyle}>
-              <Button onClick={handleCancel} style={outlineButtonStyle}>Hủy</Button>
-              {editingItem?.validityStatus !== 'EXPIRED' && (
-                <Button type="primary" onClick={handleSubmit} loading={submitting} style={primaryButtonStyle}>
-                  {editingItem ? 'Cập nhật' : 'Lưu'}
-                </Button>
-              )}
-            </div>
-          )
-        }
-      >
+          /* Nhãn form Drawer chuẩn KCHT: navy đậm #1a3f83, font-weight 600 */
+          .legal-documents-drawer-scope .ant-form-item-label > label {
+            color: #1a3f83 !important;
+            font-weight: 600 !important;
+            font-size: 13.5px !important;
+          }
+          .legal-documents-drawer-scope .ant-form-item-required::before {
+            display: inline-block !important;
+            margin-left: 4px !important;
+            order: 1 !important;
+          }
+          .legal-documents-drawer-scope .ant-form-item-required::after {
+            display: none !important;
+          }
+
+          /* Input affix wrapper bo tròn viên thuốc cho single-line Input (có showCount) */
+          .legal-documents-drawer-scope .ant-input-affix-wrapper:not(:has(textarea)) {
+            border-radius: 999px !important;
+            height: 40px !important;
+            padding: 0 16px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+          }
+          .legal-documents-drawer-scope .ant-input-affix-wrapper:not(:has(textarea)) > input.ant-input {
+            border-radius: 0 !important;
+            height: 38px !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+          }
+
+          /* Textarea bo tròn thanh lịch 20px chuẩn KCHT, chiều cao tự nhiên 3 dòng, không bị đè chữ */
+          .legal-documents-drawer-scope .ant-input-affix-wrapper:has(textarea),
+          .legal-documents-drawer-scope .ant-input-textarea-affix-wrapper {
+            border-radius: 20px !important;
+            height: auto !important;
+            min-height: 88px !important;
+            padding: 10px 16px 8px 16px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .legal-documents-drawer-scope .ant-input-affix-wrapper:has(textarea) > textarea.ant-input,
+          .legal-documents-drawer-scope .ant-input-textarea-affix-wrapper > textarea.ant-input {
+            border-radius: 0 !important;
+            height: auto !important;
+            min-height: 60px !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            resize: none !important;
+          }
+          .legal-documents-drawer-scope textarea.ant-input:not(.ant-input-affix-wrapper textarea) {
+            border-radius: 20px !important;
+            padding: 10px 16px !important;
+            resize: none !important;
+          }
+          .legal-documents-drawer-scope .ant-input-data-count {
+            font-size: 11px !important;
+            color: #94a3b8 !important;
+            user-select: none !important;
+          }
+
+          /* Ẩn panel thứ 2 cho RangePicker gọn 1 panel tại sidebar */
+          .chk-sidebar-range-datepicker-popup .ant-picker-panel + .ant-picker-panel,
+          .chk-range-datepicker-popup .ant-picker-panel + .ant-picker-panel,
+          .range-single-panel .ant-picker-panel-container .ant-picker-panel:last-child {
+            display: none !important;
+          }
+
+          /* Responsive StatusTabs */
+          .legal-documents-page-wrapper div:has(> button[aria-pressed]) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            justify-content: safe center !important;
+            align-items: center !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: 8px !important;
+            border-radius: 999px !important;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+          }
+          .legal-documents-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+            height: 4px !important;
+          }
+          .legal-documents-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+            background: #f8fafc !important;
+            border-radius: 4px !important;
+          }
+          .legal-documents-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 4px !important;
+          }
+          .legal-documents-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+          }
+          .legal-documents-page-wrapper div:has(> button[aria-pressed]) button[aria-pressed] {
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+          }
+        `}</style>
+        <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Văn bản pháp lý' }]} actions={headerActions} />
+        <FilterTableLayout
+          filterCollapsed={filterCollapsed}
+          onToggleCollapse={() => setFilterCollapsed((v) => !v)}
+          onFilterApply={handleFilterSearch}
+          onFilterReset={handleFilterReset}
+          loading={loading}
+          error={isError}
+          onRetry={loadData}
+          filterContent={filterContent}
+          statusTabs={statusTabs}
+          onStatusTabChange={handleTabChange}
+        >
+          {renderContent()}
+        </FilterTableLayout>
+
+        <AppDrawer
+          width={DRAWER_WIDTH}
+          rootClassName="legal-documents-drawer-scope"
+          className="legal-documents-drawer-scope"
+          title={
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              {isViewing
+                ? 'Chi tiết văn bản pháp lý'
+                : (editingItem ? 'Chỉnh sửa văn bản pháp lý' : 'Thêm mới văn bản pháp lý')}
+            </span>
+          }
+          open={isModalOpen}
+          onClose={handleCancel}
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '0 24px 12px 24px' },
+          }}
+          footer={
+            isViewing ? null : (
+              editingItem?.validityStatus !== 'EXPIRED' && (
+                <>
+                  {!editingItem && (
+                    <Button
+                      onClick={() => handleSubmit(true)}
+                      loading={submitting && isDraftSubmit}
+                      disabled={submitting && !isDraftSubmit}
+                      style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
+                    >
+                      Lưu tạm
+                    </Button>
+                  )}
+                  <Button
+                    type="primary"
+                    onClick={() => handleSubmit(false)}
+                    loading={submitting && !isDraftSubmit}
+                    disabled={submitting && isDraftSubmit}
+                    style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
+                  >
+                    {editingItem ? 'Cập nhật' : 'Lưu'}
+                  </Button>
+                </>
+              )
+            )
+          }
+        >
+          <style>{requiredMarkStyle}</style>
         <Spin spinning={submitting}>
           {isViewing && editingItem ? (
-            <div style={{ paddingTop: spaceMd }}>
-              <div style={{ borderTop: `1px solid ${borderDefault}` }}>
-                {Array.from({ length: Math.ceil(documentDetailItems.length / 2) }, (_, rowIndex) => {
-                  const left = documentDetailItems[rowIndex * 2];
-                  const right = documentDetailItems[rowIndex * 2 + 1];
-                  return (
-                    <div key={`${left?.[0] || 'detail'}-${rowIndex}`} style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr) 180px minmax(0, 1fr)', borderBottom: `1px solid ${borderDefault}` }}>
-                      {[left, right].map((item, itemIndex) => item ? (
-                        <span key={item[0]} style={{ display: 'contents' }}>
-                          <span style={{ ...detailLabelColStyle, width: 'auto', padding: `${spaceSm}px ${spaceFormField}px`, whiteSpace: 'normal' }}>{item[0]}:</span>
-                          <span style={{ ...detailValueStyle, minWidth: 0, padding: `${spaceSm}px ${spaceFormField}px`, color: item[1] === '—' ? textSecondary : textPrimary, wordBreak: 'break-word' }}>{item[1]}</span>
-                        </span>
-                      ) : (
-                        <span key={`empty-${itemIndex}`} style={{ gridColumn: 'span 2' }} />
-                      ))}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Tệp đính kèm trong chế độ xem chi tiết */}
-              <div style={{ marginTop: spaceLg }}>
-                <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>
-                  Tệp đính kèm
-                </div>
-                {editingItem.attachedDocuments && editingItem.attachedDocuments.length > 0 ? (
-                  <div style={{ border: `1px solid ${borderDefault}`, borderRadius: radiusSm, padding: spaceSm }}>
-                    {editingItem.attachedDocuments.map((doc) => (
-                      <div key={doc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderBottom: `1px solid ${borderDefault}` }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm, color: textPrimary, fontSize: fontSizeMd }}>
-                          <FileOutlined style={{ color: actionPrimary }} />
-                          {doc.documentName}
-                        </span>
-                        <Button
-                          type="link"
-                          size="small"
-                          icon={<DownloadOutlined />}
-                          onClick={() => handleDownloadAttachment(editingItem.id, doc.id, doc.documentName)}
-                        >
-                          Tải về
-                        </Button>
+            <Tabs
+              activeKey={drawerTabKey}
+              onChange={setDrawerTabKey}
+              tabBarStyle={drawerTabsStyle}
+              items={[
+                {
+                  key: 'general',
+                  label: 'Thông tin chung',
+                  children: (
+                    <div style={{ paddingTop: spaceMd }}>
+                      <div style={{ borderTop: `1px solid ${borderDefault}` }}>
+                        {Array.from({ length: Math.ceil(documentDetailItems.length / 2) }, (_, rowIndex) => {
+                          const left = documentDetailItems[rowIndex * 2];
+                          const right = documentDetailItems[rowIndex * 2 + 1];
+                          return (
+                            <div key={`${left?.[0] || 'detail'}-${rowIndex}`} style={{ display: 'grid', gridTemplateColumns: '180px minmax(0, 1fr) 180px minmax(0, 1fr)', borderBottom: `1px solid ${borderDefault}` }}>
+                              {[left, right].map((item, itemIndex) => item ? (
+                                <span key={item[0]} style={{ display: 'contents' }}>
+                                  <span style={{ ...detailLabelColStyle, width: 'auto', padding: `${spaceSm}px ${spaceFormField}px`, whiteSpace: 'normal' }}>{item[0]}:</span>
+                                  <span style={{ ...detailValueStyle, minWidth: 0, padding: `${spaceSm}px ${spaceFormField}px`, color: item[1] === '—' ? textSecondary : textPrimary, wordBreak: 'break-word' }}>{item[1]}</span>
+                                </span>
+                              ) : (
+                                <span key={`empty-${itemIndex}`} style={{ gridColumn: 'span 2' }} />
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ color: textTertiary, fontSize: fontSizeMd, fontStyle: 'italic' }}>Không có tệp đính kèm nào.</div>
-                )}
-              </div>
-            </div>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'attachments',
+                  label: `Tệp đính kèm (${combinedAttachments.length})`,
+                  children: (
+                    <InfrastructureAttachmentTab
+                      attachments={combinedAttachments}
+                      readonly={true}
+                      onDownload={handleDownloadAttachment}
+                      loadPreviewAttachment={handleLoadPreviewAttachment}
+                      emptyText="Chưa có tệp đính kèm nào"
+                    />
+                  ),
+                },
+              ]}
+            />
           ) : (
             <>
               {editingItem?.validityStatus === 'EXPIRED' && (
@@ -656,141 +979,120 @@ export default function LegalDocumentList() {
                   style={{ marginTop: 8, marginBottom: 8 }}
                 />
               )}
-              <Form form={form} layout="vertical" disabled={editingItem?.validityStatus === 'EXPIRED'} style={{ marginTop: 16 }}>
-                <Row gutter={[spaceLg, 0]}>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="documentNumber" label="Số hiệu văn bản" rules={[{ required: true, message: 'Vui lòng nhập số hiệu' }]}
-                      style={{ marginBottom: spaceFormField }}>
-                      <Input placeholder="Số hiệu văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="documentName" label="Tên văn bản" rules={[{ required: true, message: 'Vui lòng nhập tên văn bản' }]}
-                      style={{ marginBottom: spaceFormField }}>
-                      <Input placeholder="Nhập tiêu đề văn bản..." style={{ borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="documentType" label="Loại văn bản" rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
-                      style={{ marginBottom: spaceFormField }}>
-                      <Select placeholder="Chọn loại văn bản..." style={{ borderRadius: radiusPill, height: 40 }}>
-                        <Select.Option value="LAW">Luật</Select.Option>
-                        <Select.Option value="DECREE">Nghị định</Select.Option>
-                        <Select.Option value="CIRCULAR">Thông tư</Select.Option>
-                        <Select.Option value="DECISION">Quyết định</Select.Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="issuingAuthority" label="Cơ quan ban hành" rules={[{ required: true, message: 'Vui lòng nhập cơ quan ban hành' }]}
-                      style={{ marginBottom: spaceFormField }}>
-                      <Input placeholder="Cơ quan ban hành..." style={{ borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="signer" label="Người ký" style={{ marginBottom: spaceFormField }}>
-                      <Input placeholder="Người ký (nếu có)..." style={{ borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="issueDate" label="Ngày ban hành" rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
-                      style={{ marginBottom: spaceFormField }}>
-                      <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="effectiveDate" label="Ngày có hiệu lực" rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
-                      style={{ marginBottom: spaceFormField }}>
-                      <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24} md={12}>
-                    <Form.Item name="expirationDate" label="Ngày hết hiệu lực" style={{ marginBottom: spaceFormField }}>
-                      <DatePicker style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24}>
-                    <Form.Item name="applicationArea" label="Phạm vi áp dụng" style={{ marginBottom: spaceFormField }}>
-                      <Input placeholder="Phạm vi áp dụng..." style={{ borderRadius: radiusPill, height: 40 }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24}>
-                    <Form.Item name="description" label="Mô tả" style={{ marginBottom: spaceFormField }}>
-                      <Input.TextArea placeholder="Mô tả..." rows={3} style={{ borderRadius: radiusSm }} />
-                    </Form.Item>
-                  </Col>
-                  <Col xs={24}>
-                    <Form.Item label="Tệp đính kèm" style={{ marginBottom: spaceFormField }}>
-                      <Dragger name="file" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                        beforeUpload={(file) => {
-                          if (file.size > 10 * 1024 * 1024) { toast.error('Kích thước mỗi tệp không được vượt quá 10MB'); return Upload.LIST_IGNORE; }
-                          return true;
-                        }}
-                        fileList={attachedFileList}
-                        showUploadList={{ showPreviewIcon: true, showRemoveIcon: true, showDownloadIcon: true }}
-                        onRemove={async (file) => {
-                          if (!editingItem?.id) {
-                            setPendingAttachments((prev) => prev.filter((f) => f.uid !== file.uid));
-                            return true;
-                          }
-                          try {
-                            await deleteLegalDocumentAttachment(editingItem.id, file.uid);
-                            setEditingItem((prev) => prev ? {
-                              ...prev,
-                              attachedDocuments: (prev.attachedDocuments || []).filter((d) => d.id !== file.uid),
-                            } : prev);
-                            setPendingAttachments((prev) => prev.filter((f) => f.uid !== file.uid));
-                            toast.success(`Đã xóa tệp: ${file.name}`);
-                            return true;
-                          } catch (err: any) {
-                            toast.error(err.message || 'Lỗi khi xóa tệp đính kèm');
-                            return false;
-                          }
-                        }}
-                        onDownload={(file) => {
-                          if (editingItem?.id) {
-                            handleDownloadAttachment(editingItem.id, file.uid, file.name);
-                          }
-                        }}
-                        customRequest={async (options: any) => {
-                          const { file, onSuccess, onError } = options;
-                          const rcFile = file as RcFile;
-                          if (!editingItem?.id) {
-                            setPendingAttachments((current) => [...current, {
-                              uid: rcFile.uid || String(Date.now()),
-                              name: rcFile.name,
-                              status: 'done' as const,
-                              originFileObj: rcFile,
-                              size: rcFile.size,
-                            }]);
-                            onSuccess?.({}, file);
-                            return;
-                          }
-                          try {
-                            const result = await uploadLegalDocumentAttachment(editingItem.id, rcFile);
-                            if (result) {
-                              setEditingItem((prev) => prev ? {
-                                ...prev,
-                                attachedDocuments: [...(prev.attachedDocuments || []), result],
-                              } : prev);
-                            }
-                            onSuccess?.(result, file);
-                            toast.success(`Đã tải lên: ${rcFile.name}`);
-                          } catch (err: any) { onError?.(err); toast.error(`Lỗi tải lên: ${err?.message || 'Không xác định'}`); }
-                        }}
-                      >
-                        <p className="ant-upload-drag-icon"><InboxOutlined /></p>
-                        <p className="ant-upload-text">Nhấp hoặc kéo thả tệp vào đây</p>
-                        <p className="ant-upload-hint">Hỗ trợ PDF, Word, ảnh. Tối đa 10MB/tệp.</p>
-                      </Dragger>
-                    </Form.Item>
-                  </Col>
-                </Row>
+              <Form form={form} layout="vertical" disabled={editingItem?.validityStatus === 'EXPIRED'} style={{ marginTop: 8 }}>
+                <Tabs
+                  activeKey={drawerTabKey}
+                  onChange={setDrawerTabKey}
+                  tabBarStyle={drawerTabsStyle}
+                  items={[
+                    {
+                      key: 'general',
+                      label: 'Thông tin chung',
+                      children: (
+                        <div style={{ paddingTop: spaceMd }}>
+                          <Row gutter={[spaceLg, 0]}>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="documentNumber" {...labelProps('Số hiệu văn bản')} rules={[
+                                { required: true, message: 'Vui lòng nhập số hiệu văn bản' },
+                                { max: 50, message: 'Số hiệu văn bản không được vượt quá 50 ký tự' },
+                              ]}
+                                style={{ marginBottom: spaceFormField }}>
+                                <Input placeholder="Nhập số hiệu văn bản" maxLength={50} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="documentName" {...labelProps('Tên văn bản')} rules={[
+                                { required: true, message: 'Vui lòng nhập tên văn bản' },
+                                { max: 200, message: 'Tên văn bản không được vượt quá 200 ký tự' },
+                              ]}
+                                style={{ marginBottom: spaceFormField }}>
+                                <Input placeholder="Nhập tên văn bản" maxLength={200} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="documentType" {...labelProps('Loại văn bản')} rules={[{ required: true, message: 'Vui lòng chọn loại văn bản' }]}
+                                style={{ marginBottom: spaceFormField }}>
+                                <Select placeholder="Chọn loại văn bản" style={{ borderRadius: radiusPill, height: 40 }}>
+                                  <Select.Option value="LAW">Luật</Select.Option>
+                                  <Select.Option value="DECREE">Nghị định</Select.Option>
+                                  <Select.Option value="CIRCULAR">Thông tư</Select.Option>
+                                  <Select.Option value="DECISION">Quyết định</Select.Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="issuingAuthority" {...labelProps('Cơ quan ban hành')} rules={[
+                                { required: true, message: 'Vui lòng nhập cơ quan ban hành' },
+                                { max: 200, message: 'Cơ quan ban hành không được vượt quá 200 ký tự' },
+                              ]}
+                                style={{ marginBottom: spaceFormField }}>
+                                <Input placeholder="Nhập cơ quan ban hành" maxLength={200} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="signer" {...labelProps('Người ký')} rules={[
+                                { max: 100, message: 'Người ký không được vượt quá 100 ký tự' },
+                              ]} style={{ marginBottom: spaceFormField }}>
+                                <Input placeholder="Nhập người ký" maxLength={100} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="issueDate" {...labelProps('Ngày ban hành')} rules={[{ required: true, message: 'Vui lòng chọn ngày ban hành' }]}
+                                style={{ marginBottom: spaceFormField }}>
+                                <DatePicker placeholder="Chọn ngày ban hành" {...getDatePickerProps({ style: { width: '100%', borderRadius: radiusPill, height: 40 } })} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="effectiveDate" {...labelProps('Ngày có hiệu lực')} rules={[{ required: true, message: 'Vui lòng chọn ngày có hiệu lực' }]}
+                                style={{ marginBottom: spaceFormField }}>
+                                <DatePicker placeholder="Chọn ngày có hiệu lực" {...getDatePickerProps({ style: { width: '100%', borderRadius: radiusPill, height: 40 } })} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24} md={12}>
+                              <Form.Item name="expirationDate" {...labelProps('Ngày hết hiệu lực')} style={{ marginBottom: spaceFormField }}>
+                                <DatePicker placeholder="Chọn ngày hết hiệu lực" {...getDatePickerProps({ style: { width: '100%', borderRadius: radiusPill, height: 40 } })} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24}>
+                              <Form.Item name="applicationArea" {...labelProps('Phạm vi áp dụng')} rules={[
+                                { max: 100, message: 'Phạm vi áp dụng không được vượt quá 100 ký tự' },
+                              ]} style={{ marginBottom: spaceFormField }}>
+                                <Input placeholder="Nhập phạm vi áp dụng" maxLength={100} showCount style={{ borderRadius: radiusPill, height: 40 }} />
+                              </Form.Item>
+                            </Col>
+                            <Col xs={24}>
+                              <Form.Item name="description" {...labelProps('Mô tả')} rules={[
+                                { max: 500, message: 'Mô tả không được vượt quá 500 ký tự' },
+                              ]} style={{ marginBottom: spaceFormField }}>
+                                <Input.TextArea placeholder="Nhập mô tả" rows={3} style={textAreaStyle} maxLength={500} showCount />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'attachments',
+                      label: `Tệp đính kèm (${combinedAttachments.length})`,
+                      children: (
+                        <InfrastructureAttachmentTab
+                          attachments={combinedAttachments}
+                          readonly={editingItem?.validityStatus === 'EXPIRED'}
+                          onUpload={handleAttachmentUpload}
+                          onDelete={handleAttachmentDelete}
+                          onDownload={handleDownloadAttachment}
+                          loadPreviewAttachment={handleLoadPreviewAttachment}
+                          emptyText="Chưa có tệp đính kèm nào"
+                        />
+                      ),
+                    },
+                  ]}
+                />
               </Form>
             </>
           )}
         </Spin>
-      </Drawer>
+      </AppDrawer>
 
       <CommonHistoryDrawer
         open={historyOpen}
@@ -804,5 +1106,6 @@ export default function LegalDocumentList() {
         loading={historyLoading}
       />
     </div>
-  );
+  </ThemeTokenProvider>
+);
 }

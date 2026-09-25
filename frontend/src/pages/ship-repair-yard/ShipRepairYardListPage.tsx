@@ -26,6 +26,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import api from '../../services/api';
 import type { Organization } from '../../services/organizationService';
 import { organizationService } from '../../services/organizationService';
@@ -80,7 +81,13 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import type { ShipRepairYard } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
-import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+import {
+  countStandardHistoryCards,
+  getStandardHistoryCards,
+  isBlankOrDash,
+  renderStandardHistoryCards,
+  type ChangeHistoryRendererOptions,
+} from '../../utils/changeHistoryRenderer';
 
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import ShipRepairYardForm from './ShipRepairYardForm';
@@ -1785,70 +1792,23 @@ checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) |
           closeEmbeddedAction();
         }}
         footer={
-          <div style={drawerFooterStyle}>
-            {(() => {
-              const isCreate = !editShipRepairYardId;
-              const st = isCreate ? 'DRAFT' : (editBaseStatus ? String(editBaseStatus).toUpperCase() : 'DRAFT');
-              if (!isCreate && st === 'APPROVED') {
-                return canSaveAndApprove ? (
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
-                    loading={submitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                ) : null;
-              }
-              if (!isCreate && (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st === 'REJECTED' || st === 'TU_CHOI')) {
-                return (
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); shipRepairYardFormRef.current?.submit('SUBMIT'); }}
-                    loading={submitting && actionType === 'submit'}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                );
-              }
-              return (
-                <>
-                  <Button
-                    htmlType="button"
-                    onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); shipRepairYardFormRef.current?.submit('DRAFT'); }}
-                    loading={submitting && actionType === 'draft'}
-                    style={outlineButtonStyle}
-                  >
-                    Lưu tạm
-                  </Button>
-                  <Button
-                    htmlType="button"
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); shipRepairYardFormRef.current?.submit('SUBMIT'); }}
-                    loading={submitting && actionType === 'submit'}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                  {(isCreate || canSaveAndApprove) && (
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); shipRepairYardFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+          <KchtFormFooter
+            mode={editShipRepairYardId ? 'edit' : 'create'}
+            resource="shiprepairyard"
+            record={editShipRepairYardId ? { approvalStatus: editBaseStatus } : undefined}
+            loading={submitting}
+            activeAction={actionType as any}
+            onCancel={() => {
+              setCreateDrawerVisible(false);
+              createForm.resetFields();
+              closeEmbeddedAction();
+            }}
+            onSubmit={(action) => {
+              actionTypeRef.current = action;
+              setActionType(action);
+              shipRepairYardFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+            }}
+          />
         }
         styles={{
           header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

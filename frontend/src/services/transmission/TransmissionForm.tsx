@@ -34,6 +34,8 @@ import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { Symbol as MapSymbol } from '../symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import {
   GEOMETRY_POINT_COUNT,
   parseWktToCoordinates,
@@ -293,6 +295,8 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const [existingStatus, setExistingStatus] = useState<string | null>(initialData?.approvalStatus || null);
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
@@ -551,7 +555,11 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       populate(initialData);
     } else {
       fetchTransmissionById(id)
-        .then((data) => populate(data))
+        .then((data) => {
+          if (!isMounted) return;
+          setExistingStatus(data.approvalStatus);
+          populate(data);
+        })
         .catch(() => toast.error('Không thể tải thông tin hệ thống truyền dẫn'));
     }
 
@@ -770,9 +778,30 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
       const currentCoordSystem = values.coordinateSystem ?? form.getFieldValue('coordinateSystem');
       const currentDisplayRule = values.displayRule ?? form.getFieldValue('displayRule');
 
+      const wasApproved = isEdit && (existingStatus === 'APPROVED' || existingStatus === 'APPROVED_LEVEL2' || existingStatus === 'APPROVED_L2' || existingStatus === 'PUBLISHED');
+      if (wasApproved) {
+        const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj) || pendingDeletedIds.length > 0;
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          return;
+        }
+      }
+
       try {
         let targetId = id;
         if (isEdit && id) {
+          const isCuc = isCucLevelUser(currentUser);
+          let targetApprovalStatus: string | undefined = undefined;
+          if (wasApproved) {
+            if (action === 'submit') {
+              targetApprovalStatus = 'PENDING_APPROVAL';
+            } else if (action === 'approve') {
+              targetApprovalStatus = (isCuc && hasPerm('transmission:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+            }
+          } else if (action === 'approve') {
+            targetApprovalStatus = (isCuc && hasPerm('transmission:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+          }
+
           const updatePayload: UpdateTransmissionRequest = {
             id,
             deviceName: String(values.deviceName ?? '').trim(),
@@ -796,7 +825,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
             coordinateSystem: currentGeometryType && currentCoordSystem != null ? Number(currentCoordSystem) : null,
             coordinates: currentGeometryType ? (coordinatesWkt || null) : null,
             displayRule: currentGeometryType && currentDisplayRule != null ? (typeof currentDisplayRule === 'number' ? currentDisplayRule : 1) : null,
-            ...(action === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
+            ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
           };
 
           await updateTransmission(updatePayload);
@@ -819,7 +848,7 @@ const TransmissionForm = forwardRef<TransmissionFormRef, TransmissionFormProps>(
           }
 
           // Nếu chọn "Lưu và gửi phê duyệt" trong chế độ sửa
-          if (action === 'submit') {
+          if (action === 'submit' && !wasApproved) {
             await submitTransmission(id);
           }
         } else {

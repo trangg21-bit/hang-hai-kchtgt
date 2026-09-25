@@ -51,7 +51,8 @@ import NumberInputWithCount from "../../components/shared/NumberInputWithCount";
 import { ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
-import { useKchtPermissions } from "../../hooks/useKchtPermissions";
+import { useKchtPermissions, isCucLevelUser } from "../../hooks/useKchtPermissions";
+import { KchtFormFooter, type KchtFormActionType } from "../../components/kcht/KchtFormFooter";
 import * as themeTokenChk from "../../themetokenchk";
 import {
     actionPrimary,
@@ -1192,8 +1193,8 @@ const VtsAssistListPage = () => {
   const [createLoading, setCreateLoading] = useState(false);
   const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
   // Hành động footer create (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
-  const [createActionType, setCreateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
-  const createActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const [createActionType, setCreateActionType] = useState<KchtFormActionType>('draft');
+  const createActionTypeRef = useRef<KchtFormActionType>('draft');
 
   // Reactive watch for attached infrastructure dropdown
   const createAttachedType = Form.useWatch('attachedInfrastructureType', createForm);
@@ -1231,8 +1232,8 @@ const VtsAssistListPage = () => {
   const [updateForm] = Form.useForm();
   const [updateLoading, setUpdateLoading] = useState(false);
   // Hành động footer update (chuẩn VTS): Lưu tạm / Lưu và gửi phê duyệt / Lưu và phê duyệt
-  const [updateActionType, setUpdateActionType] = useState<'draft' | 'submit' | 'approve'>('draft');
-  const updateActionTypeRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const [updateActionType, setUpdateActionType] = useState<KchtFormActionType>('draft');
+  const updateActionTypeRef = useRef<KchtFormActionType>('draft');
 
   // "Lưu và phê duyệt" (hồ sơ Đã duyệt) dùng chung một nguồn quyền với /vts-system:
   // kchtPerms.canSaveAndApprove đã bao gồm isCucLevel && hasApproveL2Perm.
@@ -3057,6 +3058,28 @@ const VtsAssistListPage = () => {
         // Chuẩn VTS: Lưu tạm (chỉ update) / Lưu và gửi phê duyệt (update + submit) /
         // Lưu và phê duyệt (update + giữ Đã phê duyệt — T12 backend)
         const currentAction = updateActionTypeRef.current;
+        const wasApproved = updateTarget.approvalStatus === 'APPROVED' || updateTarget.approvalStatus === 'APPROVED_LEVEL2' || updateTarget.approvalStatus === 'APPROVED_L2' || updateTarget.approvalStatus === 'PUBLISHED';
+        if (wasApproved) {
+          const isDirty = updateForm.isFieldsTouched() || uploadFileList.some((fi: any) => !!fi.file || !!fi.originFileObj);
+          if (!isDirty) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            setUpdateLoading(false);
+            return;
+          }
+        }
+
+        const isCuc = isCucLevelUser(currentUser);
+        let targetApprovalStatus: string | undefined = undefined;
+        if (wasApproved) {
+          if (currentAction === 'submit') {
+            targetApprovalStatus = 'PENDING_APPROVAL';
+          } else if (currentAction === 'approve') {
+            targetApprovalStatus = (isCuc && hasPerm('vtsassist:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+          }
+        } else if (currentAction === 'approve') {
+          targetApprovalStatus = (isCuc && hasPerm('vtsassist:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+
         const updatePayload: UpdateVtsAssistRequest = {
           id: updateTarget.id,
           deviceName: String(values.deviceName ?? '').trim(),
@@ -3085,7 +3108,7 @@ const VtsAssistListPage = () => {
           displayRule: hasGeom ? (values.displayRule != null ? Number(values.displayRule) || null : null) : null,
           spatialId: hasGeom ? (values.spatialId ? String(values.spatialId) : null) : null,
           objectType: hasGeom ? (values.objectType != null ? Number(values.objectType) : null) : null,
-          ...(currentAction === 'approve' ? { approvalStatus: 'APPROVED' } : {}),
+          ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
         };
         await updateVtsAssist(updatePayload);
         if (uploadFileList.length > 0) {
@@ -3093,7 +3116,7 @@ const VtsAssistListPage = () => {
             if (f?.file) await uploadVtsAssistAttachment(updateTarget.id, f.file);
           }
         }
-        if (currentAction === 'submit') {
+        if (currentAction === 'submit' && !wasApproved) {
           await submitVtsAssist(updateTarget.id);
         }
         toast.success(
@@ -4395,33 +4418,17 @@ const VtsAssistListPage = () => {
           setUploadFileList([]);
         }}
         footer={
-          <>
-            <Button
-              onClick={() => { createActionTypeRef.current = 'draft'; setCreateActionType('draft'); createForm.submit(); }}
-              loading={createLoading && createActionType === 'draft'}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu tạm
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => { createActionTypeRef.current = 'submit'; setCreateActionType('submit'); createForm.submit(); }}
-              loading={createLoading && createActionType === 'submit'}
-              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu và gửi phê duyệt
-            </Button>
-            {kchtPerms.canSaveAndApprove && (
-              <Button
-                type="primary"
-                onClick={() => { createActionTypeRef.current = 'approve'; setCreateActionType('approve'); createForm.submit(); }}
-                loading={createLoading && createActionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            )}
-          </>
+          <KchtFormFooter
+            mode="create"
+            resource="vtsassist"
+            loading={createLoading}
+            activeAction={createActionType}
+            onSubmit={(act) => {
+              createActionTypeRef.current = act;
+              setCreateActionType(act);
+              createForm.submit();
+            }}
+          />
         }
         styles={{
           header: {
@@ -4931,38 +4938,18 @@ const VtsAssistListPage = () => {
           setUploadFileList([]);
         }}
         footer={
-          <>
-            {updateTarget?.approvalStatus !== 'APPROVED' && kchtPerms.hasUpdatePerm && (
-              <Button
-                onClick={() => { updateActionTypeRef.current = 'draft'; setUpdateActionType('draft'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'draft'}
-                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu tạm
-              </Button>
-            )}
-            {(updateTarget?.approvalStatus === 'DRAFT' || updateTarget?.approvalStatus === 'REJECTED_LEVEL1' || updateTarget?.approvalStatus === 'REJECTED_LEVEL2' || updateTarget?.approvalStatus === 'REJECTED') &&
-              kchtPerms.hasUpdatePerm && (
-              <Button
-                type="primary"
-                onClick={() => { updateActionTypeRef.current = 'submit'; setUpdateActionType('submit'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'submit'}
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-            )}
-            {updateTarget?.approvalStatus === 'APPROVED' && kchtPerms.canSaveAndApprove && (
-              <Button
-                type="primary"
-                onClick={() => { updateActionTypeRef.current = 'approve'; setUpdateActionType('approve'); updateForm.submit(); }}
-                loading={updateLoading && updateActionType === 'approve'}
-                style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            )}
-          </>
+          <KchtFormFooter
+            mode="edit"
+            resource="vtsassist"
+            record={updateTarget}
+            loading={updateLoading}
+            activeAction={updateActionType}
+            onSubmit={(act) => {
+              updateActionTypeRef.current = act;
+              setUpdateActionType(act);
+              updateForm.submit();
+            }}
+          />
         }
         styles={{
           header: {

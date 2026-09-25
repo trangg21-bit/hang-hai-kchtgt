@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
 import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.validator.Decimal20_4;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -48,6 +49,12 @@ public class DikeRevetmentUpdateRequest extends FieldPresenceTrackedRequest {
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID symbolId;
+    private ApprovalStatus approvalStatus;
+
+    public void setApprovalStatus(ApprovalStatus approvalStatus) {
+        markFieldPresent("approvalStatus");
+        this.approvalStatus = approvalStatus;
+    }
 
     public void setDikeRevetmentType(DikeRevetmentType dikeRevetmentType) {
         markFieldPresent("dikeRevetmentType");

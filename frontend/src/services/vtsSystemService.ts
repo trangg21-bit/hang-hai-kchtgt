@@ -61,11 +61,12 @@ export const vtsSystemCRUD = {
     return DEFAULT_OPERATING_ORGANIZATIONS;
   },
 
-  async getOptions(params?: { orgUnitId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string }>> {
+  async getOptions(params?: { orgUnitId?: string; portId?: string }): Promise<Array<{ id: string; name: string; code?: string; orgUnitId?: string; portId?: string }>> {
     try {
       const res = await api.get(`${VTS_BASE_PATH}/options`, {
         params: {
           orgUnitId: params?.orgUnitId,
+          portId: params?.portId,
         },
       });
       const data = res.data?.data ?? res.data;
@@ -75,13 +76,14 @@ export const vtsSystemCRUD = {
           name: s.name || s.systemName || s.code || '',
           code: s.code || '',
           orgUnitId: s.orgUnitId ? String(s.orgUnitId) : undefined,
+          portId: s.portId ? String(s.portId) : undefined,
         }));
       }
       return [];
     } catch {
       try {
         const res = await api.get(VTS_BASE_PATH, {
-          params: { size: 1000, orgUnitId: params?.orgUnitId, includeCounts: false },
+          params: { size: 1000, orgUnitId: params?.orgUnitId, portId: params?.portId, includeCounts: false },
         });
         const data = res.data?.data?.items || res.data?.items;
         return Array.isArray(data)
@@ -90,6 +92,7 @@ export const vtsSystemCRUD = {
               name: s.systemName || s.name || s.code || '',
               code: s.code || '',
               orgUnitId: s.orgUnitId ? String(s.orgUnitId) : undefined,
+              portId: s.portId ? String(s.portId) : undefined,
             }))
           : [];
       } catch {

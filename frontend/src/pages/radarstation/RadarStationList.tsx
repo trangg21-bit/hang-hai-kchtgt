@@ -64,6 +64,7 @@ import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import { VIETNAM_PROVINCE_OPTIONS, getProvinceLabel } from '../../types/common';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
 import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import { formLabelProps as labelProps } from '../../components/shared/formLabel';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import DetailTable from '../../components/shared/DetailTable';
@@ -2040,7 +2041,29 @@ export default function RadarStationList() {
         return res !== undefined ? res : (isEdit ? null : undefined);
       };
 
-      const isCuc = isCucLevelUser(currentUser);
+      if (editingIsApproved) {
+        const isDirty =
+          createForm.isFieldsTouched() ||
+          uploadedFiles.some((f) => f.originFileObj) ||
+          pendingDeletedAttachmentIds.length > 0;
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      let targetApprovalStatus: string | undefined = undefined;
+      if (editingIsApproved) {
+        if (mode === 'submit') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (mode === 'approve') {
+          targetApprovalStatus = (isCuc && hasPerm('radarstation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (mode === 'approve') {
+        targetApprovalStatus = (isCuc && hasPerm('radarstation:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+
       const payload: CreateRadarStationRequest = {
         stationName: cleanString(values.stationName) ?? '',
         location: cleanString(values.location) ?? '',
@@ -2062,7 +2085,7 @@ export default function RadarStationList() {
         coordinates: hasGeom ? coordinates : (isEdit ? null : null),
         mapIcon: hasGeom && currentMapIcon ? currentMapIcon : (isEdit ? null : null),
         action: mode === 'approve' ? 'approve' : mode === 'submit' ? 'submit' : 'draft',
-        approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? ((hasPerm('radarstation:approvec1') || isCuc) ? 'APPROVED_LEVEL1' : 'PENDING_APPROVAL') : 'DRAFT',
+        approvalStatus: targetApprovalStatus || (mode === 'approve' ? 'APPROVED' : mode === 'submit' ? ((hasPerm('radarstation:approvec1') || isCuc) ? 'APPROVED_LEVEL1' : 'PENDING_APPROVAL') : 'DRAFT'),
       };
       let savedId: string | null = null;
       if (editingRecord) {
@@ -2075,12 +2098,14 @@ export default function RadarStationList() {
         for (const file of newFiles) {
           try { await radarStationAttachment.upload(editingRecord.id, file); } catch { /* ignore */ }
         }
-        if (mode === 'submit' && savedId) {
+        if (mode === 'submit' && savedId && !editingIsApproved) {
           await radarStationApproval.submitForApproval(savedId);
           toast.success('Đã cập nhật và gửi phê duyệt trạm radar');
         } else if (mode === 'approve') {
           // Ca sử dụng 8: Khi sửa bản ghi đã duyệt, backend giữ nguyên APPROVED và ghi nhật ký thay đổi
           toast.success('Lưu và phê duyệt trạm radar thành công');
+        } else if (mode === 'submit') {
+          toast.success('Lưu và gửi phê duyệt trạm radar thành công');
         } else {
           toast.success('Đã lưu tạm trạm radar');
         }
@@ -3824,80 +3849,18 @@ export default function RadarStationList() {
           body: { padding: '0 24px 12px 24px' },
         }}
         footer={
-          isDetailMode ? null : editingRecord ? (
-            // Ca sử dụng 8 (approval-2-level-spec.md 3.9) — bộ nút chân form theo trạng thái hồ sơ:
-            editingIsApproved ? (
-              canSaveAndApprove ? (
-                <div style={drawerFooterStyle}>
-                  <Button
-                    type="primary"
-                    onClick={() => handleSubmit('approve')}
-                    loading={submitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                </div>
-              ) : null
-            ) : (
-              <div style={drawerFooterStyle}>
-                <Button
-                  onClick={() => handleSubmit('save')}
-                  loading={submitting && actionType === 'save'}
-                  style={outlineButtonStyle}
-                >
-                  Lưu tạm
-                </Button>
-                {editingCanResubmit && (
-                  <Button
-                    type="primary"
-                    onClick={() => handleSubmit('submit')}
-                    loading={submitting && actionType === 'submit'}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                )}
-                {canSaveAndApprove && (
-                  <Button
-                    type="primary"
-                    onClick={() => handleSubmit('approve')}
-                    loading={submitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </div>
-            )
-          ) : (
-            <div style={drawerFooterStyle}>
-              <Button
-                onClick={() => handleSubmit('save')}
-                loading={submitting && actionType === 'save'}
-                style={outlineButtonStyle}
-              >
-                Lưu tạm
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => handleSubmit('submit')}
-                loading={submitting && actionType === 'submit'}
-                style={primaryButtonStyle}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-              {canSaveAndApprove && (
-                <Button
-                  type="primary"
-                  onClick={() => handleSubmit('approve')}
-                  loading={submitting && actionType === 'approve'}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                >
-                  Lưu và phê duyệt
-                </Button>
-              )}
-            </div>
+          isDetailMode ? null : (
+            <KchtFormFooter
+              mode={editingRecord ? 'edit' : 'create'}
+              resource="radarstation"
+              record={editingRecord}
+              loading={submitting}
+              activeAction={actionType === 'save' ? 'draft' : actionType as any}
+              onCancel={closeDrawer}
+              onSubmit={(action) => {
+                handleSubmit(action === 'draft' ? 'save' : action);
+              }}
+            />
           )
         }
       >

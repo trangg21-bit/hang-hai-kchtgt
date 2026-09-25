@@ -182,7 +182,7 @@ export function useKchtPermissions(
     return canEditApprovalRecord(record.approvalStatus, {
       hasPerm,
       resource,
-      allowEditApproved: isCucLevel,
+      allowEditApproved: (isCucLevel && hasApproveL2Perm) || hasApproveL1Perm,
     });
   };
 
@@ -221,7 +221,7 @@ export function useKchtPermissions(
     const st = normalizeApprovalStatus(record.approvalStatus);
     const isApprovedL1 = st === 'APPROVED_LEVEL1';
     if (!isApprovedL1) return false;
-    return hasApproveL2Perm && (!isApproverL1(record) || isCucLevel) && (!isCreator(record) || isCucLevel);
+    return hasApproveL2Perm && (!isApproverL1(record) || isCucLevel);
   };
 
   const canReject = (record?: KchtRecordLike | null): boolean => {

@@ -40,6 +40,7 @@ import { usePermissionStore } from "../../store/permissionStore";
 import { VIETNAM_PROVINCES } from "../../types/common";
 import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
+import { KchtFormFooter } from "../../components/kcht/KchtFormFooter";
 import {
     ddToDms,
     parseWktToCoordinates,
@@ -2606,8 +2607,9 @@ const ScadaListPage = () => {
                             { label: 'Mã thiết bị', value: selectedRecord.deviceCode || null, badge: true },
                             { label: 'Tên thiết bị', value: selectedRecord.deviceName || null, bold: true },
                             { label: 'Đơn vị quản lý', value: selectedRecord.orgUnitName || null, bold: true },
-                            { label: 'Thuộc TTDH VTS / Trạm radar', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Đơn vị khai thác', value: selectedRecord.operatingUnitName || null },
+                            { label: 'Thuộc loại hạ tầng', value: selectedRecord.attachedInfrastructureType === 1 ? 'TTDH VTS' : selectedRecord.attachedInfrastructureType === 2 ? 'Trạm radar' : null },
+                            { label: 'Thuộc hạ tầng', value: selectedRecord.attachedInfrastructureName || null },
                             { label: 'Tỉnh / Thành phố', value: selectedRecord.provinceName || null },
                             { label: 'Tình trạng', value: (() => { if (!selectedRecord.operationalStatus) return null; const stMap: Record<string, { color: string; label: string }> = { 'NOT_YET_OPERATIONAL': { color: 'orange', label: 'Chưa khai thác/vận hành' }, 'OPERATIONAL': { color: 'green', label: 'Đang khai thác/vận hành' }, 'SUSPENDED': { color: 'red', label: 'Dừng khai thác/vận hành' } }; const st = stMap[String(selectedRecord.operationalStatus).toUpperCase()]; return st ? renderScadaStatusBadge(st) : null; })() },
                             { label: 'Địa điểm chi tiết', value: selectedRecord.detailedLocation || null },
@@ -3329,49 +3331,21 @@ const ScadaListPage = () => {
         }}
         footer={
           <div style={drawerFooterStyle}>
-            <Button
-              onClick={() => {
-                actionTypeRef.current = 'DRAFT';
-                setActionType('DRAFT');
-                scadaFormRef.current?.submit('DRAFT');
+            <KchtFormFooter
+              resource="scada"
+              isEdit={false}
+              loading={submitting}
+              onCancel={() => {
+                setCreateModalOpen(false);
+                createForm.resetFields();
               }}
-              loading={submitting && actionType === 'DRAFT'}
-              style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu tạm
-            </Button>
-            <Button
-              type="primary"
-              onClick={() => {
-                actionTypeRef.current = 'SUBMIT';
-                setActionType('SUBMIT');
-                scadaFormRef.current?.submit('SUBMIT');
+              onSubmit={(action) => {
+                const act = action === 'draft' ? 'DRAFT' : action === 'approve' ? 'APPROVED' : 'SUBMIT';
+                actionTypeRef.current = act;
+                setActionType(act);
+                scadaFormRef.current?.submit(act);
               }}
-              loading={submitting && actionType === 'SUBMIT'}
-              style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-            >
-              Lưu và gửi phê duyệt
-            </Button>
-            {canSaveAndApprove && (
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'APPROVED';
-                  setActionType('APPROVED');
-                  scadaFormRef.current?.submit('APPROVED');
-                }}
-                loading={submitting && actionType === 'APPROVED'}
-                style={{
-                  ...primaryButtonStyle,
-                  background: statusOperational,
-                  borderColor: statusOperational,
-                  borderRadius: radiusPill,
-                  height: 40,
-                }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            )}
+            />
           </div>
         }
         styles={{
@@ -3419,56 +3393,23 @@ const ScadaListPage = () => {
         }}
         footer={
           <div style={drawerFooterStyle}>
-            {updateTarget?.approvalStatus !== 'APPROVED' && (
-              <Button
-                onClick={() => {
-                  actionTypeRef.current = 'DRAFT';
-                  setActionType('DRAFT');
-                  editScadaFormRef.current?.submit('DRAFT');
-                }}
-                loading={submitting && actionType === 'DRAFT'}
-                style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu tạm
-              </Button>
-            )}
-            {(updateTarget?.approvalStatus === 'DRAFT' ||
-              updateTarget?.approvalStatus === 'REJECTED_LEVEL1' ||
-              updateTarget?.approvalStatus === 'REJECTED_LEVEL2' ||
-              updateTarget?.approvalStatus === 'REJECTED') && (
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'SUBMIT';
-                  setActionType('SUBMIT');
-                  editScadaFormRef.current?.submit('SUBMIT');
-                }}
-                loading={submitting && actionType === 'SUBMIT'}
-                style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
-            )}
-            {updateTarget?.approvalStatus === 'APPROVED' && canSaveAndApprove && (
-              <Button
-                type="primary"
-                onClick={() => {
-                  actionTypeRef.current = 'APPROVED';
-                  setActionType('APPROVED');
-                  editScadaFormRef.current?.submit('APPROVED');
-                }}
-                loading={submitting && actionType === 'APPROVED'}
-                style={{
-                  ...primaryButtonStyle,
-                  background: statusOperational,
-                  borderColor: statusOperational,
-                  borderRadius: radiusPill,
-                  height: 40,
-                }}
-              >
-                Lưu và phê duyệt
-              </Button>
-            )}
+            <KchtFormFooter
+              resource="scada"
+              isEdit={true}
+              status={updateTarget?.approvalStatus}
+              loading={submitting}
+              onCancel={() => {
+                setUpdateModalOpen(false);
+                setUpdateTarget(null);
+                updateForm.resetFields();
+              }}
+              onSubmit={(action) => {
+                const act = action === 'draft' ? 'DRAFT' : action === 'approve' ? 'APPROVED' : 'SUBMIT';
+                actionTypeRef.current = act;
+                setActionType(act);
+                editScadaFormRef.current?.submit(act);
+              }}
+            />
           </div>
         }
         styles={{

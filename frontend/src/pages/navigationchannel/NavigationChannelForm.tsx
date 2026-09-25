@@ -52,6 +52,7 @@ import InfrastructureAttachmentTab, {
 } from '../../components/shared/InfrastructureAttachmentTab';
 import DetailTable from '../../components/shared/DetailTable';
 import AppDrawer from '../../components/shared/AppDrawer';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import type {
   NavigationChannelResponse,
   CreateNavigationChannelRequest,
@@ -1338,6 +1339,25 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           navigate('/navigation-channel');
         }
       } else if (id && isEditMode) {
+        if (isRecordApproved) {
+          const isDirty = form.isFieldsTouched() || uploadedFiles.some((f) => !!f.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+          if (!isDirty) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            return;
+          }
+        }
+
+        let targetApprovalStatus: string | undefined = undefined;
+        if (isRecordApproved) {
+          if (saveActionRef.current === 'PENDING_APPROVAL') {
+            targetApprovalStatus = 'PENDING_APPROVAL';
+          } else if (saveActionRef.current === 'APPROVED') {
+            targetApprovalStatus = (kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm) ? 'APPROVED' : 'APPROVED_LEVEL1';
+          }
+        } else if (saveActionRef.current === 'APPROVED') {
+          targetApprovalStatus = (kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+
         if (pendingDeletedAttachmentIds.length > 0) {
           for (const attId of pendingDeletedAttachmentIds) {
             try {
@@ -1357,12 +1377,25 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           }
         }
 
-        const updatePayload: UpdateNavigationChannelRequest = { ...payload, id, attachments: undefined };
+        const updatePayload: UpdateNavigationChannelRequest = {
+          ...payload,
+          id,
+          attachments: undefined,
+          ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus as any } : {}),
+        };
         const res = await navigationChannelCRUD.update(id, updatePayload);
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        if (saveActionRef.current === 'PENDING_APPROVAL' || shouldSubmitAfterSave) {
+        if (isRecordApproved) {
+          if (saveActionRef.current === 'PENDING_APPROVAL') {
+            toast.success('Lưu và gửi phê duyệt thành công');
+          } else if (saveActionRef.current === 'APPROVED') {
+            toast.success(targetApprovalStatus === 'APPROVED' ? 'Lưu và phê duyệt thành công' : 'Đã duyệt cấp Cảng vụ, chuyển Chờ Cục duyệt');
+          } else {
+            toast.success('Cập nhật thành công');
+          }
+        } else if (saveActionRef.current === 'PENDING_APPROVAL' || shouldSubmitAfterSave) {
           await navigationChannelApproval.submitApproval(res?.id ?? id);
           toast.success('Gửi phê duyệt thành công');
         } else if (saveActionRef.current === 'APPROVED' && canApprove) {
@@ -1407,46 +1440,33 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
   }, [form]);
 
   const formFooter = (
-    <div style={drawerFooterStyle}>
-      {isEditMode && isRecordApproved ? (
-        <Button
-          type="primary"
-          loading={isSubmitting}
-          onClick={() => triggerSubmit('APPROVED')}
-          style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-        >
-          Lưu và phê duyệt
-        </Button>
-      ) : (
-        <>
-          <Button
-            loading={isSubmitting}
-            onClick={() => triggerSubmit('DRAFT')}
-            style={outlineButtonStyle}
-          >
-            Lưu tạm
-          </Button>
-          <Button
-            type="primary"
-            loading={isSubmitting}
-            onClick={() => triggerSubmit('PENDING_APPROVAL')}
-            style={primaryButtonStyle}
-          >
-            Lưu và gửi phê duyệt
-          </Button>
-          {canApprove && (
-            <Button
-              type="primary"
-              loading={isSubmitting}
-              onClick={() => triggerSubmit('APPROVED')}
-              style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-            >
-              Lưu và phê duyệt
-            </Button>
-          )}
-        </>
-      )}
-    </div>
+    <KchtFormFooter
+      mode={isEditMode ? 'edit' : 'create'}
+      resource="navigationchannel"
+      record={record ? { approvalStatus: record.approvalStatus } : undefined}
+      loading={isSubmitting}
+      activeAction={
+        saveActionRef.current === 'DRAFT'
+          ? 'draft'
+          : saveActionRef.current === 'PENDING_APPROVAL'
+            ? 'submit'
+            : saveActionRef.current === 'APPROVED'
+              ? 'approve'
+              : null
+      }
+      onCancel={() => {
+        if (isModalMode) {
+          onSuccess?.(null);
+        } else {
+          navigate('/navigation-channel');
+        }
+      }}
+      onSubmit={(action) => {
+        if (action === 'draft') triggerSubmit('DRAFT');
+        else if (action === 'submit') triggerSubmit('PENDING_APPROVAL');
+        else if (action === 'approve') triggerSubmit('APPROVED');
+      }}
+    />
   );
 
   const formContent = (

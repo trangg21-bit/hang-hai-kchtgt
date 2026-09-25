@@ -12,7 +12,7 @@ Một hồ sơ kết cấu hạ tầng trải qua **7 trạng thái** (6 trạng
 
 | # | Tên trạng thái | Diễn giải cho người làm nghiệp vụ |
 |---|---|---|
-| 1 | **Lưu tạm** | Hồ sơ đang soạn dở, chỉ người nhập nhìn thấy, chưa ai duyệt |
+| 1 | **Lưu tạm** | Hồ sơ đang soạn dở trong nội bộ đơn vị quản lý, chưa phát hành vào quy trình phê duyệt |
 | 2 | **Chờ Cảng vụ / Chi cục duyệt** | Đã gửi đi, đang nằm chờ cấp thứ nhất xử lý |
 | 3 | **Chờ Cục duyệt** | Hồ sơ đang chờ cấp Cục xử lý (do cấp Cảng vụ/Chi cục chuyển lên, hoặc do chính cấp Cục gửi đi) |
 | 4 | **Bị Cảng vụ / Chi cục trả về** | Cấp thứ nhất từ chối, trả lại cho người nhập |

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.port.entity;
 
+import com.hanghai.kchtg.common.entity.ApprovableEntity;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
@@ -36,7 +37,7 @@ import java.util.UUID;
 @FieldNameConstants
 @org.hibernate.annotations.Filter(name = "orgUnitFilter", condition = "org_unit_id IN (:orgUnitIds)")
 @org.hibernate.annotations.SQLRestriction("1=1")
-public class TransferArea extends BaseEntity {
+public class TransferArea extends BaseEntity implements ApprovableEntity {
 
     // @Enumerated(EnumType.ORDINAL)
     // @Column(name = "security_level", nullable = false, columnDefinition = "SMALLINT")
@@ -166,4 +167,66 @@ public class TransferArea extends BaseEntity {
 
     @Column(name = "rejection_reason", length = 2000)
     private String rejectionReason;
+
+    @Override
+    public UUID getApproverLevel1() {
+        if (portAuthorityApprovedBy == null) return null;
+        try { return UUID.fromString(portAuthorityApprovedBy); } catch (Exception e) { return null; }
+    }
+
+    @Override
+    public void setApproverLevel1(UUID userId) {
+        this.portAuthorityApprovedBy = userId != null ? userId.toString() : null;
+    }
+
+    @Override
+    public void setApprovedDateLevel1(LocalDateTime date) {
+        this.portAuthorityApprovedAt = date;
+    }
+
+    @Override
+    public UUID getApproverLevel2() {
+        if (departmentApprovedBy == null) return null;
+        try { return UUID.fromString(departmentApprovedBy); } catch (Exception e) { return null; }
+    }
+
+    @Override
+    public void setApproverLevel2(UUID userId) {
+        this.departmentApprovedBy = userId != null ? userId.toString() : null;
+    }
+
+    @Override
+    public void setApprovedDateLevel2(LocalDateTime date) {
+        this.departmentApprovedAt = date;
+    }
+
+    @Override
+    public void setSubmittedAt(LocalDateTime submittedAt) {
+        this.submittedForApprovalAt = submittedAt;
+    }
+
+    @Override
+    public void setSubmittedBy(UUID userId) {
+        this.submittedForApprovalBy = userId != null ? userId.toString() : null;
+    }
+
+    @Override
+    public void setLevel1ApprovalContent(String content) {
+        this.portAuthorityApprovalContent = content;
+    }
+
+    @Override
+    public String getLevel1ApprovalContent() {
+        return this.portAuthorityApprovalContent;
+    }
+
+    @Override
+    public void setLevel2ApprovalContent(String content) {
+        this.departmentApprovalContent = content;
+    }
+
+    @Override
+    public String getLevel2ApprovalContent() {
+        return this.departmentApprovalContent;
+    }
 }

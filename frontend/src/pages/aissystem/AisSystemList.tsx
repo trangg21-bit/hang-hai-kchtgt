@@ -212,6 +212,11 @@ export function AisSystemList() {
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
 
+const ATTACHED_INFRA_TYPE_OPTIONS = [
+  { label: 'TTDH VTS', value: 1 },
+  { label: 'Trạm radar', value: 2 },
+];
+
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   // Khóa bộ lọc đã dùng cho lần đếm gần nhất — dùng để bỏ truy vấn đếm khi chỉ
@@ -223,6 +228,8 @@ export function AisSystemList() {
     name?: string;
     code?: string;
     orgUnitId?: string;
+    attachedInfraType?: number;
+    attachedInfraId?: string;
     vtsOperationCenterId?: string;
     operatingOrgId?: string;
     provinceId?: number;
@@ -397,17 +404,6 @@ export function AisSystemList() {
     return radarStations.filter((r) => r.orgUnitId && allowedIds.has(String(r.orgUnitId)));
   }, [radarStations, filterValues.orgUnitId, orgUnitOptions]);
 
-  const combinedLocationOptions = useMemo(() => [
-    {
-      label: 'Trung tâm điều hành VTS',
-      options: filteredOpCenters.map((c) => ({ value: `op_${c.id}`, rawId: c.id, type: 'op', label: c.name })),
-    },
-    {
-      label: 'Trạm radar',
-      options: filteredRadarStations.map((r) => ({ value: `radar_${r.id}`, rawId: r.id, type: 'radar', label: r.name })),
-    },
-  ], [filteredOpCenters, filteredRadarStations]);
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     setIsError(false);
@@ -415,7 +411,11 @@ export function AisSystemList() {
     try {
       let filterOpCenterId: string | undefined = undefined;
       let filterRadarStationId: string | undefined = undefined;
-      if (appliedFilterValues.vtsOperationCenterId) {
+      if (appliedFilterValues.attachedInfraType === 1) {
+        filterOpCenterId = appliedFilterValues.attachedInfraId;
+      } else if (appliedFilterValues.attachedInfraType === 2) {
+        filterRadarStationId = appliedFilterValues.attachedInfraId;
+      } else if (appliedFilterValues.vtsOperationCenterId) {
         if (appliedFilterValues.vtsOperationCenterId.startsWith('op_')) {
           filterOpCenterId = appliedFilterValues.vtsOperationCenterId.replace('op_', '');
         } else if (appliedFilterValues.vtsOperationCenterId.startsWith('radar_')) {
@@ -750,7 +750,7 @@ export function AisSystemList() {
     },
     {
       key: 'vtsOperationCenterName',
-      label: 'Thuộc TTDH VTS / Trạm radar',
+      label: 'Thuộc TTDH VTS/Trạm radar',
       dataIndex: 'vtsOperationCenterName',
       width: 290,
       ellipsis: false,
@@ -1043,7 +1043,7 @@ export function AisSystemList() {
                   allowClear
                   value={filterValues.orgUnitId}
                   onChange={(value) => {
-                    setFilterValues((prev) => ({ ...prev, orgUnitId: value, vtsOperationCenterId: undefined }));
+                    setFilterValues((prev) => ({ ...prev, orgUnitId: value, attachedInfraId: undefined, vtsOperationCenterId: undefined }));
                   }}
                   style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                 />
@@ -1082,17 +1082,42 @@ export function AisSystemList() {
               {filterCollapsed && (
                 <>
                   <div style={{ marginBottom: 12 }}>
-                    <div style={filterLabelStyle}>Thuộc TTDH VTS / Trạm radar</div>
+                    <div style={filterLabelStyle}>Thuộc loại hạ tầng</div>
                     <Select
-                      placeholder="Chọn TTDH / Trạm radar"
+                      placeholder="Chọn loại hạ tầng"
+                      allowClear
+                      value={filterValues.attachedInfraType}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, attachedInfraType: value, attachedInfraId: undefined }))}
+                      options={ATTACHED_INFRA_TYPE_OPTIONS}
+                      style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={filterLabelStyle}>Thuộc hạ tầng</div>
+                    <Select
+                      placeholder={
+                        filterValues.attachedInfraType === 2
+                          ? 'Chọn trạm Radar'
+                          : filterValues.attachedInfraType === 1
+                            ? 'Chọn Trung Tâm Điều Hành VTS'
+                            : 'Chọn loại hạ tầng trước'
+                      }
                       allowClear
                       showSearch
+                      disabled={filterValues.attachedInfraType !== 1 && filterValues.attachedInfraType !== 2}
                       filterOption={(input, option) =>
                         normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))
                       }
-                      value={filterValues.vtsOperationCenterId}
-                      onChange={(value) => setFilterValues((prev) => ({ ...prev, vtsOperationCenterId: value }))}
-                      options={combinedLocationOptions}
+                      value={filterValues.attachedInfraId}
+                      onChange={(value) => setFilterValues((prev) => ({ ...prev, attachedInfraId: value }))}
+                      options={
+                        filterValues.attachedInfraType === 1
+                          ? filteredOpCenters.map((c) => ({ value: c.id, label: c.name }))
+                          : filterValues.attachedInfraType === 2
+                            ? filteredRadarStations.map((r) => ({ value: r.id, label: r.name }))
+                            : []
+                      }
                       style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     />
                   </div>

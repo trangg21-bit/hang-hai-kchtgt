@@ -27,6 +27,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import api from '../../services/api';
 import type { Organization } from '../../services/organizationService';
 import { organizationService } from '../../services/organizationService';
@@ -1684,69 +1685,18 @@ export default function TransferAreaListPage() {
           }}
           extra={<Button type="text" onClick={closeFormDrawer} style={drawerCloseBtnStyle}>✕</Button>}
           footer={
-            <div style={drawerFooterStyle}>
-              {(() => {
-                const st = !editTransferAreaId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
-                if (st === 'APPROVED') {
-                  return canSaveAndApprove ? (
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }}
-                      loading={submitting && actionType === 'approve'}
-                      style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                    >
-                      Lưu và phê duyệt
-                    </Button>
-                  ) : null;
-                }
-                if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
-                  return (
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('submit'); transferAreaFormRef.current?.submit('SUBMIT'); }}
-                      loading={submitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  );
-                }
-                return (
-                  <>
-                    <Button
-                      htmlType="button"
-                      onClick={() => { setActionType('draft'); transferAreaFormRef.current?.submit('DRAFT'); }}
-                      loading={submitting && actionType === 'draft'}
-                      style={outlineButtonStyle}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      htmlType="button"
-                      type="primary"
-                      onClick={() => { setActionType('submit'); transferAreaFormRef.current?.submit('SUBMIT'); }}
-                      loading={submitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                    {canSaveAndApprove && (
-                      <Button
-                        htmlType="button"
-                        type="primary"
-                        onClick={() => { setActionType('approve'); transferAreaFormRef.current?.submit('APPROVED'); }}
-                        loading={submitting && actionType === 'approve'}
-                        style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                      >
-                        Lưu và phê duyệt
-                      </Button>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+            <KchtFormFooter
+              mode={editTransferAreaId ? 'edit' : 'create'}
+              resource="transfer-area"
+              record={editTransferAreaId ? { approvalStatus: editBaseStatus } : undefined}
+              loading={submitting}
+              activeAction={actionType as any}
+              onCancel={closeFormDrawer}
+              onSubmit={(action) => {
+                setActionType(action);
+                transferAreaFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+              }}
+            />
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

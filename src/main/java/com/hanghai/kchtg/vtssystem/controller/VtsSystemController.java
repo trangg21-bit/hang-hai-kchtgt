@@ -102,8 +102,9 @@ public class VtsSystemController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/options")
     public ResponseEntity<ApiResponse<List<VtsSystemOptionResponse>>> getOptions(
-            @RequestParam(required = false) UUID orgUnitId) {
-        List<VtsSystemOptionResponse> options = service.getOptions(orgUnitId);
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) UUID portId) {
+        List<VtsSystemOptionResponse> options = service.getOptions(orgUnitId, portId);
         return ResponseEntity.ok(ApiResponse.success("Danh sách lựa chọn hệ thống VTS", options));
     }
 

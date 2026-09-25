@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.port.dto.daittdh;
 
 import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.NotNull;
@@ -53,7 +54,9 @@ public class UpdateDaiTtdhRequest extends FieldPresenceTrackedRequest {
     private String displayRule;
 
     private String saveAction;
+    private ApprovalStatus approvalStatus;
 
+    public void setApprovalStatus(ApprovalStatus value) { markFieldPresent("approvalStatus"); this.approvalStatus = value; }
     public void setDaiTtdhName(String value) { markFieldPresent("daiTtdhName"); this.daiTtdhName = value; }
     public void setOrgUnitId(UUID value) { markFieldPresent("orgUnitId"); this.orgUnitId = value; }
     public void setOperatingUnitId(UUID value) { markFieldPresent("operatingUnitId"); this.operatingUnitId = value; }

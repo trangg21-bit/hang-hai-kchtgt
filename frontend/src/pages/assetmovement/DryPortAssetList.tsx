@@ -14,6 +14,7 @@ import {
   SendOutlined,
 } from '@ant-design/icons';
 import { Button, DatePicker, Form, Input, Space } from 'antd';
+import dayjs, { type Dayjs } from 'dayjs';
 import {
   CommonStatusTabs,
   CommonTable,
@@ -41,6 +42,8 @@ import { resolveDefaultOrgUnitId } from '../../components/org-unit';
 import api from '../../services/api';
 
 import {
+  approveInfraAssetC1,
+  approveInfraAssetC2,
   createAssetDecrease,
   createAssetIncrease,
   createDryPortAsset,
@@ -52,6 +55,9 @@ import {
   fetchDryPortAssets,
   fetchInfraAssetAttachments,
   fetchKhaiThacList,
+  rejectInfraAssetC1,
+  rejectInfraAssetC2,
+  submitInfraAssetApproval,
   updateDryPortAsset,
   uploadInfraAssetAttachments,
 } from '../../services/assetmovement/api';
@@ -581,16 +587,17 @@ export default function DryPortAssetList() {
     const q = historySearch.toLowerCase().trim();
     const filtered = (records || []).filter((r: RawHistoryRecord) => {
       if (q) {
-        const fn = (r.fieldName || r.changedField || '').toLowerCase();
+        const fieldNameRaw = r.fieldName || r.changedField || '';
+        const fn = fieldNameRaw.toLowerCase();
         const ov = (r.oldValue || r.previousValue || '').toLowerCase();
         const nv = (r.newValue || r.value || '').toLowerCase();
-        const lb = (ASSET_FIELD_LABELS[r.fieldName || r.changedField] || r.fieldName || '').toLowerCase();
+        const lb = (ASSET_FIELD_LABELS[fieldNameRaw] || r.fieldName || '').toLowerCase();
         const od = String(
-          formatHistoryValue(r.fieldName || r.changedField, r.oldValue || r.previousValue) ??
+          formatHistoryValue(fieldNameRaw, r.oldValue || r.previousValue) ??
             (r.oldValue || r.previousValue || ''),
         ).toLowerCase();
         const nd = String(
-          formatHistoryValue(r.fieldName || r.changedField, r.newValue || r.value) ??
+          formatHistoryValue(fieldNameRaw, r.newValue || r.value) ??
             (r.newValue || r.value || ''),
         ).toLowerCase();
         if (!fn.includes(q) && !ov.includes(q) && !nv.includes(q) && !lb.includes(q) && !od.includes(q) && !nd.includes(q)) {
@@ -1031,7 +1038,7 @@ export default function DryPortAssetList() {
     setPage(1);
   }, []);
 
-  const tableOptions = useMemo<TableOption<DryPortAsset>>(
+  const tableOptions = useMemo<TableOption<any>>(
     () => ({
       dataKey: 'id',
       mainColumns: [
@@ -1043,7 +1050,7 @@ export default function DryPortAssetList() {
           width: 260,
           fixed: 'left',
           allowSort: true,
-          onClick: (record) => void handleOpenDetail(record),
+          onClick: (record) => { void handleOpenDetail(record); },
         },
         {
           title: 'ĐƠN VỊ QUẢN LÝ',

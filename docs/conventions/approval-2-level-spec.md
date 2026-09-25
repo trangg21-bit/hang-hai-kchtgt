@@ -57,7 +57,7 @@ Một hồ sơ KCHT trải qua đúng **7 trạng thái** (6 hoạt động + 1 
 
 | # | Trạng thái nghiệp vụ | `ApprovalStatus` | Ghi chú |
 |---|---|---|---|
-| 1 | Lưu tạm | `DRAFT` (0) | Mặc định khi tạo, chỉ người nhập nhìn thấy |
+| 1 | Lưu tạm | `DRAFT` (0) | Mặc định khi tạo mới, hồ sơ soạn thảo nội bộ đơn vị, chưa gửi phê duyệt |
 | 2 | Chờ Cảng vụ / Chi cục duyệt | `PENDING_APPROVAL` (2) | Đã gửi đi, chờ vòng 1 |
 | 3 | Chờ Cục duyệt | `APPROVED_LEVEL1` (3) | Vòng 1 đã duyệt xong; cũng là đích khi người gửi cấp Cục submit thẳng (bỏ vòng 1) |
 | 4 | Bị Cảng vụ / Chi cục trả về | `REJECTED_LEVEL1` (8) | Vòng 1 từ chối |
@@ -137,11 +137,16 @@ mà lại dễ hơn. Hồ sơ hết giá trị sử dụng thì đổi **tình t
 - Frontend: nút Xóa chỉ hiện khi `normalizeApprovalStatus(status) === 'DRAFT'`
   (`utils/approvalEditPolicy.ts` → `canDeleteApprovalRecord()`).
 
-### 3.7. Phân quyền + Admin Cục
+### 3.7. Phân quyền + Admin Cục & Cây phân quyền tự động theo cấp đơn vị (Scope-Constrained Permission Tree)
 
 - Phân quyền dạng `<resource>:<action>`, gán động qua nhóm/tài khoản (xem `AGENTS.md`); quyền mới phải đăng ký trong `PermissionSeeder.java`.
 - **Admin Cục / Admin đơn vị gốc**: có toàn quyền quản trị và xem thêm metadata (người tạo, người sửa cuối, thời gian tạo/cập nhật), nhưng **không tự có quyền phê duyệt C1/C2**. Mỗi hành động ký duyệt phải được gán tường minh bằng `<resource>:approvec1` / `<resource>:approvec2` của **đúng màn/tài sản**. C1/C2 của resource khác (ví dụ `vtsoperationcenter:approvec2`) không được dùng để duyệt Hệ thống VTS (`vts:approvec2`).
 - Granularity resource: quyền phê duyệt được quản lý theo từng resource. Các khóa `data:approvec*`, `kcht:approvec*`, `kcht:approve_level*` là legacy và không được dùng để cấp hoặc kiểm tra quyền phê duyệt. Alias chỉ được chấp nhận khi là mã cũ/mới của cùng một resource.
+- **Quy tắc cây phân quyền theo cấp đơn vị (Scope-Constrained Permission Tree)**:
+  Để phòng tránh tối đa nhầm lẫn khi phân quyền trên giao diện Quản lý người dùng (`UsersPage`) và Quản lý nhóm (`GroupList`), hệ thống tự động lọc cây chức năng dựa trên cấp đơn vị (`OrgLevel`):
+  - **Tài khoản / Nhóm thuộc cấp Cảng vụ / Chi cục (`'CANG_VU'`)**: Tự động **ẩn hoàn toàn** các quyền phê duyệt Cấp 2 (`<resource>:approvec2`). Người quản lý chỉ có thể gán quyền C1 và các thao tác tác nghiệp (Xem, Thêm, Sửa, Xóa, Lịch sử). Checkbox "Chọn tất cả" và luồng lưu API loại trừ 100% các quyền C2.
+  - **Tài khoản / Nhóm thuộc cấp Cục (`'CUC'`)**: Tự động **ẩn hoàn toàn** các quyền phê duyệt Cấp 1 (`<resource>:approvec1`). Người quản lý chỉ có thể gán quyền C2 và các thao tác tác nghiệp. Checkbox "Chọn tất cả" và luồng lưu API loại trừ 100% các quyền C1.
+  - **Thông báo ngữ cảnh (Contextual Banner)**: Drawer phân quyền hiển thị rõ tên đơn vị kèm ghi chú giải thích lý do các quyền tương ứng được ẩn tự động.
 
 ### 3.8. Data scope theo đơn vị
 

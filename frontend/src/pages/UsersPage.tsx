@@ -1,35 +1,43 @@
 import { useState, useCallback, useEffect, useMemo, memo, type FC, type ReactNode } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Drawer, Tree, Checkbox, Tabs, Empty } from 'antd';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Row, Col, Tree, Checkbox, Tabs, Empty } from 'antd';
+import AppDrawer from '../components/shared/AppDrawer';
 import {
   PlusOutlined, LockOutlined, UnlockOutlined, KeyOutlined,
-  ExclamationCircleOutlined, CloseOutlined, SearchOutlined,
+  ExclamationCircleOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useUsers, useUser, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useForgotPassword, useChangeStatusUser } from '../hooks/useUsers';
-import { usePermissionStore } from '../store/permissionStore';
+import { usePermissionStore, type PermissionState } from '../store/permissionStore';
 import { useAuthStore } from '../store/authStore';
 import { ScreenHeader, DataTable } from '../components/list-view';
 import FilterTableLayout from '../components/list-view/FilterTableLayout';
 import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
+import type { PermissionTreeNode } from '../types/permission';
 import { organizationService, type Organization } from '../services/organizationService';
 import { userService } from '../services/userService';
 import { normalizeSearchText, OrgUnitTreeSelect } from '../components/org-unit';
 import {
+  filterTreeByOrgLevel,
   getPermissionTreeKeys,
   getVisiblePermissionKeys,
   handleTreeCheck,
+  isC1PermissionKey,
+  isC2PermissionKey,
   isHiddenPermission,
   isStructuralNodeKey,
+  resolveOrgLevel,
   usePermissions,
+  type OrgLevel,
 } from '../hooks/usePermissions';
 import {
-  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeSm, fontSizeMd, fontSizeLg,
-  fontWeightBold, fontWeightMedium, radiusPill, radiusMd, radiusTextArea, borderDefault,
+  actionPrimary, textSecondary, textPrimary, textTertiary, fontSizeMd, fontSizeLg,
+  fontWeightBold, radiusPill, radiusMd, radiusTextArea, borderDefault,
   spaceFormField, spaceMd, spaceSm, spaceXs, inputStyle,
-  selectStyle, drawerTitleStyle, drawerCloseBtnStyle, drawerFooterStyle, drawerStyles, drawerFormScrollStyle,
+  selectStyle, drawerTitleStyle, drawerFooterStyle, drawerFormScrollStyle,
   drawerTabBarStyle, primaryButtonStyle, outlineButtonStyle,
   statusOperational, statusCritical, statusDraft, statusAttention, textAreaStyle, icons, surfaceCard,
+  cellTitleStyle, cellSubtitleStyle,
 } from '../themetokenchk';
 import { colors } from '../themetokenchk';
 import * as themeTokenChk from '../themetokenchk';
@@ -133,7 +141,7 @@ export default function UsersPage() {
     return () => { isMounted = false; };
   }, []);
 
-  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
 
   const { data, isLoading, isError, refetch } = useUsers({
     page, pageSize, search: search || undefined, fullName: fullName || undefined,
@@ -190,9 +198,10 @@ export default function UsersPage() {
         await createUser.mutateAsync(payload);
       }
       setModalOpen(false);
-    } catch (err: any) {
-      if (err.errorFields) return;
-      const msg = err.response?.data?.message || err.message || 'Lỗi hệ thống';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string; errorFields?: unknown };
+      if (errorObj.errorFields) return;
+      const msg = errorObj.response?.data?.message || errorObj.message || 'Lỗi hệ thống';
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -223,8 +232,9 @@ export default function UsersPage() {
       });
       setLockTargetUser(null);
       setLockReason('');
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Thao tác thất bại');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(errorObj.response?.data?.message || errorObj.message || 'Thao tác thất bại');
     } finally {
       setLockSubmitting(false);
     }
@@ -247,9 +257,10 @@ export default function UsersPage() {
       });
       setResetPasswordUser(null);
       resetPasswordForm.resetFields();
-    } catch (err: any) {
-      if (err.errorFields) return;
-      const msg = err.response?.data?.message || err.message || 'Không thể đặt lại mật khẩu';
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string; errorFields?: unknown };
+      if (errorObj.errorFields) return;
+      const msg = errorObj.response?.data?.message || errorObj.message || 'Không thể đặt lại mật khẩu';
       toast.error(msg);
     } finally {
       setResetPasswordSubmitting(false);
@@ -266,6 +277,9 @@ export default function UsersPage() {
       onOk: () => forgotPassword.mutateAsync(user.email),
     });
   }, [forgotPassword]);
+  void handleDelete;
+  void handleResetPassword;
+  void handleForgotPassword;
 
   const handleFilterApply = useCallback(() => {
     const nextSearch = searchInput.trim();
@@ -296,7 +310,7 @@ export default function UsersPage() {
     setFilterOrganizationId(undefined);
     setPage(1);
     if (alreadyReset) void refetch();
-  }, [filterStatus, fullName, page, refetch, search]);
+  }, [filterOrganizationId, filterStatus, fullName, page, refetch, search]);
 
   const handleTabChange = useCallback((key: string) => {
     const nextStatus = key === 'all' ? undefined : key;
@@ -324,37 +338,66 @@ export default function UsersPage() {
     confirm({ title: 'Từ chối tài khoản', icon: <ExclamationCircleOutlined />, content: `Bạn có chắc chắn muốn từ chối tài khoản "${user.fullName}"?`, okText: 'Từ chối', okType: 'danger', cancelText: 'Hủy', onOk: () => changeStatusUser.mutateAsync({ id: user.id, status: 'INACTIVE' }) });
   }, [changeStatusUser]);
 
+  const targetUserOrgLevel = useMemo<OrgLevel>(() => {
+    if (!permissionUser) return 'ALL';
+    if (permissionUser.username?.toLowerCase() === 'admin') {
+      return 'CUC';
+    }
+    return resolveOrgLevel(permissionUser.orgUnitId, permissionUser.orgUnitName, organizations);
+  }, [permissionUser, organizations]);
+
+  const userScopedRawPermissionTree = useMemo(() => {
+    return filterTreeByOrgLevel(rawPermissionTree, targetUserOrgLevel);
+  }, [rawPermissionTree, targetUserOrgLevel]);
+
   const openPermissionModal = useCallback(async (user: User) => {
     setPermissionUser(user);
     setAppliedPermissionSearch('');
     setPermissionLoading(true);
     try {
+      const userLevel = user.username?.toLowerCase() === 'admin'
+        ? 'CUC'
+        : resolveOrgLevel(user.orgUnitId, user.orgUnitName, organizations);
+
       const grants = await userService.getUserPermissions(user.id);
       const rawCodes = grants.map((grant) => typeof grant === 'string' ? grant : grant.permissionCode).filter(Boolean);
-      const cleanCodes = rawCodes.filter((code) => !isHiddenPermission(code));
+      let cleanCodes = rawCodes.filter((code) => !isHiddenPermission(code));
+
+      if (userLevel === 'CANG_VU') {
+        cleanCodes = cleanCodes.filter((code) => !isC2PermissionKey(code));
+      } else if (userLevel === 'CUC') {
+        cleanCodes = cleanCodes.filter((code) => !isC1PermissionKey(code));
+      }
+
       if (rawCodes.includes('*')) {
-        setSelectedPermissionKeys(allPermissionKeys.length > 0 ? allPermissionKeys : cleanCodes);
+        const scopedTree = filterTreeByOrgLevel(rawPermissionTree, userLevel);
+        const scopedLeafKeys = Array.from(getPermissionTreeKeys(scopedTree)).filter((k) => !isStructuralNodeKey(k));
+        setSelectedPermissionKeys(scopedLeafKeys.length > 0 ? scopedLeafKeys : cleanCodes);
       } else {
         setSelectedPermissionKeys(cleanCodes);
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Không thể tải quyền trực tiếp của người dùng');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(errorObj.response?.data?.message || errorObj.message || 'Không thể tải quyền trực tiếp của người dùng');
       setPermissionUser(null);
     } finally {
       setPermissionLoading(false);
     }
-  }, [allPermissionKeys]);
+  }, [rawPermissionTree, organizations]);
 
   useEffect(() => {
     if (permissionUser && allPermissionKeys.length > 0) {
-      setSelectedPermissionKeys((prev) => {
-        if (prev.includes('*')) {
-          return allPermissionKeys;
-        }
-        return prev;
+      queueMicrotask(() => {
+        setSelectedPermissionKeys((prev) => {
+          if (prev.includes('*')) {
+            const scopedTree = filterTreeByOrgLevel(rawPermissionTree, targetUserOrgLevel);
+            return Array.from(getPermissionTreeKeys(scopedTree)).filter((k) => !isStructuralNodeKey(k));
+          }
+          return prev;
+        });
       });
     }
-  }, [permissionUser, allPermissionKeys]);
+  }, [permissionUser, allPermissionKeys, rawPermissionTree, targetUserOrgLevel]);
 
   const handlePermissionSave = useCallback(async () => {
     if (!permissionUser) return;
@@ -363,6 +406,8 @@ export default function UsersPage() {
       const validCodes = validCodesSet || new Set(apiPermissions.map((p) => p.key.toLowerCase()));
       const keysToSave = selectedPermissionKeys.filter((k) => {
         if (k === '*' || isStructuralNodeKey(k)) return false;
+        if (targetUserOrgLevel === 'CANG_VU' && isC2PermissionKey(k)) return false;
+        if (targetUserOrgLevel === 'CUC' && isC1PermissionKey(k)) return false;
         return validCodes.size === 0 || validCodes.has(k.toLowerCase());
       });
 
@@ -375,28 +420,37 @@ export default function UsersPage() {
       if (currentAuthUser && (currentAuthUser.id === permissionUser.id || currentAuthUser.username === permissionUser.username)) {
         await useAuthStore.getState().refreshPermissions();
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Cập nhật quyền trực tiếp thất bại');
+    } catch (err: unknown) {
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      toast.error(errorObj.response?.data?.message || errorObj.message || 'Cập nhật quyền trực tiếp thất bại');
     } finally {
       setPermissionSaving(false);
     }
-  }, [permissionUser, selectedPermissionKeys, refetch, apiPermissions, validCodesSet]);
+  }, [permissionUser, selectedPermissionKeys, refetch, apiPermissions, validCodesSet, targetUserOrgLevel]);
 
 
   const indexedPermissionTree = useMemo(() => {
-    const attachMeta = (nodes: typeof rawPermissionTree): any[] => nodes.map((node) => ({
+    interface IndexedPermissionNode extends PermissionTreeNode {
+      _searchStr?: string;
+      children?: IndexedPermissionNode[];
+    }
+    const attachMeta = (nodes: PermissionTreeNode[]): IndexedPermissionNode[] => nodes.map((node) => ({
       ...node,
       _searchStr: normalizeSearchText(`${node.title} ${node.key}`),
       children: node.children ? attachMeta(node.children) : [],
     }));
-    return attachMeta(rawPermissionTree);
-  }, [rawPermissionTree]);
+    return attachMeta(userScopedRawPermissionTree);
+  }, [userScopedRawPermissionTree]);
 
   const permissionTreeData = useMemo(() => {
     const keyword = normalizeSearchText(appliedPermissionSearch);
-    if (!keyword) return rawPermissionTree;
-    const filter = (nodes: any[]): any[] => nodes.flatMap((node) => {
-      const parentMatches = node._searchStr.includes(keyword);
+    if (!keyword) return userScopedRawPermissionTree;
+    interface IndexedPermissionNode extends PermissionTreeNode {
+      _searchStr?: string;
+      children?: IndexedPermissionNode[];
+    }
+    const filter = (nodes: IndexedPermissionNode[]): IndexedPermissionNode[] => nodes.flatMap((node) => {
+      const parentMatches = node._searchStr ? node._searchStr.includes(keyword) : false;
       if (parentMatches) {
         return [{ ...node, children: node.children || [] }];
       }
@@ -404,16 +458,16 @@ export default function UsersPage() {
       return children.length ? [{ ...node, children }] : [];
     });
     return filter(indexedPermissionTree);
-  }, [indexedPermissionTree, rawPermissionTree, appliedPermissionSearch]);
+  }, [indexedPermissionTree, userScopedRawPermissionTree, appliedPermissionSearch]);
 
   const allLeafKeys = useMemo(
-    () => Array.from(getPermissionTreeKeys(rawPermissionTree)).filter((k) => !isStructuralNodeKey(k)),
-    [rawPermissionTree],
+    () => Array.from(getPermissionTreeKeys(userScopedRawPermissionTree)).filter((k) => !isStructuralNodeKey(k)),
+    [userScopedRawPermissionTree],
   );
 
   const visibleSelectedKeys = useMemo(
-    () => getVisiblePermissionKeys(selectedPermissionKeys, rawPermissionTree),
-    [selectedPermissionKeys, rawPermissionTree],
+    () => getVisiblePermissionKeys(selectedPermissionKeys, userScopedRawPermissionTree),
+    [selectedPermissionKeys, userScopedRawPermissionTree],
   );
 
   const allPermissionsSelected = allLeafKeys.length > 0
@@ -445,21 +499,133 @@ export default function UsersPage() {
       // Handlers/modals/hooks (handleResetPassword, handleForgotPassword, handleDelete) remain intact.
     }
     return actions;
-  }, [hasPerm, openPermissionModal, openEditModal, handleToggleLock, handleResetPassword, handleForgotPassword, handleDelete, handleApprove, handleReject]);
+  }, [hasPerm, openPermissionModal, openEditModal, handleToggleLock, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
-    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, fixed: 'left' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 260, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <span style={{ color: textPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeMd }}>{text}</span> },
-    { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null, render: (text: string) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{text}</span> },
-    { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 220, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{text}</span> : <span style={{ color: textTertiary }}>—</span> },
-    { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>Chưa đăng nhập</span> },
+    {
+      key: 'sequenceNo',
+      label: 'STT',
+      width: 60,
+      type: 'mono' as const,
+      align: 'center' as const,
+      fixed: 'left' as const,
+      render: (_: unknown, __: unknown, idx: number) => (
+        <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{(page - 1) * pageSize + idx + 1}</span>
+      ),
+    },
+    {
+      key: 'fullName',
+      label: 'Họ và tên',
+      dataIndex: 'fullName',
+      width: 260,
+      fixed: 'left' as const,
+      sortable: true,
+      sorter: true,
+      align: 'left' as const,
+      ellipsis: false,
+      sortOrder: sortField === 'fullName' ? sortOrder : null,
+      render: (text: string, record: User) => (
+        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <a
+            title={text}
+            onClick={() => setDetailUserId(record.id)}
+            style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {text}
+          </a>
+          {record.username && (
+            <span
+              style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={record.username}
+            >
+              {record.username}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      dataIndex: 'email',
+      width: 200,
+      sortable: true,
+      sorter: true,
+      align: 'left' as const,
+      sortOrder: sortField === 'email' ? sortOrder : null,
+      render: (text: string) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{text}</span>,
+    },
+    {
+      key: 'phone',
+      label: 'Số điện thoại',
+      dataIndex: 'phone',
+      width: 140,
+      sortable: true,
+      align: 'left' as const,
+      render: (text: string) => <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{text || '—'}</span>,
+    },
+    {
+      key: 'orgUnitName',
+      label: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitName',
+      width: 240,
+      sortable: true,
+      align: 'left' as const,
+      sortOrder: sortField === 'orgUnitName' ? sortOrder : null,
+      render: (text: string) => (
+        text ? <span style={{ color: textPrimary, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> : <span style={{ color: textTertiary }}>—</span>
+      ),
+    },
+    {
+      key: 'position',
+      label: 'Chức vụ / Phòng ban',
+      dataIndex: 'position',
+      width: 200,
+      sortable: true,
+      align: 'left' as const,
+      render: (_: unknown, record: User) => (
+        <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+          <div
+            style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            title={record.position || ''}
+          >
+            {record.position || '—'}
+          </div>
+          {record.department && (
+            <div
+              style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              title={record.department}
+            >
+              {record.department}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'groupNames',
+      label: 'Nhóm nghiệp vụ',
+      dataIndex: 'groupNames',
+      width: 180,
+      align: 'left' as const,
+      render: (names: string[] | undefined) => (
+        names && names.length > 0 ? (
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }} title={names.join(', ')}>
+            {names.join(', ')}
+          </span>
+        ) : (
+          <span style={{ color: textTertiary }}>—</span>
+        )
+      ),
+    },
     {
       key: 'status',
       label: 'Trạng thái',
       dataIndex: 'status',
-      width: 150,
+      width: 160,
       sortable: true,
-      align: 'center' as const,
+      align: 'left' as const,
+      ellipsis: false,
       sortOrder: sortField === 'status' ? sortOrder : null,
       render: (status: string) => {
         const conf = STATUS_CONFIG[status] || { label: status, color: statusDraft };
@@ -469,8 +635,8 @@ export default function UsersPage() {
               display: 'inline-block',
               padding: '2px 10px',
               borderRadius: radiusPill,
-              fontSize: fontSizeSm,
-              fontWeight: fontWeightMedium,
+              fontSize: 13,
+              fontWeight: 500,
               backgroundColor: `${conf.color}15`,
               border: `1px solid ${conf.color}40`,
               color: conf.color,
@@ -479,6 +645,49 @@ export default function UsersPage() {
           >
             {conf.label}
           </span>
+        );
+      },
+    },
+    {
+      key: 'lastLoginAt',
+      label: 'Đăng nhập cuối',
+      dataIndex: 'lastLoginAt',
+      width: 170,
+      sortable: true,
+      align: 'left' as const,
+      sortOrder: sortField === 'lastLoginAt' ? sortOrder : null,
+      render: (text: string) => (
+        text ? (
+          <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span>
+        ) : (
+          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>Chưa đăng nhập</span>
+        )
+      ),
+    },
+    {
+      key: 'updatedAt',
+      label: 'Cán bộ cập nhật',
+      dataIndex: 'updatedByName',
+      width: 215,
+      sortable: true,
+      align: 'left' as const,
+      ellipsis: false,
+      sortOrder: (sortField === 'updatedAt' || sortField === 'updatedByName') ? sortOrder : null,
+      render: (_: unknown, record: User) => {
+        const name = record.updatedByName || record.createdByName || '—';
+        const date = record.updatedAt || record.createdAt;
+        return (
+          <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+            <div
+              style={{ fontWeight: fontWeightBold, color: '#0F172A', fontSize: fontSizeMd, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              title={name}
+            >
+              {name}
+            </div>
+            <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+              {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+            </div>
+          </div>
         );
       },
     },
@@ -550,12 +759,18 @@ export default function UsersPage() {
   ];
 
   const headerActions = useMemo(() => {
-    const actions: any[] = [];
+    const actions: {
+      key: string;
+      label: string;
+      variant: 'primary' | 'outline' | 'subtle';
+      icon?: ReactNode;
+      onClick: () => void;
+    }[] = [];
     if (hasPerm('user:create') || hasPerm('user.create')) {
       actions.push({
         key: 'create',
         label: 'Thêm mới',
-        variant: 'primary' as const,
+        variant: 'primary',
         icon: <PlusOutlined />,
         onClick: openCreateModal,
       });
@@ -565,8 +780,103 @@ export default function UsersPage() {
 
 
   return (
-    <ThemeTokenProvider tokens={themeTokenChk}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100% - 32px)' }}>
+    <ThemeTokenProvider tokens={{ ...themeTokenChk, fontSizeMd: 13.5 }}>
+      <div className="users-page-wrapper" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+        <style>{`
+          .users-page-wrapper,
+          .users-page-wrapper .ant-table,
+          .users-page-wrapper .ant-table-cell,
+          .users-page-wrapper .ant-table-thead > tr > th,
+          .users-page-wrapper .ant-table-tbody > tr > td,
+          .users-page-wrapper .ant-input,
+          .users-page-wrapper .ant-select,
+          .users-page-wrapper .ant-select-selection-item,
+          .users-page-wrapper .ant-picker,
+          .users-page-wrapper .ant-btn,
+          .users-page-wrapper .ant-pagination,
+          .users-page-wrapper .ant-pagination-item,
+          .users-page-wrapper .ant-pagination-total-text,
+          .users-page-wrapper .ant-breadcrumb,
+          .users-page-wrapper .ant-form-item-label > label,
+          .users-drawer-scope,
+          .users-drawer-scope .ant-drawer-content,
+          .users-drawer-scope .ant-tabs-tab,
+          .users-drawer-scope .chk-detail-label,
+          .users-drawer-scope .chk-detail-value,
+          .users-drawer-scope .ant-table,
+          .users-drawer-scope .ant-table-cell,
+          .users-drawer-scope .ant-btn,
+          .users-drawer-scope .ant-select,
+          .users-drawer-scope .ant-input,
+          .users-drawer-scope .ant-form-item-label > label {
+            font-size: 13.5px !important;
+          }
+
+          /* Responsive StatusTabs */
+          .users-page-wrapper div:has(> button[aria-pressed]) {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            justify-content: safe center !important;
+            align-items: center !important;
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 #f8fafc !important;
+            scroll-behavior: smooth !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding: 2px 8px 4px 8px !important;
+            gap: clamp(6px, 1vw, 14px) !important;
+          }
+          .users-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar {
+            height: 4px !important;
+            display: block !important;
+          }
+          .users-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 999px !important;
+          }
+          .users-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 999px !important;
+          }
+          .users-page-wrapper div:has(> button[aria-pressed])::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+          }
+          .users-page-wrapper div:has(> button[aria-pressed]) > button {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            padding: 4px 2px !important;
+          }
+
+          /* Responsive Drawers */
+          .users-drawer-scope .ant-drawer-content-wrapper {
+            max-width: 100vw !important;
+          }
+          @media (max-width: 1024px) {
+            .users-drawer-scope .chk-detail-grid {
+              grid-template-columns: 1fr !important;
+              column-gap: 0 !important;
+            }
+            .users-drawer-scope .chk-detail-row--full {
+              grid-column: 1 !important;
+            }
+          }
+          @media (max-width: 640px) {
+            .users-drawer-scope .chk-detail-row {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 4px !important;
+              padding: 8px 0 !important;
+            }
+            .users-drawer-scope .chk-detail-label {
+              width: 100% !important;
+            }
+            .users-drawer-scope .chk-detail-value {
+              width: 100% !important;
+            }
+          }
+        `}</style>
         <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý tài khoản người dùng' }]} actions={headerActions} />
         <FilterTableLayout
           hideFilterToggle
@@ -582,32 +892,19 @@ export default function UsersPage() {
           {renderContent()}
         </FilterTableLayout>
 
-        <Drawer
+        <AppDrawer
           size="50%"
-          placement="right"
-          closable={false}
           open={modalOpen}
           onClose={() => setModalOpen(false)}
-          styles={drawerStyles}
+          rootClassName="users-drawer-scope"
+          className="users-drawer-scope"
+          destroyOnHidden
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '0 24px 12px 24px' },
+          }}
           title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={drawerTitleStyle}>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm mới người dùng'}</span>
-              <Button
-                type="text"
-                onClick={() => setModalOpen(false)}
-                style={{
-                  ...drawerCloseBtnStyle,
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-              </Button>
-            </div>
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>{editingUser ? 'Chỉnh sửa người dùng' : 'Thêm mới người dùng'}</span>
           }
           footer={
             <div style={drawerFooterStyle}>
@@ -710,7 +1007,7 @@ export default function UsersPage() {
               },
             ]}
           />
-        </Drawer>
+        </AppDrawer>
 
 
         <Modal
@@ -804,39 +1101,22 @@ export default function UsersPage() {
           </Spin>
         </Modal>
 
-        <Drawer
+        <AppDrawer
           size="50%"
-          placement="right"
-          closable={false}
           open={Boolean(permissionUser)}
           onClose={() => {
             setPermissionUser(null);
             setAppliedPermissionSearch('');
           }}
           destroyOnHidden
-          styles={drawerStyles}
+          rootClassName="users-drawer-scope"
+          className="users-drawer-scope"
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '0 24px 12px 24px' },
+          }}
           title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={drawerTitleStyle}>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</span>
-              <Button
-                type="text"
-                onClick={() => {
-                  setPermissionUser(null);
-                  setAppliedPermissionSearch('');
-                }}
-                style={{
-                  ...drawerCloseBtnStyle,
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-              </Button>
-            </div>
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>Phân quyền chức năng cho người dùng{permissionUser ? `: ${permissionUser.fullName}` : ''}</span>
           }
           footer={
             <div style={drawerFooterStyle}>
@@ -881,7 +1161,7 @@ export default function UsersPage() {
                         if (allPermissionsSelected || somePermissionsSelected) {
                           setSelectedPermissionKeys([]);
                         } else {
-                          setSelectedPermissionKeys([...allPermissionKeys]);
+                          setSelectedPermissionKeys([...allLeafKeys]);
                         }
                       }}
                     >
@@ -910,36 +1190,23 @@ export default function UsersPage() {
               )}
             </div>
           </Spin>
-        </Drawer>
+        </AppDrawer>
 
-        <Drawer
+        <AppDrawer
           size="50%"
-          placement="right"
-          closable={false}
           open={detailUserId !== null}
           onClose={() => setDetailUserId(null)}
-          styles={drawerStyles}
+          rootClassName="users-drawer-scope"
+          className="users-drawer-scope"
+          destroyOnHidden
+          styles={{
+            header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
+            body: { padding: '0 24px 12px 24px' },
+          }}
           title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={drawerTitleStyle}>
-                {detailUser?.fullName ? `Xem chi tiết — ${detailUser.fullName}` : 'Xem chi tiết tài khoản'}
-              </span>
-              <Button
-                type="text"
-                onClick={() => setDetailUserId(null)}
-                style={{
-                  ...drawerCloseBtnStyle,
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <CloseOutlined style={{ fontSize: 14, color: textSecondary }} />
-              </Button>
-            </div>
+            <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
+              {detailUser?.fullName ? `Xem chi tiết — ${detailUser.fullName}` : 'Xem chi tiết tài khoản'}
+            </span>
           }
           footer={null}
         >
@@ -969,8 +1236,8 @@ export default function UsersPage() {
                                       display: 'inline-block',
                                       padding: '2px 10px',
                                       borderRadius: radiusPill,
-                                      fontSize: fontSizeSm,
-                                      fontWeight: fontWeightMedium,
+                                      fontSize: 13,
+                                      fontWeight: 500,
                                       backgroundColor: `${conf.color}15`,
                                       border: `1px solid ${conf.color}40`,
                                       color: conf.color,
@@ -1011,7 +1278,7 @@ export default function UsersPage() {
               ]}
             />
           )}
-        </Drawer>
+        </AppDrawer>
 
 
 

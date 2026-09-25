@@ -26,6 +26,7 @@ import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
 import toast from '../../components/ToastNotification';
 import { ThemeTokenProvider, type ThemeToken } from '../../context/ThemeTokenContext';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
 import api from '../../services/api';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import type { Organization } from '../../services/organizationService';
@@ -1600,38 +1601,20 @@ export default function AnchorageListPage() {
           onClose={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }}
           afterOpenChange={(open) => { if (!open) { setEditAnchorageId(undefined); setEditBaseStatus(undefined); } }}
           extra={<Button type="text" onClick={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }} style={drawerCloseBtnStyle}>✕</Button>}
-          footer={<div style={drawerFooterStyle}>{(() => {
-            const st = !editAnchorageId ? 'DRAFT' : (editBaseStatus ? normalizeApprovalStatus(editBaseStatus) : 'DRAFT');
-            if (st === 'APPROVED') {
-              return canSaveAndApprove ? (
-                <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); anchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                  Lưu và phê duyệt
-                </Button>
-              ) : null;
-            }
-            if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2') {
-              return (
-                <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); anchorageFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
-                  Lưu và gửi phê duyệt
-                </Button>
-              );
-            }
-            return (
-              <>
-                <Button htmlType="button" onClick={() => { setActionType('draft'); anchorageFormRef.current?.submit('DRAFT'); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>
-                  Lưu tạm
-                </Button>
-                <Button htmlType="button" type="primary" onClick={() => { setActionType('submit'); anchorageFormRef.current?.submit('SUBMIT'); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>
-                  Lưu và gửi phê duyệt
-                </Button>
-                {canSaveAndApprove && (
-                  <Button htmlType="button" type="primary" onClick={() => { setActionType('approve'); anchorageFormRef.current?.submit('APPROVED'); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            );
-          })()}</div>}
+          footer={
+            <KchtFormFooter
+              mode={editAnchorageId ? 'edit' : 'create'}
+              resource="anchorage"
+              record={editAnchorageId ? { approvalStatus: editBaseStatus } : undefined}
+              loading={submitting}
+              activeAction={actionType as any}
+              onCancel={() => { setCreateDrawerVisible(false); createForm.resetFields(); notifyEmbeddedActionClosed(); }}
+              onSubmit={(action) => {
+                setActionType(action);
+                anchorageFormRef.current?.submit(action === 'draft' ? 'DRAFT' : action === 'submit' ? 'SUBMIT' : 'APPROVED');
+              }}
+            />
+          }
           styles={{ header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 }, body: { padding: '0 24px 12px 24px' } }}
         >
           <Form form={createForm} layout="vertical">

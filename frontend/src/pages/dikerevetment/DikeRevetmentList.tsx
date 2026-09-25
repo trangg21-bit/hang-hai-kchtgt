@@ -46,6 +46,8 @@ import { formLabelProps as labelProps } from '../../components/shared/formLabel'
 import { useGisEmbeddedAction } from '../../hooks/useGisEmbeddedAction';
 import toast, { message } from '../../components/ToastNotification';
 import { ThemeTokenProvider } from '../../context/ThemeTokenContext';
+import KchtFormFooter from '../../components/kcht/KchtFormFooter';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import { DEFAULT_IGNORED_FIELDS } from '../../utils/changeHistoryRenderer';
 import { isAttachmentField, mergeAttachmentHistoryChanges } from '../../utils/historyAttachmentDedup';
 import * as themeTokenChk from '../../themetokenchk';
@@ -688,6 +690,7 @@ export default function DikeRevetmentList() {
   const [detailRecord, setDetailRecord] = useState<DikeRevetmentResponse | null>(null);
   const [isDetailMode, setIsDetailMode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const [createForm] = Form.useForm();
   const createGeometryType = Form.useWatch('geometryType', createForm);
   const createOrgUnitId = Form.useWatch('orgUnitId', createForm);
@@ -1400,6 +1403,30 @@ export default function DikeRevetmentList() {
         note: trimOrNull(values.note),
       };
 
+      const wasApproved = editingRecord && (editingRecord.approvalStatus === 'APPROVED' || editingRecord.approvalStatus === 'APPROVED_LEVEL2');
+      if (wasApproved) {
+        const isDirty = createForm.isFieldsTouched() || uploadFileList.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachments.length > 0;
+        if (!isDirty) {
+          toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+          return;
+        }
+      }
+
+      const isCuc = isCucLevelUser(currentUser);
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (action === 'submit') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (action === 'approve') {
+          targetApprovalStatus = (isCuc && canApproveC2) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (action === 'approve') {
+        targetApprovalStatus = (isCuc && canApproveC2) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+      if (targetApprovalStatus) {
+        (payload as any).approvalStatus = targetApprovalStatus;
+      }
+
       // Chuẩn phê duyệt 2 cấp (approval-2-level-spec.md 3.2/3.9 + infrastructure-screen-template §3.6):
       // - draft  : Lưu tạm — tạo / giữ DRAFT.
       // - submit : Lưu và gửi phê duyệt — tạo/sửa xong gửi vào vòng 1 (PENDING_APPROVAL).
@@ -1443,7 +1470,15 @@ export default function DikeRevetmentList() {
       }
 
       if (editingRecord && savedId) {
-        if (action === 'submit') {
+        if (wasApproved) {
+          if (action === 'submit') {
+            toast.success('Lưu và gửi phê duyệt đê kè thành công');
+          } else if (action === 'approve') {
+            toast.success(targetApprovalStatus === 'APPROVED' ? 'Lưu và phê duyệt đê kè thành công' : 'Đã duyệt cấp Cảng vụ, chuyển Chờ Cục duyệt');
+          } else {
+            toast.success('Cập nhật đê kè thành công');
+          }
+        } else if (action === 'submit') {
           // Sửa hồ sơ DRAFT/REJECTED_LEVEL1/REJECTED_LEVEL2 rồi gửi (lại) duyệt → vòng 1.
           await dikeRevetmentApproval.submitForApproval(savedId);
           toast.success('Lưu và gửi phê duyệt đê kè thành công');
@@ -3282,40 +3317,19 @@ export default function DikeRevetmentList() {
         destroyOnHidden
         onClose={closeDrawer}
         footer={
-          isDetailMode ? null : editingRecord ? (
-            // Quy tắc 12 (approval-2-level-spec.md 3.9) — bộ nút chân form theo trạng thái hồ sơ.
-            editingRecord.approvalStatus === 'APPROVED' ? (
-              <div style={drawerFooterStyle}>
-                <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                  Lưu và phê duyệt
-                </Button>
-              </div>
-            ) : (
-              <div style={drawerFooterStyle}>
-                <Button onClick={() => handleSubmit('draft')} loading={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
-                {canSubmitForApproval && (
-                  <Button type="primary" onClick={() => handleSubmit('submit')} loading={submitting} style={primaryButtonStyle}>
-                    Lưu và gửi phê duyệt
-                  </Button>
-                )}
-              </div>
-            )
-          ) : (
-            <div style={drawerFooterStyle}>
-              <Button onClick={() => handleSubmit('draft')} loading={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
-              {canSubmitForApproval && (
-                <Button type="primary" onClick={() => handleSubmit('submit')} loading={submitting} style={primaryButtonStyle}>
-                  Lưu và gửi phê duyệt
-                </Button>
-              )}
-              {canApproveC2 && (
-                <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting}
-                  style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
-                  Lưu và phê duyệt
-                </Button>
-              )}
-            </div>
+          isDetailMode ? null : (
+            <KchtFormFooter
+              mode={editingRecord ? 'edit' : 'create'}
+              resource="dikerevetment"
+              record={editingRecord ? { approvalStatus: editingRecord.approvalStatus } : undefined}
+              loading={submitting}
+              activeAction={actionType as any}
+              onCancel={closeDrawer}
+              onSubmit={(action) => {
+                setActionType(action as any);
+                handleSubmit(action === 'approve' ? 'approve' : action === 'draft' ? 'draft' : 'submit');
+              }}
+            />
           )
         }
       >

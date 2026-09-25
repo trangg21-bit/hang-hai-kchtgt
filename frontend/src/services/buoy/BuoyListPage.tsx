@@ -77,6 +77,8 @@ import { renderStandardHistoryCards, countStandardHistoryCards, isBlankOrDash, t
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import { DeleteConfirmModal } from '../../components/shared/DeleteConfirmModal';
+import { KchtFormFooter } from '../../components/kcht/KchtFormFooter';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 
 // ── Helpers (moved verbatim from BuoyList.tsx / BuoyForm.tsx) ────────
 
@@ -1026,6 +1028,14 @@ export default function BuoyListPage() {
 
   const handleEditFinish = useCallback(async (values: Record<string, any>) => {
     if (!editingRecord) return;
+    const wasApproved = editingRecord.approvalStatus === 'APPROVED' || editingRecord.approvalStatus === 'APPROVED_LEVEL2' || (editingRecord as any).approvalStatus === 'APPROVED_L2' || (editingRecord as any).approvalStatus === 'PUBLISHED' || editingRecord.status === 'APPROVED' || editingRecord.status === 'PUBLISHED';
+    if (wasApproved) {
+      const isDirty = createForm.isFieldsTouched() || uploadFileList.some((fi: any) => !!fi.originFileObj) || pendingDeletedAttachmentIds.length > 0;
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
     const name = String(values.name ?? '').trim();
 
     if (!name) { toast.error('Tên phao tiêu là bắt buộc'); return; }
@@ -1139,6 +1149,22 @@ export default function BuoyListPage() {
       payload.displayRule = resolvedDisplayRule || undefined;
       Object.keys(payload).forEach((key) => { if ((payload as any)[key] === undefined) delete (payload as any)[key]; });
 
+      const isCuc = isCucLevelUser(currentUser);
+      let targetApprovalStatus: string | undefined = undefined;
+      if (wasApproved) {
+        if (actionTypeRef.current === 'submit') {
+          targetApprovalStatus = 'PENDING_APPROVAL';
+        } else if (actionTypeRef.current === 'approved') {
+          targetApprovalStatus = (isCuc && hasPerm('buoy:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+      } else if (actionTypeRef.current === 'approved') {
+        targetApprovalStatus = (isCuc && hasPerm('buoy:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+      }
+      if (targetApprovalStatus) {
+        (payload as any).approvalStatus = targetApprovalStatus;
+        (payload as any).status = targetApprovalStatus;
+      }
+
       if (actionTypeRef.current) {
         (payload as any).action = actionTypeRef.current;
       }
@@ -1150,8 +1176,6 @@ export default function BuoyListPage() {
           ? 'Lưu và phê duyệt thành công'
           : 'Lưu và gửi phê duyệt thành công'
       );
-
-      const wasApproved = editingRecord.approvalStatus === 'APPROVED' || editingRecord.approvalStatus === 'APPROVED_LEVEL2' || (editingRecord as any).approvalStatus === 'APPROVED_L2' || (editingRecord as any).approvalStatus === 'PUBLISHED';
 
       if (pendingDeletedAttachmentIds.length > 0) {
         for (const attId of pendingDeletedAttachmentIds) {
@@ -1175,7 +1199,7 @@ export default function BuoyListPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, createCoords, uploadFileList, pendingDeletedAttachmentIds, uploadFilesAfterSave, closeCreateDrawer, fetchData]);
+  }, [editingRecord, createCoords, uploadFileList, pendingDeletedAttachmentIds, uploadFilesAfterSave, closeCreateDrawer, fetchData, createForm, currentUser, hasPerm]);
 
   // ── History Drawer ──────────────────────────────────────────────
 
@@ -2030,66 +2054,17 @@ export default function BuoyListPage() {
         onClose={closeCreateDrawer}
         footer={
           <div style={drawerFooterStyle}>
-            {(() => {
-              if ((isEmbeddedAction || linkedAction === 'edit') && !editingRecord) {
-                return null;
-              }
-              const st = !editingRecord ? 'DRAFT' : (editingRecord.status ? String(editingRecord.status).toUpperCase() : 'DRAFT');
-              if (st === 'PUBLISHED' || st === 'APPROVED' || st === 'APPROVED_L2') {
-                return (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approved'; createForm.submit(); }}
-                    loading={submitting}
-                    disabled={submitting}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                );
-              }
-              if (st === 'REJECTED' || st === 'REJECTED_L1' || st === 'REJECTED_L2') {
-                return (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'submit'; createForm.submit(); }}
-                    loading={submitting}
-                    disabled={submitting}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                );
-              }
-              return (
-                <>
-                  <Button
-                    onClick={() => { actionTypeRef.current = 'draft'; createForm.submit(); }}
-                    disabled={submitting}
-                    style={outlineButtonStyle}
-                  >
-                    Lưu tạm
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'submit'; createForm.submit(); }}
-                    loading={submitting}
-                    disabled={submitting}
-                    style={primaryButtonStyle}
-                  >
-                    Lưu và gửi phê duyệt
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approved'; createForm.submit(); }}
-                    disabled={submitting}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                </>
-              );
-            })()}
+            <KchtFormFooter
+              resource="buoy"
+              isEdit={!!editingRecord}
+              status={editingRecord?.approvalStatus || editingRecord?.status}
+              loading={submitting}
+              onCancel={closeCreateDrawer}
+              onSubmit={(action) => {
+                actionTypeRef.current = action === 'draft' ? 'draft' : action === 'approve' ? 'approved' : 'submit';
+                createForm.submit();
+              }}
+            />
           </div>
         }
         styles={{

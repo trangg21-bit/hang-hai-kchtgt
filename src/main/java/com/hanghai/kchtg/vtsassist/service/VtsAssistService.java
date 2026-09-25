@@ -377,6 +377,8 @@ public class VtsAssistService {
     VtsAssist entity = vtsAssistRepository.findById(request.getId())
       .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hệ thống phụ trợ VTS với id: " + request.getId()));
 
+    approvalService.assertCanEdit(entity, currentUserId, InfrastructureType.VTS_ASSIST);
+
     // Capture snapshot for change history
     VtsAssist snapshot = VtsAssist.builder()
       .id(entity.getId())
@@ -503,19 +505,11 @@ public class VtsAssistService {
     // Cho phép cập nhật bất kể trạng thái phê duyệt (yêu cầu nghiệp vụ 2026-08-26):
     // hồ sơ đang chờ duyệt được sửa và giữ nguyên trạng thái chờ duyệt.
     ApprovalStatus currentStatus = entity.getApprovalStatus();
-    boolean approvedEdit = false;
-    if (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2) {
-      // T12 — "Lưu và phê duyệt": request có approvalStatus=APPROVED thì giữ trạng thái
-      // Đã duyệt (nút phía FE chỉ hiển thị cho tài khoản có quyền duyệt) và ghi nhận
-      // người duyệt/ngày duyệt/lịch sử; ngoài ra phải duyệt lại.
-      if (request.getApprovalStatus() == ApprovalStatus.APPROVED) {
-        approvalService.requireApproveC2Permission(currentUserId, "vtsassist:approvec2");
-        approvalService.recordSaveAndApprove(entity, InfrastructureType.VTS_ASSIST,
-            "Cập nhật hồ sơ đã duyệt", currentUserId);
-        approvedEdit = true;
-      } else {
-        entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-      }
+    boolean wasApproved = (currentStatus == ApprovalStatus.APPROVED || currentStatus == ApprovalStatus.APPROVED_LEVEL2);
+    if (wasApproved) {
+      approvalService.handleApprovedRecordEdit(entity, InfrastructureType.VTS_ASSIST, request.getApprovalStatus(), currentUserId);
+    } else if (request.getApprovalStatus() != null) {
+      entity.setApprovalStatus(request.getApprovalStatus());
     }
 
     VtsAssist saved = vtsAssistRepository.save(entity);
@@ -523,7 +517,7 @@ public class VtsAssistService {
     // UC-8 (tài liệu phê duyệt — Ca sử dụng 8): chỉ ghi nhật ký thay đổi khi hồ sơ
     // ĐÃ DUYỆT được chỉnh sửa thành công ("Lưu và phê duyệt") VÀ CÓ THAY ĐỔI THỰC SỰ —
     // bản nháp/lưu tạm, hồ sơ đang chờ duyệt hoặc không có trường nào thay đổi KHÔNG ghi lịch sử.
-    if (approvedEdit && !previousValues.isEmpty()) {
+    if (wasApproved && !previousValues.isEmpty()) {
       if (previousValues.containsKey("coordinates")) {
         changeHistoryService.insertChangeRecord("VTS_ASSIST", saved.getId(), "coordinates",
             oldCoordinates != null ? oldCoordinates : "Chưa có",

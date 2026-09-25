@@ -56,7 +56,8 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
+import { useKchtPermissions } from '../../hooks/useKchtPermissions';
+import { KchtFormFooter, type KchtFormActionType } from '../../components/kcht/KchtFormFooter';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
@@ -80,6 +81,11 @@ const GEOMETRY_TYPE_OPTIONS = [
 const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
+];
+
+const ATTACHED_INFRA_TYPE_OPTIONS = [
+  { label: 'TTDH VTS', value: 1 },
+  { label: 'Trạm radar', value: 2 },
 ];
 
 export interface AisSystemFormProps {
@@ -218,8 +224,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const [record, setRecord] = useState<AisSystemResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(Boolean(editId));
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const actionTypeRef = useRef<'draft' | 'submit' | 'approve' | 'update'>('draft');
-  const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve' | 'update'>('draft');
+  const actionTypeRef = useRef<KchtFormActionType>('draft');
+  const [actionType, setActionType] = useState<KchtFormActionType>('draft');
 
   const [internalOrgUnits, setInternalOrgUnits] = useState<any[]>(orgUnits || []);
   const [operatingOrganizations, setOperatingOrganizations] = useState<any[]>(DEFAULT_OPERATING_ORGANIZATIONS);
@@ -233,18 +239,14 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingDeletedAttachments, setPendingDeletedAttachments] = useState<{ id: string; fileName: string }[]>([]);
 
-  const currentUser = useAuthStore((s: AuthState) => s.user);
-  const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
-  const canCreate = hasPerm('aissystem:create');
-  const canUpdate = canEditApprovalRecord(record?.approvalStatus, { hasPerm, resource: 'aissystem' });
-  const canSaveAndApprove = checkCanSaveAndApprove('aissystem', hasExplicitPerm || hasPerm, currentUser);
+  const kchtPerms = useKchtPermissions('aissystem');
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
   const isEditMode = currentMode === 'edit';
 
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
+  const watchedAttachedType = Form.useWatch('attachedInfrastructureType', form);
   const watchedGeometryType = Form.useWatch('geometryType', form);
 
   const hasCoordinates = coordinateList.some((c) => c.latD != null || c.latM != null || c.latS != null || c.lngD != null || c.lngM != null || c.lngS != null);
@@ -431,7 +433,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
       aisSystemService.getById(targetId)
         .then((full) => {
           setRecord(full);
-          setAttachments(full.attachments || []);
+          setAttachments((full.attachments || []) as any);
           if (full.radarStationId) {
             setRadarStations((prev) => {
               if (prev.some((r) => r.id === full.radarStationId)) return prev;
@@ -458,13 +460,15 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
               ];
             });
           }
-          const initialLocId = full.vtsOperationCenterId ? `op_${full.vtsOperationCenterId}` : full.radarStationId ? `radar_${full.radarStationId}` : undefined;
+          const attachedType = full.vtsOperationCenterId ? 1 : full.radarStationId ? 2 : undefined;
+          const attachedId = full.vtsOperationCenterId || full.radarStationId || undefined;
           const geom = full.geometryType || undefined;
           prevGeometryTypeRef.current = geom;
           form.setFieldsValue({
             code: full.code,
             name: full.name,
-            locationId: initialLocId,
+            attachedInfrastructureType: attachedType,
+            attachedInfrastructureId: attachedId,
             operatingOrgId: full.operatingOrgId != null ? String(full.operatingOrgId) : undefined,
             orgUnitId: full.orgUnitId,
             provinceId: full.provinceId != null ? String(full.provinceId) : undefined,
@@ -513,6 +517,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
         unitOfMeasure: UnitOfMeasure.SET,
         quantity: 1,
+        attachedInfrastructureType: undefined,
+        attachedInfrastructureId: undefined,
         geometryType: undefined,
         coordinateSystem: undefined,
         displayRule: undefined,
@@ -530,6 +536,8 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
           conditionStatus: ConditionStatus.NOT_YET_OPERATIONAL,
           unitOfMeasure: UnitOfMeasure.SET,
           quantity: 1,
+          attachedInfrastructureType: undefined,
+          attachedInfrastructureId: undefined,
           geometryType: undefined,
           coordinateSystem: undefined,
           displayRule: undefined,
@@ -589,17 +597,6 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
     const allowedIds = resolveOrgSubtreeIds(orgUnits, effectiveOrgUnitId);
     return radarStations.filter((r) => r.id === record?.radarStationId || (r.orgUnitId && allowedIds.has(String(r.orgUnitId))));
   }, [radarStations, effectiveOrgUnitId, orgUnits, record?.radarStationId]);
-
-  const combinedLocationOptions = useMemo(() => [
-    {
-      label: 'Trung tâm điều hành VTS',
-      options: filteredOpCenters.map((c) => ({ value: `op_${c.id}`, rawId: c.id, type: 'op', label: c.name })),
-    },
-    {
-      label: 'Trạm radar',
-      options: filteredRadarStations.map((r) => ({ value: `radar_${r.id}`, rawId: r.id, type: 'radar', label: r.name })),
-    },
-  ], [filteredOpCenters, filteredRadarStations]);
 
   const attachmentsEditable = isCreateMode ||
     record?.approvalStatus === ApprovalStatus.DRAFT ||
@@ -720,27 +717,22 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      const locationVal = allValues.locationId ?? values.locationId;
-      let vtsCenterId: string | undefined = undefined;
-      let radarId: string | undefined = undefined;
+      const attachedType = allValues.attachedInfrastructureType ?? values.attachedInfrastructureType;
+      const attachedId = allValues.attachedInfrastructureId ?? values.attachedInfrastructureId;
+      let vtsCenterId: string | null = null;
+      let radarId: string | null = null;
 
-      if (locationVal) {
-        if (String(locationVal).startsWith('op_')) {
-          vtsCenterId = String(locationVal).replace('op_', '');
-        } else if (String(locationVal).startsWith('radar_')) {
-          radarId = String(locationVal).replace('radar_', '');
-        } else {
-          if (opCenters.some((c) => c.id === locationVal)) vtsCenterId = locationVal;
-          else if (radarStations.some((r) => r.id === locationVal)) radarId = locationVal;
-          else vtsCenterId = locationVal;
-        }
+      if (attachedType === 1 && attachedId) {
+        vtsCenterId = attachedId;
+      } else if (attachedType === 2 && attachedId) {
+        radarId = attachedId;
       }
 
-      const payload = {
-        code: (allValues.code ?? values.code)?.trim() ?? null,
-        name: (allValues.name ?? values.name)?.trim() ?? null,
-        vtsOperationCenterId: vtsCenterId ?? null,
-        radarStationId: radarId ?? null,
+      const payload: CreateAisSystemRequest & Record<string, any> = {
+        code: ((allValues.code ?? values.code)?.trim() || '') as string,
+        name: ((allValues.name ?? values.name)?.trim() || '') as string,
+        vtsOperationCenterId: vtsCenterId,
+        radarStationId: radarId,
         operatingOrgId: (allValues.operatingOrgId ?? values.operatingOrgId) ?? null,
         orgUnitId: (allValues.orgUnitId ?? values.orgUnitId) ?? null,
         provinceId: (allValues.provinceId ?? values.provinceId) != null ? Number(allValues.provinceId ?? values.provinceId) : null,
@@ -755,7 +747,7 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         maintenanceInfo: (allValues.maintenanceInfo ?? values.maintenanceInfo)?.trim() ?? null,
         note: (allValues.note ?? values.note)?.trim() ?? null,
         geometryType: geomType ?? null,
-symbolId: geomType ? (currentSymbolId ?? null) : null,
+        symbolId: geomType ? (symId ?? null) : null,
         coordinateSystem: geomType ? (values.coordinateSystem || form.getFieldValue('coordinateSystem') || 1) : null,
         displayRule: geomType ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
 
@@ -781,9 +773,44 @@ symbolId: geomType ? (currentSymbolId ?? null) : null,
       } else if (editId || record?.id) {
         const targetId = editId || record!.id;
         const updatePayload: UpdateAisSystemRequest = { ...payload, id: targetId } as UpdateAisSystemRequest;
-        if (act === 'approve') {
-          updatePayload.approvalStatus = ApprovalStatus.APPROVED;
+
+        const isApprovedRecord =
+          record?.approvalStatus === ApprovalStatus.APPROVED ||
+          record?.approvalStatus === 'APPROVED' ||
+          (record?.approvalStatus as any) === ApprovalStatus.APPROVED_LEVEL2 ||
+          record?.approvalStatus === 'APPROVED_LEVEL2';
+
+        if (isApprovedRecord) {
+          const isDirty =
+            form.isFieldsTouched() ||
+            pendingFiles.length > 0 ||
+            pendingDeletedAttachments.length > 0;
+          if (!isDirty) {
+            toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+            setIsSubmitting(false);
+            return;
+          }
         }
+
+        let targetApprovalStatus: ApprovalStatus | undefined = undefined;
+        if (isApprovedRecord) {
+          if (act === 'submit') {
+            targetApprovalStatus = ApprovalStatus.PENDING_APPROVAL;
+          } else if (act === 'approve') {
+            targetApprovalStatus = (kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm)
+              ? ApprovalStatus.APPROVED
+              : ApprovalStatus.APPROVED_LEVEL1;
+          }
+        } else if (act === 'approve') {
+          targetApprovalStatus = (kchtPerms.isCucLevel && kchtPerms.hasApproveL2Perm)
+            ? ApprovalStatus.APPROVED
+            : ApprovalStatus.APPROVED_LEVEL1;
+        }
+
+        if (targetApprovalStatus) {
+          updatePayload.approvalStatus = targetApprovalStatus;
+        }
+
         await aisSystemService.update(targetId, updatePayload);
         if (pendingDeletedAttachments.length > 0) {
           try {
@@ -799,12 +826,20 @@ symbolId: geomType ? (currentSymbolId ?? null) : null,
             console.warn('Failed to upload some pending files on edit', uploadErr);
           }
         }
-        if (act === 'submit' && (record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
+        if (act === 'submit' && !isApprovedRecord && (record?.approvalStatus === ApprovalStatus.DRAFT || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record?.approvalStatus === ApprovalStatus.REJECTED_LEVEL2)) {
           await aisSystemService.submit(targetId);
         }
         setPendingFiles([]);
         setPendingDeletedAttachments([]);
-        toast.success('Cập nhật thành công');
+        const msg =
+          act === 'draft'
+            ? 'Lưu tạm thành công'
+            : act === 'submit'
+              ? 'Lưu và gửi phê duyệt thành công'
+              : act === 'approve'
+                ? 'Lưu và phê duyệt thành công'
+                : 'Cập nhật thành công';
+        toast.success(msg);
       }
       onSuccess?.();
     } catch (err: any) {
@@ -837,82 +872,19 @@ symbolId: geomType ? (currentSymbolId ?? null) : null,
       }
       footer={
         isDetailMode ? null : (
-          <>
-            {isCreateMode ? (
-              <>
-                {canCreate && (
-                  <>
-                    <Button
-                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'draft'}
-                      style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'submit'}
-                      style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  </>
-                )}
-                {canSaveAndApprove && canCreate && (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                )}
-              </>
-            ) : (
-              <>
-                {canUpdate && (!record?.approvalStatus || ['DRAFT', 'NHAP', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(String(record.approvalStatus).toUpperCase())) && (
-                  <>
-                    <Button
-                      onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'draft'}
-                      style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}
-                    >
-                      Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); form.submit(); }}
-                      loading={isSubmitting && actionType === 'submit'}
-                      style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  </>
-                )}
-                {canSaveAndApprove ? (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'approve'}
-                    style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}
-                  >
-                    Lưu và phê duyệt
-                  </Button>
-                ) : canUpdate ? (
-                  <Button
-                    type="primary"
-                    onClick={() => { actionTypeRef.current = 'update'; setActionType('update'); form.submit(); }}
-                    loading={isSubmitting && actionType === 'update'}
-                    style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}
-                  >
-                    Cập nhật
-                  </Button>
-                ) : null}
-              </>
-            )}
-          </>
+          <KchtFormFooter
+            mode={currentMode}
+            resource="aissystem"
+            record={record}
+            loading={isSubmitting}
+            activeAction={actionType}
+            onCancel={handleClose}
+            onSubmit={(action) => {
+              actionTypeRef.current = action;
+              setActionType(action);
+              form.submit();
+            }}
+          />
         )
       }
     >
@@ -940,7 +912,7 @@ symbolId: geomType ? (currentSymbolId ?? null) : null,
                 errorInfo,
                 {
                   general: [
-                    'code', 'name', 'orgUnitId', 'locationId', 'operatingOrgId', 'provinceId',
+                    'code', 'name', 'orgUnitId', 'attachedInfrastructureType', 'attachedInfrastructureId', 'operatingOrgId', 'provinceId',
                     'detailedLocation', 'unitOfMeasure', 'quantity', 'model', 'commissioningYear',
                     'conditionStatus', 'specifications', 'manufacturer', 'maintenanceInfo', 'note',
                   ],
@@ -1016,25 +988,8 @@ symbolId: geomType ? (currentSymbolId ?? null) : null,
                                 disabled={isEditMode}
                                 allowClear
                                 onChange={(val) => {
-                                  form.setFieldsValue({ orgUnitId: val, locationId: undefined });
+                                  form.setFieldsValue({ orgUnitId: val, attachedInfrastructureId: undefined });
                                 }}
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col span={12}>
-                            <Form.Item
-                              name="locationId"
-                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc TTDH VTS / Trạm radar</span>}
-                              rules={[{ required: true, message: 'Vui lòng chọn TTDH VTS hoặc Trạm radar' }]}
-                              style={{ marginBottom: spaceFormField }}
-                            >
-                              <Select
-                                placeholder="Chọn TTDH VTS hoặc Trạm radar"
-                                allowClear
-                                showSearch
-                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
-                                options={combinedLocationOptions}
-                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
                               />
                             </Form.Item>
                           </Col>
@@ -1050,6 +1005,56 @@ symbolId: geomType ? (currentSymbolId ?? null) : null,
                                 showSearch
                                 filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
                                 options={operatingUnitOptions}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="attachedInfrastructureType"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc loại hạ tầng</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn loại hạ tầng' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder="Chọn loại hạ tầng"
+                                allowClear
+                                options={ATTACHED_INFRA_TYPE_OPTIONS}
+                                onChange={(val) => {
+                                  form.setFieldsValue({ attachedInfrastructureType: val, attachedInfrastructureId: undefined });
+                                }}
+                                style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={12}>
+                            <Form.Item
+                              name="attachedInfrastructureId"
+                              label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Thuộc hạ tầng</span>}
+                              rules={[{ required: true, message: 'Vui lòng chọn hạ tầng' }]}
+                              style={{ marginBottom: spaceFormField }}
+                            >
+                              <Select
+                                placeholder={
+                                  !effectiveOrgUnitId
+                                    ? 'Vui lòng chọn đơn vị quản lý trước'
+                                    : watchedAttachedType === 2
+                                      ? 'Chọn trạm Radar'
+                                      : watchedAttachedType === 1
+                                        ? 'Chọn Trung Tâm Điều Hành VTS'
+                                        : 'Chọn loại hạ tầng trước'
+                                }
+                                allowClear
+                                showSearch
+                                disabled={!effectiveOrgUnitId || (watchedAttachedType !== 1 && watchedAttachedType !== 2)}
+                                filterOption={(input, option) => normalizeSearchText(option?.label || '').includes(normalizeSearchText(input))}
+                                options={
+                                  watchedAttachedType === 1
+                                    ? filteredOpCenters.map((c) => ({ value: c.id, label: c.name }))
+                                    : watchedAttachedType === 2
+                                      ? filteredRadarStations.map((r) => ({ value: r.id, label: r.name }))
+                                      : []
+                                }
                                 style={{ ...selectStyle, width: '100%', borderRadius: radiusPill, height: 40 }}
                               />
                             </Form.Item>

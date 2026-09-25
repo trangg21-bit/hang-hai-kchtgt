@@ -344,7 +344,7 @@ public class DikeRevetmentService {
         }
 
         // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
-        approvalService.assertEditable(dr);
+        approvalService.assertCanEdit(dr, userId, InfrastructureType.DIKE_REVETMENT);
 
         validateAllowedOrgUnit(dr.getOrgUnitId());
         if (req.getOrgUnitId() != null && !req.getOrgUnitId().equals(dr.getOrgUnitId())) {
@@ -438,6 +438,12 @@ public class DikeRevetmentService {
             if (!Objects.equals(req.getGeometryType(), oldGeometryType)) {
                 previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
             }
+
+        if (wasApproved) {
+            approvalService.handleApprovedRecordEdit(dr, InfrastructureType.DIKE_REVETMENT, req.getApprovalStatus(), userId);
+        } else if (req.getApprovalStatus() != null) {
+            dr.setApprovalStatus(req.getApprovalStatus());
+        }
 
         dr.setUpdatedBy(userId);
         DikeRevetment saved = repo.save(dr);

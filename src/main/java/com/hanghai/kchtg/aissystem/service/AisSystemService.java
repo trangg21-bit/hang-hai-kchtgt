@@ -290,7 +290,7 @@ public class AisSystemService {
                 .orElseThrow(() -> new IllegalArgumentException("Hệ thống AIS không tồn tại"));
 
         // Quy tắc 12 (approval-2-level-spec.md mục 3.9): cấm sửa khi hồ sơ đang trong vòng duyệt
-        approvalService.assertEditable(entity);
+        approvalService.assertCanEdit(entity, userId, InfrastructureType.AIS_SYSTEM);
 
         validateAllowedOrgUnit(entity.getOrgUnitId());
         if (request.getOrgUnitId() != null) {
@@ -480,16 +480,7 @@ public class AisSystemService {
                 || previousApprovalStatus == ApprovalStatus.APPROVED_LEVEL2;
 
         if (wasApproved) {
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-            LocalDateTime now = LocalDateTime.now();
-            if (entity.getApproverLevel1() == null) {
-                entity.setApprovedDateLevel1(now);
-                entity.setApproverLevel1(userId);
-            }
-            if (entity.getApproverLevel2() == null) {
-                entity.setApprovedDateLevel2(now);
-                entity.setApproverLevel2(userId);
-            }
+            approvalService.handleApprovedRecordEdit(entity, InfrastructureType.AIS_SYSTEM, request.getApprovalStatus(), userId);
         } else if (request.getApprovalStatus() != null) {
             // Chuyển thẳng sang "Đã duyệt" từ trạng thái chưa duyệt cũng là bỏ qua
             // 2 vòng — áp cùng ràng buộc cấp Cục như lúc tạo mới.

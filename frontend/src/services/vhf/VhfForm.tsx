@@ -33,8 +33,9 @@ import { FormOrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgSubtreeIds, n
 import { symbolService } from '../symbolService';
 import { userService } from '../userService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import type { Symbol as MapSymbol } from '../symbolService';
 import { useAuthStore } from '../../store/authStore';
+import { usePermissionStore } from '../../store/permissionStore';
+import { isCucLevelUser } from '../../hooks/useKchtPermissions';
 import {
   GEOMETRY_POINT_COUNT, parseWktToCoordinates, validateDmsCoordinates, serializeCoordinatesToWkt,
   ddToDms, dmsToDd,
@@ -266,6 +267,8 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
   const [activeTabKey, setActiveTabKey] = useState('general');
   const [deviceCodeLoading, setDeviceCodeLoading] = useState(false);
   const currentUser = useAuthStore((s) => s.user);
+  const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const [existingStatus, setExistingStatus] = useState<string | null>(null);
   const isSystemAdmin = currentUser?.permissions?.includes('*') ?? false;
 
   const watchedGeometryType = Form.useWatch('geometryType', form);
@@ -521,6 +524,7 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       try {
         const data = await fetchVhfById(id);
         if (disposed) return;
+        setExistingStatus(data.approvalStatus);
         editSeaportIdRef.current = data.seaportId ?? undefined;
         form.setFieldsValue({
           deviceCode: data.deviceCode,
@@ -748,6 +752,15 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
     const validCoords = coordResult.validCoords;
     const wktCoordinates = hasGeom && validCoords.length > 0 ? serializeCoordinatesToWkt(validCoords, currentGeometryType) : null;
 
+    const wasApproved = isEdit && (existingStatus === 'APPROVED' || existingStatus === 'APPROVED_LEVEL2' || existingStatus === 'APPROVED_L2' || existingStatus === 'PUBLISHED');
+    if (wasApproved) {
+      const isDirty = form.isFieldsTouched() || uploadedFiles.some((fi: any) => !!fi.originFileObj);
+      if (!isDirty) {
+        toast.warning('Bắt buộc chỉnh sửa ít nhất 1 trường thông tin trước khi thực hiện thao tác này');
+        return;
+      }
+    }
+
     setSubmitting(true);
     onSubmittingChange?.(true);
 
@@ -773,6 +786,18 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
       let targetId: string;
       if (isEdit && id) {
         targetId = id;
+        const isCuc = isCucLevelUser(currentUser);
+        let targetApprovalStatus: string | undefined = undefined;
+        if (wasApproved) {
+          if (saveAction === 'SUBMIT') {
+            targetApprovalStatus = 'PENDING_APPROVAL';
+          } else if (saveAction === 'APPROVED') {
+            targetApprovalStatus = (isCuc && hasPerm('vhf:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+          }
+        } else if (saveAction === 'APPROVED') {
+          targetApprovalStatus = (isCuc && hasPerm('vhf:approvec2')) ? 'APPROVED' : 'APPROVED_LEVEL1';
+        }
+
         const updatePayload: UpdateVhfRequest = {
           id,
           deviceName: String(values.deviceName || '').trim(),
@@ -798,10 +823,10 @@ export default forwardRef(function VhfForm({ form, id, onFinish, onSubmittingCha
           displayRule: hasGeom && currentDisplayRule != null ? (Number(currentDisplayRule) || null) : null,
           geometryType: hasGeom ? (currentGeometryType as 'POINT' | 'LINE' | 'POLYGON') : null,
           coordinates: hasGeom ? wktCoordinates : null,
-          ...(saveAction === 'APPROVED' ? { approvalStatus: 'APPROVED' } : {}),
+          ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
         };
         await updateVhf(updatePayload);
-        if (saveAction === 'SUBMIT') {
+        if (saveAction === 'SUBMIT' && !wasApproved) {
           await submitVhf(id);
         }
       } else {

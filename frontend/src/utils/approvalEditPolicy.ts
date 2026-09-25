@@ -147,7 +147,8 @@ export function canEditApprovalRecord(
     }
   };
 
-  // Đã duyệt: sửa qua "Lưu và phê duyệt" (T12) — cần ĐỒNG THỜI quyền cập nhật và quyền duyệt C2.
+  // Đã duyệt (Rule R4): cần ĐỒNG THỜI quyền cập nhật VÀ quyền duyệt (C1 hoặc C2).
+  // Rule R3: chỉ có quyền sửa (không có quyền duyệt C1 hoặc C2) thì KHÔNG sửa được hồ sơ Đã duyệt.
   if (st === 'APPROVED') {
     const allowApproved = Boolean(
       optionsOrResource &&
@@ -167,8 +168,11 @@ export function canEditApprovalRecord(
     }
 
     const approvePerms = [
-      ...(resource ? [`${resource}:approvec2`, `${resource}:approve:c2`, `${resource}:approvel2`, `${resource}:approve_level2`] : []),
-      ...extraApprovePerms.filter(isExplicitC2Permission),
+      ...(resource ? [
+        `${resource}:approvec2`, `${resource}:approve:c2`, `${resource}:approvel2`, `${resource}:approve_level2`,
+        `${resource}:approvec1`, `${resource}:approve:c1`, `${resource}:approvel1`, `${resource}:approve_level1`,
+      ] : []),
+      ...extraApprovePerms.filter((p) => isExplicitC2Permission(p) || isExplicitC1Permission(p)),
     ];
     return approvePerms.some(checkPerm);
   }
@@ -184,6 +188,11 @@ export function canEditApprovalRecord(
 
   // Trạng thái lạ: mặc định an toàn là không cho sửa.
   return false;
+}
+
+function isExplicitC1Permission(permission: string): boolean {
+  const normalized = permission.trim().toLowerCase();
+  return /:(approvec1|approvel1|approve:c1|approve:l1|approve-c1|approve-l1|approve_level1)$/.test(normalized);
 }
 
 function isExplicitC2Permission(permission: string): boolean {

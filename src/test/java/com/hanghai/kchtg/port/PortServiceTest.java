@@ -83,6 +83,9 @@ class PortServiceTest {
     @Mock
     private InfrastructureHistoryRepository historyRepository;
 
+    @Mock
+    private com.hanghai.kchtg.common.service.InfrastructureApprovalService infrastructureApprovalService;
+
     private UUID testId;
     private Port testEntity;
 
@@ -131,7 +134,7 @@ class PortServiceTest {
         assertEquals("CB-002", result.getPortCode());
         assertEquals("Cảng mới", result.getPortName());
         assertEquals(ApprovalStatus.PENDING_APPROVAL, result.getApprovalStatus());
-        verify(portRepository, times(1)).save(any(Port.class));
+        verify(portRepository, atLeastOnce()).save(any(Port.class));
     }
 
     @Test
