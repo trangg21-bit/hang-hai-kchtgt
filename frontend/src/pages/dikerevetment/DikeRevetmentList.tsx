@@ -1130,6 +1130,8 @@ export default function DikeRevetmentList() {
       message.warning('Bạn không có quyền thêm mới công trình đê kè');
       return;
     }
+    submittingRef.current = false;
+    setSubmitting(false);
     editOpenSeqRef.current += 1;
     setEditingRecord(null);
     editSeaportIdRef.current = undefined;
@@ -1173,6 +1175,8 @@ export default function DikeRevetmentList() {
       message.warning('Bạn không có quyền chỉnh sửa công trình đê kè này');
       return;
     }
+    submittingRef.current = false;
+    setSubmitting(false);
     editOpenSeqRef.current += 1;
     const seq = editOpenSeqRef.current;
     setEditingRecord(record);
@@ -1496,6 +1500,9 @@ export default function DikeRevetmentList() {
       setEditingRecord(null);
       setUploadFileList([]);
       setPendingDeletedAttachments([]);
+      setSortField(undefined);
+      setSortOrder(null);
+      setPage(1);
       fetchData();
       fetchTabCounts();
     } catch (err) {
@@ -3290,24 +3297,24 @@ export default function DikeRevetmentList() {
           isDetailMode ? null : editingRecord ? (
             // Quy tắc 12 (approval-2-level-spec.md 3.9) — bộ nút chân form theo trạng thái hồ sơ.
             editingRecord.approvalStatus === 'APPROVED' ? (
-              <div style={drawerFooterStyle}>
-                <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting}
+              <div style={{ ...drawerFooterStyle, pointerEvents: submitting ? 'none' : 'auto' }}>
+                <Button type="primary" onClick={() => handleSubmit('approve')} loading={submitting} disabled={submitting}
                   style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
               </div>
             ) : (
-              <div style={drawerFooterStyle}>
-                <Button onClick={() => handleSubmit('draft')} loading={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
+              <div style={{ ...drawerFooterStyle, pointerEvents: submitting ? 'none' : 'auto' }}>
+                <Button onClick={() => handleSubmit('draft')} loading={submitting} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
                 {canSubmitForApproval && (
-                  <Button type="primary" onClick={() => handleSubmit('submit')} loading={submitting} style={primaryButtonStyle}>
+                  <Button type="primary" onClick={() => handleSubmit('submit')} loading={submitting} disabled={submitting} style={primaryButtonStyle}>
                     Lưu và gửi phê duyệt
                   </Button>
                 )}
               </div>
             )
           ) : (
-            <div style={drawerFooterStyle}>
+            <div style={{ ...drawerFooterStyle, pointerEvents: submitting ? 'none' : 'auto' }}>
               <Button onClick={() => handleSubmit('draft')} loading={submitting} disabled={submitting} style={outlineButtonStyle}>Lưu tạm</Button>
               {canSubmitForApproval && (
                 <Button type="primary" onClick={() => handleSubmit('submit')} loading={submitting} disabled={submitting} style={primaryButtonStyle}>

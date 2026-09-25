@@ -105,6 +105,7 @@ public class DikeRevetmentService {
 
     private static final String DIKE_REVETMENT_CODE_PREFIX = "DK-";
     private static final int MAX_CODE_GENERATION_ATTEMPTS = 5;
+    private static final Object CREATE_LOCK = new Object();
 
     private Scope resolveEffectiveScope(UUID selectedOrgUnitId) {
         Scope userScope = orgUnitScopeService.currentUserScope();
@@ -135,32 +136,38 @@ public class DikeRevetmentService {
         FieldWriteGuard.validateObject(req);
         validateAllowedOrgUnit(req.getOrgUnitId());
 
-        String code = req.getCode() != null && !req.getCode().trim().isEmpty() ? req.getCode().trim() : generateUniqueDikeRevetmentCode();
+        DikeRevetment dr;
+        synchronized (CREATE_LOCK) {
+            String code = req.getCode() != null && !req.getCode().trim().isEmpty() ? req.getCode().trim() : generateUniqueDikeRevetmentCode();
+            if (code != null && !code.trim().isEmpty() && repo.existsByCode(code.trim())) {
+                throw new IllegalArgumentException("Mã đê kè '" + code.trim() + "' đã tồn tại trong hệ thống");
+            }
 
-        DikeRevetment dr = DikeRevetment.builder()
-                .dikeRevetmentType(req.getDikeRevetmentType())
-                .location(req.getLocation())
-                .locationDetail(req.getLocationDetail())
-                .dikeRevetmentName(req.getDikeRevetmentName())
-                .code(code)
-                .seaportId(req.getSeaportId())
-                .operatingUnitId(req.getOperatingUnitId())
-                .length(req.getLength())
-                .crestElevation(req.getCrestElevation())
-                .commissioningDate(req.getCommissioningDate())
-                .constructionDate(req.getConstructionDate())
-                .lastMaintenanceYear(req.getLastMaintenanceYear())
-                .height(req.getHeight())
-                .surfaceMaterial(req.getSurfaceMaterial())
-                .status(req.getStatus() != null ? req.getStatus() : "1")
-                .note(req.getNote())
-                .orgUnitId(req.getOrgUnitId())
-                .symbolId(req.getSymbolId())
-                .approvalStatus(ApprovalStatus.DRAFT)
-                .createdBy(userId)
-                .build();
+            dr = DikeRevetment.builder()
+                    .dikeRevetmentType(req.getDikeRevetmentType())
+                    .location(req.getLocation())
+                    .locationDetail(req.getLocationDetail())
+                    .dikeRevetmentName(req.getDikeRevetmentName())
+                    .code(code)
+                    .seaportId(req.getSeaportId())
+                    .operatingUnitId(req.getOperatingUnitId())
+                    .length(req.getLength())
+                    .crestElevation(req.getCrestElevation())
+                    .commissioningDate(req.getCommissioningDate())
+                    .constructionDate(req.getConstructionDate())
+                    .lastMaintenanceYear(req.getLastMaintenanceYear())
+                    .height(req.getHeight())
+                    .surfaceMaterial(req.getSurfaceMaterial())
+                    .status(req.getStatus() != null ? req.getStatus() : "1")
+                    .note(req.getNote())
+                    .orgUnitId(req.getOrgUnitId())
+                    .symbolId(req.getSymbolId())
+                    .approvalStatus(ApprovalStatus.DRAFT)
+                    .createdBy(userId)
+                    .build();
 
-        dr = repo.save(dr);
+            dr = repo.save(dr);
+        }
 
         if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
             GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
@@ -439,6 +446,7 @@ public class DikeRevetmentService {
                 previousValues.put("geometryType", oldGeometryType != null ? oldGeometryType.name() : "Chưa có");
             }
 
+        dr.setUpdatedAt(LocalDateTime.now());
         dr.setUpdatedBy(userId);
         DikeRevetment saved = repo.save(dr);
 
@@ -1056,6 +1064,13 @@ public class DikeRevetmentService {
                         .build());
             }
         }
+        if (!uploaded.isEmpty()) {
+            entity.setUpdatedAt(LocalDateTime.now());
+            if (userId != null) {
+                entity.setUpdatedBy(userId);
+            }
+            repo.save(entity);
+        }
         return uploaded;
     }
 
@@ -1127,6 +1142,11 @@ public class DikeRevetmentService {
                     .newValue(newVal != null ? newVal : "—")
                     .build());
         }
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (userId != null) {
+            entity.setUpdatedBy(userId);
+        }
+        repo.save(entity);
     }
 
     public InfrastructureAttachment getAttachment(UUID id, UUID attId) {
