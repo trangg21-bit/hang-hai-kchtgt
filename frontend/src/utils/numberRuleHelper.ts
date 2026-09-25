@@ -100,7 +100,6 @@ const checkDecimalBody = (s: string): string | null => {
   if (dotIdx !== -1) {
     const intPart = norm.slice(0, dotIdx);
     const decPart = norm.slice(dotIdx + 1);
-
     if (intPart.length > 16) {
       return 'Giới hạn phần nguyên là 16 chữ số (Giới hạn chữ số khi có dấu "." là 16)';
     }
@@ -108,7 +107,6 @@ const checkDecimalBody = (s: string): string | null => {
       return 'Phần thập phân tối đa 4 chữ số (Số sau dấu "." tối đa 4 chữ số)';
     }
     if (norm.replace(/\./g, '').length > 20) {
-
       return 'Giới hạn tối đa 20 chữ số';
     }
   } else if (norm.length > 20) {
@@ -228,3 +226,41 @@ export const integer5NonNegativeRule: Rule = {
     return Promise.resolve();
   },
 };
+
+/**
+ * Chuẩn hóa số nguyên 10 chữ số (trường phạm vi bảo vệ luồng, numeric(10,0)):
+ * - Chỉ chấp nhận chữ số
+ * - Tối đa 10 chữ số
+ */
+export const parseNumber10 = (value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '';
+  const digits = String(value).replace(/\D/g, '');
+  return digits.slice(0, 10);
+};
+
+export const getValueFromEvent10 = (val: unknown): number | null => {
+  if (val === null || val === undefined || val === '') return null;
+  const str = String(val).replace(/\D/g, '').slice(0, 10);
+  return str ? Number(str) : null;
+};
+
+/**
+ * Rule kiểm tra số nguyên không âm (>= 0) tối đa 10 chữ số:
+ * - Bỏ trống: hợp lệ (nếu không required)
+ * - Chỉ chấp nhận chữ số nguyên không âm (0, 1, 2...)
+ * - Tối đa 10 chữ số
+ */
+export const integer10NonNegativeRule: Rule = {
+  validator: (_: unknown, value: unknown) => {
+    if (value === null || value === undefined || value === '') return Promise.resolve();
+    const s = String(value).trim();
+    if (!/^\d+$/.test(s)) {
+      return Promise.reject(new Error('Giá trị phải là số nguyên'));
+    }
+    if (s.length > 10) {
+      return Promise.reject(new Error('Tối đa 10 chữ số'));
+    }
+    return Promise.resolve();
+  },
+};
+

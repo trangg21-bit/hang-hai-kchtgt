@@ -136,14 +136,14 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
       }
       const org = byId.get(currentValue);
       const title = org
-        ? (org.name || (org.code ? `${org.code} - ${org.name}` : org.name))
+        ? (org.code ? `${org.code} - ${org.name}` : org.name)
         : (currentOrgName || 'Đơn vị quản lý');
       base = [
         {
           key: currentValue,
           value: currentValue,
           title,
-          label: org?.name || title,
+          label: title,
         },
         ...base,
       ];
@@ -215,7 +215,7 @@ function OrgUnitTreeSelect(props: OrgUnitTreeSelectProps) {
 
       treeLine={treeLine}
       treeNodeFilterProp={treeNodeFilterProp}
-      treeNodeLabelProp={showPath ? 'label' : undefined}
+      treeNodeLabelProp={showPath ? 'label' : 'title'}
       filterTreeNode={(input, node) => normalizeSearchText(node?.title).includes(normalizeSearchText(input))}
       listHeight={defaultListHeight}
       popupMatchSelectWidth={defaultMatchWidth}

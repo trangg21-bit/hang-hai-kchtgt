@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Tabs, Button, Modal, Space } from 'antd';
+import { Tabs, Button, Modal } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   BankOutlined,
@@ -31,7 +31,10 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import InfrastructureAttachmentTab, { triggerBlobDownload } from '../../components/shared/InfrastructureAttachmentTab';
 import type { InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
-import { CONDITION_STATUS_MAP } from '../../types/navigationChannel';
+import {
+  CONDITION_STATUS_MAP,
+  ROUTE_CLASSIFICATION_MAP,
+} from '../../types/navigationChannel';
 import type {
   NavigationChannelResponse,
   ChannelRouteDetailResponse,
@@ -566,6 +569,10 @@ export default function NavigationChannelDetailContent({
       value: opUnitName,
     },
     {
+      label: 'Tình trạng',
+      value: <ConditionPill status={r.conditionStatus} />,
+    },
+    {
       label: 'Địa điểm (Tỉnh/TP)',
       value: provinceName,
     },
@@ -574,13 +581,13 @@ export default function NavigationChannelDetailContent({
       value: r.detailedLocation || null,
       span: true,
     },
-    {
-      label: 'Tình trạng',
-      value: <ConditionPill status={r.conditionStatus} />,
-    },
+  ];
+
+  const detailManagementStationRows: DetailRow[] = [
     {
       label: 'Trạm quản lý luồng',
       value: r.managementStation || null,
+      span: true,
     },
     {
       label: 'Số lượng trạm',
@@ -595,6 +602,10 @@ export default function NavigationChannelDetailContent({
       value: formatNumber(r.stationAreaSquareMeters),
     },
     {
+      label: 'KL nạo vét năm gần nhất (m³)',
+      value: formatNumber(r.latestDredgingVolumeCubicMeters),
+    },
+    {
       label: 'Số lượng phao',
       value: formatNumber(r.buoyCount),
     },
@@ -603,23 +614,7 @@ export default function NavigationChannelDetailContent({
       value: formatNumber(r.beaconCount),
     },
     {
-      label: 'Ghi chú',
-      value: r.notes || null,
-      span: true,
-    },
-  ];
-
-  const detailTechnicalRows: DetailRow[] = [
-    {
-      label: 'Phạm vi bảo vệ luồng (m)',
-      value: formatNumber(r.protectionScopeMeters),
-    },
-    {
-      label: 'KL nạo vét (m³)',
-      value: formatNumber(r.latestDredgingVolumeCubicMeters),
-    },
-    {
-      label: 'Sửa chữa trạm gần nhất',
+      label: 'Thời điểm sửa chữa trạm gần nhất',
       value: formatMonthYear(r.latestStationRepairMonth),
     },
     {
@@ -627,8 +622,8 @@ export default function NavigationChannelDetailContent({
       value: r.latestMaintenanceYear ? String(r.latestMaintenanceYear) : null,
     },
     {
-      label: 'Ghi chú phạm vi bảo vệ',
-      value: r.protectionNotes || null,
+      label: 'Ghi chú',
+      value: r.notes || null,
       span: true,
     },
   ];
@@ -745,11 +740,16 @@ export default function NavigationChannelDetailContent({
 
   const routeColumns: ColumnsType<ChannelRouteDetailResponse> = [
     { title: 'STT', dataIndex: 'sequenceNo', width: 50, align: 'center', render: (_: unknown, __: unknown, i: number) => i + 1 },
-    { title: 'Phân loại tuyến', dataIndex: 'routeClassification', width: 140, render: (v?: string) => v || '' },
     {
-      title: 'Mã tuyến',
+      title: 'Phân loại tuyến',
+      dataIndex: 'routeClassification',
+      width: 140,
+      render: (v?: string) => (v != null ? ROUTE_CLASSIFICATION_MAP[String(v)] || v : ''),
+    },
+    {
+      title: 'Mã tuyến luồng',
       dataIndex: 'routeCode',
-      width: 120,
+      width: 130,
       render: (v?: string) => <span style={{ fontWeight: 500, color: textPrimary }}>{v || ''}</span>,
     },
     {
@@ -759,61 +759,21 @@ export default function NavigationChannelDetailContent({
       render: (v?: string) => <span style={{ color: textPrimary, fontWeight: fontWeightBold }}>{v || ''}</span>,
     },
     {
-      title: 'Loại tuyến',
+      title: 'Loại tuyến luồng',
       dataIndex: 'routeType',
       width: 120,
       render: (v?: number) => (v === undefined || v === null ? '' : ROUTE_TYPE_MAP[v] || ''),
     },
-    { title: 'Cấp luồng', dataIndex: 'routeGrade', width: 100, render: (v?: number) => (v === undefined || v === null ? '' : String(v)) },
     {
-      title: 'Chiều dài (km)',
-      dataIndex: 'channelLengthKilometers',
-      width: 110,
-      align: 'right',
-      render: (v?: number) => formatNumber(v),
-    },
-    {
-      title: 'Độ sâu thiết kế (m)',
-      dataIndex: 'designDepthMeters',
-      width: 130,
-      align: 'right',
-      render: (v?: number) => formatNumber(v),
-    },
-    {
-      title: 'Độ sâu hiện trạng (m)',
+      title: 'Độ sâu hiện tại (m)',
       dataIndex: 'currentDepthMeters',
-      width: 130,
-      align: 'right',
+      width: 160,
       render: (v?: number) => formatNumber(v),
     },
     {
-      title: 'Bề rộng thiết kế (m)',
-      dataIndex: 'maximumDesignWidthMeters',
+      title: 'Mái dốc thiết kế',
+      dataIndex: 'designSlope',
       width: 140,
-      align: 'right',
-      render: (_: unknown, rec: ChannelRouteDetailResponse) =>
-        rec.maximumDesignWidthMeters !== undefined && rec.minimumDesignWidthMeters !== undefined
-          ? `${rec.minimumDesignWidthMeters}–${rec.maximumDesignWidthMeters}`
-          : formatNumber(rec.maximumDesignWidthMeters ?? rec.minimumDesignWidthMeters),
-    },
-    {
-      title: 'Bán kính cong nhỏ nhất (m)',
-      dataIndex: 'minimumCurveRadiusMeters',
-      width: 160,
-      align: 'right',
-      render: (v?: number) => formatNumber(v),
-    },
-    {
-      title: 'Vị trí vũng quay tàu',
-      dataIndex: 'turningBasinLocation',
-      width: 160,
-      render: (v?: string) => v || '',
-    },
-    {
-      title: 'Bán kính vũng quay (m)',
-      dataIndex: 'turningBasinRadiusMeters',
-      width: 140,
-      align: 'right',
       render: (v?: number) => formatNumber(v),
     },
   ];
@@ -886,11 +846,11 @@ export default function NavigationChannelDetailContent({
           </div>
 
           {renderDetailSectionCard({
-            title: 'Thông số kỹ thuật & Năng lực khai thác',
+            title: 'Thông tin trạm quản lý luồng & phao tiêu',
             icon: <SlidersOutlined style={{ color: actionPrimary }} />,
             open: detailTechOpen,
             onToggle: () => setDetailTechOpen((v) => !v),
-            children: renderDetailRowsTwoCol(detailTechnicalRows),
+            children: renderDetailRowsTwoCol(detailManagementStationRows),
           })}
 
           {renderDetailSectionCard({
@@ -1038,7 +998,7 @@ export default function NavigationChannelDetailContent({
       children: (
         <div style={{ paddingTop: 6, overflowY: 'auto', overflowX: 'hidden', maxHeight: 'calc(100vh - 190px)' }}>
           {renderDetailSectionCard({
-            title: 'Thông tin phân đoạn tuyến luồng',
+            title: 'Thông tin chi tiết luồng',
             icon: <SlidersOutlined style={{ color: actionPrimary }} />,
             open: routesOpen,
             onToggle: () => setRoutesOpen((v) => !v),

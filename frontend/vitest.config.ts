@@ -10,6 +10,7 @@ export default defineConfig({
       'src/components/AppLayout.test.tsx',
       'src/components/reports/**/*.test.tsx',
       'src/components/kcht/**/*.test.tsx',
+      'src/components/shared/**/*.test.tsx',
       'src/config/**/*.test.ts',
       'src/pages/**/*.test.tsx',
       'src/hooks/useKcht*.test.ts',

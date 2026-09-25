@@ -101,8 +101,14 @@ export default function NavigationChannelChkList() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string | undefined>();
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const [sortField, setSortField] = useState<string | undefined>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
+
+  const sortOrderFor = useCallback(
+    (key: string) =>
+      sortField === key && sortOrder ? (sortOrder === 'asc' ? ('ascend' as const) : ('descend' as const)) : null,
+    [sortField, sortOrder],
+  );
   const [dataSource, setDataSource] = useState<NavigationChannelResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -289,6 +295,7 @@ export default function NavigationChannelChkList() {
         width: 260,
         fixed: 'left' as const,
         sortable: true,
+        sortOrder: sortOrderFor('channelName'),
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -311,6 +318,8 @@ export default function NavigationChannelChkList() {
         dataIndex: 'seaportId',
         width: 180,
         ellipsis: true,
+        sortable: true,
+        sortOrder: sortOrderFor('seaportId'),
         render: (v: string | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{seaportLabel(v)}</span>,
       },
       {
@@ -319,6 +328,8 @@ export default function NavigationChannelChkList() {
         dataIndex: 'orgUnitId',
         width: 200,
         ellipsis: true,
+        sortable: true,
+        sortOrder: sortOrderFor('orgUnitId'),
         render: (v: string | undefined, record: NavigationChannelResponse) => (
           <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{record.orgUnitName || orgLabel(v)}</span>
         ),
@@ -328,6 +339,8 @@ export default function NavigationChannelChkList() {
         label: 'Địa điểm Tỉnh/TP',
         dataIndex: 'provinceId',
         width: 150,
+        sortable: true,
+        sortOrder: sortOrderFor('provinceId'),
         render: (v: number | undefined) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{provinceLabel(v)}</span>,
       },
       {
@@ -335,6 +348,8 @@ export default function NavigationChannelChkList() {
         label: 'Tình trạng',
         dataIndex: 'conditionStatus',
         width: 150,
+        sortable: true,
+        sortOrder: sortOrderFor('conditionStatus'),
         render: (v: string | undefined) => {
           if (!v) return <span style={{ fontSize: fontSizeMd, color: textTertiary }}>—</span>;
           const s = CONDITION_STATUS_STYLE_MAP[v] || { label: CONDITION_STATUS_MAP[v as keyof typeof CONDITION_STATUS_MAP] || v, color: textTertiary };
@@ -346,6 +361,8 @@ export default function NavigationChannelChkList() {
         label: 'Trạng thái',
         dataIndex: 'approvalStatus',
         width: 160,
+        sortable: true,
+        sortOrder: sortOrderFor('approvalStatus'),
         render: (v: ApprovalStatus) => (v ? <ApprovalStatusBadge status={v} /> : '—'),
       },
       {
@@ -354,6 +371,7 @@ export default function NavigationChannelChkList() {
         dataIndex: 'updatedAt',
         width: 220,
         sortable: true,
+        sortOrder: sortOrderFor('updatedAt'),
         ellipsis: false,
         render: (v: string | undefined, record: NavigationChannelResponse) => {
           const name = record.updatedBy ? userMap.get(record.updatedBy) : undefined;
@@ -368,7 +386,7 @@ export default function NavigationChannelChkList() {
         },
       },
     ];
-  }, [page, pageSize, seaportOptions, openModal, userMap]);
+  }, [page, pageSize, seaportOptions, openModal, userMap, sortOrderFor]);
 
   const rowActions = useCallback(
     (record: NavigationChannelResponse) => {
@@ -528,10 +546,98 @@ export default function NavigationChannelChkList() {
     [hasPerm, openModal],
   );
 
-  const tableData = useMemo(
-    () => dataSource.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
-    [dataSource, page, pageSize],
-  );
+  const tableData = useMemo(() => {
+    const sortedList = [...dataSource];
+    if (sortField && sortOrder) {
+      sortedList.sort((a: NavigationChannelResponse, b: NavigationChannelResponse) => {
+        let cmp: number;
+        const recA = a as Record<string, unknown>;
+        const recB = b as Record<string, unknown>;
+        if (sortField === 'channelName' || sortField === 'name') {
+          const aVal = a.channelName || (recA.name as string) || '';
+          const bVal = b.channelName || (recB.name as string) || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'channelCode' || sortField === 'code') {
+          const aVal = a.channelCode || (recA.code as string) || '';
+          const bVal = b.channelCode || (recB.code as string) || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'orgUnitId' || sortField === 'orgUnitName') {
+          const aVal = a.orgUnitName || a.orgUnitId || '';
+          const bVal = b.orgUnitName || b.orgUnitId || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'seaportId' || sortField === 'seaportName') {
+          const aVal = seaportOptions.find((p) => p.id === a.seaportId)?.portName || a.seaportId || '';
+          const bVal = seaportOptions.find((p) => p.id === b.seaportId)?.portName || b.seaportId || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'provinceId' || sortField === 'provinceName') {
+          const aLabel = a.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(a.provinceId))?.label || String(a.provinceId)) : '';
+          const bLabel = b.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(b.provinceId))?.label || String(b.provinceId)) : '';
+          cmp = String(aLabel).localeCompare(String(bLabel), 'vi');
+        } else if (sortField === 'conditionStatus') {
+          // Trừ Tình trạng: sort theo thứ tự vận hành/nghiệp vụ (ordinal), không sort theo bảng chữ cái tiếng Việt
+          const conditionOrder: Record<string, number> = {
+            OPERATIONAL: 0,
+            STOPPED: 1,
+            MAINTENANCE: 2,
+            UNDER_CONSTRUCTION: 3,
+            NOT_YET_OPERATIONAL: 4,
+            SUSPENDED: 5,
+          };
+          const aOrd = a.conditionStatus ? (conditionOrder[a.conditionStatus] ?? 99) : 99;
+          const bOrd = b.conditionStatus ? (conditionOrder[b.conditionStatus] ?? 99) : 99;
+          cmp = aOrd - bOrd;
+        } else if (sortField === 'approvalStatus' || sortField === 'status') {
+          // Trừ Trạng thái: sort theo chu kỳ vòng đời phê duyệt chuẩn, không sort theo bảng chữ cái tiếng Việt
+          const approvalOrder: Record<string, number> = {
+            DRAFT: 1,
+            PENDING_APPROVAL: 2,
+            PENDING_LEVEL1: 2,
+            SUBMITTED: 2,
+            APPROVED_LEVEL1: 3,
+            PENDING_LEVEL2: 3,
+            APPROVED: 4,
+            APPROVED_LEVEL2: 4,
+            REJECTED_LEVEL1: 5,
+            REJECTED: 6,
+            REJECTED_LEVEL2: 6,
+            ARCHIVED: 7,
+            DELETED: 7,
+          };
+          const aOrd = a.approvalStatus ? (approvalOrder[a.approvalStatus] ?? 99) : 99;
+          const bOrd = b.approvalStatus ? (approvalOrder[b.approvalStatus] ?? 99) : 99;
+          cmp = aOrd - bOrd;
+        } else if (sortField === 'updatedAt' || sortField === 'updatedBy' || sortField === 'updatedByName') {
+          // Cột dạng "Cán bộ cập nhật" -> sort theo "Ngày cập nhật" đi kèm (timestamp)
+          const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          cmp = aTime - bTime;
+        } else if (sortField === 'submittedAt' || sortField === 'submittedBy' || sortField === 'submittedByName') {
+          const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+          const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+          cmp = aTime - bTime;
+        } else if (sortField === 'approvedDateLevel1' || sortField === 'approverLevel1' || sortField === 'level1ApprovedAt' || sortField === 'level1ApprovedBy') {
+          const aTime = a.approvedDateLevel1 ? new Date(a.approvedDateLevel1).getTime() : (a.level1ApprovedAt ? new Date(a.level1ApprovedAt).getTime() : 0);
+          const bTime = b.approvedDateLevel1 ? new Date(b.approvedDateLevel1).getTime() : (b.level1ApprovedAt ? new Date(b.level1ApprovedAt).getTime() : 0);
+          cmp = aTime - bTime;
+        } else if (sortField === 'approvedDateLevel2' || sortField === 'approverLevel2' || sortField === 'level2ApprovedAt' || sortField === 'level2ApprovedBy') {
+          const aTime = a.approvedDateLevel2 ? new Date(a.approvedDateLevel2).getTime() : (a.level2ApprovedAt ? new Date(a.level2ApprovedAt).getTime() : 0);
+          const bTime = b.approvedDateLevel2 ? new Date(b.approvedDateLevel2).getTime() : (b.level2ApprovedAt ? new Date(b.level2ApprovedAt).getTime() : 0);
+          cmp = aTime - bTime;
+        } else if (sortField === 'createdAt' || sortField === 'createdBy') {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          cmp = aTime - bTime;
+        } else {
+          // Các trường chữ còn lại: sort theo bảng chữ cái tiếng Việt
+          const aVal = recA[sortField] ?? '';
+          const bVal = recB[sortField] ?? '';
+          cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
+        }
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+    }
+    return sortedList.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 }));
+  }, [dataSource, page, pageSize, sortField, sortOrder, seaportOptions]);
 
   return (
     <ThemeTokenProvider tokens={themeTokenChk}>

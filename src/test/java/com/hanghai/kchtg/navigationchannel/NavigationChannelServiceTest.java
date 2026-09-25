@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.navigationchannel;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import java.math.BigDecimal;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.repository.InfrastructureAttachmentRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
@@ -241,6 +242,22 @@ class NavigationChannelServiceTest {
 
         assertThat(detail.getRouteCode()).isEqualTo("LHH000042-03");
         assertThat(detail.getSequenceNo()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("toRouteDetail maps protectionScope and memo correctly")
+    void toRouteDetail_mapsProtectionScopeAndMemo() throws Exception {
+        NavigationChannel nc = NavigationChannel.builder().channelCode("LHH000001").build();
+        ChannelRouteDetailRequest d = ChannelRouteDetailRequest.builder()
+                .sequenceNo(1)
+                .protectionScope(new BigDecimal("1500.5000"))
+                .memo("  Ghi nhớ phân đoạn luồng quan trọng  ")
+                .build();
+
+        ChannelRouteDetail detail = invokeToRouteDetail(d, nc, 0);
+
+        assertThat(detail.getProtectionScope()).isEqualByComparingTo(new BigDecimal("1500.5000"));
+        assertThat(detail.getMemo()).isEqualTo("Ghi nhớ phân đoạn luồng quan trọng");
     }
 
     @Test

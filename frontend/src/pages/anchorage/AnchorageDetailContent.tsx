@@ -31,6 +31,7 @@ import {
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import {
   actionPrimary, textTertiary, textPrimary, surfaceCard, borderDefault,
   statusOperational, statusAttention, statusCritical, statusDraft,
@@ -153,35 +154,16 @@ const isImageFile = (fileName?: string): boolean => {
 // fallback sang latitude/longitude (backend chỉ parse được cho POINT).
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
   const wkt = record?.coordinates;
-  const out: Array<{ lat: number; lng: number }> = [];
   if (wkt && typeof wkt === 'string' && wkt.trim()) {
-    try {
-      if (wkt.startsWith('LINESTRING(')) {
-        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
-        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
-        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
-        if (m) {
-          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
-          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
-          pts.forEach(p => { out.push(p); });
-        }
-      }
-      if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/);
-        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
-      }
-    } catch { /* ignore */ }
+    const pts = parseWktToCoordinates(wkt);
+    if (pts.length > 0) {
+      return pts.map(p => ({ lat: p.latitude, lng: p.longitude }));
+    }
   }
-  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
-    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  if (record?.latitude != null && record?.longitude != null) {
+    return [{ lat: Number(record.latitude), lng: Number(record.longitude) }];
   }
-  return out;
+  return [];
 };
 
 export default function AnchorageDetailContent({
@@ -714,10 +696,29 @@ export default function AnchorageDetailContent({
               <div style={sectionBoxStyle}>
                 <div className="chk-detail-grid">
                   {[
-                    ['Loại đối tượng', (() => { const gt = String((r as any).geometryType || ''); const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return labels[gt] || gt || ''; })()],
-                    ['Biểu tượng', (() => { const symbolId = r.mapSymbolId || (r as any).bieuTuongId || ''; const name = symbolMap.get(symbolId) || symbolId || ''; const image = symbolImageMap.get(symbolId); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>{image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{name}</span>; })()],
-                    ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem || '')],
-                    ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : ''],
+                    ['Loại đối tượng', (() => {
+                      let gt = String((r as any).geometryType || '');
+                      if (!gt && r.coordinates) {
+                        const cleanWkt = r.coordinates.trim().replace(/^SRID=\d+\s*;/i, '').trim().toUpperCase();
+                        if (cleanWkt.startsWith('POLYGON')) gt = 'POLYGON';
+                        else if (cleanWkt.startsWith('LINESTRING') || cleanWkt.startsWith('LINE')) gt = 'LINE';
+                        else if (cleanWkt.startsWith('POINT')) gt = 'POINT';
+                      }
+                      if (!gt && coords.length > 0) {
+                        gt = coords.length > 2 ? 'POLYGON' : coords.length === 2 ? 'LINE' : 'POINT';
+                      }
+                      const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
+                      return labels[gt] || gt || '—';
+                    })()],
+                    ['Biểu tượng', (() => {
+                      const symbolId = r.mapSymbolId || (r as any).bieuTuongId || '';
+                      const name = symbolMap.get(symbolId) || symbolId || '';
+                      const image = symbolImageMap.get(symbolId);
+                      if (!name && !image) return '—';
+                      return <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>{image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{name}</span>;
+                    })()],
+                    ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (coords.length > 0 ? 'WGS-84' : '—')],
+                    ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || coords.length > 0) ? 'Độ, phút, giây (DMS)' : '—'],
                   ].map(([label, value], index) => (
                     <div key={label as string} className="chk-detail-row">
                       <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
@@ -729,7 +730,14 @@ export default function AnchorageDetailContent({
               <div style={{ marginTop: spaceMd }}>
                 <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>Tọa độ GPS ({coords.length})</span>
-                  <Button icon={<EnvironmentOutlined style={{ color: actionPrimary }} />} onClick={() => setGisModalOpen(true)} style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>Xem vị trí trên bản đồ</Button>
+                  <Button
+                    icon={<EnvironmentOutlined style={{ color: coords.length === 0 ? undefined : actionPrimary }} />}
+                    onClick={() => setGisModalOpen(true)}
+                    disabled={coords.length === 0}
+                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                  >
+                    Xem vị trí trên bản đồ
+                  </Button>
                 </div>
                 <DetailTable
                   dataSource={coords.map((point) => ({ ...point }))}
@@ -963,14 +971,22 @@ export default function AnchorageDetailContent({
           value={(() => {
             const pts = parseGisCoordinates(r);
             if (pts.length > 0) {
-              const rawWkt = (r as any).coordinates || '';
+              const rawWkt = ((r as any).coordinates || '').trim().replace(/^SRID=\d+\s*;/i, '').trim();
               let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
-              let coordinates: string;
-              if (rawWkt.startsWith('LINESTRING')) {
-                geom = 'LINE';
-                coordinates = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
-              } else if (rawWkt.startsWith('POLYGON')) {
+              const upperGeom = String((r as any).geometryType || '').toUpperCase();
+              if (upperGeom === 'POLYGON' || rawWkt.toUpperCase().startsWith('POLYGON')) {
                 geom = 'POLYGON';
+              } else if (upperGeom === 'LINE' || upperGeom === 'LINESTRING' || rawWkt.toUpperCase().startsWith('LINESTRING')) {
+                geom = 'LINE';
+              } else if (pts.length > 2) {
+                geom = 'POLYGON';
+              } else if (pts.length === 2) {
+                geom = 'LINE';
+              }
+              let coordinates: string;
+              if (geom === 'LINE') {
+                coordinates = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
+              } else if (geom === 'POLYGON') {
                 coordinates = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
               } else if (pts.length > 1) {
                 coordinates = `MULTIPOINT(${pts.map(p => `(${p.lng} ${p.lat})`).join(',')})`;

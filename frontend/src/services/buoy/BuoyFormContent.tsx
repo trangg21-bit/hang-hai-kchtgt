@@ -9,22 +9,22 @@ import {
   message, Space, Modal,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
-import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
 import type { UploadProps } from 'antd';
 import { DeleteOutlined, PlusOutlined, EnvironmentOutlined, BankOutlined, SlidersOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { colors } from '../../themetokenchk';
 import {
   textTertiary, sidebarBg, statusCritical, actionPrimary,
   fontSizeMd, fontSizeSm, fontSizeLg, fontWeightBold,
-  radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, surfaceCard, borderDefault,
+  radiusPill, radiusMd, spaceSm, spaceXs, spaceFormField, borderDefault,
   readonlyInputStyle, drawerTabBarStyle, drawerFormScrollStyle,
   primaryButtonStyle, outlineButtonStyle,
   DRAWER_TABLE_SCROLL_Y, textAreaStyle,
-  iconButtonStyle,
 } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import { OrgUnitTreeSelect, type OrgUnitTreeOption } from '../../components/org-unit';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
+import { buoyCRUD } from '../beaconService';
 import {
   CLASSIFICATION_OPTIONS,
   CLASSIFICATION_BUOY_OPTIONS,
@@ -36,7 +36,19 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { fmtInputNumber } from '../../utils/numFmt';
 import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { parseWktToCoordinates, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { normalizeSearchText } from '../../components/org-unit';
+import {
+  dmsToDd,
+  GEOMETRY_POINT_COUNT,
+  parseWktToCoordinates,
+  serializeCoordinatesToWkt,
+} from '../../utils/gisGeometry';
+import { NumberInputWithCount } from '../../components/shared/NumberInputWithCount';
+import {
+  parseNumber20,
+  getValueFromEvent20,
+  decimalNumberRule,
+} from '../../utils/numberRuleHelper';
 
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },
@@ -79,18 +91,6 @@ const sectionTitleStyle: React.CSSProperties = {
   gap: spaceSm,
 };
 
-const triggerBlobDownload = (data: Blob | File, downloadName: string) => {
-  const url = window.URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = downloadName || 'attachment';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
-  return true;
-};
-
 const labelProps = (text: string) => ({
   label: <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span>,
 });
@@ -98,12 +98,9 @@ const labelProps = (text: string) => ({
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
 
-/** Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px). */
 /**
  * Nhóm 3 ô nhập Độ/Phút/Giây dùng chung cho bảng tọa độ GPS (chuẩn VTS CHK: viên thuốc 999px).
- * Giống chuẩn PortForm — mỗi ô (Độ/Phút/Giây) là một cột flex riêng (Độ=1 · Phút=1 · Giây=1.2,
- * cùng template cột Vĩ độ) để message "… bắt buộc" nằm NGAY DƯỚI đúng ô còn thiếu và 2 cột
- * (Vĩ độ/Kinh độ) trong bảng luôn thẳng hàng dọc dù chỉ 1 bên có lỗi.
+ * Căn giữa bảng, hỗ trợ tự động căn dọc thông báo lỗi dưới từng ô input.
  */
 const renderDmsGroup = (
   dVal: number | null | undefined,
@@ -112,21 +109,20 @@ const renderDmsGroup = (
   maxDeg: number,
   onChange: (d: number | null, m: number | null, s: number | null) => void,
 ) => {
-  // Chỉ "bắt buộc" khi người dùng đã bắt đầu nhập (ít nhất 1 trong 3 ô có giá trị).
   const started = dVal != null || mVal != null || sVal != null;
 
   const inputs = [
     {
       key: 'd', base: 'Độ', value: dVal, max: maxDeg,
       radius: '999px 0 0 999px', unit: '°', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      step: 1, formatter: undefined,
       msg: started && dVal == null ? 'Độ bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(v, mVal ?? null, sVal ?? null),
     },
     {
       key: 'm', base: 'Phút', value: mVal, max: 59,
-      radius: '0', unit: '\'', unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
-      step: 1,
+      radius: '0', unit: "'", unitStyle: dmsUnitStyle, basis: '1 0 108px', width: 108,
+      step: 1, formatter: undefined,
       msg: started && mVal == null ? 'Phút bắt buộc' : undefined,
       onEdit: (v: number | null) => onChange(dVal ?? null, v, sVal ?? null),
     },
@@ -139,11 +135,14 @@ const renderDmsGroup = (
     },
   ] as const;
 
+  const hasError = started && inputs.some((inp) => !!inp.msg);
+
   const inputRow = (
-    <div style={{ display: 'flex', alignItems: 'center', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', maxWidth: 360, margin: '0 auto', minWidth: 0 }}>
       {inputs.map((inp) => (
         <div key={inp.key} style={{ display: 'flex', flex: inp.basis, minWidth: 0, width: inp.width }}>
           <InputNumber
+            className="chk-dms-input-number"
             value={inp.value}
             min={0}
             max={inp.max}
@@ -153,7 +152,7 @@ const renderDmsGroup = (
             status={inp.msg ? 'error' : undefined}
             onFocus={(e) => e.currentTarget.select()}
             onChange={(raw) => inp.onEdit(raw == null ? null : Number(raw))}
-            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32 }}
+            style={{ flex: 1, minWidth: 0, borderRadius: inp.radius, height: 32, textAlign: 'center' }}
             controls={false}
           />
           <span style={inp.unitStyle}>{inp.unit}</span>
@@ -162,12 +161,10 @@ const renderDmsGroup = (
     </div>
   );
 
-  const hasMsg = inputs.some((inp) => !!inp.msg);
-
-  const messageRow = hasMsg ? (
-    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', width: '100%', minWidth: 0, marginTop: spaceXs, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
+  const messageRow = hasError ? (
+    <div aria-live="polite" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', width: '100%', maxWidth: 360, margin: `${spaceXs}px auto 0 auto`, minWidth: 0, height: 14, lineHeight: '14px', overflow: 'hidden' }}>
       {inputs.map((inp) => (
-        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width }}>
+        <div key={inp.key} style={{ flex: inp.basis, minWidth: 0, width: inp.width, textAlign: 'center' }}>
           {inp.msg && <span role="alert" style={{ color: statusCritical, fontSize: fontSizeSm, whiteSpace: 'nowrap' }}>{inp.msg}</span>}
         </div>
       ))}
@@ -175,7 +172,7 @@ const renderDmsGroup = (
   ) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: '100%', minWidth: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', minWidth: 0 }}>
       {inputRow}
       {messageRow}
     </div>
@@ -222,13 +219,16 @@ export interface BuoyFormContentProps {
   gpsError?: string | null;
   addGpsPoint: () => void;
   removeGpsPoint: (i: number) => void;
+  clearGpsPoint?: (i: number) => void;
   updateGpsPoint: (i: number, field: 'lat' | 'lng', d: number | null, m: number | null, s: number | null) => void;
   replaceGpsPoints: React.Dispatch<React.SetStateAction<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>>;
   ddToDms: (dd: number | null | undefined) => { d: number | null; m: number | null; s: number | null };
   onDeleteAttachment?: (uid: string) => void;
+  record?: any;
 }
 
 export default function BuoyFormContent({
+  form,
   isEdit,
   activeTabKey,
   onTabChange,
@@ -246,6 +246,7 @@ export default function BuoyFormContent({
   gpsError,
   addGpsPoint,
   removeGpsPoint,
+  clearGpsPoint,
   updateGpsPoint,
   replaceGpsPoints,
   ddToDms,
@@ -255,12 +256,43 @@ export default function BuoyFormContent({
   currentStationId,
   selectedUnitId,
   onDeleteAttachment,
+  record,
 }: BuoyFormContentProps) {
   const currentUser = useAuthStore((s) => s.user);
   const [gisModalOpen, setGisModalOpen] = useState(false);
-  const [gpsPage, setGpsPage] = useState(1);
+  const watchedGeometryType = Form.useWatch('geometryType', form);
+  // Loại đối tượng đang được chọn trên form (không fallback về record cũ khi đã xóa hoặc chưa chọn)
+  const effectiveGeometryType = watchedGeometryType !== undefined ? watchedGeometryType : geometryType;
+  // Biểu tượng chỉ bắt buộc khi người dùng có chọn Loại đối tượng
+  const isGeometryTypeSelected = Boolean(effectiveGeometryType);
   const hasCoordinates = (gpsCoordList || []).some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(geometryType || hasCoordinates);
+
+  const handleGeometryTypeChange = (val: string | undefined) => {
+    form?.setFieldsValue({ geometryType: val });
+    if (!val) {
+      form?.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, mapSymbolId: undefined, symbolId: undefined });
+      replaceGpsPoints([]);
+      return;
+    }
+    form?.setFieldsValue({
+      coordinateSystem: 1,
+      displayRule: 'Độ, phút, giây (DMS)',
+    });
+    const count = GEOMETRY_POINT_COUNT[val] ?? 1;
+    replaceGpsPoints((prev: any) => {
+      if (!prev || prev.length === 0) {
+        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      }
+      if (val === 'POINT' && prev.length > 1) {
+        return [prev[0]];
+      }
+      if (prev.length < count) {
+        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+        return [...prev, ...added];
+      }
+      return prev;
+    });
+  };
 
   const handleBeforeUpload: UploadProps['beforeUpload'] = (file) => {
     if (file.size > MAX_FILE_SIZE) {
@@ -468,24 +500,69 @@ export default function BuoyFormContent({
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="shape" {...labelProps('Hình dạng')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập Hình dạng" maxLength={500} showCount style={inputStyle} />
+                  <Input placeholder="Nhập Hình dạng" maxLength={50} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="area" {...labelProps('Diện tích (m2)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item
+                  name="area"
+                  {...labelProps('Diện tích (m2)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                  rules={[decimalNumberRule]}
+                >
+                  <NumberInputWithCount
+                    allowDecimal
+                    min={0}
+                    step={0.01}
+                    maxLength={20}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    parser={parseNumber20}
+                    formatter={fmtInputNumber}
+                  />
                 </Form.Item>
               </Col>
             </Row>
             <Row gutter={[24, 0]}>
               <Col span={12}>
-                <Form.Item name="bodyHeight" {...labelProps('Chiều cao thân phao (m)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item
+                  name="bodyHeight"
+                  {...labelProps('Chiều cao thân phao (m)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                  rules={[decimalNumberRule]}
+                >
+                  <NumberInputWithCount
+                    allowDecimal
+                    min={0}
+                    step={0.01}
+                    maxLength={20}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    parser={parseNumber20}
+                    formatter={fmtInputNumber}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="diameter" {...labelProps('Đường kính phao (m)')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item
+                  name="diameter"
+                  {...labelProps('Đường kính phao (m)')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                  rules={[decimalNumberRule]}
+                >
+                  <NumberInputWithCount
+                    allowDecimal
+                    min={0}
+                    step={0.01}
+                    maxLength={20}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    parser={parseNumber20}
+                    formatter={fmtInputNumber}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -496,8 +573,23 @@ export default function BuoyFormContent({
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item name="towerHeight" {...labelProps('Chiều cao tháp đèn')} style={{ marginBottom: spaceFormField }}>
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                <Form.Item
+                  name="towerHeight"
+                  {...labelProps('Chiều cao tháp đèn')}
+                  style={{ marginBottom: spaceFormField }}
+                  getValueFromEvent={getValueFromEvent20}
+                  rules={[decimalNumberRule]}
+                >
+                  <NumberInputWithCount
+                    allowDecimal
+                    min={0}
+                    step={0.01}
+                    maxLength={20}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    parser={parseNumber20}
+                    formatter={fmtInputNumber}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -508,9 +600,22 @@ export default function BuoyFormContent({
                   {...labelProps('Chiều cao tâm sáng (hải đồ)')}
                   required
                   style={{ marginBottom: spaceFormField }}
-                  rules={[{ required: true, message: 'Chiều cao tâm sáng là bắt buộc' }]}
+                  getValueFromEvent={getValueFromEvent20}
+                  rules={[
+                    { required: true, message: 'Chiều cao tâm sáng là bắt buộc' },
+                    decimalNumberRule,
+                  ]}
                 >
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount
+                    allowDecimal
+                    min={0}
+                    step={0.01}
+                    maxLength={20}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    parser={parseNumber20}
+                    formatter={fmtInputNumber}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -522,7 +627,7 @@ export default function BuoyFormContent({
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="towerColor" {...labelProps('Màu sắc bên ngoài của tháp đèn')} style={{ marginBottom: spaceFormField }}>
-                  <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={500} showCount style={inputStyle} />
+                  <Input placeholder="Nhập Màu sắc bên ngoài của tháp đèn" maxLength={200} showCount style={inputStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -538,8 +643,19 @@ export default function BuoyFormContent({
                   {...labelProps('Phạm vi chiếu sáng')}
                   style={{ marginBottom: spaceFormField }}
                   tooltip="Phạm vi chiếu sáng (hải lý)"
+                  getValueFromEvent={getValueFromEvent20}
+                  rules={[decimalNumberRule]}
                 >
-                  <NumberInputWithCount min={0} step={0.01} maxLength={20} placeholder="0" style={numberInputStyle} formatter={fmtInputNumber} />
+                  <NumberInputWithCount
+                    allowDecimal
+                    min={0}
+                    step={0.01}
+                    maxLength={20}
+                    placeholder="0"
+                    style={numberInputStyle}
+                    parser={parseNumber20}
+                    formatter={fmtInputNumber}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -591,8 +707,10 @@ export default function BuoyFormContent({
     {
       key: 'gis',
       label: `Thông tin vị trí (${gpsCoordList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
+          {/* ── Section Card: Thông số đối tượng bản đồ ── */}
           <div style={sectionBoxStyle}>
             <div style={sectionHeaderStyle}>
               <div style={sectionTitleStyle}>
@@ -609,28 +727,66 @@ export default function BuoyFormContent({
                   rules={hasCoordinates ? [{ required: true, message: 'Loại đối tượng là bắt buộc khi có tọa độ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
-                  <Select placeholder="Chọn Loại đối tượng" allowClear options={GEOMETRY_TYPE_OPTIONS} style={selectStyle} />
+                  <Select
+                    placeholder="Chọn loại đối tượng"
+                    allowClear
+                    options={GEOMETRY_TYPE_OPTIONS}
+                    style={selectStyle}
+                    onChange={handleGeometryTypeChange}
+                  />
                 </Form.Item>
               </Col>
               <Col span={12}>
                 <Form.Item
                   name="mapSymbolId"
                   {...labelProps('Biểu tượng')}
-                  required={hasLocation}
-                  rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                  required={isGeometryTypeSelected}
+                  rules={isGeometryTypeSelected ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                   style={{ marginBottom: spaceFormField }}
                 >
-                  <Select placeholder="Chọn Biểu tượng" allowClear showSearch optionFilterProp="label"
-                    disabled={!geometryType} style={selectStyle}>
-                    {symbols.map((sym) => (
-                      <Select.Option key={sym.id} value={sym.id} label={sym.code ? `${sym.name} (${sym.code})` : sym.name}>
-                        <Space>
-                          {sym.image && <img src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`} alt={sym.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
-                          <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
+                  <Select
+                    placeholder="Chọn biểu tượng bản đồ"
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    disabled={!isGeometryTypeSelected}
+                    filterOption={(input, option) =>
+                      normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
+                    }
+                    style={selectStyle}
+                    options={symbols.map((sym: any) => ({
+                      value: String(sym.id),
+                      label: sym.code ? `${sym.name} (${sym.code})` : sym.name,
+                      image: sym.image,
+                    }))}
+                    optionRender={(option) => (
+                      <Space>
+                        {option.data.image && (
+                          <img
+                            src={option.data.image.startsWith('data:') ? option.data.image : `data:image/png;base64,${option.data.image}`}
+                            alt=""
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{option.data.label}</span>
+                      </Space>
+                    )}
+                    labelRender={(props) => {
+                      const sym = symbols.find((s: any) => String(s.id) === String(props.value));
+                      return (
+                        <Space style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          {sym?.image && (
+                            <img
+                              src={sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}
+                              alt=""
+                              style={{ width: 18, height: 18, objectFit: 'contain' }}
+                            />
+                          )}
+                          <span>{props.label}</span>
                         </Space>
-                      </Select.Option>
-                    ))}
-                  </Select>
+                      );
+                    }}
+                  />
                 </Form.Item>
               </Col>
             </Row>
@@ -648,6 +804,7 @@ export default function BuoyFormContent({
             </Row>
           </div>
 
+          {/* ── Section Card: Tọa độ GPS ── */}
           <div style={sectionBoxStyle}>
             <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
               <span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: portFormFontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
@@ -655,37 +812,10 @@ export default function BuoyFormContent({
               </span>
               <Space size={8}>
                 <Button
-                  icon={<EnvironmentOutlined style={{ color: !geometryType ? undefined : actionPrimary }} />}
+                  icon={<EnvironmentOutlined style={{ color: !effectiveGeometryType ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
                   onClick={() => setGisModalOpen(true)}
-                  disabled={!geometryType}
-                  style={!geometryType ? {
-                    height: 32,
-                    fontSize: fontSizeSm,
-                    padding: '0 14px',
-                    borderRadius: radiusPill,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    opacity: 0.6,
-                    cursor: 'not-allowed',
-                  } : {
-                    ...outlineButtonStyle,
-                    height: 32,
-                    fontSize: fontSizeSm,
-                    padding: '0 14px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  Chọn tọa độ trên bản đồ
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={addGpsPoint}
-                  disabled={!geometryType || (geometryType === 'POINT' && gpsCoordList.length >= 1)}
-                  style={!geometryType || (geometryType === 'POINT' && gpsCoordList.length >= 1) ? {
+                  disabled={!effectiveGeometryType}
+                  style={!effectiveGeometryType ? {
                     height: 32,
                     fontSize: fontSizeSm,
                     padding: '0 14px',
@@ -697,6 +827,38 @@ export default function BuoyFormContent({
                     borderColor: '#d9d9d9',
                     color: 'rgba(0, 0, 0, 0.25)',
                     cursor: 'not-allowed',
+                    boxShadow: 'none',
+                  } : {
+                    ...outlineButtonStyle,
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  title={!effectiveGeometryType ? 'Vui lòng chọn loại đối tượng trước khi chọn tọa độ trên bản đồ' : undefined}
+                >
+                  Chọn tọa độ trên bản đồ
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined style={{ color: (!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1)) ? 'rgba(0, 0, 0, 0.25)' : undefined }} />}
+                  onClick={addGpsPoint}
+                  disabled={!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1)}
+                  style={(!effectiveGeometryType || (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1)) ? {
+                    height: 32,
+                    fontSize: fontSizeSm,
+                    padding: '0 14px',
+                    borderRadius: radiusPill,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    background: '#f5f5f5',
+                    borderColor: '#d9d9d9',
+                    color: 'rgba(0, 0, 0, 0.25)',
+                    cursor: 'not-allowed',
+                    boxShadow: 'none',
                   } : {
                     ...primaryButtonStyle,
                     height: 32,
@@ -706,81 +868,117 @@ export default function BuoyFormContent({
                     alignItems: 'center',
                     gap: 4,
                   }}
-                  title={geometryType === 'POINT' && gpsCoordList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined}
+                  title={!effectiveGeometryType ? 'Vui lòng chọn loại đối tượng trước khi thêm tọa độ' : (effectiveGeometryType === 'POINT' && gpsCoordList.length >= 1 ? 'Đối tượng điểm chỉ có tối đa 1 tọa độ GPS' : undefined)}
                 >
                   Thêm tọa độ
                 </Button>
               </Space>
             </div>
-            {gpsCoordList.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center', border: `1px dashed ${borderDefault}`, borderRadius: radiusMd, background: surfaceCard }}>
-                <span style={{ fontSize: portFormFontSizeMd, color: textTertiary, display: 'block' }}>Chưa có tọa độ nào.</span>
+
+            {gpsError && (
+              <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
               </div>
-            ) : (
-              <>
-              {gpsError && (
-                <div style={{ marginBottom: spaceSm, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ color: statusCritical, fontSize: fontSizeMd, flex: 1 }}>⚠ {gpsError}</span>
-                </div>
-              )}
-              <DetailTable
-                size="small"
-                scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
-                total={gpsCoordList.length}
-                pageSize={10}
-                currentPage={gpsPage}
-                onPageChange={(p) => setGpsPage(p)}
-                hidePagination={gpsCoordList.length <= 10}
-                dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
-                rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
-                emptyText="Chưa có tọa độ GPS nào"
-                columns={[
-                  {
-                    title: 'STT',
-                    width: 60,
-                    align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
-                    render: (_v: any, _r: any, idx: number) => (gpsPage - 1) * 10 + idx + 1,
-                  },
-                  {
-                    title: <span>Vĩ độ (Latitude - N) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
-                    key: 'lat',
-                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
-                    render: (_v: any, record: any) =>
-                      renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) =>
-                        updateGpsPoint(record._idx, 'lat', d, m, s)
-                      ),
-                  },
-                  {
-                    title: <span>Kinh độ (Longitude - E) <span style={{ color: statusCritical, fontSize: 12 }}>*</span></span>,
-                    key: 'lng',
-                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
-                    render: (_v: any, record: any) =>
-                      renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) =>
-                        updateGpsPoint(record._idx, 'lng', d, m, s)
-                      ),
-                  },
-                  {
-                    title: 'Thao tác',
-                    key: 'action',
-                    width: 70,
-                    align: 'center' as const,
-                    onCell: () => ({ style: { verticalAlign: 'middle' } }),
-                    render: (_v: any, record: any) => (
+            )}
+            <DetailTable
+              size="small"
+              scrollY={DRAWER_TABLE_SCROLL_Y.withGisForm}
+              dataSource={gpsCoordList.map((c, i) => ({ ...c, _idx: i }))}
+              rowKey={(r: any, idx?: number) => r._idx ?? String(idx)}
+              emptyText="Chưa có tọa độ GPS nào"
+              columns={[
+                {
+                  title: 'STT',
+                  width: 60,
+                  align: 'center' as const,
+                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                  render: (_v: any, _r: any, idx: number) => idx + 1,
+                },
+                {
+                  title: 'Vĩ độ (Latitude - N)',
+                  key: 'lat',
+                  align: 'center' as const,
+                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                  render: (_v: any, record: any) =>
+                    renderDmsGroup(record.latD, record.latM, record.latS, 90, (d, m, s) =>
+                      updateGpsPoint(record._idx, 'lat', d, m, s)
+                    ),
+                },
+                {
+                  title: 'Kinh độ (Longitude - E)',
+                  key: 'lng',
+                  align: 'center' as const,
+                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                  render: (_v: any, record: any) =>
+                    renderDmsGroup(record.lngD, record.lngM, record.lngS, 180, (d, m, s) =>
+                      updateGpsPoint(record._idx, 'lng', d, m, s)
+                    ),
+                },
+                {
+                  title: '',
+                  width: 50,
+                  align: 'center' as const,
+                  onCell: () => ({ style: { verticalAlign: 'middle' } }),
+                  render: (_v: any, record: any) => {
+                    const isPoint = (effectiveGeometryType || 'POINT') === 'POINT';
+                    const minPoints = isPoint ? 1 : effectiveGeometryType === 'LINE' ? 2 : 3;
+                    const canDelete = gpsCoordList.length > minPoints;
+
+                    if (isPoint) {
+                      const hasValue =
+                        record.latD != null ||
+                        record.latM != null ||
+                        record.latS != null ||
+                        record.lngD != null ||
+                        record.lngM != null ||
+                        record.lngS != null;
+                      return (
+                        <Button
+                          type="text"
+                          disabled={!hasValue}
+                          icon={<DeleteOutlined style={{ fontSize: 16, color: hasValue ? statusCritical : undefined }} />}
+                          onClick={() => clearGpsPoint ? clearGpsPoint(record._idx) : updateGpsPoint(record._idx, 'lat', null, null, null)}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            padding: 0,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                          title={hasValue ? 'Xóa trắng giá trị tọa độ' : 'Chưa có dữ liệu'}
+                        />
+                      );
+                    }
+
+                    return (
                       <Button
                         type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        style={{ ...iconButtonStyle, width: 32, height: 32, padding: 0, color: statusCritical }}
-                        onClick={() => removeGpsPoint(record._idx)}
-                        title="Xóa tọa độ"
+                        danger={canDelete}
+                        disabled={!canDelete}
+                        icon={<DeleteOutlined style={{ fontSize: 16 }} />}
+                        onClick={() => canDelete && removeGpsPoint(record._idx)}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          padding: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title={
+                          !canDelete
+                            ? effectiveGeometryType === 'LINE'
+                              ? 'Đối tượng đường phải có tối thiểu 2 tọa độ'
+                              : 'Đối tượng vùng phải có tối thiểu 3 tọa độ'
+                            : 'Xóa điểm tọa độ này'
+                        }
                       />
-                    ),
+                    );
                   },
-                ]}
-              />
-              </>
-            )}
+                },
+              ]}
+            />
           </div>
         </div>
       ),
@@ -794,6 +992,7 @@ export default function BuoyFormContent({
             ...f,
             id: f.uid || f.id,
             fileName: f.name || f.fileName,
+            fileType: f.contentType || f.fileType || f.type,
             fileSize: f.fileSize ?? f.size ?? f.originFileObj?.size,
             uploadedByName: f.uploadedByName || (f.uploadedBy ? (userMap?.get(f.uploadedBy) || f.uploadedBy) : '') || currentUser?.fullName || currentUser?.username || 'Cán bộ quản lý',
             uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt || dayjs().toISOString(),
@@ -805,14 +1004,35 @@ export default function BuoyFormContent({
             onDeleteAttachment?.(uid);
             setUploadFileList((prev) => prev.filter((x) => (x.uid || (x as any).id) !== uid));
           }}
-          onDownload={(uid, name) => {
-            const file = uploadFileList.find((f: any) => f.uid === uid || f.id === uid);
-            if (file?.originFileObj) {
-              triggerBlobDownload(file.originFileObj, name || file.originFileObj.name);
+          onDownload={async (uid, name) => {
+            const fileItem = uploadFileList.find((x: any) => (x.uid || x.id) === uid);
+            const rawFile = fileItem?.originFileObj || (fileItem as any)?.file;
+            if (rawFile) {
+              triggerBlobDownload(rawFile, name || (rawFile as File).name || 'attachment');
               return;
             }
-            toast.info(`Đang tải xuống tệp: ${name}`);
+
+            if (isEdit && record?.id) {
+              try {
+                const blob = await buoyCRUD.downloadAttachment(record.id, uid);
+                triggerBlobDownload(blob, name || 'attachment');
+              } catch {
+                toast.error('Không thể tải xuống tệp đính kèm');
+              }
+            } else {
+              toast.error('Không tìm thấy tệp để tải xuống');
+            }
           }}
+          loadReadonlyPreviewImage={
+            isEdit && record?.id
+              ? (attachmentId) => buoyCRUD.downloadAttachment(record.id, attachmentId)
+              : undefined
+          }
+          loadPreviewAttachment={
+            isEdit && record?.id
+              ? (attachmentId) => buoyCRUD.downloadAttachment(record.id, attachmentId)
+              : undefined
+          }
         />
       ),
     },
@@ -826,6 +1046,8 @@ export default function BuoyFormContent({
         activeKey={activeTabKey}
         onChange={onTabChange}
         tabBarStyle={drawerTabBarStyle}
+        animated={false}
+        destroyInactiveTabPane={false}
         items={tabItems}
       />
 
@@ -851,8 +1073,11 @@ export default function BuoyFormContent({
           <Button
             key="ok"
             type="primary"
-            onClick={() => setGisModalOpen(false)}
-            style={{ ...primaryButtonStyle, height: 36 }}
+            onClick={() => {
+              setGisModalOpen(false);
+              toast.success('Đã xác nhận vị trí từ bản đồ');
+            }}
+            style={{ ...primaryButtonStyle, height: 36, borderRadius: radiusPill }}
           >
             Xác nhận tọa độ
           </Button>,
@@ -861,30 +1086,46 @@ export default function BuoyFormContent({
         <div style={{ padding: '8px 0' }}>
           <GisLocationSelector
             inline={true}
-            defaultGeometryType={(geometryType as 'POINT' | 'LINE' | 'POLYGON' | undefined) || 'POINT'}
-            value={(() => {
-              const points = gpsCoordList
-                .filter((row) => row.latD != null && row.latM != null && row.latS != null && row.lngD != null && row.lngM != null && row.lngS != null)
-                .map((row) => ({
-                  latitude: row.latD! + row.latM! / 60 + row.latS! / 3600,
-                  longitude: row.lngD! + row.lngM! / 60 + row.lngS! / 3600,
-              }));
-              if (!geometryType || points.length === 0) return undefined;
-              const coordinates = serializeCoordinatesToWkt(points, geometryType);
-              return { geometryType, coordinates };
-            })()}
+            defaultGeometryType={(effectiveGeometryType as any) || 'POINT'}
+            value={{
+              geometryType: (effectiveGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                gpsCoordList
+                  .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+                  .map((c) => ({
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                effectiveGeometryType || 'POINT',
+              ),
+              symbolId: form?.getFieldValue('mapSymbolId') || form?.getFieldValue('symbolId'),
+            }}
             height={520}
             onChange={(val) => {
               if (val?.coordinates) {
                 const points = parseWktToCoordinates(val.coordinates);
                 if (points.length > 0) {
-                  const toDmsRow = (p: { latitude: number; longitude: number }) => {
+                  const geom = ((val?.geometryType || effectiveGeometryType || 'POINT') as string).toUpperCase();
+                  const newPoints = points.map((p) => {
                     const latDms = ddToDms(p.latitude);
                     const lngDms = ddToDms(p.longitude);
                     return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-                  };
-                  replaceGpsPoints(points.map(toDmsRow));
+                  });
+
+                  if (geom === 'POINT') {
+                    replaceGpsPoints([newPoints[0]]);
+                  } else {
+                    replaceGpsPoints(newPoints);
+                  }
                 }
+              }
+              if (val?.geometryType && val.geometryType !== effectiveGeometryType) {
+                form?.setFieldValue('geometryType', val.geometryType);
+              }
+              if (val?.symbolId) {
+                form?.setFieldValue('mapSymbolId', val.symbolId);
+                form?.setFieldValue('symbolId', val.symbolId);
               }
             }}
           />

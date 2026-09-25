@@ -39,7 +39,8 @@ import {
   getValueFromEvent5,
 } from '../../utils/numberRuleHelper';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt, parseWktToCoordinates } from '../../utils/gisGeometry';
+import { parseGisCoordinates } from './anchoragePayload';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import { buildAnchorageBuoyBerthQuery, toAnchorageBuoyBerthOptions } from './anchorageBuoyBerthOptions';
 import {
@@ -107,32 +108,6 @@ const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
 ];
-
-
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    const trimmed = wkt.trim();
-    if (trimmed.toUpperCase().startsWith('LINESTRING')) {
-      const m = trimmed.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/i);
-      if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    }
-    if (trimmed.toUpperCase().startsWith('POLYGON')) {
-      const m = trimmed.match(/POLYGON\s*\(\s*\(\s*([^)]+)\s*\)\s*\)/i);
-      if (m) {
-        const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) pts.pop();
-        return pts;
-      }
-    }
-    const mm = trimmed.match(/MULTIPOINT\s*\(\s*((?:\([^)]*\),?)+)\s*\)/i);
-    if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-    if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
@@ -428,6 +403,8 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
   const isInitialLoadDoneRef = useRef(false);
+  const initialCoordinatesRef = useRef<string | null>(null);
+  const initialRecordRef = useRef<any>(null);
 
 
   // Load organizations
@@ -603,34 +580,40 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
     (async () => {
       try {
         const d: any = await anchorageCRUD.findById(id);
+        initialRecordRef.current = d;
+        initialCoordinatesRef.current = d.coordinates || null;
         editPortIdRef.current = d.portId;
         initialApprovalStatusRef.current = d.approvalStatus;
 
         let geomType = d.geometryType;
         if (!geomType && d.coordinates) {
-          const upperWkt = d.coordinates.trim().toUpperCase();
+          const upperWkt = d.coordinates.trim().replace(/^SRID=\d+\s*;/i, '').trim().toUpperCase();
           if (upperWkt.startsWith('POLYGON')) geomType = 'POLYGON';
-          else if (upperWkt.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (upperWkt.startsWith('LINESTRING') || upperWkt.startsWith('LINE')) geomType = 'LINE';
           else geomType = 'POINT';
         } else if (!geomType && d.latitude != null && d.longitude != null) {
           geomType = 'POINT';
         }
 
         // Parse coordinates
-        const ec = d.coordinates ? parseGisCoordinates({ geometryType: geomType, coordinates: d.coordinates }) : [];
+        const ec = d.coordinates ? parseWktToCoordinates(d.coordinates) : [];
         if (ec.length > 0) {
-          setCoordinateList(ec.map(c => {
+          if (!geomType) {
+            geomType = ec.length > 2 ? 'POLYGON' : ec.length === 2 ? 'LINE' : 'POINT';
+          }
+          setCoordinateList(ec.map((c, idx) => {
             const latDms = ddToDms(c.latitude);
             const lngDms = ddToDms(c.longitude);
-            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+            return { _idx: idx, latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
           }));
         } else if (d.latitude != null && d.longitude != null) {
+          if (!geomType) geomType = 'POINT';
           const latDms = ddToDms(Number(d.latitude));
           const lngDms = ddToDms(Number(d.longitude));
-          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
+          setCoordinateList([{ _idx: 0, latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
         } else if (geomType) {
           const count = GEOMETRY_POINT_COUNT[geomType] ?? 1;
-          setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
+          setCoordinateList(Array.from({ length: count }, (_, idx) => ({ _idx: idx, latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
         } else {
           setCoordinateList([]);
         }
@@ -1007,7 +990,12 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
       return false;
     }
 
-    if (vals.geometryType) {
+    const hasGeom = !!vals.geometryType;
+    let wktCoordinates: string | null = null;
+    let lat: number | null = null;
+    let lng: number | null = null;
+
+    if (hasGeom) {
       if (!vals.mapSymbolId) {
         setActiveTabKey('location');
         form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
@@ -1015,29 +1003,9 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         return false;
       }
 
-      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType as string] ?? 1;
       const validCoords = coordinateList.filter(
         (c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
       );
-
-      if (validCoords.length < minCount) {
-        setActiveTabKey('location');
-        const msg =
-          vals.geometryType === 'POLYGON'
-            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
-            : vals.geometryType === 'LINE'
-            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
-            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
-        toast.error(msg);
-        return false;
-      }
-
-      // Đối tượng điểm (POINT) chỉ cho phép đúng 1 tọa độ GPS — nếu nhiều hơn thì chặn & báo.
-      if (vals.geometryType === 'POINT' && validCoords.length > 1) {
-        setActiveTabKey('location');
-        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
-        return false;
-      }
 
       // Tọa độ GPS: nếu 1 hàng đã bắt đầu nhập nhưng ô con (Độ/Phút/Giây của Vĩ hoặc Kinh) chưa đủ → chặn & báo khi ấn Lưu
       const partial = coordinateList.find((c) => {
@@ -1068,21 +1036,46 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
         toast.error('Tọa độ GPS nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
         return false;
       }
-    }
 
-    const hasGeom = !!vals.geometryType;
-    const validCoords = hasGeom
-      ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
-      : [];
-    const wktCoordinates = hasGeom && validCoords.length > 0
-      ? serializeCoordinatesToWkt(
+      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType as string] ?? 1;
+      if (validCoords.length >= minCount) {
+        if (vals.geometryType === 'POINT' && validCoords.length > 1) {
+          setActiveTabKey('location');
+          toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+          return false;
+        }
+        wktCoordinates = serializeCoordinatesToWkt(
           validCoords.map((c) => ({
             latitude: dmToDd(c.latD, c.latM, c.latS),
             longitude: dmToDd(c.lngD, c.lngM, c.lngS),
           })),
           vals.geometryType || 'POINT'
-        )
-      : null;
+        );
+        lat = dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS);
+        lng = dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS);
+      } else if (isEdit && initialCoordinatesRef.current) {
+        // Fallback bảo toàn tọa độ gốc khi người dùng không sửa đổi bảng tọa độ
+        wktCoordinates = initialCoordinatesRef.current;
+        const pts = parseWktToCoordinates(wktCoordinates);
+        if (pts.length > 0) {
+          lat = pts[0].latitude;
+          lng = pts[0].longitude;
+        } else if (initialRecordRef.current?.latitude != null && initialRecordRef.current?.longitude != null) {
+          lat = Number(initialRecordRef.current.latitude);
+          lng = Number(initialRecordRef.current.longitude);
+        }
+      } else {
+        setActiveTabKey('location');
+        const msg =
+          vals.geometryType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : vals.geometryType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+        toast.error(msg);
+        return false;
+      }
+    }
 
     onSubmittingChange?.(true);
     try {
@@ -1152,13 +1145,13 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
           : (isEdit ? null : undefined),
         publicDecision: cleanString(vals.publicDecision),
         investmentAgreement: cleanString(vals.investmentAgreement),
-        geometryType: hasGeom ? (vals.geometryType || null) : (isEdit ? null : null),
-        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : (isEdit ? null : null),
-        coordinateSystem: hasGeom && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : (isEdit ? null : null),
-        displayRule: hasGeom && vals.displayRule != null ? Number(vals.displayRule) : (isEdit ? null : null),
-        latitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : (isEdit ? null : null),
-        longitude: hasGeom && validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : (isEdit ? null : null),
-        coordinates: hasGeom ? (wktCoordinates || null) : (isEdit ? null : null),
+        geometryType: hasGeom ? (vals.geometryType || null) : (isEdit ? null : undefined),
+        mapSymbolId: hasGeom ? (vals.mapSymbolId || null) : (isEdit ? null : undefined),
+        coordinateSystem: hasGeom && vals.coordinateSystem != null ? Number(vals.coordinateSystem) : (hasGeom ? 1 : (isEdit ? null : undefined)),
+        displayRule: hasGeom ? 1 : (isEdit ? null : undefined),
+        latitude: hasGeom ? (lat ?? (isEdit ? null : undefined)) : (isEdit ? null : undefined),
+        longitude: hasGeom ? (lng ?? (isEdit ? null : undefined)) : (isEdit ? null : undefined),
+        coordinates: hasGeom ? (wktCoordinates || (isEdit && initialCoordinatesRef.current ? initialCoordinatesRef.current : null)) : (isEdit ? null : undefined),
         mooringWaterAreas: mooringPayload,
       };
 
@@ -1631,6 +1624,10 @@ const AnchorageForm = forwardRef<AnchorageFormHandle, AnchorageFormProps>(({
                     style={selectStyle}
                     onChange={(val) => {
                       if (!val) {
+                        initialCoordinatesRef.current = null;
+                        if (initialRecordRef.current) {
+                          initialRecordRef.current.geometryType = null;
+                        }
                         form.setFieldsValue({
                           mapSymbolId: undefined,
                           coordinateSystem: undefined,

@@ -22,6 +22,15 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       expect(normalizeDecimal20_4('-15.2')).toBe('15.2');
     });
 
+    it('parseNumber20 không biến số nguyên 5 chữ số trở lên thành số thập phân khi gõ trên chuỗi format', () => {
+      expect(parseNumber20('1.2345')).toBe('12345');
+      expect(parseNumber20('5.0000')).toBe('50000');
+      expect(parseNumber20('12.3456')).toBe('123456');
+      expect(parseNumber20('123.4567')).toBe('1234567');
+      expect(parseNumber20('50000')).toBe('50000');
+      expect(parseNumber20('12345')).toBe('12345');
+    });
+
     it('giới hạn tối đa 20 chữ số khi không có dấu "."', () => {
       const twentyDigits = '12345678901234567890';
       const twentyFiveDigits = '1234567890123456789012345';
@@ -110,7 +119,6 @@ describe('DikeRevetment Number Input & Limit Rules', () => {
       await expect(signedValidator({}, '12-34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '--1')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
       await expect(signedValidator({}, '-12a34')).rejects.toThrow('Chỉ chấp nhận chữ số và dấu "."');
-
       await expect(signedValidator({}, '-12345678901234567.3456')).rejects.toThrow(
         'Giới hạn chữ số khi có dấu "." là 16',
       );

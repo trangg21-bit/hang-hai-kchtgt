@@ -72,7 +72,8 @@ import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterDetailContent from './StormShelterDetailContent';
-import StormShelterForm, { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './StormShelterForm';
+import StormShelterForm from './StormShelterForm';
+import { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './stormShelterPayload';
 
 // Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK toàn bộ cell/table/input/button
 const fontSizeMd = 13.5;

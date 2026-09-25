@@ -8,15 +8,30 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
+import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.security.annotation.DataScope;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -297,5 +312,62 @@ public class BuoyController {
                 result.put("changeHistory", changeHistory);
                 result.put("entityNames", entityNames);
                 return ResponseEntity.ok(ApiResponse.success(result));
+        }
+
+        // ── ATTACHMENTS (Chuẩn /beacon-stations) ─────────────────────────
+
+        @PostMapping(value = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        @PreAuthorize("@auth.checkAny(authentication, 'buoy:manage', 'buoy:create', 'buoy:update', 'buoyasset:manage', 'buoyasset:create', 'buoyasset:update', 'data:create', 'data:update')")
+        public ResponseEntity<ApiResponse<List<AttachmentDto>>> uploadAttachments(
+                        @PathVariable UUID id,
+                        @RequestParam("files") List<MultipartFile> files) {
+                return ResponseEntity.ok(ApiResponse.success(
+                                "Tải file đính kèm thành công",
+                                buoyService.uploadAttachments(id, files, SecurityUtils.getCurrentUserId())));
+        }
+
+        @GetMapping("/{id}/attachments")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoy:manage', 'buoy:read', 'buoystation:read', 'buoyasset:manage', 'buoyasset:read', 'data:read')")
+        public ResponseEntity<ApiResponse<List<AttachmentDto>>> listAttachments(@PathVariable UUID id) {
+                return ResponseEntity.ok(ApiResponse.success(
+                                "Lấy danh sách file đính kèm thành công",
+                                buoyService.listAttachments(id)));
+        }
+
+        @DeleteMapping("/{id}/attachments/{attachmentId}")
+        @PreAuthorize("@auth.checkAny(authentication, 'buoy:manage', 'buoy:delete', 'buoy:update', 'buoyasset:manage', 'buoyasset:delete', 'buoyasset:update', 'data:delete')")
+        public ResponseEntity<ApiResponse<Void>> deleteAttachment(
+                        @PathVariable UUID id,
+                        @PathVariable UUID attachmentId) {
+                buoyService.deleteAttachment(id, attachmentId);
+                return ResponseEntity.ok(ApiResponse.success("Đã xóa file đính kèm", null));
+        }
+
+        @PreAuthorize("@auth.checkAny(authentication, 'buoy:manage', 'buoy:read', 'buoystation:read', 'buoyasset:manage', 'buoyasset:read', 'data:read')")
+        @GetMapping("/{id}/attachments/{attachmentId}/download")
+        public ResponseEntity<Resource> downloadAttachment(
+                        @PathVariable UUID id,
+                        @PathVariable UUID attachmentId) {
+                Attachment attachment = buoyService.getAttachment(id, attachmentId);
+                Path path = Paths.get(attachment.getFilePath()).toAbsolutePath().normalize();
+                if (!Files.isRegularFile(path)) {
+                        return ResponseEntity.notFound().build();
+                }
+                Resource resource = new FileSystemResource(path);
+                String contentType;
+                try {
+                        contentType = Files.probeContentType(path);
+                } catch (IOException e) {
+                        contentType = null;
+                }
+                if (contentType == null || contentType.isBlank()) {
+                        contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+                }
+                String filename = attachment.getFileName() != null ? attachment.getFileName() : path.getFileName().toString();
+                String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+                return ResponseEntity.ok()
+                                .contentType(MediaType.parseMediaType(contentType))
+                                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename)
+                                .body(resource);
         }
 }

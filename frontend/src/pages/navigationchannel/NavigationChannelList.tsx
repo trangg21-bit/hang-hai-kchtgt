@@ -162,8 +162,8 @@ export default function NavigationChannelList() {
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [sortField, setSortField] = useState<string | undefined>();
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const [sortField, setSortField] = useState<string | undefined>('updatedAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');
   const [reloadToken, setReloadToken] = useState(0);
   const [dataSource, setDataSource] = useState<NavigationChannelResponse[]>([]);
 
@@ -361,8 +361,8 @@ export default function NavigationChannelList() {
     setFilterUpdatedFrom('');
     setFilterUpdatedTo('');
     setFilterApprovalStatus(undefined);
-    setSortField(undefined);
-    setSortOrder(null);
+    setSortField('updatedAt');
+    setSortOrder('desc');
     setPage(1);
     setReloadToken((t) => t + 1);
   }, []);
@@ -379,8 +379,8 @@ export default function NavigationChannelList() {
   }, []);
 
   const refreshAfterMutation = useCallback(() => {
-    setSortField(undefined);
-    setSortOrder(null);
+    setSortField('updatedAt');
+    setSortOrder('desc');
     setPage(1);
     setReloadToken((t) => t + 1);
   }, []);
@@ -1318,10 +1318,101 @@ export default function NavigationChannelList() {
     [hasPerm, openModal],
   );
 
-  const tableData = useMemo(
-    () => dataSource.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 })),
-    [dataSource, page, pageSize],
-  );
+  const tableData = useMemo(() => {
+    const sortedList = [...dataSource];
+    if (sortField && sortOrder) {
+      sortedList.sort((a: NavigationChannelResponse, b: NavigationChannelResponse) => {
+        let cmp: number;
+        const recA = a as Record<string, unknown>;
+        const recB = b as Record<string, unknown>;
+        if (sortField === 'channelName' || sortField === 'name') {
+          const aVal = a.channelName || (recA.name as string) || '';
+          const bVal = b.channelName || (recB.name as string) || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'channelCode' || sortField === 'code') {
+          const aVal = a.channelCode || (recA.code as string) || '';
+          const bVal = b.channelCode || (recB.code as string) || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'orgUnitId' || sortField === 'orgUnitName') {
+          const aVal = a.orgUnitName || (a.orgUnitId ? orgMap.get(a.orgUnitId) : '') || '';
+          const bVal = b.orgUnitName || (b.orgUnitId ? orgMap.get(b.orgUnitId) : '') || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'seaportId' || sortField === 'seaportName') {
+          const aVal = seaportOptions.find((p) => p.id === a.seaportId)?.portName || (a.seaportId ? seaportMap.get(a.seaportId) : '') || a.seaportId || '';
+          const bVal = seaportOptions.find((p) => p.id === b.seaportId)?.portName || (b.seaportId ? seaportMap.get(b.seaportId) : '') || b.seaportId || '';
+          cmp = String(aVal).localeCompare(String(bVal), 'vi');
+        } else if (sortField === 'provinceId' || sortField === 'provinceName') {
+          const aLabel = a.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(a.provinceId))?.label || String(a.provinceId)) : '';
+          const bLabel = b.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === String(b.provinceId))?.label || String(b.provinceId)) : '';
+          cmp = String(aLabel).localeCompare(String(bLabel), 'vi');
+        } else if (sortField === 'conditionStatus') {
+          // Trừ Tình trạng: sort theo thứ tự vận hành/nghiệp vụ (ordinal), không sort theo bảng chữ cái tiếng Việt
+          const conditionOrder: Record<string, number> = {
+            OPERATIONAL: 0,
+            STOPPED: 1,
+            MAINTENANCE: 2,
+            UNDER_CONSTRUCTION: 3,
+            NOT_YET_OPERATIONAL: 4,
+            SUSPENDED: 5,
+          };
+          const aOrd = a.conditionStatus ? (conditionOrder[a.conditionStatus] ?? 99) : 99;
+          const bOrd = b.conditionStatus ? (conditionOrder[b.conditionStatus] ?? 99) : 99;
+          cmp = aOrd - bOrd;
+        } else if (sortField === 'approvalStatus' || sortField === 'status') {
+          // Trừ Trạng thái: sort theo chu kỳ vòng đời phê duyệt chuẩn, không sort theo bảng chữ cái tiếng Việt
+          const approvalOrder: Record<string, number> = {
+            DRAFT: 1,
+            PENDING_APPROVAL: 2,
+            PENDING_LEVEL1: 2,
+            SUBMITTED: 2,
+            APPROVED_LEVEL1: 3,
+            PENDING_LEVEL2: 3,
+            APPROVED: 4,
+            APPROVED_LEVEL2: 4,
+            REJECTED_LEVEL1: 5,
+            REJECTED: 6,
+            REJECTED_LEVEL2: 6,
+            ARCHIVED: 7,
+            DELETED: 7,
+          };
+          const aOrd = a.approvalStatus ? (approvalOrder[a.approvalStatus] ?? 99) : 99;
+          const bOrd = b.approvalStatus ? (approvalOrder[b.approvalStatus] ?? 99) : 99;
+          cmp = aOrd - bOrd;
+        } else if (sortField === 'updatedAt' || sortField === 'updatedBy' || sortField === 'updatedByName') {
+          // Cột dạng "Cán bộ cập nhật" -> sort theo "Ngày cập nhật" đi kèm (timestamp)
+          const aTime = a.updatedAt ? new Date(a.updatedAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+          const bTime = b.updatedAt ? new Date(b.updatedAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+          cmp = aTime - bTime;
+        } else if (sortField === 'submittedAt' || sortField === 'submittedBy' || sortField === 'submittedByName' || sortField === 'submittedForApprovalAt' || sortField === 'submittedForApprovalBy') {
+          // Cột dạng "Cán bộ gửi phê duyệt" -> sort theo "Ngày gửi phê duyệt" đi kèm (timestamp)
+          const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+          const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+          cmp = aTime - bTime;
+        } else if (sortField === 'approvedDateLevel1' || sortField === 'approverLevel1' || sortField === 'approverLevel1Name' || sortField === 'level1ApprovedAt' || sortField === 'level1ApprovedBy') {
+          // Cột dạng "Cán bộ phê duyệt cấp Cảng vụ/Chi cục" -> sort theo "Ngày phê duyệt cấp Cảng vụ/Chi cục" đi kèm (timestamp)
+          const aTime = a.approvedDateLevel1 ? new Date(a.approvedDateLevel1).getTime() : (a.level1ApprovedAt ? new Date(a.level1ApprovedAt).getTime() : 0);
+          const bTime = b.approvedDateLevel1 ? new Date(b.approvedDateLevel1).getTime() : (b.level1ApprovedAt ? new Date(b.level1ApprovedAt).getTime() : 0);
+          cmp = aTime - bTime;
+        } else if (sortField === 'approvedDateLevel2' || sortField === 'approverLevel2' || sortField === 'approverLevel2Name' || sortField === 'level2ApprovedAt' || sortField === 'level2ApprovedBy') {
+          // Cột dạng "Cán bộ phê duyệt cấp Cục" -> sort theo "Ngày phê duyệt cấp Cục" đi kèm (timestamp)
+          const aTime = a.approvedDateLevel2 ? new Date(a.approvedDateLevel2).getTime() : (a.level2ApprovedAt ? new Date(a.level2ApprovedAt).getTime() : 0);
+          const bTime = b.approvedDateLevel2 ? new Date(b.approvedDateLevel2).getTime() : (b.level2ApprovedAt ? new Date(b.level2ApprovedAt).getTime() : 0);
+          cmp = aTime - bTime;
+        } else if (sortField === 'createdAt' || sortField === 'createdBy') {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          cmp = aTime - bTime;
+        } else {
+          // Các trường chữ còn lại: sort theo bảng chữ cái tiếng Việt
+          const aVal = recA[sortField] ?? '';
+          const bVal = recB[sortField] ?? '';
+          cmp = typeof aVal === 'number' && typeof bVal === 'number' ? aVal - bVal : String(aVal).localeCompare(String(bVal), 'vi');
+        }
+        return sortOrder === 'asc' ? cmp : -cmp;
+      });
+    }
+    return sortedList.map((item, idx) => ({ ...item, key: item.id, _rowIndex: (page - 1) * pageSize + idx + 1 }));
+  }, [dataSource, page, pageSize, sortField, sortOrder, orgMap, seaportMap, seaportOptions]);
 
   const CHK_FILTER_LABEL = { ...themeTokenChk.filterLabelStyle, fontSize: 13.5 };
 
@@ -1558,8 +1649,8 @@ export default function NavigationChannelList() {
           setAppliedKeyword('');
           setAppliedChannelCode('');
           setPage(1);
-          setSortField(undefined);
-          setSortOrder(null);
+          setSortField('updatedAt');
+          setSortOrder('desc');
           if (savedRecord && savedRecord.id) {
             setDataSource((prev) => {
               const filtered = prev.filter((item) => item.id !== savedRecord.id);
