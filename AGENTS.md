@@ -270,7 +270,7 @@ import { spaceFormField, radiusPill } from '../tokens';
     - `DRAWER_TABLE_SCROLL_Y.pureTable = 'calc(100vh - 280px)'` (Tab chỉ có bảng thuần trong form Thêm mới/Sửa có Footer nút bấm).
     - `DRAWER_TABLE_SCROLL_Y.withButton = 'calc(100vh - 322px)'` (Tab có nút bấm trên đầu cao 32px + margin 10px).
     - `DRAWER_TABLE_SCROLL_Y.withDragger = 'calc(100vh - 394px)'` (Tab có khung Upload Dragger khóa cứng `height: 104px, boxSizing: 'border-box'` + margin 10px).
-    - `DRAWER_TABLE_SCROLL_Y.detailGis = 'calc(100vh - 356px)'` (Tab GIS trong Drawer Xem chi tiết: Header cố định 132px).
+    - `DRAWER_TABLE_SCROLL_Y.detailGis = 'calc(100vh - 378px)'` (Tab GIS trong Drawer Xem chi tiết: Header cố định ~154px gồm Section box 94px + margin 12px + GPS header 42px + tab paddingTop 6px: 224px + 154px = 378px, đáy bảng thẳng hàng 100% với Tab File đính kèm & Kết cấu hạ tầng).
   - Thêm mới luôn hiển thị đủ 3 nút: 'Lưu tạm', 'Lưu và gửi phê duyệt', 'Lưu và phê duyệt' chuẩn Bến cảng. Tiêu đề Drawer dùng `fontSize: 16` (`<span style={{ ...drawerTitleStyle, fontSize: 16 }}>...</span>`), `rootClassName="<res>-drawer-scope"`.
 - **Quy chuẩn Lịch sử thay đổi (Audit Trail & Change Tracking)**:
   - Mở từ menu dòng (`rowActions` -> "Lịch sử"), truy vấn từ bảng tập trung duy nhất `infrastructure_history` (bỏ hoàn toàn `change_logs`, `approval_logs`).

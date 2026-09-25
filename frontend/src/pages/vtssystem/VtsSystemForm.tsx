@@ -839,20 +839,21 @@ export default function VtsSystemForm({
         </span>
       }
       footer={
-        <KchtFormFooter
-          mode={propMode}
-          resource="vts"
-          record={record}
-          loading={isSubmitting}
-          activeAction={actionType}
-          showCancelButton={true}
-          onCancel={onCancel}
-          onSubmit={(action) => {
-            actionTypeRef.current = action;
-            setActionType(action);
-            form.submit();
-          }}
-        />
+        isDetailMode ? null : (
+          <KchtFormFooter
+            mode={propMode}
+            resource="vts"
+            record={record}
+            loading={isSubmitting}
+            activeAction={actionType}
+            onCancel={onCancel}
+            onSubmit={(action) => {
+              actionTypeRef.current = action;
+              setActionType(action);
+              form.submit();
+            }}
+          />
+        )
       }
     >
       <style>{detailTableStyle}</style>

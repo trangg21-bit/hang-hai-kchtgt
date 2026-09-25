@@ -35,7 +35,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -387,8 +387,8 @@ export default function AnchorageListPage() {
     && !!linkedRecordId;
   const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('anchorage', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
+  const canSaveAndApprove = checkCanSaveAndApprove('anchorage', hasExplicitPerm || hasPerm, authUser);
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
 
   const [orgUnit, setOrgUnit] = useState<string | undefined>(undefined);

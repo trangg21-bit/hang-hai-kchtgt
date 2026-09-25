@@ -2,6 +2,8 @@ package com.hanghai.kchtg.port.service;
 
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.common.entity.InfrastructureHistory;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
@@ -9,6 +11,7 @@ import com.hanghai.kchtg.port.entity.Port;
 import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.port.service.shared.PortNotificationService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -111,57 +114,37 @@ public class PortApprovalService {
     }
 
     /**
-     * @deprecated Duyệt một lần của cơ chế cũ. Giữ lại cho các luồng chưa chuyển
-     *             đổi; luồng cảng biển đã dùng {@link #approveC1}/{@link #approveC2}.
+     * Phê duyệt trực tiếp 1 cấp (mô hình chuẩn Cảng biển / Cảng cạn theo hh.csdl).
      */
-    @Deprecated
     @Transactional
     public void approve(UUID id, String userId, String reason) {
         Port entity = portRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
 
-        ApprovalStatus currentStatus = entity.getApprovalStatus();
-        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
+        UUID uid = null;
+        try { if (userId != null) uid = UUID.fromString(userId); } catch (Exception ignored) {}
+        if (uid == null) uid = SecurityUtils.getCurrentUserId();
 
-        // Capture full snapshot before mutation
-        Port.builder()
-                .id(entity.getId()).portCode(entity.getPortCode()).portName(entity.getPortName())
-                .province(entity.getProvince()).area(entity.getArea()).maxVesselCapacity(entity.getMaxVesselCapacity())
-                .orgUnitId(entity.getOrgUnitId()).portGroup(entity.getPortGroup())
-                .operationalStatus(entity.getOperationalStatus()).approvalStatus(entity.getApprovalStatus())
-                .mapSymbolId(entity.getMapSymbolId()).spatialId(entity.getSpatialId())
-                .detailedLocation(entity.getDetailedLocation()).portClass(entity.getPortClass())
-                .coordinateSystem(entity.getCoordinateSystem()).displayRule(entity.getDisplayRule())
-                .waterAreaScope(entity.getWaterAreaScope()).totalBerths(entity.getTotalBerths())
-                .totalAnchoragesTransshipment(entity.getTotalAnchoragesTransshipment())
-                .totalPublicChannels(entity.getTotalPublicChannels()).totalDedicatedChannels(entity.getTotalDedicatedChannels())
-                .totalPublicChannelLength(entity.getTotalPublicChannelLength()).totalDedicatedChannelLength(entity.getTotalDedicatedChannelLength())
-                .totalBuoysBeacons(entity.getTotalBuoysBeacons()).totalDikes(entity.getTotalDikes())
-                .totalDikeLength(entity.getTotalDikeLength()).totalLighthouses(entity.getTotalLighthouses())
-                .buoyBerthCount(entity.getBuoyBerthCount()).anchorageCount(entity.getAnchorageCount())
-                .transshipmentCount(entity.getTransshipmentCount()).otherWaterAreas(entity.getOtherWaterAreas())
-                .remarks(entity.getRemarks()).build();
-        if (reason == null || reason.isBlank()) {
-            // Mô hình 2 trạng thái: Nháp → phê duyệt thẳng. Chỉ gọi workflow cũ khi
-            // đang ở PENDING_APPROVAL (legacy) vì workflow yêu cầu đúng trạng thái đó.
-            if (currentStatus == ApprovalStatus.PENDING_APPROVAL) {
-                approvalWorkflowService.approve(currentStatusStr, "Port", id.toString(), userId);
-            }
-            entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        } else {
-            approvalWorkflowService.reject(currentStatusStr, "Port", id.toString(), userId, reason);
-            entity.setApprovalStatus(ApprovalStatus.REJECTED);
-        }
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApproverLevel2(uid);
+        entity.setLevel2ApprovalContent(reason);
         entity.setUpdatedAt(LocalDateTime.now());
+        if (uid != null) entity.setUpdatedBy(uid);
         portRepository.saveAndFlush(entity);
         portCacheService.evictAfterCommit();
 
-        if (reason == null || reason.isBlank()) {
-            log.info("Port [{}] approved by {}", id, userId);
-            notificationService.sendApprovalNotification("Port", id.toString(), userId, null);
-        } else {
-            log.info("Port [{}] rejected by {}: {}", id, userId, reason);
-        }
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.SEAPORT)
+                .approvalLevel(ApprovalLevel.LEVEL_2)
+                .status(InfrastructureHistoryStatus.APPROVED)
+                .approvedBy(uid)
+                .approvedDate(LocalDateTime.now())
+                .build());
+
+        log.info("Port [{}] approved directly by {}", id, uid);
+        notificationService.sendApprovalNotification("Port", id.toString(), String.valueOf(uid), null);
     }
 
     @Transactional(readOnly = true)

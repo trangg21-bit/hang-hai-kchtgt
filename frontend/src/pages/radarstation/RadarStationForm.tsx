@@ -132,9 +132,9 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: PermissionState) => s.hasExplicitPermission);
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasExplicitPerm || hasPerm, currentUser);
 
   const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
@@ -765,12 +765,12 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
                 </Button>
               </Popconfirm>
             )}
-            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (currentUserId !== record.createdBy || isCuc) && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (
               <Button type="primary" icon={<CheckCircleOutlined />} loading={isSubmitting} onClick={() => openApproveModal('c1')}>
                 Phê duyệt cấp Cảng vụ/Chi cục
               </Button>
             )}
-            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (currentUserId !== record.createdBy || isCuc) && (
+            {st === 'PENDING_APPROVAL' && hasPerm('radarstation:approvec1') && (
               <Button danger icon={<CloseCircleOutlined />} onClick={() => openRejectModal('c1')}>
                 Từ chối cấp Cảng vụ/Chi cục
               </Button>

@@ -37,7 +37,7 @@ import { focusErrorTab } from '../../utils/formValidationHelper';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
 import { colors } from '../../theme';
@@ -161,10 +161,10 @@ export const AisSystemFormModal: React.FC<AisSystemFormModalProps> = ({
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s) => s.hasPermission);
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
   const canCreate = hasPerm('aissystem:create');
   const canUpdate = canEditApprovalRecord(item?.approvalStatus, { hasPerm, resource: 'aissystem' });
-  const canSaveAndApprove = checkCanSaveAndApprove('aissystem', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('aissystem', hasExplicitPerm || hasPerm, currentUser);
 
   const [activeTab, setActiveTab] = useState('basic');
   const [submitting, setSubmitting] = useState(false);

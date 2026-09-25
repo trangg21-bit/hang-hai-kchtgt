@@ -46,9 +46,8 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
 import { useAuthStore, type AuthState } from '../../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../../store/permissionStore';
-import { FormOrgUnitTreeSelect, normalizeSearchText, resolveDefaultFormOrgUnitId } from '../../../components/org-unit';
 import { canEditApprovalRecord } from '../../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../../hooks/useKchtPermissions';
 import LoadingSkeleton from '../../../components/LoadingSkeleton';
 import DetailTable from '../../../components/shared/DetailTable';
 import InfrastructureAttachmentTab from '../../../components/shared/InfrastructureAttachmentTab';
@@ -222,6 +221,7 @@ export default function InmarsatStationForm({
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
 
   const isCreateMode = mode === 'create';
   const isEditMode = mode === 'edit';
@@ -286,8 +286,7 @@ export default function InmarsatStationForm({
     required,
   });
 
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = checkCanSaveAndApprove('coastalstationinmarsat', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationinmarsat', hasExplicitPerm || hasPerm, currentUser);
   const canCreate = hasPerm('coastalstationinmarsat:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,

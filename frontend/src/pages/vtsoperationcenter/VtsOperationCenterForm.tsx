@@ -646,8 +646,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
       const currentCoordinateSystem = values.coordinateSystem !== undefined ? values.coordinateSystem : (form.getFieldValue('coordinateSystem') ?? (record as any)?.coordinateSystem);
       const currentDisplayRule = values.displayRule !== undefined ? values.displayRule : (form.getFieldValue('displayRule') ?? (record as any)?.displayRule);
 
+      const hasGisCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
+      const hasEffectiveLocation = Boolean(currentGeometryType || hasGisCoordinates);
+
       let wkt: string | undefined = undefined;
-      if (currentGeometryType || coordinateList.length > 0) {
+      if (hasEffectiveLocation && (currentGeometryType || coordinateList.length > 0)) {
         const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
         if (!coordResult.valid) {
           const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
@@ -671,11 +674,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         coverage: values.coverage?.trim() ?? null,
         conditionStatus: values.conditionStatus,
         note: values.note?.trim() ?? null,
-        geometryType: currentGeometryType ?? null,
-        symbolId: currentSymbolId ?? null,
-        coordinates: coordinateList.length > 0 ? (wkt ?? null) : null,
-        coordinateSystem: currentCoordinateSystem ?? null,
-        displayRule: currentDisplayRule ?? null,
+        geometryType: hasEffectiveLocation ? (currentGeometryType ?? null) : null,
+        symbolId: hasEffectiveLocation ? (currentSymbolId ?? null) : null,
+        coordinates: hasEffectiveLocation && coordinateList.length > 0 ? (wkt ?? null) : null,
+        coordinateSystem: hasEffectiveLocation ? (currentCoordinateSystem ?? null) : null,
+        displayRule: hasEffectiveLocation ? (currentDisplayRule ?? null) : null,
       };
 
       if (isCreateMode) {
@@ -774,18 +777,20 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
         </span>
       }
       footer={
-        <KchtFormFooter
-          mode={currentMode}
-          resource="vtsoperationcenter"
-          record={record as any}
-          loading={isSubmitting}
-          activeAction={actionType}
-          onSubmit={(action) => {
-            actionTypeRef.current = action;
-            setActionType(action);
-            form.submit();
-          }}
-        />
+        isDetailMode ? null : (
+          <KchtFormFooter
+            mode={currentMode}
+            resource="vtsoperationcenter"
+            record={record as any}
+            loading={isSubmitting}
+            activeAction={actionType}
+            onSubmit={(action) => {
+              actionTypeRef.current = action;
+              setActionType(action);
+              form.submit();
+            }}
+          />
+        )
       }
     >
       {isDetailMode ? (

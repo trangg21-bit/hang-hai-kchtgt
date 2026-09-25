@@ -56,7 +56,7 @@ import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore, type AuthState } from '../../store/authStore';
 import { usePermissionStore, type PermissionState } from '../../store/permissionStore';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { FormOrgUnitTreeSelect, normalizeSearchText, resolveOrgSubtreeIds } from '../../components/org-unit';
 import DetailTable from '../../components/shared/DetailTable';
 import InfrastructureAttachmentTab, { type InfrastructureAttachmentItem } from '../../components/shared/InfrastructureAttachmentTab';
@@ -235,10 +235,10 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
   const canCreate = hasPerm('aissystem:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, { hasPerm, resource: 'aissystem' });
-  const canSaveAndApprove = checkCanSaveAndApprove('aissystem', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('aissystem', hasExplicitPerm || hasPerm, currentUser);
 
   const isDetailMode = currentMode === 'detail';
   const isCreateMode = currentMode === 'create';
@@ -755,7 +755,10 @@ export const AisSystemForm: React.FC<AisSystemFormProps> = ({
         maintenanceInfo: (allValues.maintenanceInfo ?? values.maintenanceInfo)?.trim() ?? null,
         note: (allValues.note ?? values.note)?.trim() ?? null,
         geometryType: geomType ?? null,
-        symbolId: symId ?? null,
+symbolId: geomType ? (currentSymbolId ?? null) : null,
+        coordinateSystem: geomType ? (values.coordinateSystem || form.getFieldValue('coordinateSystem') || 1) : null,
+        displayRule: geomType ? (values.displayRule || form.getFieldValue('displayRule') || 'Độ, phút, giây (DMS)') : null,
+
         coordinates: wkt ?? null,
       };
 

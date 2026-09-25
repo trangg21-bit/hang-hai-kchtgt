@@ -65,6 +65,7 @@ Dùng REST API `GET /api/v1/coastal-stations/cospas-sarsat/{id}` để lấy th�
 3. Loại beacon (ELT/EPIRB/PLB) được hiển thị dưới dạng biểu tượng với màu phân loại
 4. Văn bản đính kèm chỉ hiển thị cho user có quyền truy cập vào bản ghi tương ứng
 5. Lịch sử thay đổi hiển thị tối đa 100 thay đổi gần nhất, phân trang nếu nhiều hơn
+6. Khi hồ sơ không cấu hình vị trí / không có tọa độ GPS (0 tọa độ), cả 4 trường thông tin GIS (Loại đối tượng, Biểu tượng, Hệ quy chiếu, Quy tắc hiển thị) hiển thị '—', và nút 'Xem vị trí trên bản đồ' bị vô hiệu hóa (disabled)
 
 ## Testing Strategy
 - Test unit: API trả về đúng thông tin, format tần số

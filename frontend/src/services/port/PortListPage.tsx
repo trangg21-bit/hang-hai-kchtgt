@@ -14,7 +14,8 @@ import {
 } from 'antd';
 import { FilterOrgUnitTreeSelect, resolveOrgLevel2Name, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { useAuthStore } from '../../store/authStore';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { useKchtPermissions } from '../../hooks/useKchtPermissions';
+import { useKchtRowActions } from '../../hooks/useKchtRowActions';
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -38,7 +39,7 @@ import {
   deleteCangBien,
   approveCangBienC1,
   approveCangBienC2,
-
+  submitCangBien,
   rejectCangBien,
   fetchCangBienById,
   fetchportHistory,
@@ -866,8 +867,8 @@ export default function PortListPage() {
   // ── Permission ──────────────────────────────────────────────────
   const currentUser = useAuthStore((s: any) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('port', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const kchtPerms = useKchtPermissions('port', { approvalLevels: 2 });
+  const canSaveAndApprove = kchtPerms.canSaveAndApprove;
 
   // ── State ───────────────────────────────────────────────────────
   const [filterName, setFilterName] = useState('');
@@ -1112,7 +1113,9 @@ export default function PortListPage() {
 
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
   const actionTypeRef = useRef<'draft' | 'submit' | 'approve'>('submit');
-  const editActionRef = useRef<'draft' | 'approve'>('approve');
+  const [editAction, setEditAction] = useState<'draft' | 'submit' | 'approve'>('draft');
+  const editActionRef = useRef<'draft' | 'submit' | 'approve'>('draft');
+  const [resetScrollTrigger, setResetScrollTrigger] = useState(0);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<any[]>([]);
 
@@ -1607,6 +1610,7 @@ export default function PortListPage() {
       const createdPortId = createdPort?.id || (createdPort as any)?.portId;
       toast.success(currentAction === 'draft' ? 'Lưu tạm thành công' : currentAction === 'submit' ? 'Lưu và gửi phê duyệt thành công' : 'Lưu và phê duyệt thành công');
       createForm.resetFields();
+      setResetScrollTrigger(prev => prev + 1);
 
       const pendingFiles = [...uploadFileList];
       setInfraList([]);
@@ -1716,7 +1720,11 @@ export default function PortListPage() {
         area: clearableNumber(values.area),
         maxVesselCapacity: clearableNumber(values.khaNangTiepNhan),
         operationalStatus: clearableText(values.operationalStatus),
-        approvalStatus: editActionRef.current === 'draft' ? 'DRAFT' : 'APPROVED',
+        approvalStatus: editActionRef.current === 'approve'
+          ? 'APPROVED'
+          : editActionRef.current === 'submit'
+            ? 'PENDING_APPROVAL'
+            : 'DRAFT',
         orgUnitId: clearableUuid(values.orgUnitId),
         portGroup: clearableNumber(values.portGroup),
         mapSymbolId: clearableText((values.gisLocation as any)?.mapSymbolId || values.mapSymbolId),
@@ -1749,7 +1757,16 @@ export default function PortListPage() {
         remarks: (values.remarks as string) || undefined,
       };
       const res = await import('./api').then((m) => m.updateCangBien(payload));
-      toast.success(editActionRef.current === 'draft' ? 'Lưu tạm thành công' : 'Lưu và phê duyệt thành công');
+      if (editActionRef.current === 'submit') {
+        await submitCangBien(selectedRecord.id);
+      }
+      toast.success(
+        editActionRef.current === 'draft'
+          ? 'Lưu tạm thành công'
+          : editActionRef.current === 'submit'
+            ? 'Lưu và gửi phê duyệt thành công'
+            : 'Lưu và phê duyệt thành công'
+      );
       if (window.parent && (window.parent as any).kchtDetailCache) {
         (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
       }
@@ -1773,6 +1790,7 @@ export default function PortListPage() {
         setSortField('updatedByName');
         setSortOrder('descend');
         setPage(1);
+        setResetScrollTrigger(prev => prev + 1);
         fetchData();
         fetchTabCounts();
       }
@@ -1824,10 +1842,16 @@ export default function PortListPage() {
         } catch { counts[status] = 0; }
       }),
       fetchCangBienList({ isDeleted: true, page: 0, size: 1, orgUnitId: filterOrgUnitId })
-        .then(res => { counts.ARCHIVED = res?.totalElements ?? 0; })
-        .catch(() => { counts.ARCHIVED = 0; }),
+        .then(res => {
+          counts['DELETED'] = res?.totalElements ?? 0;
+          counts['ARCHIVED'] = res?.totalElements ?? 0;
+        })
+        .catch(() => {
+          counts['DELETED'] = 0;
+          counts['ARCHIVED'] = 0;
+        }),
     ]);
-    const subTotal = Object.entries(counts).filter(([k]) => k !== 'all').reduce((sum, [, v]) => sum + v, 0);
+    const subTotal = statuses.reduce((sum, s) => sum + (counts[s] ?? 0), 0) + (counts['DELETED'] ?? 0);
     setTotalAll(subTotal);
     setTabCounts(counts);
   }, [filterOrgUnitId]);
@@ -1849,6 +1873,7 @@ export default function PortListPage() {
       setSortField('updatedByName');
       setSortOrder('descend');
       setPage(1);
+      setResetScrollTrigger(prev => prev + 1);
       fetchData();
       fetchTabCounts();
     } catch (e) {
@@ -1857,6 +1882,21 @@ export default function PortListPage() {
       setDeleteLoading(false);
     }
   }, [deleteTarget, fetchData, fetchTabCounts]);
+
+  const handleSubmit = useCallback(async (record: CangBienResponse) => {
+    try {
+      await submitCangBien(record.id);
+      toast.success('Gửi phê duyệt cảng biển thành công');
+      setSortField('updatedByName');
+      setSortOrder('descend');
+      setPage(1);
+      setResetScrollTrigger(prev => prev + 1);
+      fetchData();
+      fetchTabCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gửi phê duyệt thất bại');
+    }
+  }, [fetchData, fetchTabCounts]);
 
   const handleApprove = useCallback(
     (record: CangBienResponse) => {
@@ -1870,26 +1910,19 @@ export default function PortListPage() {
     if (!approvingRecord) return;
     try {
       const st = approvingRecord.approvalStatus;
-      if (st === 'DRAFT' || st === 'NHAP') {
-        // Trạng thái Nháp → phê duyệt thẳng thành Đã phê duyệt (mô hình 2 trạng thái)
-        await portApproval.approve(approvingRecord.id);
-        toast.success('Đã phê duyệt');
+      const isLevel2 = st === 'APPROVED_LEVEL1';
+      if (isLevel2) {
+        await approveCangBienC2(approvingRecord.id, content);
       } else {
-        // Vòng duyệt do trạng thái hiện tại quyết định: "Chờ Cảng vụ duyệt" là
-        // vòng 1, "Chờ Cục duyệt" là vòng 2 (approval-2-level-spec §3.2).
-        const isLevel2 = st === 'APPROVED_LEVEL1';
-        if (isLevel2) {
-          await approveCangBienC2(approvingRecord.id, content);
-        } else {
-          await approveCangBienC1(approvingRecord.id, content);
-        }
-        toast.success(isLevel2 ? 'Phê duyệt cấp Cục thành công' : 'Phê duyệt cấp Cảng vụ thành công');
+        await approveCangBienC1(approvingRecord.id, content);
       }
+      toast.success(isLevel2 ? 'Phê duyệt cấp Cục thành công' : 'Phê duyệt cấp Cảng vụ/Chi cục thành công');
       setApproveModalOpen(false);
       setApprovingRecord(null);
       setSortField('updatedByName');
       setSortOrder('descend');
       setPage(1);
+      setResetScrollTrigger(prev => prev + 1);
       fetchData();
       fetchTabCounts();
     } catch (err: unknown) {
@@ -1921,6 +1954,7 @@ export default function PortListPage() {
       setSortField('updatedByName');
       setSortOrder('descend');
       setPage(1);
+      setResetScrollTrigger(prev => prev + 1);
       fetchData();
       fetchTabCounts();
     } catch (err: unknown) {
@@ -1958,196 +1992,116 @@ export default function PortListPage() {
       .catch(() => setDetailFiles([]));
   }, []);
 
-  // ── rowActions callback ──────────────────────────────────────────
-  // Thứ tự: Xem chi tiết → Chỉnh sửa → Lịch sử → Phê duyệt/Từ chối → Xóa
-  const rowActions = useCallback(
-    (record: CangBienResponse) => {
-      // Bản ghi đã xóa: thao tác bị giới hạn CHỈ CÒN "Xem chi tiết" và "Lịch sử"
-      if (isDeletedRecord(record)) {
-        const deletedActions: any[] = [
-          {
-            key: 'view',
-            label: 'Xem chi tiết',
-            icon: icons.view,
-            onClick: () => openDetail(record),
-          },
-        ];
-        if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
-          deletedActions.push({
-            key: 'history',
-            label: 'Lịch sử',
-            icon: icons.history,
-            onClick: () => handleViewHistory(record),
-          });
+  // ── Edit handler (nạp dữ liệu vào form và mở Drawer chỉnh sửa) ──
+  const handleOpenEdit = useCallback(async (record: CangBienResponse) => {
+    setSelectedRecord(record);
+    setUpdateModalVisible(true);
+    setInfraList(((record as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
+    setWharfAreaList(((record as any).wharfAreas || []).map((w: any) => ({ ...w })));
+    try {
+      const data = await fetchCangBienById(record.id);
+      setSelectedRecord(data);
+      updateForm.setFieldsValue({
+        portCode: data.portCode,
+        portName: data.portName,
+        province: data.province || undefined,
+        orgUnitId: data.orgUnitId || undefined,
+        portGroup: data.portGroup != null ? data.portGroup : undefined,
+        detailedLocation: data.detailedLocation || undefined,
+        portClass: data.portClass,
+        waterAreaScope: data.waterAreaScope || undefined,
+        totalBerths: data.totalBerths,
+        totalAnchoragesTransshipment: data.totalAnchoragesTransshipment,
+        totalPublicChannels: data.totalPublicChannels,
+        totalDedicatedChannels: data.totalDedicatedChannels,
+        totalPublicChannelLength: data.totalPublicChannelLength,
+        totalDedicatedChannelLength: data.totalDedicatedChannelLength,
+        totalBuoysBeacons: data.totalBuoysBeacons,
+        totalDikes: data.totalDikes,
+        totalDikeLength: data.totalDikeLength,
+        totalLighthouses: data.totalLighthouses,
+        buoyBerthCount: data.buoyBerthCount,
+        anchorageCount: data.anchorageCount,
+        transshipmentCount: data.transshipmentCount,
+        otherWaterAreas: data.otherWaterAreas || undefined,
+        remarks: data.remarks || undefined,
+        gisLocation: data.coordinates ? {
+          geometryType: data.geometryType || undefined,
+          coordinates: data.coordinates,
+          mapSymbolId: data.mapSymbolId,
+        } : undefined,
+        geometryType: data.geometryType || undefined,
+        mapSymbolId: data.mapSymbolId,
+        coordinateSystem: data.coordinateSystem,
+        displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
+      });
+      // Load infrastructure & attachments for edit
+      setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
+      setWharfAreaList(((data as any).wharfAreas || []).map((w: any) => ({ ...w })));
+      try {
+        const attRows = await fetchPortAttachmentList(record.id);
+        setUploadFileList(attRows.map((a: any) => ({
+          uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const,
+          uploadedBy: a.uploadedBy, uploadedAt: a.uploadedAt,
+          uploadedDate: a.uploadedDate || a.uploadedAt,
+          uploadedByName: ((a.uploadedBy && userMap.get(a.uploadedBy)) || a.uploadedByName) ?? undefined,
+        })));
+      } catch { setUploadFileList([]); }
+      // Parse coordinates from API response
+      const wktCoords2: string = data.coordinates || '';
+      const coordArr2 = data.coordinateList;
+      const pts2: Array<{ lat: number; lng: number }> = [];
+      if (coordArr2 && Array.isArray(coordArr2) && coordArr2.length > 0) {
+        pts2.push(...coordArr2.map((c: any) => ({ lat: c.latitude ?? c.lat, lng: c.longitude ?? c.lng })));
+      } else if (wktCoords2) {
+        const multiMatch2 = wktCoords2.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
+        if (multiMatch2) {
+          const rawPts2 = multiMatch2[1].split('),(');
+          pts2.push(...rawPts2.map((pt: string) => {
+            const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
+            return { lat: Number(parts[1]), lng: Number(parts[0]) };
+          }));
+        } else {
+          const match2 = wktCoords2.match(/POINT\s*\(([-\d.]+)\s+([-\d.]+)\)/);
+          if (match2) {
+            pts2.push({ lat: Number(match2[2]), lng: Number(match2[1]) });
+          }
         }
-        return deletedActions;
+      } else if (data.latitude != null && data.longitude != null) {
+        pts2.push({ lat: Number(data.latitude), lng: Number(data.longitude) });
       }
+      setGpsCoordList(pts2.map((p) => {
+        const la = ddToDms(p.lat);
+        const lo = ddToDms(p.lng);
+        return { latD: la.d, latM: la.m, latS: la.s, lngD: lo.d, lngM: lo.m, lngS: lo.s };
+      }));
+    } catch {
+      toast.error('Không thể tải thông tin chỉnh sửa cảng biển');
+      setUpdateModalVisible(false);
+    }
+  }, [updateForm, userMap]);
 
-      const actions: any[] = [
-        {
-          key: 'view',
-          label: 'Xem chi tiết',
-          icon: icons.view,
-          onClick: () => openDetail(record),
-        },
-      ];
-      const status = record.approvalStatus;
-      // Chỉnh sửa — quy tắc 12 (approval-2-level-spec.md mục 3.9)
-      if (canEditApprovalRecord(status, { hasPerm: (k: string) => !!hasPerm?.(k), resource: 'port' })) {
-        actions.push({
-          key: 'edit',
-          label: 'Chỉnh sửa',
-          icon: icons.edit,
-          onClick: async () => {
-            // Giống Bến cảng: mở modal NGAY với dòng hiện tại, fetch dữ liệu ở nền —
-            // KHÔNG bật setIsLoading để tránh load lại/remount danh sách
-            setSelectedRecord(record);
-            updateForm.setFieldsValue({
-              portCode: record.portCode,
-              portName: record.portName,
-              province: record.province || undefined,
-              orgUnitId: record.orgUnitId || undefined,
-              portGroup: record.portGroup ?? undefined,
-              detailedLocation: record.detailedLocation || undefined,
-              portClass: record.portClass ?? undefined,
-              geometryType: record.geometryType || undefined,
-              mapSymbolId: record.mapSymbolId || undefined,
-              coordinateSystem: record.coordinateSystem ?? undefined,
-              displayRule: record.geometryType || record.coordinates ? 'Độ, phút, giây (DMS)' : undefined,
-            });
-            setUpdateModalVisible(true);
-            setInfraList(((record as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
-            setWharfAreaList(((record as any).wharfAreas || []).map((w: any) => ({ ...w })));
-            try {
-              const data = await fetchCangBienById(record.id);
-              setSelectedRecord(data);
-              updateForm.setFieldsValue({
-                portCode: data.portCode,
-                portName: data.portName,
-                province: data.province || undefined,
-                orgUnitId: data.orgUnitId || undefined,
-                portGroup: data.portGroup != null ? data.portGroup : undefined,
-                detailedLocation: data.detailedLocation || undefined,
-                portClass: data.portClass,
-                waterAreaScope: data.waterAreaScope || undefined,
-                totalBerths: data.totalBerths,
-                totalAnchoragesTransshipment: data.totalAnchoragesTransshipment,
-                totalPublicChannels: data.totalPublicChannels,
-                totalDedicatedChannels: data.totalDedicatedChannels,
-                totalPublicChannelLength: data.totalPublicChannelLength,
-                totalDedicatedChannelLength: data.totalDedicatedChannelLength,
-                totalBuoysBeacons: data.totalBuoysBeacons,
-                totalDikes: data.totalDikes,
-                totalDikeLength: data.totalDikeLength,
-                totalLighthouses: data.totalLighthouses,
-                buoyBerthCount: data.buoyBerthCount,
-                anchorageCount: data.anchorageCount,
-                transshipmentCount: data.transshipmentCount,
-                otherWaterAreas: data.otherWaterAreas || undefined,
-                remarks: data.remarks || undefined,
-                gisLocation: data.coordinates ? {
-                  geometryType: data.geometryType || undefined,
-                  coordinates: data.coordinates,
-                  mapSymbolId: data.mapSymbolId,
-                } : undefined,
-                geometryType: data.geometryType || undefined,
-                mapSymbolId: data.mapSymbolId,
-                coordinateSystem: data.coordinateSystem,
-                displayRule: (data.geometryType || data.coordinates) ? 'Độ, phút, giây (DMS)' : undefined,
-              });
-              // Load infrastructure & attachments for edit
-              setInfraList(((data as any).infrastructureList || []).map((i: any) => ({ stt: i.stt, infraName: i.infraName, quantity: i.quantity })));
-              setWharfAreaList(((data as any).wharfAreas || []).map((w: any) => ({ ...w })));
-              try {
-                const attRows = await fetchPortAttachmentList(record.id);
-                setUploadFileList(attRows.map((a: any) => ({
-                uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const,
-                uploadedBy: a.uploadedBy, uploadedAt: a.uploadedAt,
-                uploadedDate: a.uploadedDate || a.uploadedAt,
-                uploadedByName: ((a.uploadedBy && userMap.get(a.uploadedBy)) || a.uploadedByName) ?? undefined,
-              })));
-              } catch { setUploadFileList([]); }
-              // Parse coordinates from API response
-              const wktCoords2: string = data.coordinates || '';
-              const coordArr2 = data.coordinateList;
-              const pts2: Array<{ lat: number; lng: number }> = [];
-              if (coordArr2 && Array.isArray(coordArr2) && coordArr2.length > 0) {
-                pts2.push(...coordArr2.map((c: any) => ({ lat: c.latitude ?? c.lat, lng: c.longitude ?? c.lng })));
-              } else if (wktCoords2) {
-                const multiMatch2 = wktCoords2.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-                if (multiMatch2) {
-                  const rawPts2 = multiMatch2[1].split('),(');
-                  pts2.push(...rawPts2.map((pt: string) => {
-                    const parts = pt.replace(/[()]/g, '').trim().split(/\s+/);
-                    return { lat: Number(parts[1]), lng: Number(parts[0]) };
-                  }));
-                } else {
-                  const match2 = wktCoords2.match(/POINT\s*\(([-\d.]+)\s+([-\d.]+)\)/);
-                  if (match2) {
-                    pts2.push({ lat: Number(match2[2]), lng: Number(match2[1]) });
-                  }
-                }
-              } else if (data.latitude != null && data.longitude != null) {
-                pts2.push({ lat: Number(data.latitude), lng: Number(data.longitude) });
-              }
-              setGpsCoordList(pts2.map((p) => {
-                const la = ddToDms(p.lat);
-                const lo = ddToDms(p.lng);
-                return { latD: la.d, latM: la.m, latS: la.s, lngD: lo.d, lngM: lo.m, lngS: lo.s };
-              }));
-            } catch {
-              toast.error('Không thể tải thông tin chỉnh sửa cảng biển');
-              setUpdateModalVisible(false);
-            }
-          },
-        });
-      }
-      // Lịch sử — luôn hiển thị khi có quyền
-      if (hasPerm?.(PERMISSIONS.PORT.HISTORY)) {
-        actions.push({
-          key: 'history',
-          label: 'Lịch sử',
-          icon: icons.history,
-          onClick: () => handleViewHistory(record),
-        });
-      }
-      // Phê duyệt / Từ chối — theo trạng thái, hiển thị trước Xóa
-      // Nháp (DRAFT/NHAP): phê duyệt thẳng thành Đã phê duyệt
-      if ((status === 'DRAFT' || status === 'NHAP') && (hasPerm?.('port:approvec1') || hasPerm?.('port:approvec2'))) {
-        actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => handleApprove(record) });
-      }
-      // CHO_PHE_DUYET / PENDING / PENDING_APPROVAL: Phê duyệt + Từ chối
-      if ((status === 'CHO_PHE_DUYET' || status === 'PENDING' || status === 'PENDING_APPROVAL') && (hasPerm?.('port:approvec1') || hasPerm?.('port:approvec2'))) {
-        actions.push({
-          key: 'approve',
-          label: 'Phê duyệt',
-          icon: icons.approve,
-          onClick: () => handleApprove(record),
-        });
-        actions.push({
-          key: 'reject',
-          label: 'Từ chối',
-          icon: icons.reject,
-          danger: true,
-          onClick: () => handleReject(record),
-        });
-      }
-      // Xóa: chỉ trạng thái DRAFT/NHAP — luôn ở cuối cùng
-      if (hasPerm?.(PERMISSIONS.PORT.DELETE) && (status === 'DRAFT' || status === 'NHAP')) {
-        actions.push({
-          key: 'delete',
-          label: 'Xóa',
-          icon: icons.delete,
-          danger: true,
-          onClick: () => handleDelete(record),
-        });
-      }
-      return actions;
+// ── Row Actions chuẩn 2 cấp (VTS / AGENTS.md) ────────────────────
+  const { rowActions } = useKchtRowActions<CangBienResponse>({
+    resource: 'port',
+    approvalLevels: 2,
+    handlers: {
+      onDetail: (record) => openDetail(record),
+      onEdit: (record) => handleOpenEdit(record),
+      onHistory: (record) => handleViewHistory(record),
+      onSubmit: (record) => handleSubmit(record),
+      onApproveL1: (record) => handleApprove(record),
+      onRejectL1: (record) => handleReject(record),
+      onApproveL2: (record) => handleApprove(record),
+      onRejectL2: (record) => handleReject(record),
+      onDelete: (record) => handleDelete(record),
+
     },
-    [hasPerm, updateForm, handleApprove, handleDelete, handleReject, handleViewHistory, openDetail],
-  );
+  });
 
   // ── Columns (DataTable format) ───────────────────────────────────
+  const isRejectedTab = activeStatusTab === 'REJECTED_LEVEL1' || activeStatusTab === 'REJECTED_LEVEL2';
+
   const columns = useMemo(
     () => [
       {
@@ -2257,6 +2211,18 @@ export default function PortListPage() {
         },
       },
       {
+        key: 'rejectionReason',
+        label: 'Lý do từ chối',
+        dataIndex: 'rejectionReason',
+        width: 260,
+        hidden: !isRejectedTab,
+        sortable: true,
+        sortOrder: sortField === 'rejectionReason' ? sortOrder : null,
+        render: (val: string | null) => (
+          <span title={val || ''} style={{ color: textSecondary }}>{val || '—'}</span>
+        ),
+      },
+      {
         key: 'updatedBy',
         label: 'Cán bộ cập nhật',
         dataIndex: 'updatedByName',
@@ -2279,8 +2245,107 @@ export default function PortListPage() {
           );
         },
       },
+      {
+        key: 'submittedByName',
+        label: 'Cán bộ gửi phê duyệt',
+        dataIndex: 'submittedByName',
+        width: 200,
+        ellipsis: false,
+        sortable: true,
+        sortOrder: (sortField === 'submittedByName' || sortField === 'submittedAt') ? sortOrder : null,
+        render: (_: unknown, record: CangBienResponse) => {
+          const name = record.submittedByName || (record.submittedBy ? (userMap.get(record.submittedBy) || record.submittedBy) : '—');
+          const date = record.submittedAt;
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: '#0F172A',
+                  fontSize: fontSizeMd,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name}
+              </div>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'approverLevel1Name',
+        label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục',
+        dataIndex: 'approverLevel1Name',
+        width: 280,
+        ellipsis: false,
+        sortable: true,
+        sortOrder: (sortField === 'approverLevel1Name' || sortField === 'approvedDateLevel1') ? sortOrder : null,
+        render: (_: unknown, record: CangBienResponse) => {
+          const name = record.approverLevel1Name || (record.approverLevel1 ? (userMap.get(record.approverLevel1) || record.approverLevel1) : '—');
+          const date = record.approvedDateLevel1;
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: '#0F172A',
+                  fontSize: fontSizeMd,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name}
+              </div>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'approverLevel2Name',
+        label: 'Cán bộ phê duyệt cấp Cục',
+        dataIndex: 'approverLevel2Name',
+        width: 220,
+        ellipsis: false,
+        sortable: true,
+        sortOrder: (sortField === 'approverLevel2Name' || sortField === 'approvedDateLevel2') ? sortOrder : null,
+        render: (_: unknown, record: CangBienResponse) => {
+          const name = record.approverLevel2Name || (record.approverLevel2 ? (userMap.get(record.approverLevel2) || record.approverLevel2) : '—');
+          const date = record.approvedDateLevel2;
+          return (
+            <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: '#0F172A',
+                  fontSize: fontSizeMd,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name}
+              </div>
+              <div style={{ fontSize: fontSizeMd, color: textSecondary, whiteSpace: 'nowrap' }}>
+                {date ? dayjs(date).format('DD/MM/YYYY HH:mm:ss') : '—'}
+              </div>
+            </div>
+          );
+        },
+      },
     ],
-    [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder, userMap, openDetail],
+    [page, pageSize, getPortGroupLabel, orgLevel2Map, sortField, sortOrder, userMap, openDetail, isRejectedTab],
   );
 
   // ── History drawer ──────────────────────────────────────────────
@@ -2535,12 +2600,12 @@ export default function PortListPage() {
             statusTabs={[
               { key: 'all', label: 'Tất cả', count: totalAll || 0, color: actionPrimary, active: !activeStatusTab },
               { key: 'DRAFT', label: 'Lưu tạm', count: tabCounts['DRAFT'] ?? 0, color: statusDraft, active: activeStatusTab === 'DRAFT' },
-              { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: actionPrimary, active: activeStatusTab === 'PENDING_APPROVAL' },
+              { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', count: tabCounts['PENDING_APPROVAL'] ?? 0, color: '#204E9C', active: activeStatusTab === 'PENDING_APPROVAL' },
               { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', count: tabCounts['APPROVED_LEVEL1'] ?? 0, color: statusAttention, active: activeStatusTab === 'APPROVED_LEVEL1' },
               { key: 'APPROVED', label: 'Đã phê duyệt', count: tabCounts['APPROVED'] ?? 0, color: statusOperational, active: activeStatusTab === 'APPROVED' },
               { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', count: tabCounts['REJECTED_LEVEL1'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL1' },
               { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', count: tabCounts['REJECTED_LEVEL2'] ?? 0, color: statusCritical, active: activeStatusTab === 'REJECTED_LEVEL2' },
-              { key: 'ARCHIVED', label: 'Đã xóa', count: tabCounts.ARCHIVED ?? 0, color: statusCritical, active: activeStatusTab === 'ARCHIVED' },
+              { key: 'ARCHIVED', label: 'Đã xóa', count: tabCounts['ARCHIVED'] ?? tabCounts['DELETED'] ?? 0, color: statusCritical, active: activeStatusTab === 'ARCHIVED' || activeStatusTab === 'DELETED' },
             ]}
             onStatusTabChange={(key) => {
               setActiveStatusTab(key === 'all' ? '' : key);
@@ -2561,8 +2626,20 @@ export default function PortListPage() {
                     const t = r.updatedAt || r.createdAt;
                     return t ? new Date(t).getTime() : 0;
                   }
+                  if (sortField === 'submittedByName' || sortField === 'submittedAt') {
+                    const t = r.submittedAt;
+                    return t ? new Date(t).getTime() : 0;
+                  }
+                  if (sortField === 'approverLevel1Name' || sortField === 'approvedDateLevel1') {
+                    const t = r.approvedDateLevel1;
+                    return t ? new Date(t).getTime() : 0;
+                  }
+                  if (sortField === 'approverLevel2Name' || sortField === 'approvedDateLevel2') {
+                    const t = r.approvedDateLevel2;
+                    return t ? new Date(t).getTime() : 0;
+                  }
                   if (sortField === 'approvalStatus') {
-                    const rank: Record<string, number> = { DRAFT: 1, PROPOSED: 1, PENDING: 2, PENDING_APPROVAL: 2, APPROVED: 3, REJECTED: 4 };
+                    const rank: Record<string, number> = { DRAFT: 1, PENDING_APPROVAL: 2, APPROVED_LEVEL1: 3, APPROVED: 4, REJECTED_LEVEL1: 5, REJECTED_LEVEL2: 6, ARCHIVED: 7 };
                     return rank[String(r.approvalStatus || '').toUpperCase()] ?? 99;
                   }
                   return r[sortField] ?? '';
@@ -2583,7 +2660,8 @@ export default function PortListPage() {
                 }
                 setPage(1);
               }}
-              scroll={{ x: 'max-content' }}
+              resetScrollKey={`${page}_${activeStatusTab}_${filterApprovalStatus}_${filterOrgUnitId}_${resetScrollTrigger}`}
+              scroll={{ x: 2600 }}
             />
             <Pagination total={total} current={page} pageSize={pageSize}
               onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
@@ -2607,11 +2685,11 @@ export default function PortListPage() {
           open={createModalVisible}
           onClose={() => { setCreateModalVisible(false); setInfraList([]); setWharfAreaList([]); setUploadFileList([]); setGpsCoordList([]); createForm.resetFields(); }}
           footer={
-            <div style={drawerFooterStyle}>
-              <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={outlineButtonStyle}>Lưu tạm</Button>
-              <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); createForm.submit(); }} loading={submitting && actionType === 'submit'} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
-              {canSaveAndApprove && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>}
-            </div>
+            <>
+              <Button onClick={() => { actionTypeRef.current = 'draft'; setActionType('draft'); createForm.submit(); }} loading={submitting && actionType === 'draft'} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu tạm</Button>
+              <Button type="primary" onClick={() => { actionTypeRef.current = 'submit'; setActionType('submit'); createForm.submit(); }} loading={submitting && actionType === 'submit'} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu và gửi phê duyệt</Button>
+              {canSaveAndApprove && <Button type="primary" onClick={() => { actionTypeRef.current = 'approve'; setActionType('approve'); createForm.submit(); }} loading={submitting && actionType === 'approve'} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}>Lưu và phê duyệt</Button>}
+            </>
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },
@@ -2693,17 +2771,17 @@ export default function PortListPage() {
           open={updateModalVisible}
           onClose={closeUpdateModal}
           footer={
-            <div style={drawerFooterStyle}>
+            <>
               {!(selectedRecord?.approvalStatus === 'APPROVED' || selectedRecord?.approvalStatus === 'APPROVED_LEVEL2') && (
                 <>
-                  <Button htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'draft'; updateForm.submit(); }} style={outlineButtonStyle}>Lưu tạm</Button>
-                  <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={primaryButtonStyle}>Lưu và gửi phê duyệt</Button>
+                  <Button htmlType="submit" loading={submitting && editAction === 'draft'} onClick={() => { setEditAction('draft'); editActionRef.current = 'draft'; updateForm.submit(); }} style={{ ...outlineButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu tạm</Button>
+                  <Button type="primary" htmlType="submit" loading={submitting && editAction === 'submit'} onClick={() => { setEditAction('submit'); editActionRef.current = 'submit'; updateForm.submit(); }} style={{ ...primaryButtonStyle, borderRadius: radiusPill, height: 40 }}>Lưu và gửi phê duyệt</Button>
                 </>
               )}
               {canSaveAndApprove && (
-                <Button type="primary" htmlType="submit" loading={submitting} onClick={() => { editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>Lưu và phê duyệt</Button>
+                <Button type="primary" htmlType="submit" loading={submitting && editAction === 'approve'} onClick={() => { setEditAction('approve'); editActionRef.current = 'approve'; updateForm.submit(); }} style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational, borderRadius: radiusPill, height: 40 }}>Lưu và phê duyệt</Button>
               )}
-            </div>
+            </>
           }
           styles={{
             header: { padding: '12px 24px', borderBottom: `1px solid ${borderDefault}`, flexShrink: 0 },

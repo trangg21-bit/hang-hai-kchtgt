@@ -73,7 +73,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { Berth } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import BerthDetailContent from './BerthDetailContent';
@@ -320,8 +320,8 @@ export default function BerthList() {
     && !!linkedRecordId;
   const isEmbeddedDetail = isEmbeddedAction && linkedAction === 'detail';
   const hasPerm = usePermissionStore((s: { hasPermission: (key: string) => boolean }) => s.hasPermission);
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('berth', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
+  const canSaveAndApprove = checkCanSaveAndApprove('berth', hasExplicitPerm || hasPerm, authUser);
 
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();

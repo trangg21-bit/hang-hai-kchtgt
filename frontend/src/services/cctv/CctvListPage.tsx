@@ -64,6 +64,7 @@ import GisLocationSelector from "../../components/gis/GisLocationSelector";
 import { isAttachmentField, mergeAttachmentHistoryChanges } from "../../utils/historyAttachmentDedup";
 import { DEFAULT_IGNORED_FIELDS } from "../../utils/changeHistoryRenderer";
 import { canEditApprovalRecord, canDeleteApprovalRecord } from "../../utils/approvalEditPolicy";
+
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
 import { useAuthStore } from "../../store/authStore";
@@ -580,8 +581,7 @@ const CctvListPage = () => {
   const [updateForm] = Form.useForm();
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('cctv', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('cctv', hasExplicitPerm || hasPerm, currentUser);
 
   // Map-linked view: GIS mở page trong iframe (?action=edit|detail&id=...) — khi đóng
   // drawer phải báo parent (bản đồ) đóng modal KCHT. (Khôi phục định nghĩa từ a05fbe7a)
@@ -1622,15 +1622,11 @@ const CctvListPage = () => {
       }
 
       // PENDING_APPROVAL + cctv:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
       if (hasPerm?.("cctv:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCuc = isCucLevelUser(currentUser);
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC1",
-          label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
+          label: "Phê duyệt cấp Cảng vụ",
           icon: icons.approve,
-          disabled: isCreatorSelfApprove,
           onClick: () => {
             setApproveTarget(record);
             setApproveLevel("c1");
@@ -1639,10 +1635,9 @@ const CctvListPage = () => {
         });
         actions.push({
           key: "rejectC1",
-          label: isCreatorSelfApprove ? "Từ chối cấp Cảng vụ (không thể tự duyệt)" : "Từ chối cấp Cảng vụ",
+          label: "Từ chối cấp Cảng vụ",
           icon: icons.reject,
           danger: true,
-          disabled: isCreatorSelfApprove,
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c1");

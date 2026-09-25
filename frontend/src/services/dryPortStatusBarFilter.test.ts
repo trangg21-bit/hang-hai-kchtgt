@@ -6,18 +6,13 @@ describe('DryPort Status Bar Filter and Count Logic (/dry-port)', () => {
   const TAB_STATUS_LIST = [
     { key: 'all', label: 'Tất cả', color: '#0E6FD6' },
     { key: 'DRAFT', label: 'Lưu tạm', color: '#93A3B3' },
-    { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: '#0E6FD6' },
-    { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: '#EDA100' },
     { key: 'APPROVED', label: 'Đã phê duyệt', color: '#1BAF7A' },
-    { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: '#E34948' },
-    { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: '#E34948' },
     { key: 'ARCHIVED', label: 'Đã xóa', color: '#E34948' },
   ];
 
   const computeStatusTabs = (
     tabCounts: Record<string, number>,
     activeTab: string,
-    total: number,
   ) => {
     const allChildSum = TAB_STATUS_LIST
       .filter((t) => t.key !== 'all')
@@ -27,8 +22,6 @@ describe('DryPort Status Bar Filter and Count Logic (/dry-port)', () => {
       let count = tabCounts[tab.key] ?? 0;
       if (tab.key === 'all') {
         count = allChildSum;
-      } else if (tab.key === activeTab) {
-        count = total;
       }
       return {
         key: tab.key,
@@ -53,52 +46,44 @@ describe('DryPort Status Bar Filter and Count Logic (/dry-port)', () => {
   it('tab Tất cả tính bằng tổng tất cả các tab con (bao gồm cả tab Đã xóa ARCHIVED)', () => {
     const counts: Record<string, number> = {
       DRAFT: 4,
-      PENDING_APPROVAL: 2,
-      APPROVED_LEVEL1: 3,
-      APPROVED: 15,
-      REJECTED_LEVEL1: 1,
-      REJECTED_LEVEL2: 1,
-      ARCHIVED: 6,
+      APPROVED: 22,
+      ARCHIVED: 5,
     };
-    const tabs = computeStatusTabs(counts, 'all', 26);
+    const tabs = computeStatusTabs(counts, 'all');
     const allTab = tabs.find((t) => t.key === 'all');
-    // 4 + 2 + 3 + 15 + 1 + 1 + 6 = 32 (ARCHIVED = 6 is included)
-    expect(allTab?.count).toBe(32);
+    // 4 + 22 + 5 = 31 (ARCHIVED = 5 is included)
+    expect(allTab?.count).toBe(31);
     expect(allTab?.active).toBe(true);
 
     const deletedTab = tabs.find((t) => t.key === 'ARCHIVED');
-    expect(deletedTab?.count).toBe(6);
+    expect(deletedTab?.count).toBe(5);
   });
 
-  it('khi chọn tab con bất kỳ (ví dụ APPROVED), badge của tab đó cập nhật bằng đúng total trả về từ API', () => {
+  it('khi chuyển từ tab Tất cả sang tab Đã phê duyệt, số lượng không bị nhảy lên 31 mà giữ nguyên số của tab', () => {
     const counts: Record<string, number> = {
       DRAFT: 4,
-      PENDING_APPROVAL: 2,
-      APPROVED_LEVEL1: 3,
-      APPROVED: 15,
-      REJECTED_LEVEL1: 1,
-      REJECTED_LEVEL2: 1,
-      ARCHIVED: 6,
+      APPROVED: 22,
+      ARCHIVED: 5,
     };
-    const tabs = computeStatusTabs(counts, 'APPROVED', 12);
+    // Khi click sang tab APPROVED
+    const tabs = computeStatusTabs(counts, 'APPROVED');
     const approvedTab = tabs.find((t) => t.key === 'APPROVED');
-    expect(approvedTab?.count).toBe(12);
+    expect(approvedTab?.count).toBe(22);
     expect(approvedTab?.active).toBe(true);
+
+    const allTab = tabs.find((t) => t.key === 'all');
+    expect(allTab?.count).toBe(31);
   });
 
-  it('khi chọn tab Đã xóa (ARCHIVED), badge cập nhật bằng total của các bản ghi đã xóa trả về từ API', () => {
+  it('khi chọn tab Đã xóa (ARCHIVED), badge hiển thị đúng số bản ghi đã xóa từ counts', () => {
     const counts: Record<string, number> = {
       DRAFT: 4,
-      PENDING_APPROVAL: 2,
-      APPROVED_LEVEL1: 3,
-      APPROVED: 15,
-      REJECTED_LEVEL1: 1,
-      REJECTED_LEVEL2: 1,
-      ARCHIVED: 6,
+      APPROVED: 22,
+      ARCHIVED: 5,
     };
-    const tabs = computeStatusTabs(counts, 'ARCHIVED', 8);
+    const tabs = computeStatusTabs(counts, 'ARCHIVED');
     const deletedTab = tabs.find((t) => t.key === 'ARCHIVED');
-    expect(deletedTab?.count).toBe(8);
+    expect(deletedTab?.count).toBe(5);
     expect(deletedTab?.active).toBe(true);
   });
 

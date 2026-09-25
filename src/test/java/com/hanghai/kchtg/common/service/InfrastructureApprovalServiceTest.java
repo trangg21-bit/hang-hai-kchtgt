@@ -272,15 +272,15 @@ class InfrastructureApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("Approve C1 vi phạm chống tự duyệt (người tạo tự duyệt) -> Ném ngoại lệ IllegalStateException")
-    void testApproveC1_ViolationFourEyes_CreatorSelfApprove() {
+    @DisplayName("Approve C1 cho phép người tạo tự duyệt khi có quyền C1")
+    void testApproveC1_CreatorSelfApprove_Allowed() {
         TestEntity entity = new TestEntity();
         entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
         entity.setCreatedBy(userIdC1);
 
-        assertThatThrownBy(() -> approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C1", userIdC1))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Bạn không thể tự phê duyệt");
+        approvalService.approveC1(entity, InfrastructureType.VTS_SYSTEM, "APPROVED", "Duyệt C1", userIdC1);
+        assertThat(entity.getApprovalStatus()).isEqualTo(ApprovalStatus.APPROVED_LEVEL1);
+        assertThat(entity.getApproverLevel1()).isEqualTo(userIdC1);
     }
 
     @Test

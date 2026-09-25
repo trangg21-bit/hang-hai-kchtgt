@@ -851,7 +851,7 @@ export default function CospasSarsatStationList() {
         },
       });
     }
-    if ((hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1')) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if ((hasPerm('coastalstationcospassarsat:approvec1') || hasPerm('specialstation:approvec1') || hasPerm('data:approvec1')) && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL) {
       actions.push({
         key: 'approveC1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',

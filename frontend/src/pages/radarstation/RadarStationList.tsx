@@ -924,9 +924,9 @@ export default function RadarStationList() {
   const { action: embeddedAction, recordId: embeddedRecordId, isEmbeddedAction } = useGisEmbeddedAction();
   const embeddedOpenedRef = useRef<string | null>(null);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: PermissionState) => s.hasExplicitPermission);
   const currentUser = useAuthStore((s) => s.user);
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('radarstation', hasExplicitPerm || hasPerm, currentUser);
   const isInIframe = window.self !== window.top;
 
   // ── Filter state ─────────────────────────────────────────────────
@@ -2040,6 +2040,7 @@ export default function RadarStationList() {
         return res !== undefined ? res : (isEdit ? null : undefined);
       };
 
+      const isCuc = isCucLevelUser(currentUser);
       const payload: CreateRadarStationRequest = {
         stationName: cleanString(values.stationName) ?? '',
         location: cleanString(values.location) ?? '',
@@ -2061,7 +2062,7 @@ export default function RadarStationList() {
         coordinates: hasGeom ? coordinates : (isEdit ? null : null),
         mapIcon: hasGeom && currentMapIcon ? currentMapIcon : (isEdit ? null : null),
         action: mode === 'approve' ? 'approve' : mode === 'submit' ? 'submit' : 'draft',
-        approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? 'PENDING_APPROVAL' : 'DRAFT',
+        approvalStatus: mode === 'approve' ? 'APPROVED' : mode === 'submit' ? ((hasPerm('radarstation:approvec1') || isCuc) ? 'APPROVED_LEVEL1' : 'PENDING_APPROVAL') : 'DRAFT',
       };
       let savedId: string | null = null;
       if (editingRecord) {
@@ -2124,7 +2125,7 @@ export default function RadarStationList() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles, coordinateList, geometryTypeState, hasLocation, hasCoordinates]);
+  }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles, coordinateList, geometryTypeState, hasLocation, hasCoordinates, currentUser, hasPerm]);
 
   // ── Row actions (chuẩn: Xem chi tiết → Chỉnh sửa → Lịch sử → Gửi duyệt → Phê duyệt/Từ chối theo cấp → Xóa; icon theo themetokenchk) ──
   const rowActions = useCallback((record: RadarStationResponse) => {
@@ -2156,8 +2157,8 @@ export default function RadarStationList() {
     if (['DRAFT', 'PROPOSED', 'REJECTED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('radarstation:update') || hasPerm('radarstation:create'))) {
       actions.push({ key: 'submit', label: 'Gửi duyệt', icon: themeTokenChk.icons.submit, onClick: () => openSubmitModal(record) });
     }
-    // Quy tắc 8/9: chống tự duyệt (4-eyes) — người tạo không tự duyệt cấp Cảng vụ (trừ cấp Cục)
-    if (hasPerm('radarstation:approvec1') && st === 'PENDING_APPROVAL' && (currentUserId !== record.createdBy || isCuc)) {
+    // Cấp Cảng vụ/Chi cục duyệt (C1) khi hồ sơ ở trạng thái PENDING_APPROVAL
+    if (hasPerm('radarstation:approvec1') && st === 'PENDING_APPROVAL') {
       actions.push({ key: 'approveC1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record, 'c1') });
       actions.push({ key: 'rejectC1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record, 'c1') });
     }

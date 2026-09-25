@@ -102,10 +102,20 @@ public class OrgUnitController {
      * The service resolves this list from the long-lived backend cache.
      */
     @GetMapping("/options")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getOptions() {
-        return ResponseEntity.ok(ApiResponse.success(
-                organizationService.findAll(orgUnitScopeService.currentUserScope())));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAnon = auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal());
+        List<OrgUnitResponse> result;
+        if (isAnon) {
+            result = organizationService.findAll().stream()
+                    .filter(unit -> !"G17".equalsIgnoreCase(unit.getCode()) && (unit.getLevel() == null || unit.getLevel() > 0))
+                    .toList();
+        } else {
+            result = organizationService.findAll(orgUnitScopeService.currentUserScope()).stream()
+                    .filter(unit -> !"G17".equalsIgnoreCase(unit.getCode()) && (unit.getLevel() == null || unit.getLevel() > 0))
+                    .toList();
+        }
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /**

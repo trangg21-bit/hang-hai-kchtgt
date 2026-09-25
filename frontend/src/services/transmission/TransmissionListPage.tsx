@@ -48,7 +48,6 @@ import { usePermissionStore } from "../../store/permissionStore";
 import * as themeTokenChk from "../../themetokenchk";
 import { cellSubtitleStyle, cellTitleStyle, DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
-import { canDeleteApprovalRecord, canEditApprovalRecord } from "../../utils/approvalEditPolicy";
 import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
 import { ddToDms, parseWktToCoordinates } from "../../utils/gisGeometry";
 import { gisCoordinatesToLines, gisGeometryTypeLabel, isGisHistoryField } from "../../utils/historyGisFormat";
@@ -294,6 +293,7 @@ const TransmissionListPage = () => {
   const handledLinkedRecordRef = useRef<string | null>(null);
 
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
   const currentUser = useAuthStore((s) => s.user);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
@@ -608,8 +608,7 @@ const TransmissionListPage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   // "Lưu và phê duyệt" chỉ dành cho tài khoản có quyền duyệt cấp Cục (chuẩn VTS).
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('transmission', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('transmission', hasExplicitPerm || hasPerm, currentUser);
 
   // Modal bản đồ GIS xem chi tiết
   const [mapScope, setMapScope] = useState<'detail' | null>(null);
@@ -1779,15 +1778,11 @@ const TransmissionListPage = () => {
       }
 
       // PENDING_APPROVAL + transmission:approvec1 → Phê duyệt / Từ chối cấp Cảng vụ (C1)
-      // Nguyên tắc 4 mắt: người tạo không được tự duyệt hồ sơ do mình tạo (trừ tài khoản cấp Cục).
       if (hasPerm?.("transmission:approvec1") && record.approvalStatus === "PENDING_APPROVAL") {
-        const isCuc = isCucLevelUser(currentUser);
-        const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId && !isCuc);
         actions.push({
           key: "approveC1",
-          label: isCreatorSelfApprove ? "Phê duyệt cấp Cảng vụ (không thể tự duyệt)" : "Phê duyệt cấp Cảng vụ",
+          label: "Phê duyệt cấp Cảng vụ",
           icon: icons.approve,
-          disabled: isCreatorSelfApprove,
           onClick: () => {
             setApproveTarget(record);
             setApproveLevel("c1");
@@ -1796,10 +1791,9 @@ const TransmissionListPage = () => {
         });
         actions.push({
           key: "rejectC1",
-          label: isCreatorSelfApprove ? "Từ chối cấp Cảng vụ (không thể tự duyệt)" : "Từ chối cấp Cảng vụ",
+          label: "Từ chối cấp Cảng vụ",
           icon: icons.reject,
           danger: true,
-          disabled: isCreatorSelfApprove,
           onClick: () => {
             setRejectTarget(record);
             setRejectLevel("c1");

@@ -77,8 +77,10 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 | Từ trạng thái | Hành động | Sang trạng thái | Ai thực hiện |
 |---|---|---|---|
 | (mới) | Lưu tạm | Lưu tạm | Người nhập |
-| (mới) | Gửi duyệt ngay | Chờ Cảng vụ / Chi cục duyệt | Người nhập |
-| Lưu tạm | Gửi duyệt | Chờ Cảng vụ / Chi cục duyệt | Người nhập |
+| (mới) | Gửi duyệt ngay (Chuyên viên thường) | Chờ Cảng vụ / Chi cục duyệt | Người nhập |
+| (mới) | Gửi duyệt ngay (Cán bộ có quyền C1 hoặc cấp Cục) | Chờ Cục duyệt | Người có quyền C1 / Cục |
+| Lưu tạm | Gửi duyệt (Chuyên viên thường) | Chờ Cảng vụ / Chi cục duyệt | Người nhập |
+| Lưu tạm | Gửi duyệt (Cán bộ có quyền C1 hoặc cấp Cục) | Chờ Cục duyệt | Người có quyền C1 / Cục |
 | Chờ Cảng vụ / Chi cục duyệt | Đồng ý | Chờ Cục duyệt | Cảng vụ / Chi cục |
 | Chờ Cảng vụ / Chi cục duyệt | Từ chối | Bị Cảng vụ / Chi cục trả về | Cảng vụ / Chi cục |
 | Chờ Cục duyệt | Đồng ý | Đã duyệt | Cục |
@@ -93,13 +95,16 @@ Bảng chuyển trạng thái (khớp mục 7 tài liệu gốc — **mỗi dòn
 >
 > **Case test bắt buộc:** không được nhảy vòng (Chờ Cảng vụ/Chi cục → Đã duyệt), không được duyệt ngược (Chờ Cục → Chờ Cảng vụ/Chi cục), không được gửi duyệt khi chưa điền đủ thông tin bắt buộc, không được xóa hồ sơ khi không ở trạng thái "Lưu tạm".
 
-### 3.3. Chống tự duyệt (4-eyes) & Quy tắc ngoại lệ cấp Cục — quy tắc 8
+### 3.3. Quy tắc phê duyệt C1 & Chống tự duyệt (4-eyes) cấp Cục — quy tắc 8
 
 - Quyền duyệt gắn với **chức vụ của người duyệt**: lãnh đạo Cảng vụ/Chi cục chỉ duyệt vòng 1, lãnh đạo Cục duyệt vòng 2.
-- **Nguyên tắc 4 mắt (Cấp Cảng vụ / Chi cục - Vòng 1)**: Người duyệt ở cấp Cảng vụ/Chi cục **không được tự duyệt hồ sơ do chính mình tạo hoặc gửi** (4-eyes principle).
-- **Quy tắc ngoại lệ cho cấp Cục (Vòng 2 & Quyền approvec2)**: Để đảm bảo tính đồng bộ và nhất quán với luồng *"Lưu và phê duyệt"* (cho phép cán bộ cấp Cục tạo và phê duyệt trực tiếp sang `APPROVED`), tài khoản thuộc cấp Cục (`isCucLevel` / `isDepartmentLevelUser` / Admin có quyền `approvec2`) **được phép phê duyệt** các hồ sơ do chính mình tạo hoặc gửi duyệt.
+- **Quy tắc phê duyệt Cấp 1 (Cảng vụ / Chi cục - Vòng 1)**: Người dùng có quyền phê duyệt cấp C1 (`<resource>:approvec1`) **được phép phê duyệt các hồ sơ đang ở trạng thái `PENDING_APPROVAL` (Chờ Cảng vụ/Chi cục duyệt)** mà không bị ràng buộc bởi việc ai là người tạo/gửi hồ sơ (loại bỏ ràng buộc chống tự duyệt đối với C1 để tạo điều kiện linh hoạt cho quy trình nghiệp vụ cấp Chi cục/Cảng vụ).
+- **Luồng "Lưu và gửi phê duyệt" khi tạo mới / sửa**:
+  - Nếu chuyên viên thường (chưa có quyền C1) tạo mới và bấm "Lưu và gửi phê duyệt": hồ sơ vào trạng thái `PENDING_APPROVAL` (*Chờ Cảng vụ/Chi cục duyệt*).
+  - Nếu cán bộ có quyền C1 (`<resource>:approvec1`) hoặc tài khoản cấp Cục bấm "Lưu và gửi phê duyệt": hồ sơ lên thẳng trạng thái `APPROVED_LEVEL1` (*Chờ Cục duyệt*), tự động ghi nhận thông tin người duyệt cấp 1 (`approverLevel1 = userId`, `approvedDateLevel1 = now`, `level1ApprovalContent`).
+- **Nguyên tắc 4 mắt (Cấp Cục - Vòng 2)**: Người đã phê duyệt ở C1 (`approverLevel1`) **không được tự duyệt tiếp ở C2** (`approverLevel2`), trừ trường hợp tài khoản thuộc cấp Cục (`isCucLevel` / `isDepartmentLevelUser` / Admin).
   - Backend: `InfrastructureApprovalService` áp dụng `validateNotSelfApproval` chỉ khi người dùng không thuộc cấp Cục (`!isDepartmentLevelUser(userId)`).
-  - Frontend: `useKchtPermissions`, `useKchtRowActions`, `ApprovalActionBar` và các bảng danh sách cho phép `isCucLevel` tự duyệt (miễn trừ ràng buộc `!isCreator` và `!isApproverL1`).
+  - Frontend: `useKchtPermissions`, `useKchtRowActions`, `ApprovalActionBar` và các bảng danh sách cho phép `isCucLevel` tự duyệt C2 (miễn trừ ràng buộc `!isApproverL1`).
 
 ### 3.4. Từ chối bắt buộc nhập lý do — quy tắc 5
 

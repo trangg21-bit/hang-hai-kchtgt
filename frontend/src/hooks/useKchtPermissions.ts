@@ -211,9 +211,9 @@ export function useKchtPermissions(
     const isPending = st === 'PENDING_APPROVAL';
     if (!isPending) return false;
     if (approvalLevels === 1) {
-      return (hasApprovePerm || hasApproveL1Perm) && (!isCreator(record) || isCucLevel);
+      return Boolean(hasApprovePerm || hasApproveL1Perm);
     }
-    return hasApproveL1Perm && (!isCreator(record) || isCucLevel);
+    return Boolean(hasApproveL1Perm);
   };
 
   const canApproveL2 = (record?: KchtRecordLike | null): boolean => {
@@ -232,6 +232,8 @@ export function useKchtPermissions(
     return canApproveL1(record) || canApproveL2(record);
   };
 
+  const targetSubmitStatus = (isCucLevel || hasApproveL1Perm) ? 'APPROVED_LEVEL1' : 'PENDING_APPROVAL';
+
   return {
     currentUser,
     currentUserId,
@@ -249,6 +251,7 @@ export function useKchtPermissions(
     hasApprovePerm,
     hasApproveL1Perm,
     hasApproveL2Perm,
+    targetSubmitStatus,
 
     // Record-based predicates
     isCreator,

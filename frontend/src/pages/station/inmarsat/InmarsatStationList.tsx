@@ -851,7 +851,7 @@ export default function InmarsatStationList() {
       });
     }
 
-    if ((record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'PROPOSED') && canApproveL1 && (!isCreator || isCucLevel)) {
+    if ((record.approvalStatus === ApprovalStatus.PENDING_APPROVAL || (record.approvalStatus as any) === 'PROPOSED') && canApproveL1) {
       actions.push(
         {
           key: 'approve_l1',

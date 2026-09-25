@@ -193,7 +193,8 @@ public class VtsSystemService {
         if (submitForApproval && initialStatus == ApprovalStatus.APPROVED) {
             throw new IllegalArgumentException("Không thể vừa gửi phê duyệt vừa phê duyệt trực tiếp");
         }
-        if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
+        if (initialStatus == ApprovalStatus.PENDING_APPROVAL
+                && (approvalService.isDepartmentLevelUser(userId) || approvalService.hasApproveC1Permission(userId, InfrastructureType.VTS_SYSTEM))) {
             initialStatus = ApprovalStatus.APPROVED_LEVEL1;
         }
         // Tạo thẳng ở trạng thái "Đã duyệt" chỉ dành cho tài khoản cấp Cục có

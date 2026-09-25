@@ -57,6 +57,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
      */
     private static final String[] PATHS_WITHOUT_AUTH = {
             "/api/auth/login",
+            "/api/auth/captcha",
             "/api/auth/totp/setup",
             "/api/auth/totp/verify",
             "/api/auth/totp/regenerate",

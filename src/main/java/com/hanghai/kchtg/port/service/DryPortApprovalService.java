@@ -156,12 +156,35 @@ public class DryPortApprovalService {
         }
     }
 
-    @Deprecated
+    /**
+     * Phê duyệt trực tiếp 1 cấp (mô hình chuẩn Cảng cạn theo hh.csdl).
+     */
     @Transactional
     public void approve(UUID id, String userId, String reason) {
+        DryPort entity = loadForApproval(id);
         UUID uid = null;
         try { if (userId != null) uid = UUID.fromString(userId); } catch (Exception ignored) {}
-        approveCurrentStage(id, reason, uid);
+        if (uid == null) uid = SecurityUtils.getCurrentUserId();
+
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
+        entity.setApprovedDateLevel2(LocalDateTime.now());
+        entity.setApproverLevel2(uid);
+        entity.setLevel2ApprovalContent(reason);
+        entity.setUpdatedAt(LocalDateTime.now());
+        if (uid != null) entity.setUpdatedBy(uid);
+        dryPortRepository.save(entity);
+
+        historyRepository.save(InfrastructureHistory.builder()
+                .refId(entity.getId())
+                .refType(InfrastructureType.DRY_PORT)
+                .approvalLevel(ApprovalLevel.LEVEL_2)
+                .status(InfrastructureHistoryStatus.APPROVED)
+                .approvedBy(uid)
+                .approvedDate(LocalDateTime.now())
+                .build());
+
+        notificationService.sendApprovalNotification("DryPort", id.toString(), String.valueOf(uid), null);
+        log.info("DryPort [{}] approved directly by {}", id, uid);
     }
 
     /**
