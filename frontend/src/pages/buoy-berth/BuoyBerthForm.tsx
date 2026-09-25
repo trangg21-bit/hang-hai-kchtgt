@@ -368,7 +368,7 @@ export default forwardRef(function BuoyBerthForm({ form, id, onFinish, onSubmitt
     try {
       const allPorts = await portCRUD.getOptions();
       const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId);
-      setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
+      setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) })));
     } catch { setPortOptions([]); }
     finally { setLoadingPorts(false); }
   };

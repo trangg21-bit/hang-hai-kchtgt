@@ -296,7 +296,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     try {
       const allPorts = await portCRUD.getOptions();
       const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId);
-      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
+      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.name || p.id) }));
       setPortOptions(ports);
       if (ports.length === 0) toast.warning('Đơn vị quản lý chưa có cảng biển được phê duyệt');
     } catch { setPortOptions([]); }

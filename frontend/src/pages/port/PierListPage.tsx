@@ -452,13 +452,13 @@ export default function PierListPage() {
     return m;
   }, [allPorts]);
   const allPortOptions = useMemo(() => {
-    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+    return allPorts.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts]);
   const portOptions = useMemo(() => {
     const filtered = (!orgUnit || orgUnit === '__all__')
       ? allPorts
       : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
-    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+    return filtered.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts, orgUnit]);
   const [historyBerthMap, setHistoryBerthMap] = useState<Map<string, string>>(new Map());
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
@@ -677,7 +677,7 @@ export default function PierListPage() {
   }, []);
 
   useEffect(() => {
-    (async () => { try { const params: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit; if (filterPortId) params.portId = filterPortId; params.approvalStatus = 'APPROVED'; const r = await berthCRUD.search(params); setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthName }))); } catch {} })();
+    (async () => { try { const params: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit; if (filterPortId) params.portId = filterPortId; params.approvalStatus = 'APPROVED'; const r = await berthCRUD.search(params); setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthCode ? `${b.berthCode} - ${b.berthName || ''}` : (b.berthName || b.id) }))); } catch {} })();
   }, [orgUnit, filterPortId]);
 
   useEffect(() => {

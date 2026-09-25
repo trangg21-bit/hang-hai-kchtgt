@@ -313,7 +313,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       try {
         const allPorts = await portCRUD.getOptions();
         const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === watchedOrgUnitId);
-        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) })));
       } catch {}
       finally { setLoadingPorts(false); }
     })();
@@ -331,7 +331,7 @@ const PierForm = forwardRef<any, PierFormProps>(({ form, id, onFinish, onSubmitt
       setLoadingBerths(true);
       try {
         const r = await berthCRUD.search({ portId: watchedPortId, approvalStatus: 'APPROVED', page: 1, pageSize: 1000 });
-        setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthName })));
+        setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthCode ? `${b.berthCode} - ${b.berthName || ''}` : (b.berthName || b.id) })));
       } catch {}
       finally { setLoadingBerths(false); }
     })();

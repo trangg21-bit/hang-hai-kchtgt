@@ -443,13 +443,13 @@ export default function BerthList() {
     return map;
   }, [allPorts]);
   const allPortOptions = useMemo(() => {
-    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+    return allPorts.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts]);
   const portOptions = useMemo(() => {
     const filtered = (!managingUnitId || managingUnitId === '__all__')
       ? allPorts
       : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === managingUnitId);
-    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+    return filtered.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts, managingUnitId]);
 
   // ── Tab counts ──────────────────────────────────────────────────

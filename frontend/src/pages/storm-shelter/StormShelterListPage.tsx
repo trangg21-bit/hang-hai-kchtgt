@@ -443,7 +443,7 @@ export default function StormShelterListPage() {
     const filtered = allowedOrgIds
       ? allPorts.filter((p) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)))
       : allPorts;
-    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || '' }));
+    return filtered.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts, organizations, orgUnit]);
 
   const [allBuoyBerths, setAllBuoyBerths] = useState<Array<{ id: string; buoyBerthName?: string; buoyBerthCode?: string; orgUnitId?: string; portId?: string }>>([]);
@@ -464,7 +464,7 @@ export default function StormShelterListPage() {
     }
     return filtered.map((b) => ({
       value: b.id,
-      label: b.buoyBerthName || b.buoyBerthCode || b.id,
+      label: b.buoyBerthCode ? `${b.buoyBerthCode} - ${b.buoyBerthName || ''}` : (b.buoyBerthName || b.id),
     }));
   }, [allBuoyBerths, orgUnit, filterPortId]);
 

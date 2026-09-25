@@ -657,7 +657,12 @@ export default function BuoyBerthList() {
     // ── Thuộc luồng hàng hải (cùng nguồn options như form và Cầu cảng) ──
     navigationChannelCRUD.getOptions()
       .then(items => {
-        const list = items.map(n => ({ id: n.id, name: n.channelName || n.channelCode || '', seaportId: n.seaportId }));
+        const list = items.map(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (name || code || '');
+          return { id: n.id, name: label, seaportId: n.seaportId };
+        });
         setAllWaterways(list);
         setWaterwayOptions(list.map(w => ({ value: w.id, label: w.name })));
       })
@@ -673,7 +678,7 @@ export default function BuoyBerthList() {
         const filtered = (!managingUnitId || managingUnitId === '__all__')
           ? allPorts
           : allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === managingUnitId);
-        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) })));
       } catch { /* ignore */ }
     })();
   }, [managingUnitId, orgUnitReady]);
