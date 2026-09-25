@@ -93,6 +93,7 @@ import {
 import { colors } from '../../theme';
 import Flatbush from 'flatbush';
 import MapToolbar from '../../components/gis/MapToolbar';
+import { fmtNum } from '../../utils/numFmt';
 import { getPopupValueByPath, resolveVmdPopupFields } from './vmdPopupFields';
 import {
   buildKchtScreenPath,
@@ -640,8 +641,30 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     return val;
   };
 
-  const formatVal = (val: any) => {
+  const formatVal = (val: any, fieldKey?: string, label?: string) => {
     if (val === undefined || val === null || val === '') return '—';
+    if (typeof val === 'boolean') return val ? 'Có' : 'Không';
+
+    const keyLower = String(fieldKey || '').toLowerCase();
+    const labelLower = String(label || '').toLowerCase();
+
+    const isYear = keyLower.includes('year') || keyLower.includes('nam') || labelLower.includes('năm');
+    const isCodeOrId = keyLower.includes('code') || keyLower.includes('id') || keyLower.startsWith('ma') || labelLower.startsWith('mã');
+    const isPhone = keyLower.includes('phone') || labelLower.includes('điện thoại');
+    const isCoord = keyLower.includes('lat') || keyLower.includes('lng') || keyLower.includes('lon') || labelLower.includes('vĩ độ') || labelLower.includes('kinh độ') || labelLower.includes('tọa độ');
+
+    if (!isYear && !isCodeOrId && !isPhone && !isCoord) {
+      if (typeof val === 'number') {
+        return fmtNum(val, 4);
+      }
+      if (typeof val === 'string' && /^-?\d+(\.\d+)?$/.test(val.trim())) {
+        const numVal = Number(val);
+        if (!(numVal >= 1900 && numVal <= 2100 && /^\d{4}$/.test(val.trim()))) {
+          return fmtNum(val, 4);
+        }
+      }
+    }
+
     return String(val);
   };
 
@@ -1053,7 +1076,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             }
           }
 
-          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
+          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val, k, label)}</td></tr>`;
           renderedKeys.add(k);
         });
       } else {
@@ -1102,7 +1125,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
               val = '';
             }
 
-            rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
+            rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val, k, label)}</td></tr>`;
             renderedKeys.add(k);
           }
         });
@@ -1157,7 +1180,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           if (k === 'loaiCau') displayVal = getLoaiCauText(String(val));
           displayVal = formatDetailFieldValue(k, displayVal);
 
-          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal)}</td></tr>`;
+          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal, k, label)}</td></tr>`;
         }
       });
 
