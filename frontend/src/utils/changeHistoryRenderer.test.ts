@@ -202,4 +202,90 @@ describe('changeHistoryRenderer - countHistoryUpdates', () => {
       expect(formatHistoryNumber('2020', 'quantity')).toBe('2.020');
     });
   });
+
+  describe('GIS Coordinates and Display Rule formatting in change history', () => {
+    it('formats displayRule correctly to DMS or DD', () => {
+      expect(autoFormatHistoryValue('displayRule', '1')).toBe('Độ, phút, giây (DMS)');
+      expect(autoFormatHistoryValue('displayRule', 'DMS')).toBe('Độ, phút, giây (DMS)');
+      expect(autoFormatHistoryValue('Quy tắc hiển thị', '1')).toBe('Độ, phút, giây (DMS)');
+      expect(autoFormatHistoryValue('displayRule', '2')).toBe('Độ thập phân (DD)');
+      expect(autoFormatHistoryValue('displayRule', 'DD')).toBe('Độ thập phân (DD)');
+    });
+
+    it('ignores approval metadata and fixed GIS settings in change history', () => {
+      const records: RawHistoryRecord[] = [
+        {
+          id: '1',
+          changedField: 'Ngày duyệt Cục',
+          oldValue: '25/09/2026 15:06',
+          newValue: '25/09/2026 15:10',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+        {
+          id: '2',
+          changedField: 'Ngày duyệt Cảng vụ',
+          oldValue: '25/09/2026 15:06',
+          newValue: '25/09/2026 15:10',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+        {
+          id: '3',
+          changedField: 'Ngày phê duyệt',
+          oldValue: '25/09/2026 15:06',
+          newValue: '25/09/2026 15:10',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+        {
+          id: '4',
+          changedField: 'coordinateSystem',
+          oldValue: null,
+          newValue: '1',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+        {
+          id: '5',
+          changedField: 'displayRule',
+          oldValue: null,
+          newValue: '1',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+      ];
+
+      const sessions = buildHistoryUpdateSessions({ records });
+      expect(sessions).toHaveLength(0);
+    });
+
+    it('retains real business changes and maps coordinates to Tọa độ GIS', () => {
+      const records: RawHistoryRecord[] = [
+        {
+          id: '1',
+          changedField: 'coordinates',
+          oldValue: null,
+          newValue: 'LINESTRING (106.809082 17.256236, 107.53418 16.60461, 109.006348 14.657997, 109.467773 12.522391)',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+        {
+          id: '2',
+          changedField: 'name',
+          oldValue: 'Phao cũ',
+          newValue: 'Phao mới',
+          changedBy: 'admin',
+          changedAt: '2026-09-25T15:10:00Z',
+        },
+      ];
+
+      const sessions = buildHistoryUpdateSessions({ records });
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].validRows).toHaveLength(2);
+      const coordRow = sessions[0].validRows.find((r) => r.field === 'coordinates');
+      expect(coordRow).toBeDefined();
+      expect(coordRow?.label).toBe('Tọa độ GIS:');
+    });
+  });
 });

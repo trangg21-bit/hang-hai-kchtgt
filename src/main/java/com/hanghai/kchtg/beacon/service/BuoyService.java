@@ -530,13 +530,21 @@ public class BuoyService {
             entity.setApprovalLevel(2);
             java.util.UUID uid = SecurityUtils.getCurrentUserId();
             entity.setSubmittedForApprovalBy(uid);
-            entity.setSubmittedForApprovalAt(LocalDateTime.now());
+            if (entity.getSubmittedForApprovalAt() == null) {
+                entity.setSubmittedForApprovalAt(LocalDateTime.now());
+            }
             entity.setApprovedBy(uid);
-            entity.setApprovedDate(LocalDateTime.now());
+            if (entity.getApprovedDate() == null) {
+                entity.setApprovedDate(LocalDateTime.now());
+            }
             entity.setLevel1ApprovedBy(uid);
-            entity.setLevel1ApprovedDate(LocalDateTime.now());
+            if (entity.getLevel1ApprovedDate() == null) {
+                entity.setLevel1ApprovedDate(LocalDateTime.now());
+            }
             entity.setLevel2ApprovedBy(uid);
-            entity.setLevel2ApprovedDate(LocalDateTime.now());
+            if (entity.getLevel2ApprovedDate() == null) {
+                entity.setLevel2ApprovedDate(LocalDateTime.now());
+            }
         } else if (wasApproved) {
             entity.setStatus(entity.getStatus() != null ? entity.getStatus() : "PUBLISHED");
             entity.setApprovalStatus(ApprovalStatus.APPROVED);

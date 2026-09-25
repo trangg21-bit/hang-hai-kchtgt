@@ -92,9 +92,33 @@ function DmsInput({ value, onChange, disabled = false }: DmsInputProps) {
   };
 
   if (disabled) {
+    const formatted = `${d}° ${m}' ${s.toFixed(2)}"`;
     return (
-      <div style={{ display: 'flex', alignItems: 'center', height: 28, padding: '0 8px', background: '#f8fafc', borderRadius: 4, border: '1px solid #e2e8f0', color: '#1e293b', fontSize: 13, fontWeight: 500, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-        {`${d}° ${m}' ${s.toFixed(2)}"`}
+      <div
+        title={formatted}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 32,
+          padding: '0 8px',
+          background: '#f8fafc',
+          borderRadius: 6,
+          border: '1px solid #d9d9d9',
+          color: '#1e293b',
+          fontSize: 13,
+          fontWeight: 500,
+          fontVariantNumeric: 'tabular-nums',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          letterSpacing: '0.2px',
+        }}
+      >
+        {formatted}
       </div>
     );
   }
@@ -878,7 +902,7 @@ export default function GisLocationSelector({
         }
       `}</style>
       <Row gutter={[16, 16]}>
-        <Col xs={24} md={13}>
+        <Col xs={24} md={12}>
           <div style={{ position: 'relative' }}>
             <div
               ref={mapContainerRef}
@@ -916,12 +940,12 @@ export default function GisLocationSelector({
           </div>
         </Col>
 
-        <Col xs={24} md={11}>
+        <Col xs={24} md={12}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Typography.Text strong style={{ fontSize: 13 }}>
-                  TỌA ĐỘ CÁC ĐIỂM ĐỈNH ({vertices.length})
+                  {internalGeom === 'POINT' ? 'TỌA ĐỘ ĐIỂM' : `TỌA ĐỘ CÁC ĐIỂM ĐỈNH (${vertices.length})`}
                 </Typography.Text>
                 {internalGeom === 'LINE' && !disabled && (
                   <Button
@@ -955,7 +979,7 @@ export default function GisLocationSelector({
                   size="small"
                   bordered
                   tableLayout="fixed"
-                  scroll={{ y: height - 80 }}
+                  scroll={vertices.length > 7 ? { y: height - 80 } : undefined}
                   onRow={(_, index) => ({
                     draggable: internalGeom !== 'POINT' && !disabled,
                     style: { cursor: internalGeom !== 'POINT' && !disabled ? 'grab' : 'default' },
@@ -985,54 +1009,57 @@ export default function GisLocationSelector({
                       triggerChange(internalGeom, newWkt, internalBieuTuong);
                     }
                   })}
-                  columns={[
-                    {
-                      title: 'STT',
-                      key: 'index',
-                      width: 50,
-                      align: 'center',
-                      render: (_, __, i) => (
-                        <Space size={4}>
-                          {internalGeom !== 'POINT' && !disabled && (
-                            <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
-                          )}
-                          <span>{i + 1}</span>
-                        </Space>
-                      ),
-                    },
-                    {
-                      title: 'Vĩ độ (N) *',
-                      dataIndex: 'lat',
-                      key: 'lat',
-                      width: '45%',
-                      render: (val, _, i) => (
-                        <DmsInput
-                          value={val}
-                          disabled={disabled}
-                          onChange={(v) => handleVertexChange(i, 'lat', v)}
-                        />
-                      ),
-                    },
-                    {
-                      title: 'Kinh độ (E) *',
-                      dataIndex: 'lng',
-                      key: 'lng',
-                      width: '45%',
-                      render: (val, _, i) => (
-                        <DmsInput
-                          value={val}
-                          disabled={disabled}
-                          onChange={(v) => handleVertexChange(i, 'lng', v)}
-                        />
-                      ),
-                    },
-                    {
-                      title: '',
-                      key: 'actions',
-                      width: 50,
-                      align: 'center',
-                      render: (_, __, i) =>
-                        internalGeom !== 'POINT' && !disabled ? (
+                  columns={(() => {
+                    const cols: any[] = [
+                      {
+                        title: 'STT',
+                        key: 'index',
+                        width: 50,
+                        align: 'center',
+                        render: (_: any, __: any, i: number) => (
+                          <Space size={4}>
+                            {internalGeom !== 'POINT' && !disabled && (
+                              <HolderOutlined style={{ cursor: 'grab', color: '#bfbfbf' }} />
+                            )}
+                            <span>{i + 1}</span>
+                          </Space>
+                        ),
+                      },
+                      {
+                        title: disabled ? 'Vĩ độ (N)' : 'Vĩ độ (N) *',
+                        dataIndex: 'lat',
+                        key: 'lat',
+                        align: 'center',
+                        render: (val: number, _: any, i: number) => (
+                          <DmsInput
+                            value={val}
+                            disabled={disabled}
+                            onChange={(v) => handleVertexChange(i, 'lat', v)}
+                          />
+                        ),
+                      },
+                      {
+                        title: disabled ? 'Kinh độ (E)' : 'Kinh độ (E) *',
+                        dataIndex: 'lng',
+                        key: 'lng',
+                        align: 'center',
+                        render: (val: number, _: any, i: number) => (
+                          <DmsInput
+                            value={val}
+                            disabled={disabled}
+                            onChange={(v) => handleVertexChange(i, 'lng', v)}
+                          />
+                        ),
+                      },
+                    ];
+
+                    if (internalGeom !== 'POINT' && !disabled) {
+                      cols.push({
+                        title: '',
+                        key: 'actions',
+                        width: 50,
+                        align: 'center',
+                        render: (_: any, __: any, i: number) => (
                           <Button
                             type="text"
                             danger
@@ -1040,9 +1067,12 @@ export default function GisLocationSelector({
                             icon={<DeleteOutlined />}
                             onClick={() => removeVertex(i)}
                           />
-                        ) : null,
-                    },
-                  ]}
+                        ),
+                      });
+                    }
+
+                    return cols;
+                  })()}
                 />
               )}
             </div>

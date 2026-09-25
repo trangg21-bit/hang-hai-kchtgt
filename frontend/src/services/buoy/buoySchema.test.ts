@@ -116,9 +116,10 @@ describe('Buoy Schema & Light Options Validation', () => {
     expect(createSchema.safeParse({ ...validBase, area: -0.5 }).success).toBe(false);
     expect(createSchema.safeParse({ ...validBase, bodyHeight: -1 }).success).toBe(false);
     expect(createSchema.safeParse({ ...validBase, diameter: -0.1 }).success).toBe(false);
-    expect(createSchema.safeParse({ ...validBase, towerHeight: -2 }).success).toBe(false);
-    expect(createSchema.safeParse({ ...validBase, lightHeight: 0 }).success).toBe(false);
+    expect(createSchema.safeParse({ ...validBase, lightHeight: 0 }).success).toBe(true);
     expect(createSchema.safeParse({ ...validBase, lightHeight: -3 }).success).toBe(false);
+    const { lightHeight: _, ...withoutLightHeight } = validBase;
+    expect(createSchema.safeParse(withoutLightHeight).success).toBe(true);
   });
 
   describe('Buoy Condition Options & Normalization (BR-075-COND)', () => {

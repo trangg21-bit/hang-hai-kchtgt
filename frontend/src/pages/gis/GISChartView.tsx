@@ -4660,12 +4660,12 @@ export default function GISChartView() {
         closable={true}
         closeIcon={<CloseOutlined style={{ fontSize: 16, color: '#333' }} />}
         onCancel={() => setActiveModalUrl(null)}
-        width={850}
+        width={1120}
         destroyOnHidden
         className="kcht-detail-modal"
-        style={{ top: 30 }}
+        style={{ top: 20, maxWidth: '95vw' }}
         styles={{
-          body: { padding: 0, height: 'calc(100vh - 140px)', overflow: 'hidden' },
+          body: { padding: 0, height: 'calc(100vh - 80px)', overflow: 'hidden' },
         }}
       >
         {activeModalUrl && (

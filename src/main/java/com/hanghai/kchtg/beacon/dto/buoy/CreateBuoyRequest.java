@@ -100,8 +100,7 @@ public class CreateBuoyRequest {
 
     private Double towerHeight;
 
-    @NotNull(message = "Chiều cao tâm sáng không được để trống")
-    private Double lightHeight;
+        private Double lightHeight;
 
     @Size(max = 100)
     private String lightModel;

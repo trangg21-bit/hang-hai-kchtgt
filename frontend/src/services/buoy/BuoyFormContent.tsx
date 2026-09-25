@@ -598,13 +598,9 @@ export default function BuoyFormContent({
                 <Form.Item
                   name="lightHeight"
                   {...labelProps('Chiều cao tâm sáng (hải đồ)')}
-                  required
                   style={{ marginBottom: spaceFormField }}
                   getValueFromEvent={getValueFromEvent20}
-                  rules={[
-                    { required: true, message: 'Chiều cao tâm sáng là bắt buộc' },
-                    decimalNumberRule,
-                  ]}
+                  rules={[decimalNumberRule]}
                 >
                   <NumberInputWithCount
                     allowDecimal
