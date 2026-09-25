@@ -10,6 +10,7 @@ import {
   Modal,
   Select,
   Space,
+  Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,7 +19,7 @@ import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { normalizeSearchText, OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { normalizeSearchText, OrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -1102,7 +1103,16 @@ export default function PierListPage() {
         </div>
       ) },
     { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span> },
+      render: (v: string | null, r: Pier) => {
+        const name = orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || '';
+        return (
+          <Tooltip title={name}>
+            <span style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {name}
+            </span>
+          </Tooltip>
+        );
+      } },
     { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
     { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200,
@@ -1142,7 +1152,7 @@ export default function PierListPage() {
       ...col,
       sortOrder: col.sortable ? sortOrderFor(col.key) : undefined,
     }));
-  }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
+  }, [page, pageSize, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];
