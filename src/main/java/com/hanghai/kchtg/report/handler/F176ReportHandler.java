@@ -66,17 +66,6 @@ public class F176ReportHandler extends BaseReportHandler {
     }
 
     private List<Map<String, Object>> getDefaultRows() {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        Map<String, Object> r = new LinkedHashMap<>();
-        r.put("STT", "1");
-        r.put("Tên cảng / Bến thủy nội địa", "Bến thủy nội địa Vật Cách");
-        r.put("Địa phương / Doanh nghiệp quản lý", "Công ty CP Cảng Vật Cách");
-        r.put("Số lượng cầu bến (Bến)", 2);
-        r.put("Chiều dài bến (m)", 180);
-        r.put("Cỡ tàu tiếp nhận (Tấn)", 3000);
-        r.put("Công suất thiết kế (Triệu tấn/năm)", 1.2);
-        r.put("Sản lượng thông qua (Triệu tấn)", 1.05);
-        rows.add(r);
-        return rows;
+        return new ArrayList<>();
     }
 }

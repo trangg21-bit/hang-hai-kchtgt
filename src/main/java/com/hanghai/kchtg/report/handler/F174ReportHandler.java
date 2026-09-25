@@ -77,17 +77,8 @@ public class F174ReportHandler extends BaseReportHandler {
     }
 
     private List<Map<String, Object>> getDefaultRows() {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        Map<String, Object> r = new LinkedHashMap<>();
-        r.put("STT", "1");
-        r.put("Tên cảng biển / Bến cảng", "Khu vực Cảng biển Hải Phòng");
-        r.put("Hàng xuất khẩu (Tấn)", 2500000);
-        r.put("Hàng nhập khẩu (Tấn)", 3200000);
-        r.put("Hàng nội địa (Tấn)", 1800000);
-        r.put("Hàng quá cảnh (Tấn)", 150000);
-        r.put("Tổng số (Tấn)", 7650000);
-        r.put("Container (TEUs)", 540000);
-        rows.add(r);
-        return rows;
+        // Không phát sinh số liệu mẫu trong báo cáo chính thức. Khi chưa có snapshot,
+        // trả danh sách rỗng để biểu thể hiện đúng trạng thái chưa có dữ liệu.
+        return new ArrayList<>();
     }
 }

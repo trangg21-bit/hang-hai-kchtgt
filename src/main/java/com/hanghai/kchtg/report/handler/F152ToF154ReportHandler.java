@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.handler;
 
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -26,17 +27,19 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
     @Override
     public boolean supports(String reportCode) {
         return "F-152".equalsIgnoreCase(reportCode)
-                || "F-153".equalsIgnoreCase(reportCode);
+                || "BCKCHT_167".equalsIgnoreCase(reportCode)
+                || "F-153".equalsIgnoreCase(reportCode)
+                || "BCKCHT_168".equalsIgnoreCase(reportCode);
     }
 
     private Set<WaterZoneType> getWaterZoneTypeFilter(String reportCode) {
         Set<WaterZoneType> filterSet = new HashSet<>();
-        if ("F-152".equalsIgnoreCase(reportCode)) {
+        if ("F-152".equalsIgnoreCase(reportCode) || "BCKCHT_167".equalsIgnoreCase(reportCode)) {
             filterSet.add(WaterZoneType.PILOT_BOARDING);
             filterSet.add(WaterZoneType.TURNING_BASIN);
             filterSet.add(WaterZoneType.ANCHORAGE);
             filterSet.add(WaterZoneType.STORM_SHELTER);
-        } else if ("F-153".equalsIgnoreCase(reportCode)) {
+        } else if ("F-153".equalsIgnoreCase(reportCode) || "BCKCHT_168".equalsIgnoreCase(reportCode)) {
             filterSet.add(WaterZoneType.TRANSSHIPMENT);
             filterSet.add(WaterZoneType.ANCHORAGE);
         }
@@ -125,6 +128,13 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             double area = v.getArea() != null ? v.getArea().doubleValue() : 0.0;
             double maxDepth = v.getMaxDepth() != null ? v.getMaxDepth().doubleValue() : 0.0;
             double avgDepth = v.getAvgDepth() != null ? v.getAvgDepth().doubleValue() : 0.0;
+            String coordinates = "";
+            if (v.getSpatialId() != null) {
+                coordinates = lineObjectRepository.findById(v.getSpatialId())
+                        .map(LineObject::getCoordinates)
+                        .orElse("");
+            }
+            boolean operational = v.getOperationalStatus() == OperationalStatus.OPERATIONAL;
 
             item.put("ten", waterZoneName);
             item.put("code", v.getWaterZoneCode() != null ? v.getWaterZoneCode() : "");
@@ -139,9 +149,11 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             item.put("maTuyenLuong", v.getWaterZoneCode() != null ? v.getWaterZoneCode() : "");
             item.put("tenTramQuanLyLuong", waterZoneName);
             item.put("tenDiemNeo", waterZoneName);
+            item.put("key", waterZoneName);
 
             item.put("soLuongTram", 0.0);
             item.put("dienTich", area);
+            item.put("dienTichTheoThongBaoGanNhatTenLuongHangHai", area);
             item.put("thoiDiemSuaChuaGanNhat", "");
             item.put("thoiDiemCongBo", "");
             item.put("ngaySuaChua", "");
@@ -156,6 +168,16 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             item.put("doSauKhuNuocTheoThietKe", maxDepth);
             item.put("maiDoc", 0.0);
             item.put("doSauHienTai", avgDepth);
+            item.put("viTri", coordinates);
+            item.put("viTriKhu", coordinates);
+            item.put("viTriDiemNeo", coordinates);
+            item.put("hinhDang", "");
+            item.put("coTauKhaiThac", 0.0);
+            item.put("daCongBoHoatDong", operational ? "X" : "");
+            item.put("tinhTrangHoatDongDaCongBoTenLuongHangHai", operational ? "X" : "");
+            item.put("tinhTrangHoatDongChuaCongBoTenLuongHangHai", operational ? "" : "X");
+            item.put("thoiDiemCongBo", "");
+            item.put("ghiChu", v.getWaterZoneType() != null ? v.getWaterZoneType().name() : "");
             item.put("khoiLuongNaoVetDuyTu", 0.0);
             item.put("congCong", 0.0);
             item.put("chuyenDung", 0.0);
