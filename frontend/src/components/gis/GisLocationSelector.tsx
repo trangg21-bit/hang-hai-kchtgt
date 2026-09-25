@@ -91,6 +91,14 @@ function DmsInput({ value, onChange, disabled = false }: DmsInputProps) {
     onChange(DMSToDD(d || 0, m || 0, newS || 0));
   };
 
+  if (disabled) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', height: 28, padding: '0 8px', background: '#f8fafc', borderRadius: 4, border: '1px solid #e2e8f0', color: '#1e293b', fontSize: 13, fontWeight: 500, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+        {`${d}° ${m}' ${s.toFixed(2)}"`}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', gap: '4px', width: '100%', alignItems: 'center' }}>
       <Space.Compact size="small" style={{ flex: 1, minWidth: 46 }}>
@@ -533,7 +541,7 @@ export default function GisLocationSelector({
 
     const L = (window as any).L;
     const initialCenter = [16.0, 108.0]; // Centered on Vietnam
-    
+
     mapRef.current = L.map(container, {
       zoomControl: true,
       attributionControl: false,

@@ -28,6 +28,7 @@ import {
   RightOutlined,
   EyeOutlined,
   AuditOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
@@ -2105,6 +2106,9 @@ export default function RadarStationList() {
         }
       }
       setDrawerVisible(false);
+      if (isInIframe) {
+        window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+      }
       void fetchData();
       void fetchCounts();
     } catch (err: any) {
@@ -2125,7 +2129,7 @@ export default function RadarStationList() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles, coordinateList, geometryTypeState, hasLocation, hasCoordinates, currentUser, hasPerm]);
+  }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles, coordinateList, geometryTypeState, hasLocation, hasCoordinates, currentUser, hasPerm, isInIframe]);
 
   // ── Row actions (chuẩn: Xem chi tiết → Chỉnh sửa → Lịch sử → Gửi duyệt → Phê duyệt/Từ chối theo cấp → Xóa; icon theo themetokenchk) ──
   const rowActions = useCallback((record: RadarStationResponse) => {
@@ -3641,6 +3645,14 @@ export default function RadarStationList() {
         .radar-modal-scope .ant-input {
           font-size: 13.5px !important;
         }
+        .radar-modal-scope .ant-modal-close {
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          top: 14px !important;
+          right: 16px !important;
+          z-index: 100 !important;
+        }
         /* Divider giữa các dòng chi tiết — làm nhạt giống /berth (Berth dùng #f1f5f9 qua override cục bộ) */
         .radar-drawer-scope .chk-detail-grid {
           display: grid !important;
@@ -4625,6 +4637,8 @@ export default function RadarStationList() {
         width="90vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={null}
+        closable={true}
+        closeIcon={<CloseOutlined style={{ fontSize: 16, color: colors.sidebarBg }} />}
       >
         {detailRecord && (
           <div style={{ padding: '8px 0' }}>

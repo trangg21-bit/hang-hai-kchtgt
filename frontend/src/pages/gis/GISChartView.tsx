@@ -1637,7 +1637,7 @@ export default function GISChartView() {
     { key: 'name', dataIndex: 'name', label: 'Kết cấu hạ tầng', width: 200 },
   ], [searchPage, searchPageSize]);
   const infrastructureTableScroll = useMemo(
-    () => ({ y: tableHeight }),
+    () => ({ y: tableHeight, x: GIS_RESULTS_TABLE_MIN_WIDTH }),
     [tableHeight],
   );
   const handleInfrastructureSelectionChange = useCallback((keys: React.Key[]) => {
@@ -4362,22 +4362,22 @@ export default function GISChartView() {
                           <ErrorState message={searchError} onRetry={() => void handleSearchInfrastructure(searchPage, searchPageSize)} />
                         ) : (
                           <>
-                            <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden' }}>
-                              <DataTable
-                                columns={infrastructureColumns}
-                                dataSource={infrastructureResults}
-                                rowKey="id"
-                                loading={searchingInfrastructure}
-                                fill
-                                scroll={infrastructureTableScroll}
-                                style={{
-                                  minWidth: GIS_RESULTS_TABLE_MIN_WIDTH,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  minHeight: 0,
-                                  flex: 1,
-                                  height: '100%',
-                                }}
+                      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', width: '100%' }}>
+                        <DataTable
+                          columns={infrastructureColumns}
+                          dataSource={infrastructureResults}
+                          rowKey="id"
+                          loading={searchingInfrastructure}
+                          fill
+                          scroll={infrastructureTableScroll}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minHeight: 0,
+                            flex: 1,
+                            height: '100%',
+                          }}
                                 emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
                                 rowSelection={infrastructureRowSelection}
                                 onRow={(record: KchtGisSearchResult) => ({
@@ -4657,7 +4657,8 @@ export default function GISChartView() {
       <Modal
         open={!!activeModalUrl}
         footer={null}
-        closable={false}
+        closable={true}
+        closeIcon={<CloseOutlined style={{ fontSize: 16, color: '#333' }} />}
         onCancel={() => setActiveModalUrl(null)}
         width={850}
         destroyOnHidden
