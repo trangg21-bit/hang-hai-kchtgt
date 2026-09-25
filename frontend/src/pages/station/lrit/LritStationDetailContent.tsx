@@ -638,14 +638,15 @@ export const LritStationDetailContent: React.FC<LritStationDetailContentProps> =
                       {
                         label: 'Biểu tượng',
                         value: (() => {
+                          if (points.length === 0) return '—';
                           const sym = symbolItem;
-                          if (!record.symbolId && !sym && points.length === 0) return '—';
-                          const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : 'Đài LRIT');
+                          const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : '');
                           const symImg = sym?.iconUrl || sym?.image;
+                          if (!symName && !symImg) return '—';
                           return (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                               {symImg ? <img src={symImg} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /> : null}
-                              {symName}
+                              {symName || '—'}
                             </span>
                           );
                         })(),

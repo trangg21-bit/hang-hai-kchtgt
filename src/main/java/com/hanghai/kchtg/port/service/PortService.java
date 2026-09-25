@@ -35,6 +35,7 @@ import com.hanghai.kchtg.common.entity.InfrastructureHistory;
 import com.hanghai.kchtg.common.enums.InfrastructureHistoryStatus;
 import com.hanghai.kchtg.common.repository.InfrastructureHistoryRepository;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -94,6 +95,7 @@ public class PortService {
     private final OrgUnitScopeService orgUnitScopeService;
     private final InfrastructureHistoryRepository historyRepository;
     private final PortWharfAreaRepository portWharfAreaRepository;
+    private final InfrastructureApprovalService infrastructureApprovalService;
 
     @Value("${app.upload.attachment-path:uploads/port-attachments}")
     private String uploadPath;
@@ -227,7 +229,7 @@ public class PortService {
                 .area(request.getArea())
                 .maxVesselCapacity(request.getMaxVesselCapacity())
                 .operationalStatus(request.getOperationalStatus())
-                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.PENDING_APPROVAL)
+                .approvalStatus(isDraft ? ApprovalStatus.DRAFT : isApprove ? ApprovalStatus.APPROVED : ApprovalStatus.DRAFT)
                 .orgUnitId(request.getOrgUnitId())
                 .portGroup(request.getPortGroup())
                 .mapSymbolId(request.getMapSymbolId())
@@ -270,6 +272,15 @@ public class PortService {
         }
 
         Port saved = portRepository.save(entity);
+        if ("submit".equals(action)) {
+            if (actorId != null) {
+                infrastructureApprovalService.submit(saved, InfrastructureType.SEAPORT, actorId);
+            } else {
+                saved.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                saved.setSubmittedAt(workflowTime);
+            }
+            saved = portRepository.save(saved);
+        }
 
         // ── Handle PortInfrastructure list ────────────────────────────
         if (request.getInfrastructureList() != null && !request.getInfrastructureList().isEmpty()) {
@@ -484,6 +495,7 @@ public class PortService {
         FieldWriteGuard.validateObject(request);
         Port entity = portRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
+        infrastructureApprovalService.assertEditable(entity);
         if (entity.getDeletedAt() != null || entity.getDeletedBy() != null) {
             throw new IllegalStateException("Không thể chỉnh sửa cảng biển đã bị xóa");
         }

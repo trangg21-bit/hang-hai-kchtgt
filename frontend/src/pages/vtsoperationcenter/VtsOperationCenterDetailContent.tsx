@@ -798,17 +798,18 @@ export default function VtsOperationCenterDetailContent({
                       {
                         label: 'Biểu tượng',
                         value: (() => {
+                          if (coordinates.length === 0) return '—';
                           const symId = record?.symbolId || '';
-                          if (!symId && coordinates.length === 0) return '—';
-                          const sym = symbols.find(
+                          const sym = Array.isArray(symbols) ? symbols.find(
                             (s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId))
-                          );
-                          const symName = sym?.name || sym?.code || (symId ? String(symId) : 'Trung tâm điều hành VTS');
+                          ) : null;
+                          const symName = sym?.name || sym?.code || (symId ? String(symId) : '');
                           const symImg = sym?.image
                             ? sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
                               ? sym.image
                               : `data:image/png;base64,${sym.image}`
                             : undefined;
+                          if (!symName && !symImg) return '—';
                           return (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                               {symImg ? (
@@ -819,7 +820,7 @@ export default function VtsOperationCenterDetailContent({
                                   onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                 />
                               ) : null}
-                              {symName}
+                              {symName || '—'}
                             </span>
                           );
                         })(),
@@ -1023,7 +1024,7 @@ export default function VtsOperationCenterDetailContent({
                   loading={isLoadingInfra}
                   emptyText="Chưa có dữ liệu"
                   rowKey={(r: any) => r.id || r.infraName || r.name}
-                  scrollY="calc(100vh - 320px)"
+                  scrollY={DRAWER_TABLE_SCROLL_Y.detailViewWithFilter}
                   columns={[
                     { title: 'STT', width: 50 },
                     {

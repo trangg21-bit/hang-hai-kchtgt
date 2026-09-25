@@ -110,7 +110,7 @@ public class PortController {
     }
 
     @PutMapping
-    @PreAuthorize("@auth.check(authentication, 'port:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:update', 'port:approvec2')")
     public ResponseEntity<ApiResponse<PortResponse>> update(
             @Valid @RequestBody UpdatePortRequest request) {
         log.info("Updating Port: id={}", request.getId());
@@ -129,7 +129,7 @@ public class PortController {
     // ── Phê duyệt 2 cấp (approval-2-level-spec §3.2) ────────────────────────
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("@auth.check(authentication, 'port:update')")
+    @PreAuthorize("@auth.checkAny(authentication, 'port:create', 'port:update')")
     public ResponseEntity<ApiResponse<Void>> submit(@PathVariable UUID id) {
         UUID userId = SecurityUtils.getCurrentUserId();
         log.info("Submitting Port for approval: id={}, userId={}", id, userId);

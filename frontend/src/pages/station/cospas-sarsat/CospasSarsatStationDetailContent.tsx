@@ -715,9 +715,11 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
 
   // TAB 2: Thông tin vị trí (GIS)
   const renderGisTab = () => {
+    const hasCoordinates = gisCoords.length > 0;
+    const hasLocation = hasCoordinates;
     const symId = data?.symbolId || '';
     const sym = Array.isArray(symbols) ? symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId))) : null;
-    const symName = sym?.name || sym?.code || (symId ? String(symId) : 'Đài Cospas-Sarsat');
+    const symName = sym?.name || sym?.code || (symId ? String(symId) : '');
     const symImg = sym?.image
       ? sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
         ? sym.image
@@ -731,18 +733,21 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
             {[
               {
                 label: 'Loại đối tượng',
-                value:
-                  ({
-                    POINT: 'Đối tượng điểm',
-                    LINE: 'Đối tượng đường',
-                    POLYGON: 'Đối tượng vùng',
-                  } as Record<string, string>)[data?.geometryType || ''] ||
-                  data?.geometryType ||
-                  'Đối tượng điểm',
+                value: !hasLocation
+                  ? '—'
+                  : (({
+                      POINT: 'Đối tượng điểm',
+                      LINE: 'Đối tượng đường',
+                      POLYGON: 'Đối tượng vùng',
+                    } as Record<string, string>)[data?.geometryType || ''] ||
+                    data?.geometryType ||
+                    'Đối tượng điểm'),
               },
               {
                 label: 'Biểu tượng',
-                value: (
+                value: !hasLocation || (!symName && !symImg) ? (
+                  '—'
+                ) : (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                     {symImg ? (
                       <img
@@ -752,20 +757,21 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
                         onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                       />
                     ) : null}
-                    {symName}
+                    {symName || '—'}
                   </span>
                 ),
               },
               {
                 label: 'Hệ quy chiếu',
-                value:
-                  data?.coordinateSystem === 'VN-2000' || String(data?.coordinateSystem) === '2'
-                    ? 'VN-2000'
-                    : 'WGS-84',
+                value: !hasLocation
+                  ? '—'
+                  : (data?.coordinateSystem === 'VN-2000' || String(data?.coordinateSystem) === '2'
+                      ? 'VN-2000'
+                      : 'WGS-84'),
               },
               {
                 label: 'Quy tắc hiển thị',
-                value: data?.displayRule || 'Độ, phút, giây (DMS)',
+                value: !hasLocation ? '—' : (data?.displayRule || 'Độ, phút, giây (DMS)'),
               },
             ].map((row, i) => (
               <div key={i} className="chk-detail-row">
@@ -781,8 +787,9 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
             Tọa độ GPS ({gisCoords.length})
           </span>
           <Button
-            icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+            icon={<EnvironmentOutlined style={{ color: !hasCoordinates ? textTertiary : actionPrimary }} />}
             onClick={() => setMapModalOpen(true)}
+            disabled={!hasCoordinates}
             style={{
               ...outlineButtonStyle,
               height: 32,
@@ -791,6 +798,8 @@ export default function CospasSarsatStationDetailContent(props: CospasSarsatStat
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
+              opacity: !hasCoordinates ? 0.6 : 1,
+              cursor: !hasCoordinates ? 'not-allowed' : 'pointer',
             }}
           >
             Xem vị trí trên bản đồ

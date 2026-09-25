@@ -339,6 +339,10 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
           pointer-events: none !important;
         }
         .${instanceId} .ant-table-body {
+          ${effectiveScrollY !== 'auto' ? `
+          height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
+          min-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
+          ` : ''}
           max-height: ${typeof effectiveScrollY === 'number' ? `${effectiveScrollY}px` : effectiveScrollY} !important;
           overflow-x: auto !important;
           ${pagedData.length === 0 ? 'overflow-y: hidden !important;' : 'overflow-y: auto !important;'}
@@ -362,7 +366,7 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
           margin-top: 8px !important;
           margin-bottom: 8px !important;
           display: flex !important;
-          justify-content: flex-end !important;
+          justify-content: space-between !important;
           align-items: center !important;
           width: 100% !important;
         }
@@ -414,7 +418,7 @@ export const DetailTable = <T extends object = Record<string, unknown>>({
       {!hidePagination && effectiveTotal > 0 && (
         <div
           className="chk-detail-table-pagination"
-          style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}
+          style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
         >
           <Pagination
             total={effectiveTotal}

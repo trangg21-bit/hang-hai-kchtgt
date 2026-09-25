@@ -15,7 +15,6 @@ import {
   EnvironmentOutlined,
   FileTextOutlined,
   BankOutlined,
-  EditOutlined,
   PlusOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
@@ -39,7 +38,7 @@ import {
   readonlyInputStyle, inputStyle, selectStyle, spaceSm, spaceXs,
   textAreaStyle,
 } from '../../../themetokenchk';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../../hooks/useKchtPermissions';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import AppDrawer from '../../../components/shared/AppDrawer';
@@ -94,14 +93,16 @@ export function resolveFormProvinceId(
 export function resolveCospasGeometryType(
   geometryType?: string | null,
   wkt?: string | null
-): 'POINT' | 'LINE' | 'POLYGON' {
+): 'POINT' | 'LINE' | 'POLYGON' | undefined {
   const w = (wkt || '').toUpperCase();
   if (w.includes('POLYGON')) return 'POLYGON';
   if (w.includes('LINESTRING') || w.includes('LINE')) return 'LINE';
+  if (w.includes('POINT')) return 'POINT';
   const g = (geometryType || '').toUpperCase();
   if (g.includes('POLYGON') || g.includes('VÙNG')) return 'POLYGON';
   if (g.includes('LINE') || g.includes('ĐƯỜNG')) return 'LINE';
-  return 'POINT';
+  if (g.includes('POINT') || g.includes('ĐIỂM')) return 'POINT';
+  return undefined;
 }
 
 export function generateStationCode(): string {
@@ -285,7 +286,6 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const [coordinateList, setCoordinateList] = useState<DmsPoint[]>([]);
   const watchedGeometryType = Form.useWatch('geometryType', form);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(watchedGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [mapModalOpen, setMapModalOpen] = useState(false);
 
@@ -382,10 +382,10 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   const authStoreUser = useAuthStore((s: AuthState) => s.user);
   const user = authStoreUser || useAuthStore.getState().user;
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
 
   // User permission level (chuẩn VTS / Inmarsat)
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = checkCanSaveAndApprove('coastalstationcospassarsat', hasPerm, user) || (isAdmin && isCucLevelUser(user));
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationcospassarsat', hasExplicitPerm || hasPerm, user);
 
   // Attachments state & queues chuẩn VTS
   const initialAttachments = useMemo(() => {
@@ -592,10 +592,33 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
   }, [open, propSymbols]);
 
   const populateFormFromRecord = (rec: CoastalStationCospasSarsatResponse) => {
-    const geom = resolveCospasGeometryType(rec.geometryType, rec.wktGeometry || (rec as any).coordinates);
-    // Hydrate GIS atomically: the geometry effect is only for a user changing
-    // the object type, never for padding coordinates that already came from WKT.
+    // GIS Parse
+    const wkt = rec.wktGeometry || (typeof (rec as any).coordinates === 'string' ? (rec as any).coordinates : '');
+    let initialCoords: DmsPoint[] = [];
+    if (wkt) {
+      const parsed = parseWktToCoordinates(wkt);
+      if (parsed.length > 0) {
+        initialCoords = parsed.map(p => {
+          const latDms = ddToDms(p.latitude);
+          const lngDms = ddToDms(p.longitude);
+          return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+        });
+      } else if (rec.latitude && rec.longitude) {
+        const latDms = ddToDms(rec.latitude);
+        const lngDms = ddToDms(rec.longitude);
+        initialCoords = [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }];
+      }
+    } else if (rec.latitude && rec.longitude) {
+      const latDms = ddToDms(rec.latitude);
+      const lngDms = ddToDms(rec.longitude);
+      initialCoords = [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }];
+    }
+    setCoordinateList(initialCoords);
+
+    const hasRawCoords = initialCoords.length > 0;
+    const geom = hasRawCoords ? resolveCospasGeometryType(rec.geometryType, wkt) : undefined;
     lastGeometryTypeRef.current = geom;
+
     form.setFieldsValue({
       stationCode: rec.stationCode || rec.code,
       stationName: rec.stationName || rec.name,
@@ -609,33 +632,10 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       frequency: rec.frequency,
       description: rec.description || rec.note,
       geometryType: geom,
-      symbolId: rec.symbolId ? String(rec.symbolId) : undefined,
+      symbolId: hasRawCoords && rec.symbolId ? String(rec.symbolId) : undefined,
       coordinateSystem: geom ? (rec.coordinateSystem === 'VN-2000' || (rec as any).coordinateSystem === 2 ? 2 : 1) : undefined,
       displayRule: geom ? (rec.displayRule || 'Độ, phút, giây (DMS)') : undefined,
     });
-
-    // GIS Parse
-    const wkt = rec.wktGeometry || (typeof (rec as any).coordinates === 'string' ? (rec as any).coordinates : '');
-    if (wkt) {
-      const parsed = parseWktToCoordinates(wkt);
-      if (parsed.length > 0) {
-        setCoordinateList(parsed.map(p => {
-          const latDms = ddToDms(p.latitude);
-          const lngDms = ddToDms(p.longitude);
-          return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-        }));
-      } else if (rec.latitude && rec.longitude) {
-        const latDms = ddToDms(rec.latitude);
-        const lngDms = ddToDms(rec.longitude);
-        setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
-      }
-    } else if (rec.latitude && rec.longitude) {
-      const latDms = ddToDms(rec.latitude);
-      const lngDms = ddToDms(rec.longitude);
-      setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
-    } else {
-      setCoordinateList([]);
-    }
 
     const rawAtts = Array.isArray(rec.attachments) ? rec.attachments : (Array.isArray(rec.files) ? rec.files : []);
     setAttachments(rawAtts);
@@ -730,13 +730,15 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
       let firstLat: number | undefined = undefined;
       let firstLng: number | undefined = undefined;
 
-      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType') ?? recordData?.geometryType;
+      const currentGeometryType = values.geometryType ?? form.getFieldValue('geometryType');
       const currentSymbolId = values.symbolId !== undefined
         ? values.symbolId
-        : (form.getFieldValue('symbolId') ?? recordData?.symbolId);
+        : form.getFieldValue('symbolId');
 
-      if (currentGeometryType || coordinateList.length > 0) {
-        const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType);
+      const hasGisCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
+
+      if (hasGisCoordinates) {
+        const coordResult = validateDmsCoordinates(coordinateList, currentGeometryType || 'POINT');
         if (!coordResult.valid) {
           const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
           toast.error(errMsg);
@@ -762,16 +764,16 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
         coverageArea: values.coverageArea?.trim(),
         frequency: values.frequency?.trim(),
         description: values.description?.trim(),
-        geometryType: currentGeometryType ?? null,
-        symbolId: currentSymbolId ?? null,
-        coordinateSystem: values.coordinateSystem === 2 ? 'VN-2000' : 'WGS-84',
-        displayRule: values.displayRule || 'Độ, phút, giây (DMS)',
-        latitude: firstLat,
-        longitude: firstLng,
-        wktGeometry: wkt,
+        geometryType: hasGisCoordinates ? (currentGeometryType ?? 'POINT') : null,
+        symbolId: hasGisCoordinates ? (currentSymbolId ?? null) : null,
+        coordinateSystem: hasGisCoordinates ? (values.coordinateSystem === 2 ? 'VN-2000' : 'WGS-84') : null,
+        displayRule: hasGisCoordinates ? (values.displayRule || 'Độ, phút, giây (DMS)') : null,
+        latitude: hasGisCoordinates ? (firstLat ?? null) : null,
+        longitude: hasGisCoordinates ? (firstLng ?? null) : null,
+        wktGeometry: hasGisCoordinates ? (wkt ?? null) : null,
         // API accepts WKT. Sending the DMS-derived point array here made
         // Jackson reject a valid GIS save before it could read wktGeometry.
-        coordinates: wkt,
+        coordinates: hasGisCoordinates ? (wkt ?? null) : null,
       };
       const isApprovedRecord = String(recordData?.approvalStatus || '').toUpperCase() === 'APPROVED';
 
@@ -946,20 +948,6 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
             ? (stationDisplayName ? `Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam - ${stationDisplayName}` : 'Chỉnh sửa Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam')
             : 'Thêm mới Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam'}
         </span>
-      }
-      extra={
-        isView && currentRecord && (
-          <Space>
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              style={{ ...primaryButtonStyle, borderRadius: radiusPill }}
-              onClick={() => onEdit?.(currentRecord)}
-            >
-              Chỉnh sửa
-            </Button>
-          </Space>
-        )
       }
       footer={renderFooter()}
       styles={{
@@ -1256,8 +1244,6 @@ export default function CospasSarsatStationForm(props: CospasSarsatStationFormPr
                           <Form.Item
                             label={<span style={{ color: sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>Biểu tượng</span>}
                             name="symbolId"
-                            required={hasLocation}
-                            rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Select

@@ -88,6 +88,7 @@ Bảng mô tả các trường hiển thị trên màn hình chi tiết (read-on
 | BR-108-05 | GIS 5 trường (loại đối tượng, biểu tượng, hệ quy chiếu, quy tắc hiển thị, tọa độ) trong khối read-only vận hành/bảo trì/sự cố | Detail |
 | BR-108-06 | File đính kèm: hiển thị danh sách file, cho phép tải về | Detail |
 | BR-108-07 | Data scope: chỉ xem được đài trong phạm vi đơn vị của mình | Detail |
+| BR-108-08 | Khi hồ sơ không cấu hình vị trí / không có tọa độ GPS (0 tọa độ), cả 4 trường thông tin GIS (Loại đối tượng, Biểu tượng, Hệ quy chiếu, Quy tắc hiển thị) hiển thị '—', và nút 'Xem vị trí trên bản đồ' bị vô hiệu hóa (disabled) | Detail |
 
 ### 4.2. Acceptance Criteria kế thừa (nếu có)
 

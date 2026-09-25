@@ -2438,20 +2438,17 @@ export default function DikeRevetmentList() {
     }
     // Vòng 1 — Cảng vụ/Chi cục duyệt hồ sơ Chờ Cảng vụ duyệt.
     if (canApproveC1 && isPendingC1) {
-      const isCreatorSelfApprove = Boolean(currentUser?.userId && record.createdBy === currentUser.userId);
       actions.push({
         key: 'approveC1',
-        label: isCreatorSelfApprove ? 'Phê duyệt cấp Cảng vụ (không thể tự duyệt)' : 'Phê duyệt cấp Cảng vụ',
+        label: 'Phê duyệt cấp Cảng vụ',
         icon: themeTokenChk.icons.approve,
-        disabled: isCreatorSelfApprove,
         onClick: () => openApproveModal(record),
       });
       actions.push({
         key: 'rejectC1',
-        label: isCreatorSelfApprove ? 'Từ chối cấp Cảng vụ (không thể tự duyệt)' : 'Từ chối cấp Cảng vụ',
+        label: 'Từ chối cấp Cảng vụ',
         icon: themeTokenChk.icons.reject,
         danger: true,
-        disabled: isCreatorSelfApprove,
         onClick: () => openRejectModal(record),
       });
     }

@@ -1099,8 +1099,6 @@ export default function NavigationChannelList() {
       const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
       const st = record.approvalStatus || '';
       const currentUserId = useAuthStore.getState().user?.userId;
-      const creatorId = record.submittedBy || (record as any).createdBy;
-      const isCreator = Boolean(creatorId && currentUserId && String(creatorId) === String(currentUserId));
       const approver1Id = record.approverLevel1 || record.level1ApprovedBy;
       const isApprover1 = Boolean(approver1Id && currentUserId && String(approver1Id) === String(currentUserId));
 
@@ -1117,8 +1115,8 @@ export default function NavigationChannelList() {
       if (['DRAFT', 'PROPOSED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('navigationchannel:update') || hasPerm('navigationchannel:create'))) {
         actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: icons.submit, onClick: () => openSubmitModal(record) });
       }
-      // Cấp 1 (Cảng vụ/Chi cục) - chống tự duyệt (4-eyes)
-      if (hasPerm('navigationchannel:approvec1') && (st === 'PENDING_APPROVAL' || st === 'PROPOSED') && !isCreator) {
+      // Cấp 1 (Cảng vụ/Chi cục)
+      if (hasPerm('navigationchannel:approvec1') && (st === 'PENDING_APPROVAL' || st === 'PROPOSED')) {
         actions.push({
           key: 'approveC1',
           label: 'Phê duyệt cấp Cảng vụ/Chi cục',

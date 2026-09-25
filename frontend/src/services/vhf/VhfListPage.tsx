@@ -92,7 +92,7 @@ import toast from "../../components/ToastNotification";
 import { THEME_SCOPE_CLASS, ThemeTokenProvider } from "../../context/ThemeTokenContext";
 import { useAuthStore } from "../../store/authStore";
 import { usePermissionStore } from "../../store/permissionStore";
-import { checkCanSaveAndApprove, isCucLevelUser } from "../../hooks/useKchtPermissions";
+import { checkCanSaveAndApprove } from "../../hooks/useKchtPermissions";
 import * as themeTokenChk from "../../themetokenchk";
 import { DRAWER_WIDTH } from "../../themetokenchk";
 import { VIETNAM_PROVINCES } from "../../types/common";
@@ -643,6 +643,7 @@ const LoadingSkeleton = ({ rows = 4 }: { rows?: number }) => (
 const VhfListPage = () => {
   const [searchParams] = useSearchParams();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
   const currentUser = useAuthStore((s) => s.user);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState<string | null>(null);
@@ -723,10 +724,9 @@ const VhfListPage = () => {
   const [symbols, setSymbols] = useState<MapSymbolType[]>([]);
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
 
-  const isAdmin = (hasPerm as any)?.('*') || (hasPerm as any)?.('admin:all');
   const canSaveAndApprove = useMemo(() => {
-    return checkCanSaveAndApprove('vhf', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
-  }, [hasPerm, currentUser, isAdmin]);
+    return checkCanSaveAndApprove('vhf', hasExplicitPerm || hasPerm, currentUser);
+  }, [hasExplicitPerm, hasPerm, currentUser]);
 
   const [selectedRecord, setSelectedRecord] = useState<VhfResponse | null>(null);
   const vhfFormRef = useRef<VhfFormRef>(null);

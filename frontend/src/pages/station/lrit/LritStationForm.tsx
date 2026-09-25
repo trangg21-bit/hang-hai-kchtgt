@@ -41,7 +41,7 @@ import {
   statusCritical, statusOperational, actionPrimary,
   readonlyInputStyle, inputStyle, selectStyle, textAreaStyle, spaceSm, spaceXs, textTertiary,
 } from '../../../themetokenchk';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../../hooks/useKchtPermissions';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../../types/common';
 import { fmtInputNumber } from '../../../utils/numFmt';
 import AppDrawer from '../../../components/shared/AppDrawer';
@@ -166,8 +166,8 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
 
   const currentUser = useAuthStore((s: AuthState) => s.user);
   const hasPerm = usePermissionStore((s: PermissionState) => s.hasPermission);
-  const isAdmin = hasPerm('*') || hasPerm('admin:all');
-  const canApproveL2 = checkCanSaveAndApprove('coastalstationlrit', hasPerm, currentUser) || (isAdmin && isCucLevelUser(currentUser));
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
+  const canApproveL2 = checkCanSaveAndApprove('coastalstationlrit', hasExplicitPerm || hasPerm, currentUser);
   const canCreate = hasPerm('coastalstationlrit:create');
   const canUpdate = canEditApprovalRecord(record?.approvalStatus, {
     hasPerm,
@@ -732,7 +732,7 @@ export const LritStationForm: React.FC<LritStationFormProps> = ({
         coverageArea: values.coverageArea?.trim() ?? null,
         description: values.description?.trim() ?? null,
         geometryType: currentGeometryType ?? null,
-        symbolId: currentSymbolId ?? null,
+        symbolId: currentGeometryType ? (currentSymbolId ?? null) : null,
         coordinateSystem: currentGeometryType ? (values.coordinateSystem ?? form.getFieldValue('coordinateSystem') ?? 1) : null,
         displayRule: currentGeometryType ? (values.displayRule ?? form.getFieldValue('displayRule') ?? 'Độ, phút, giây (DMS)') : null,
         latitude: firstPt?.latitude ?? null,

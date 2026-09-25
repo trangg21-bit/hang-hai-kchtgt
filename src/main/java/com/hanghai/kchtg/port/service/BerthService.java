@@ -30,9 +30,10 @@ import com.hanghai.kchtg.orgunit.service.OrgUnitScopeService;
 import com.hanghai.kchtg.port.repository.AttachmentRepository;
 import com.hanghai.kchtg.port.entity.Attachment;
 import com.hanghai.kchtg.port.dto.berth.AttachmentDto;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.multipart.MultipartFile;
 import com.hanghai.kchtg.fieldvisibility.guard.FieldWriteGuard;
+import com.hanghai.kchtg.common.service.InfrastructureApprovalService;
 import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -71,6 +72,7 @@ public class BerthService {
     private final AttachmentRepository attachmentRepository;
     private final OperatingUnitRepository operatingUnitRepository;
     private final InfrastructureHistoryRepository historyRepository;
+    private final InfrastructureApprovalService approvalService;
 
     @Value("${app.upload.attachment-path:uploads/attachments}")
     private String attachmentPath;
@@ -695,9 +697,22 @@ public class BerthService {
                 entity.setApprovalStatus(ApprovalStatus.DRAFT);
                 break;
             case "SUBMIT":
-                entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
-                entity.setSubmittedForApprovalAt(LocalDateTime.now());
-                entity.setSubmittedForApprovalBy(SecurityUtils.getCurrentUserId().toString());
+                UUID curUserId = SecurityUtils.getCurrentUserId();
+                LocalDateTime now = LocalDateTime.now();
+                entity.setSubmittedForApprovalAt(now);
+                entity.setSubmittedForApprovalBy(curUserId != null ? curUserId.toString() : null);
+                entity.setSubmittedAt(now);
+                entity.setSubmittedBy(curUserId);
+                if (curUserId != null && (approvalService.isDepartmentLevelUser(curUserId) || approvalService.hasApproveC1Permission(curUserId, InfrastructureType.PORT_TERMINAL))) {
+                    entity.setApprovalStatus(ApprovalStatus.APPROVED_LEVEL1);
+                    entity.setPortAuthorityApprovedAt(now);
+                    entity.setPortAuthorityApprovedBy(curUserId.toString());
+                    entity.setApprovedDateLevel1(now);
+                    entity.setApproverLevel1(curUserId);
+                    entity.setLevel1ApprovalContent("Cán bộ có thẩm quyền cấp Chi cục/Cảng vụ duyệt và chuyển cấp Cục");
+                } else {
+                    entity.setApprovalStatus(ApprovalStatus.PENDING_APPROVAL);
+                }
                 break;
             case "APPROVED":
             case "SAVE_AND_APPROVE":

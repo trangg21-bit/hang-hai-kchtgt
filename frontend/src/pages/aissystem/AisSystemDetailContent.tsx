@@ -685,110 +685,93 @@ export default function AisSystemDetailContent({
           {
             key: 'gis',
             label: `Thông tin vị trí (${coordinates.length})`,
-            children: (
-              <div style={{ paddingTop: 6 }}>
-                <div style={{ ...sectionBoxStyle, marginBottom: 12 }}>
-                  <div className="chk-detail-grid">
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
-                      <span className="chk-detail-value">
-                        {record?.geometryType === 'LINE'
-                          ? 'Đối tượng đường'
-                          : record?.geometryType === 'POLYGON'
-                          ? 'Đối tượng vùng'
-                          : (record?.geometryType === 'POINT' || coordinates.length > 0
-                          ? 'Đối tượng điểm'
-                          : '—')}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
-                      <span className="chk-detail-value">
-                        {(() => {
-                          const symId = record?.symbolId;
-                          const sym = symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId)));
-                          if (sym) {
-                            const imgSrc = sym.image
-                              ? (sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
-                                  ? sym.image
-                                  : `data:image/png;base64,${sym.image}`)
-                              : undefined;
-                            return (
-                              <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                                {imgSrc ? (
-                                  <img
-                                    src={imgSrc}
-                                    alt={sym.name || ''}
-                                    style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
-                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                  />
-                                ) : (
-                                  <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
-                                )}
-                                <span>{sym.code ? `${sym.name} (${sym.code})` : sym.name}</span>
-                              </Space>
-                            );
-                          }
-                          if (!record?.geometryType && coordinates.length === 0) {
-                            return '—';
-                          }
-                          return 'Hệ thống trạm bờ AIS';
-                        })()}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
-                      <span className="chk-detail-value">
-                        {(record as any)?.coordinateSystem === 2
-                          ? 'VN-2000'
-                          : (record?.geometryType || coordinates.length > 0 ? 'WGS-84' : '—')}
-                      </span>
-                    </div>
-                    <div className="chk-detail-row">
-                      <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
-                      <span className="chk-detail-value">
-                        {record?.geometryType || coordinates.length > 0 ? 'Độ, phút, giây (DMS)' : '—'}
-                      </span>
+children: (() => {
+              const hasCoordinates = coordinates.length > 0;
+              const hasLocation = hasCoordinates;
+              const symId = record?.symbolId;
+              const sym = Array.isArray(symbols) ? symbols.find((s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId))) : null;
+              const symImg = sym?.image
+                ? (sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+                    ? sym.image
+                    : `data:image/png;base64,${sym.image}`)
+                : undefined;
+              const symName = sym ? (sym.code ? `${sym.name} (${sym.code})` : sym.name) : (symId ? String(symId) : '');
+
+              return (
+                <div style={{ paddingTop: 6 }}>
+                  <div style={{ ...sectionBoxStyle, marginBottom: 12 }}>
+                    <div className="chk-detail-grid">
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Loại đối tượng</span>
+                        <span className="chk-detail-value">
+                          {!hasLocation
+                            ? '—'
+                            : (record?.geometryType === 'LINE' ? 'Đối tượng đường' : record?.geometryType === 'POLYGON' ? 'Đối tượng vùng' : 'Đối tượng điểm')}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Biểu tượng</span>
+                        <span className="chk-detail-value">
+                          {!hasLocation || (!symName && !symImg) ? (
+                            '—'
+                          ) : (
+                            <Space size={8} align="center" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                              {symImg ? (
+                                <img
+                                  src={symImg}
+                                  alt={sym?.name || ''}
+                                  style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
+                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                />
+                              ) : (
+                                <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', backgroundColor: actionPrimary }} />
+                              )}
+                              <span>{symName || '—'}</span>
+                            </Space>
+                          )}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col1-label">Hệ quy chiếu</span>
+                        <span className="chk-detail-value">
+                          {!hasLocation
+                            ? '—'
+                            : ((record as any)?.coordinateSystem === 2 || String((record as any)?.coordinateSystem) === 'VN-2000' ? 'VN-2000' : 'WGS-84')}
+                        </span>
+                      </div>
+                      <div className="chk-detail-row">
+                        <span className="chk-detail-label sec-col2-label">Quy tắc hiển thị</span>
+                        <span className="chk-detail-value">{!hasLocation ? '—' : ((record as any)?.displayRule || 'Độ, phút, giây (DMS)')}</span>
+                      </div>
+
                     </div>
                   </div>
-                </div>
 
-                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                    Tọa độ GPS ({coordinates.length})
-                  </span>
-                  <Button
-                    type="default"
-                    icon={<EnvironmentOutlined style={{ color: coordinates.length === 0 ? 'rgba(0, 0, 0, 0.25)' : actionPrimary }} />}
-                    onClick={() => setMapModalOpen(true)}
-                    disabled={coordinates.length === 0}
-                    style={coordinates.length === 0 ? {
-                      height: 32,
-                      fontSize: fontSizeSm,
-                      padding: '0 14px',
-                      borderRadius: radiusPill,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      background: '#f5f5f5',
-                      borderColor: '#d9d9d9',
-                      color: 'rgba(0, 0, 0, 0.25)',
-                      cursor: 'not-allowed',
-                      boxShadow: 'none',
-                    } : {
-                      ...outlineButtonStyle,
-                      height: 32,
-                      fontSize: fontSizeSm,
-                      padding: '0 14px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                    title={coordinates.length === 0 ? 'Chưa có dữ liệu tọa độ GPS để hiển thị trên bản đồ' : undefined}
-                  >
-                    Xem vị trí trên bản đồ
-                  </Button>
-                </div>
+<div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                      Tọa độ GPS ({coordinates.length})
+                    </span>
+                    <Button
+                      type="default"
+                      icon={<EnvironmentOutlined style={{ color: !hasCoordinates ? textTertiary : actionPrimary }} />}
+                      onClick={() => setMapModalOpen(true)}
+                      disabled={!hasCoordinates}
+                      style={{
+                        ...outlineButtonStyle,
+                        height: 32,
+                        fontSize: fontSizeSm,
+                        padding: '0 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        opacity: !hasCoordinates ? 0.6 : 1,
+                        cursor: !hasCoordinates ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Xem vị trí trên bản đồ
+                    </Button>
+                  </div>
+
                 <DetailTable
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                   dataSource={coordinates.map((p, idx) => ({ ...p, id: idx }))}
@@ -801,8 +784,9 @@ export default function AisSystemDetailContent({
                   ]}
                 />
               </div>
-            ),
-          },
+            );
+          })(),
+        },
 
           // ── Tab 3: File đính kèm ──
           {

@@ -958,7 +958,7 @@ export function AisSystemList() {
       });
     }
 
-    if (hasPerm('aissystem:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && (!isCreator || isCucLevel || isAdmin)) {
+    if (hasPerm('aissystem:approvec1') && record.approvalStatus === ApprovalStatus.PENDING_APPROVAL) {
       actions.push({
         key: 'approve_c1',
         label: 'Phê duyệt cấp Cảng vụ/Chi cục',

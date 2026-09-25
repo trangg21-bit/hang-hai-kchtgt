@@ -37,7 +37,7 @@ import { symbolService } from '../../services/symbolService';
 import { userService } from '../../services/userService';
 import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import * as themeTokenChk from '../../themetokenchk';
 import {
     actionPrimary,
@@ -437,6 +437,7 @@ export default function DaiTtdhListPage() {
 
   const { user: authUser } = useAuthStore();
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
 
   // ── Filter state ─────────────────────────────────────────────────
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);
@@ -552,8 +553,7 @@ export default function DaiTtdhListPage() {
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
 
   // ── Permission ──────────────────────────────────────────────────
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('daittdh', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('daittdh', hasExplicitPerm || hasPerm, authUser);
 
   // ── Drawer state: Hợp nhất Create & Edit (Chuẩn PierListPage) ──
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);

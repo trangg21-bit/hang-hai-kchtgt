@@ -69,7 +69,7 @@ import {
 } from '../../themetokenchk';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { canDeleteApprovalRecord, canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import {
     approveDryPort,
@@ -98,22 +98,14 @@ export function isDryPortDeleted(record?: Partial<DryPort> | null): boolean {
 const TAB_STATUS_LIST = [
   { key: 'all', label: 'Tất cả', color: actionPrimary },
   { key: 'DRAFT', label: 'Lưu tạm', color: statusDraft },
-  { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục', color: actionPrimary },
-  { key: 'APPROVED_LEVEL1', label: 'Chờ phê duyệt cấp Cục', color: statusAttention },
   { key: 'APPROVED', label: 'Đã phê duyệt', color: statusOperational },
-  { key: 'REJECTED_LEVEL1', label: 'Từ chối cấp Cảng vụ/Chi cục', color: statusCritical },
-  { key: 'REJECTED_LEVEL2', label: 'Từ chối cấp Cục', color: statusCritical },
   { key: 'ARCHIVED', label: 'Đã xóa', color: statusCritical },
 ];
 
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
   all: undefined,
   DRAFT: 'DRAFT',
-  PENDING_APPROVAL: 'PENDING_APPROVAL',
-  APPROVED_LEVEL1: 'APPROVED_LEVEL1',
   APPROVED: 'APPROVED',
-  REJECTED_LEVEL1: 'REJECTED_LEVEL1',
-  REJECTED_LEVEL2: 'REJECTED_LEVEL2',
   ARCHIVED: 'ARCHIVED',
 };
 
@@ -347,9 +339,9 @@ export default function DryPortListPage() {
     && (linkedAction === 'detail' || linkedAction === 'edit')
     && !!linkedRecordId;
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
   const { user: authUser } = useAuthStore();
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('dryport', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
+  const canSaveAndApprove = checkCanSaveAndApprove('dryport', hasExplicitPerm || hasPerm, authUser);
   const [filterCollapsed, setFilterCollapsed] = useState(false);
 
   const [activeTab, setActiveTab] = useState('all');
@@ -721,6 +713,9 @@ export default function DryPortListPage() {
       });
       setDataSource(res.data);
       setTotal(res.total);
+      if (activeTab && activeTab !== 'all') {
+        setTabCounts((prev) => (prev[activeTab] === res.total ? prev : { ...prev, [activeTab]: res.total }));
+      }
     } catch {
       setIsError(true);
     } finally {
@@ -1135,7 +1130,6 @@ export default function DryPortListPage() {
     const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
     const status = record.approvalStatus || '';
     const isDraft = status === 'DRAFT' || status === 'NHAP';
-    const isPending = status === 'PENDING' || status === 'PENDING_APPROVAL';
     actions.push({ key: 'view', label: 'Xem chi tiết', icon: icons.view, onClick: () => openDetailModal(record) });
     if (canEditApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport' })) {
       actions.push({
@@ -1151,10 +1145,8 @@ export default function DryPortListPage() {
       });
     }
     if (hasPerm('dryport:history')) actions.push({ key: 'history', label: 'Lịch sử', icon: icons.history, onClick: () => openHistory(record) });
-    if (isDraft && (hasPerm('dryport:approvec1') || hasPerm('dryport:approvec2'))) actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
-    if (isPending && (hasPerm('dryport:approvec1') || hasPerm('dryport:approvec2'))) {
+    if (isDraft && (hasPerm('dryport:approvec1') || hasPerm('dryport:approvec2') || canSaveAndApprove)) {
       actions.push({ key: 'approve', label: 'Phê duyệt', icon: icons.approve, onClick: () => openApproveModal(record) });
-      actions.push({ key: 'reject', label: 'Từ chối', icon: icons.reject, onClick: () => openRejectModal(record), danger: true });
     }
     if (canDeleteApprovalRecord(record.approvalStatus, { hasPerm, resource: 'dryport' })) actions.push({ key: 'delete', label: 'Xóa', icon: icons.delete, onClick: () => openDeleteModal(record), danger: true });
     return actions;
@@ -1214,8 +1206,6 @@ export default function DryPortListPage() {
       let count = tabCounts[tab.key] ?? 0;
       if (tab.key === 'all') {
         count = allChildSum;
-      } else if (tab.key === activeTab) {
-        count = total;
       }
       return {
         key: tab.key,
@@ -1225,7 +1215,7 @@ export default function DryPortListPage() {
         active: (activeTab || 'all') === tab.key,
       };
     });
-  }, [tabCounts, activeTab, total]);
+  }, [tabCounts, activeTab]);
 
 
 
@@ -1502,17 +1492,6 @@ export default function DryPortListPage() {
               >
                 Lưu tạm
               </Button>
-              <Button
-                type="primary"
-                onClick={() => {
-                  setActionType('submit');
-                  createFormRef.current?.submit('SUBMIT');
-                }}
-                loading={submitting && actionType === 'submit'}
-                style={primaryButtonStyle}
-              >
-                Lưu và gửi phê duyệt
-              </Button>
               {canSaveAndApprove && (
                 <Button
                   type="primary"
@@ -1583,21 +1562,6 @@ export default function DryPortListPage() {
                     </Button>
                   ) : null;
                 }
-                if (st === 'REJECTED_LEVEL1' || st === 'REJECTED_LEVEL2' || st.startsWith('REJECTED')) {
-                  return (
-                    <Button
-                      type="primary"
-                      onClick={() => {
-                        setActionType('submit');
-                        updateFormRef.current?.submit('SUBMIT');
-                      }}
-                      loading={submitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
-                    </Button>
-                  );
-                }
                 return (
                   <>
                     <Button
@@ -1609,17 +1573,6 @@ export default function DryPortListPage() {
                       style={outlineButtonStyle}
                     >
                       Lưu tạm
-                    </Button>
-                    <Button
-                      type="primary"
-                      onClick={() => {
-                        setActionType('submit');
-                        updateFormRef.current?.submit('SUBMIT');
-                      }}
-                      loading={submitting && actionType === 'submit'}
-                      style={primaryButtonStyle}
-                    >
-                      Lưu và gửi phê duyệt
                     </Button>
                     {canSaveAndApprove && (
                       <Button

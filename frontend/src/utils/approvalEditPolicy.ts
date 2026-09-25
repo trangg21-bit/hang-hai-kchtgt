@@ -252,9 +252,7 @@ export function canDeleteApprovalRecord(
 
   const perms = [
     ...(resource ? [`${resource}:delete`] : []),
-    // `admin:manage` chỉ là quyền quản trị chức năng, không phải bypass dữ
-    // liệu nghiệp vụ. Chỉ `admin:all` mới tương ứng với wildcard của backend.
-    'admin:all',
+    ...extraDeletePerms,
   ];
   return perms.some(checkPerm);
 }

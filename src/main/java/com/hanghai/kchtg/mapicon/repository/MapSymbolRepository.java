@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.mapicon.repository;
 
+import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import org.springframework.data.domain.Page;
@@ -7,12 +8,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse;
-import java.util.List;
-
+@Repository
 public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
 
     @Query("SELECT new com.hanghai.kchtg.mapicon.dto.MapSymbolOptionResponse(s.id, s.name, s.code, s.image) " +
@@ -37,14 +40,14 @@ public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
                            @Param("name") String name,
                            @Param("status") MapSymbolStatus status,
                            @Param("isDeleted") Boolean isDeleted,
-                           @Param("fromUpdatedDate") java.time.LocalDateTime fromUpdatedDate,
-                           @Param("toUpdatedDate") java.time.LocalDateTime toUpdatedDate,
+                           @Param("fromUpdatedDate") LocalDateTime fromUpdatedDate,
+                           @Param("toUpdatedDate") LocalDateTime toUpdatedDate,
                            Pageable pageable);
 
     @Query("SELECT MAX(CAST(SUBSTRING(s.code, 4) AS integer)) FROM MapSymbol s")
     Integer findMaxCodeNumber();
 
     @Query("SELECT s FROM MapSymbol s WHERE s.code = :code AND s.deletedAt IS NULL")
-    java.util.Optional<MapSymbol> findByCode(@Param("code") String code);
+    Optional<MapSymbol> findByCode(@Param("code") String code);
 }
 

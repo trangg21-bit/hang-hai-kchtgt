@@ -68,7 +68,7 @@ import {
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { StormShelterArea } from '../../types/port';
 import { canDeleteApprovalRecord, canEditApprovalRecord, normalizeApprovalStatus } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterDetailContent from './StormShelterDetailContent';
@@ -358,8 +358,8 @@ export default function StormShelterListPage() {
 
   const authUser = useAuthStore((s) => s.user);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
-  const canSaveAndApprove = checkCanSaveAndApprove('stormshelter', hasPerm, authUser) || (isAdmin && isCucLevelUser(authUser));
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
+  const canSaveAndApprove = checkCanSaveAndApprove('stormshelter', hasExplicitPerm || hasPerm, authUser);
   const userPermissions = authUser?.permissions || [];
   const isAuditViewer = userPermissions.includes('admin:manage') || userPermissions.includes('admin:operation');
   const defaultOrgUnitRef = useRef<string | undefined>(undefined);

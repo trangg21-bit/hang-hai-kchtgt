@@ -698,36 +698,42 @@ export default function InmarsatStationDetailContent({
           {
             key: 'gis',
             label: `Thông tin vị trí (${coordinates.length})`,
-            children: (
-              <div style={{ paddingTop: 6 }}>
-                <div style={{ ...sectionBoxStyle, marginBottom: 12 }}>
-                  <div className="chk-detail-grid">
-                    {[
-                      {
-                        label: 'Loại đối tượng',
-                        value:
-                          ({
-                            POINT: 'Đối tượng điểm',
-                            LINE: 'Đối tượng đường',
-                            POLYGON: 'Đối tượng vùng',
-                          } as Record<string, string>)[record?.geometryType || ''] ||
-                          record?.geometryType ||
-                          'Đối tượng điểm',
-                      },
-                      {
-                        label: 'Biểu tượng',
-                        value: (() => {
-                          const symId = record?.symbolId || record?.symbol || '';
-                          const sym = symbols.find(
-                            (s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId))
-                          );
-                          const symName = sym?.name || sym?.code || (symId ? String(symId) : 'Đài vệ tinh Inmarsat');
-                          const symImg = sym?.image
-                            ? sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
-                              ? sym.image
-                              : `data:image/png;base64,${sym.image}`
-                            : undefined;
-                          return (
+            children: (() => {
+              const hasCoordinates = coordinates.length > 0;
+              const hasLocation = hasCoordinates;
+              const symId = record?.symbolId || record?.symbol || '';
+              const sym = Array.isArray(symbols) ? symbols.find(
+                (s) => s.id === symId || s.code === symId || (symId && String(s.id) === String(symId))
+              ) : null;
+              const symName = sym?.name || sym?.code || (symId ? String(symId) : '');
+              const symImg = sym?.image
+                ? sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+                  ? sym.image
+                  : `data:image/png;base64,${sym.image}`
+                : undefined;
+
+              return (
+                <div style={{ paddingTop: 6 }}>
+                  <div style={{ ...sectionBoxStyle, marginBottom: 12 }}>
+                    <div className="chk-detail-grid">
+                      {[
+                        {
+                          label: 'Loại đối tượng',
+                          value: !hasLocation
+                            ? '—'
+                            : (({
+                                POINT: 'Đối tượng điểm',
+                                LINE: 'Đối tượng đường',
+                                POLYGON: 'Đối tượng vùng',
+                              } as Record<string, string>)[record?.geometryType || ''] ||
+                              record?.geometryType ||
+                              'Đối tượng điểm'),
+                        },
+                        {
+                          label: 'Biểu tượng',
+                          value: !hasLocation || (!symName && !symImg) ? (
+                            '—'
+                          ) : (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                               {symImg ? (
                                 <img
@@ -737,54 +743,57 @@ export default function InmarsatStationDetailContent({
                                   onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                 />
                               ) : null}
-                              {symName}
+                              {symName || '—'}
                             </span>
-                          );
-                        })(),
-                      },
-                      {
-                        label: 'Hệ quy chiếu',
-                        value:
-                          (record as any)?.coordinateSystem === 1
-                            ? 'WGS-84'
-                            : (record as any)?.coordinateSystem === 2
-                              ? 'VN-2000'
-                              : (record?.coordinateSystem ? String(record?.coordinateSystem) : 'WGS-84'),
-                      },
-                      {
-                        label: 'Quy tắc hiển thị',
-                        value: 'Độ, phút, giây (DMS)',
-                      },
-                    ].map((row, i) => (
-                      <div key={i} className="chk-detail-row">
-                        <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
-                        <span className="chk-detail-value">{row.value}</span>
-                      </div>
-                    ))}
+                          ),
+                        },
+                        {
+                          label: 'Hệ quy chiếu',
+                          value: !hasLocation
+                            ? '—'
+                            : ((record as any)?.coordinateSystem === 1 || String((record as any)?.coordinateSystem) === 'WGS-84'
+                                ? 'WGS-84'
+                                : (record as any)?.coordinateSystem === 2 || String((record as any)?.coordinateSystem) === 'VN-2000'
+                                  ? 'VN-2000'
+                                  : (record?.coordinateSystem ? String(record?.coordinateSystem) : 'WGS-84')),
+                        },
+                        {
+                          label: 'Quy tắc hiển thị',
+                          value: !hasLocation ? '—' : (record?.displayRule || 'Độ, phút, giây (DMS)'),
+                        },
+                      ].map((row, i) => (
+                        <div key={i} className="chk-detail-row">
+                          <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
+                          <span className="chk-detail-value">{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                    Tọa độ GPS ({coordinates.length})
-                  </span>
-                  <Button
-                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-                    onClick={() => setMapModalOpen(true)}
-                    style={{
-                      ...outlineButtonStyle,
-                      height: 32,
-                      fontSize: fontSizeSm,
-                      padding: '0 14px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    Xem vị trí trên bản đồ
-                  </Button>
-                </div>
-                <DetailTable
+                  <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                      Tọa độ GPS ({coordinates.length})
+                    </span>
+                    <Button
+                      icon={<EnvironmentOutlined style={{ color: !hasCoordinates ? textTertiary : actionPrimary }} />}
+                      onClick={() => setMapModalOpen(true)}
+                      disabled={!hasCoordinates}
+                      style={{
+                        ...outlineButtonStyle,
+                        height: 32,
+                        fontSize: fontSizeSm,
+                        padding: '0 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        opacity: !hasCoordinates ? 0.6 : 1,
+                        cursor: !hasCoordinates ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Xem vị trí trên bản đồ
+                    </Button>
+                  </div>
+                  <DetailTable
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                   dataSource={coordinates.map((p, idx) => ({ ...p, id: idx }))}
                   rowKey="id"
@@ -796,8 +805,9 @@ export default function InmarsatStationDetailContent({
                   ]}
                 />
               </div>
-            ),
-          },
+            );
+          })(),
+        },
 
           // ── Tab 3: File đính kèm ──
           {

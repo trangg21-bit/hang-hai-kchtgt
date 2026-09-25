@@ -920,7 +920,7 @@ export default function VtsSystemDetailContent({
                   loading={isLoadingInfra}
                   emptyText="Chưa có dữ liệu"
                   rowKey={(r: any) => r.id || r.infraName || r.name}
-                  scrollY="calc(100vh - 320px)"
+                  scrollY={DRAWER_TABLE_SCROLL_Y.detailViewWithFilter}
                   columns={[
                     { title: 'STT', width: 50 },
                     {

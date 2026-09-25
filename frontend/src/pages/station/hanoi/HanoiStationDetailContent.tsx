@@ -573,75 +573,95 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
           {
             key: 'gis',
             label: `Thông tin vị trí (${points.length})`,
-            children: (
-              <div style={{ paddingTop: 6 }}>
-                {/* ── Section 1: Thông số đối tượng bản đồ ── */}
-                <div style={{
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 8,
-                  padding: '12px 18px 8px 18px',
-                  marginBottom: 12,
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-                }}>
-                  <div className="chk-detail-grid">
-                    {[
-                      {
-                        label: 'Loại đối tượng',
-                        value:
-                          ({
-                            POINT: 'Đối tượng điểm',
-                            LINE: 'Đối tượng đường',
-                            POLYGON: 'Đối tượng vùng',
-                          } as Record<string, string>)[(record as any).geometryType || ''] ||
-                          (record as any).geometryType ||
-                          'Đối tượng điểm',
-                      },
-                      {
-                        label: 'Biểu tượng',
-                        value: (() => {
-                          const sym = symbolItem;
-                          const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : 'Đài TTXLTT Hà Nội');
-                          const symImg = sym?.iconUrl || sym?.image;
-                          return (
+            children: (() => {
+              const hasCoordinates = points.length > 0;
+              const hasLocation = hasCoordinates;
+              const sym = symbolItem;
+              const symName = sym?.name || sym?.code || (record.symbolId ? String(record.symbolId) : '');
+              const symImg = sym?.iconUrl || sym?.image;
+
+              return (
+                <div style={{ paddingTop: 6 }}>
+                  {/* ── Section 1: Thông số đối tượng bản đồ ── */}
+                  <div style={{
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    padding: '12px 18px 8px 18px',
+                    marginBottom: 12,
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                  }}>
+                    <div className="chk-detail-grid">
+                      {[
+                        {
+                          label: 'Loại đối tượng',
+                          value: !hasLocation
+                            ? '—'
+                            : (({
+                                POINT: 'Đối tượng điểm',
+                                LINE: 'Đối tượng đường',
+                                POLYGON: 'Đối tượng vùng',
+                              } as Record<string, string>)[(record as any).geometryType || ''] ||
+                              (record as any).geometryType ||
+                              'Đối tượng điểm'),
+                        },
+                        {
+                          label: 'Biểu tượng',
+                          value: !hasLocation || (!symName && !symImg) ? (
+                            '—'
+                          ) : (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                               {symImg ? <img src={symImg} alt="" style={{ width: 20, height: 20, objectFit: 'contain' }} /> : null}
-                              {symName}
+                              {symName || '—'}
                             </span>
-                          );
-                        })(),
-                      },
-                      {
-                        label: 'Hệ quy chiếu',
-                        value: (record as any).coordinateSystem === 2 ? 'VN-2000' : 'WGS-84',
-                      },
-                      {
-                        label: 'Quy tắc hiển thị',
-                        value: 'Độ, phút, giây (DMS)',
-                      },
-                    ].map((row, i) => (
-                      <div key={i} className="chk-detail-row">
-                        <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
-                        <span className="chk-detail-value">{row.value}</span>
-                      </div>
-                    ))}
+                          ),
+                        },
+                        {
+                          label: 'Hệ quy chiếu',
+                          value: !hasLocation
+                            ? '—'
+                            : ((record as any).coordinateSystem === 2 || String((record as any).coordinateSystem) === 'VN-2000'
+                                ? 'VN-2000'
+                                : 'WGS-84'),
+                        },
+                        {
+                          label: 'Quy tắc hiển thị',
+                          value: !hasLocation ? '—' : ((record as any).displayRule || 'Độ, phút, giây (DMS)'),
+                        },
+                      ].map((row, i) => (
+                        <div key={i} className="chk-detail-row">
+                          <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
+                          <span className="chk-detail-value">{row.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* ── Section 2: Tọa độ GPS ── */}
-                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
-                  <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                    Tọa độ GPS ({points.length})
-                  </span>
-                  <Button
-                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
-                    onClick={() => setMapModalOpen(true)}
-                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                  >
-                    Xem vị trí trên bản đồ
-                  </Button>
-                </div>
-                <DetailTable
+                  {/* ── Section 2: Tọa độ GPS ── */}
+                  <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                    <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
+                      Tọa độ GPS ({points.length})
+                    </span>
+                    <Button
+                      icon={<EnvironmentOutlined style={{ color: !hasCoordinates ? textTertiary : actionPrimary }} />}
+                      onClick={() => setMapModalOpen(true)}
+                      disabled={!hasCoordinates}
+                      style={{
+                        ...outlineButtonStyle,
+                        height: 32,
+                        fontSize: fontSizeSm,
+                        padding: '0 14px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        opacity: !hasCoordinates ? 0.6 : 1,
+                        cursor: !hasCoordinates ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Xem vị trí trên bản đồ
+                    </Button>
+                  </div>
+                  <DetailTable
                   scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
                   dataSource={points.map((p, i) => ({ ...p, _idx: i }))}
                   emptyText="Chưa có tọa độ GPS nào"
@@ -653,8 +673,9 @@ export const HanoiStationDetailContent: React.FC<HanoiStationDetailContentProps>
                   ]}
                 />
               </div>
-            ),
-          },
+            );
+          })(),
+        },
           {
             key: 'attachments',
             label: `File đính kèm (${attachmentList.length})`,

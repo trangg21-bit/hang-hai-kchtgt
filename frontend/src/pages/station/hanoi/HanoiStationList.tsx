@@ -985,7 +985,7 @@ export default function HanoiStationList() {
     const canSubmit = (record.approvalStatus === ApprovalStatus.DRAFT || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL1 || record.approvalStatus === ApprovalStatus.REJECTED_LEVEL2) &&
       (hasPerm('coastalstationhaiphong:update') || hasPerm('specialstation:update') || hasPerm('data:update') || isAdmin);
 
-    const canApproveL1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && isApproverL1Perm && (!isCreator || isCucLevel || isAdmin);
+    const canApproveL1 = record.approvalStatus === ApprovalStatus.PENDING_APPROVAL && isApproverL1Perm;
     const canApproveL2 = (record.approvalStatus === ApprovalStatus.APPROVED_LEVEL1 || (record.approvalStatus as string) === 'CHO_PD_CAP_CUC') && isApproverL2Perm && (!isCreator || isCucLevel || isAdmin) && (!isApproverL1 || isCucLevel || isAdmin);
 
     return [

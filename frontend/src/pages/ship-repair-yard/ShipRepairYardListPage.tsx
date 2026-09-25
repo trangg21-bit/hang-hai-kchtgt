@@ -79,8 +79,9 @@ import { gisCoordinatesToLines } from '../../utils/historyGisFormat';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import type { ShipRepairYard } from '../../types/port';
 import { canEditApprovalRecord } from '../../utils/approvalEditPolicy';
-import { checkCanSaveAndApprove, isCucLevelUser } from '../../hooks/useKchtPermissions';
-import { countStandardHistoryCards, getStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards, type ChangeHistoryRendererOptions } from '../../utils/changeHistoryRenderer';
+import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
+import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
+
 import ShipRepairYardDetailContent from './ShipRepairYardDetailContent';
 import ShipRepairYardForm from './ShipRepairYardForm';
 
@@ -458,18 +459,12 @@ export default function ShipRepairYardList() {
   } = useGisEmbeddedAction();
   const embeddedOpenedRef = useRef<string | null>(null);
   const hasPerm = usePermissionStore((s: any) => s.hasPermission);
+  const hasExplicitPerm = usePermissionStore((s: any) => s.hasExplicitPermission);
   const authUser = useAuthStore((s) => s.user);
-  const isAdmin = hasPerm?.('*') || hasPerm?.('admin:all');
   const canSaveAndApprove =
-    checkCanSaveAndApprove('shiprepairyard', hasPerm, authUser) ||
-    checkCanSaveAndApprove('shiprepairfacility', hasPerm, authUser) ||
-    checkCanSaveAndApprove('shipprepairfacility', hasPerm, authUser) ||
-    hasPerm?.('shiprepairyard:approvec2') ||
-    hasPerm?.('shiprepairfacility:approvec2') ||
-    hasPerm?.('shipprepairfacility:approve2') ||
-    hasPerm?.('shiprepairfacility:approve2') ||
-    hasPerm?.('shiprepairyard:approve2') ||
-    (isAdmin && isCucLevelUser(authUser));
+checkCanSaveAndApprove('shiprepairyard', hasExplicitPerm || hasPerm, authUser) ||
+    checkCanSaveAndApprove('shiprepairfacility', hasExplicitPerm || hasPerm, authUser);
+
   // ── Filter state ─────────────────────────────────────────────────
   const [managingUnitId, setManagingUnitId] = useState<string | undefined>();
   const defaultOrgUnitId = useRef<string | undefined>(undefined);

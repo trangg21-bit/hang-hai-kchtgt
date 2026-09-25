@@ -69,19 +69,20 @@ public class InfrastructureApprovalService {
                     + currentStatus.getLabel());
         }
 
-        // Kiểm tra cấp đơn vị của người gửi (Rule 14)
+        // Kiểm tra cấp đơn vị của người gửi hoặc người gửi có quyền phê duyệt cấp 1 (Rule 14 cập nhật)
         boolean isDepartmentLevel = isDepartmentLevelUser(userId);
+        boolean hasC1 = hasApproveC1Permission(userId, refType);
 
         ApprovalStatus nextStatus;
-        if (isDepartmentLevel) {
-            // Cấp Cục gửi -> Bỏ qua vòng 1, sang thẳng Chờ Cục duyệt (APPROVED_LEVEL1)
+        if (isDepartmentLevel || hasC1) {
+            // Cấp Cục gửi hoặc Cán bộ cấp Cảng vụ/Chi cục có quyền C1 gửi -> Vào thẳng "Chờ Cục duyệt" (APPROVED_LEVEL1)
             nextStatus = ApprovalStatus.APPROVED_LEVEL1;
             entity.setApproverLevel1(userId);
             entity.setApprovedDateLevel1(LocalDateTime.now());
             if (content != null && !content.trim().isEmpty()) {
                 entity.setLevel1ApprovalContent(content.trim());
             } else {
-                entity.setLevel1ApprovalContent("Cấp Cục gửi trực tiếp");
+                entity.setLevel1ApprovalContent(isDepartmentLevel ? "Cấp Cục gửi trực tiếp" : "Cấp Cảng vụ/Chi cục phê duyệt và gửi Cục");
             }
         } else {
             // Cấp Cảng vụ / Chi cục gửi -> Chờ Cảng vụ duyệt (PENDING_APPROVAL)
@@ -122,11 +123,6 @@ public class InfrastructureApprovalService {
         ApprovalStatus currentStatus = entity.getApprovalStatus();
         if (currentStatus != ApprovalStatus.PENDING_APPROVAL && currentStatus != ApprovalStatus.PROPOSED) {
             throw new IllegalStateException("Chỉ có thể phê duyệt cấp Cảng vụ từ trạng thái 'Chờ phê duyệt cấp Cảng vụ/Chi cục'");
-        }
-
-        // Quy tắc chống tự duyệt (BR-015): Đối với tài khoản cấp dưới, người tạo không được tự phê duyệt
-        if (!isDepartmentLevelUser(userId) && entity.getCreatedBy() != null && entity.getCreatedBy().equals(userId)) {
-            throw new IllegalStateException("Bạn không thể tự phê duyệt bản ghi do chính mình tạo hoặc đề xuất");
         }
 
         if (isRejectDecision(decision)) {
@@ -431,6 +427,74 @@ public class InfrastructureApprovalService {
         return ApprovalStatus.REJECTED.name().equals(upper)
                 || ApprovalStatus.REJECTED_LEVEL1.name().equals(upper)
                 || ApprovalStatus.REJECTED_LEVEL2.name().equals(upper);
+    }
+
+    public boolean hasApproveC1Permission(UUID userId, InfrastructureType refType) {
+        Set<String> perms = SecurityUtils.getCurrentUserPermissions();
+        if ((perms == null || perms.isEmpty()) && userId != null) {
+            try {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    perms = user.getAllPermissions();
+                }
+            } catch (Exception e) {
+                log.warn("Không thể tải quyền của người dùng {}: {}", userId, e.getMessage());
+            }
+        }
+        if (perms == null || perms.isEmpty()) {
+            return false;
+        }
+        if (perms.contains("*") || perms.contains("admin:all")) {
+            return true;
+        }
+        String resource = resolveResourceKey(refType);
+        if (resource != null && !resource.isBlank()) {
+            String r = resource.toLowerCase();
+            return perms.contains(r + ":approvec1")
+                    || perms.contains(r + ":approve_level1")
+                    || perms.contains(r + ":approvel1")
+                    || perms.contains(r + ":approve:c1")
+                    || perms.contains(r + ":approve");
+        }
+        return perms.stream().anyMatch(p -> p.endsWith(":approvec1") || p.endsWith(":approvel1") || p.endsWith(":approve:c1"));
+    }
+
+    public static String resolveResourceKey(InfrastructureType refType) {
+        if (refType == null) return null;
+        return switch (refType) {
+            case SEAPORT -> "port";
+            case PORT_TERMINAL -> "berth";
+            case PIER -> "pier";
+            case DRY_PORT -> "dryport";
+            case WATER_AREA -> "waterzone";
+            case DIKE_REVETMENT -> "dikerevetment";
+            case NAVIGATION_CHANNEL -> "navigationchannel";
+            case SHIP_REPAIR_FACILITY, SHIP_REPAIR_YARD -> "shiprepairyard";
+            case LIGHTHOUSE -> "lighthouse";
+            case BUOY -> "buoy";
+            case VTS_SYSTEM -> "vts";
+            case RADAR_STATION, RADAR_STATION_LEGACY -> "radarstation";
+            case BUOY_BERTH -> "buoyberth";
+            case ANCHORAGE_AREA -> "anchorage";
+            case TRANSSHIPMENT_AREA -> "transferarea";
+            case STORM_SHELTER_AREA -> "stormshelterarea";
+            case DAI_TTDH -> "daittdh";
+            case COASTAL_RADIO_STATION -> "coastalstation";
+            case INMARSAT_STATION -> "coastalstationinmarsat";
+            case COSPAS_SARSAT_STATION -> "coastalstationcospassarsat";
+            case LRIT_STATION -> "lritstation";
+            case HANOI_STATION -> "coastalstationhaiphong";
+            case BUOY_STATION -> "buoystation";
+            case VTS_OPERATION_CENTER -> "vtsoperationcenter";
+            case AIS_SYSTEM -> "aissystem";
+            case CCTV -> "cctv";
+            case VHF -> "vhf";
+            case SCADA -> "scada";
+            case TRANSMISSION -> "transmission";
+            case VTS_ASSIST -> "vtsassist";
+            case SEAPORT_THROUGHPUT -> "seaportthroughput";
+            default -> refType.name().toLowerCase().replace("_", "");
+        };
     }
 
     private boolean isApproveDecision(String decision) {

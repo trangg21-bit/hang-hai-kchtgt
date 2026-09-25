@@ -137,7 +137,7 @@ describe('useKchtPermissions Unit Tests', () => {
   });
 
   describe('Approval Separation of Duties (Rule 12 - 2-level mode)', () => {
-    it('prevents creator from approving Level 1 unless Cuc level or Admin', () => {
+    it('allows creator to approve Level 1 when holding approvec1 permission', () => {
       // User is CVHH (Cảng vụ)
       useAuthStore.setState({
         user: {
@@ -155,9 +155,9 @@ describe('useKchtPermissions Unit Tests', () => {
       const otherRecord = { id: 'r1', createdBy: 'someone_else', approvalStatus: 'PENDING_APPROVAL' };
       expect(perms.canApproveL1(otherRecord)).toBe(true);
 
-      // Record created by self -> Blocked by separation of duties
+      // Record created by self -> Allowed because user has approvec1 permission
       const ownRecord = { id: 'r2', createdBy: 'user-cv', approvalStatus: 'PENDING_APPROVAL' };
-      expect(perms.canApproveL1(ownRecord)).toBe(false);
+      expect(perms.canApproveL1(ownRecord)).toBe(true);
     });
 
     it('allows Cuc level to approve Level 1 even if created by Cuc officer', () => {
@@ -249,9 +249,9 @@ describe('useKchtPermissions Unit Tests', () => {
       expect(perms.canApproveL1(pendingRec)).toBe(true);
       expect(perms.canReject(pendingRec)).toBe(true);
 
-      // Creator cannot approve own record in 1-level mode
+      // Creator can approve own record in 1-level mode when having approve permission
       const ownPendingRec = { id: 'b3', createdBy: 'officer1', approvalStatus: 'PENDING_APPROVAL' };
-      expect(perms.canApproveL1(ownPendingRec)).toBe(false);
+      expect(perms.canApproveL1(ownPendingRec)).toBe(true);
     });
   });
 });

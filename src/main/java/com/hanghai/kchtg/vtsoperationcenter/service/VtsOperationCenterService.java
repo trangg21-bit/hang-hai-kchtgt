@@ -175,7 +175,8 @@ public class VtsOperationCenterService {
         if (request.isSubmitForApproval() && initialStatus == ApprovalStatus.APPROVED) {
             throw new IllegalArgumentException("Không thể vừa gửi phê duyệt vừa phê duyệt trực tiếp");
         }
-        if (initialStatus == ApprovalStatus.PENDING_APPROVAL && approvalService.isDepartmentLevelUser(userId)) {
+        if (initialStatus == ApprovalStatus.PENDING_APPROVAL
+                && (approvalService.isDepartmentLevelUser(userId) || approvalService.hasApproveC1Permission(userId, InfrastructureType.VTS_OPERATION_CENTER))) {
             initialStatus = ApprovalStatus.APPROVED_LEVEL1;
         }
         if (initialStatus == ApprovalStatus.APPROVED) {

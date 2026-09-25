@@ -949,8 +949,6 @@ export default function BeaconStationList() {
 
     const st = record.status || '';
     const currentUserId = useAuthStore.getState().user?.userId;
-    const creatorId = record.submittedBy || record.createdBy;
-    const isCreator = Boolean(creatorId && currentUserId && String(creatorId) === String(currentUserId));
     const isApprover1 = Boolean(record.approverLevel1 && currentUserId && String(record.approverLevel1) === String(currentUserId));
 
     const actions: any[] = [];
@@ -968,8 +966,8 @@ export default function BeaconStationList() {
     if (['DRAFT', 'PROPOSED', 'REJECTED_LEVEL1', 'REJECTED_LEVEL2'].includes(st) && (hasPerm('beaconstation:update') || hasPerm('beaconstation:create'))) {
       actions.push({ key: 'submit', label: 'Gửi phê duyệt', icon: themeTokenChk.icons.submit, onClick: () => openSubmitModal(record) });
     }
-    // Cấp 1 (Cảng vụ/Chi cục) - chống tự duyệt (4-eyes)
-    if (hasPerm('beaconstation:approvec1') && (st === 'PENDING_APPROVAL' || st === 'PROPOSED') && !isCreator) {
+    // Cấp 1 (Cảng vụ/Chi cục)
+    if (hasPerm('beaconstation:approvec1') && (st === 'PENDING_APPROVAL' || st === 'PROPOSED')) {
       actions.push({ key: 'approveC1', label: 'Phê duyệt cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.approve, onClick: () => openApproveModal(record, 'c1') });
       actions.push({ key: 'rejectC1', label: 'Từ chối cấp Cảng vụ/Chi cục', icon: themeTokenChk.icons.reject, danger: true, onClick: () => openRejectModal(record, 'c1') });
     }
