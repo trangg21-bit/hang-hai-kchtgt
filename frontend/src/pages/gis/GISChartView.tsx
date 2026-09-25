@@ -96,6 +96,7 @@ import MapToolbar from '../../components/gis/MapToolbar';
 import { getPopupValueByPath, resolveVmdPopupFields } from './vmdPopupFields';
 import {
   buildKchtScreenPath,
+  isKchtSearchResultCompatibleWithFeature,
   resolveKchtCustomFeatureReference,
   resolveKchtInfrastructureType,
 } from './kchtGisDetailRouting';
@@ -2245,12 +2246,24 @@ export default function GISChartView() {
     const resultsById = new Map(
       infrastructureResults.map((record) => [String(record.id), record]),
     );
+    const findMatchingInfrastructureResult = (feature: any) => {
+      const featureReference = resolveKchtCustomFeatureReference(feature);
+      const candidateIds = [feature.id, featureReference.referenceId]
+        .filter((value): value is string => value !== undefined && value !== null && String(value).trim() !== '')
+        .map(String);
+
+      for (const candidateId of candidateIds) {
+        const candidate = resultsById.get(candidateId);
+        if (!candidate) continue;
+        if (isKchtSearchResultCompatibleWithFeature(feature, candidate)) {
+          return candidate;
+        }
+      }
+      return undefined;
+    };
     const selectedIds = new Set(selectedRowKeys.map(String));
     const visibleCustomFeatures = customGisFeatures.filter((feature) => {
-      const featureId = String(feature.id);
-      const featureReference = resolveKchtCustomFeatureReference(feature);
-      const referenceId = featureReference.referenceId || '';
-      const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
+      const matchingResult = findMatchingInfrastructureResult(feature);
 
       if (matchingResult) {
         if (!selectedIds.has(String(matchingResult.id))) {
@@ -2267,8 +2280,7 @@ export default function GISChartView() {
       try {
         const featureId = String(feature.id);
         const featureReference = resolveKchtCustomFeatureReference(feature);
-        const referenceId = featureReference.referenceId || '';
-        const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
+        const matchingResult = findMatchingInfrastructureResult(feature);
         let layer: any = null;
         let interactionPosition: [number, number] | null = null;
         let hitGeometry: MapHitGeometry | null = null;
