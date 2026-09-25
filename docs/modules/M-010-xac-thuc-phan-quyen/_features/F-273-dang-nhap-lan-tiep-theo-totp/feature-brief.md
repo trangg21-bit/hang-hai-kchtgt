@@ -26,13 +26,15 @@ Xác thực 2 yếu tố (2FA) cho người dùng đã có TOTP được cấu h
 - Người dùng đã có TOTP configured (từ F-272) sẽ được yêu cầu nhập mã TOTP mỗi khi đăng nhập — không có cơ chế bypass.
 - JWT được cấp chỉ sau khi cả 2 yếu tố (something you know + something you have) đều hợp lệ.
 
-## Flow Summary
-
-1. Client gửi request POST `/auth/login` với `email/phone` + `password`.
-2. Server tìm user theo email/phone, kiểm tra trạng thái tài khoản:
+1. Client lấy mã bảo vệ hình ảnh qua GET `/api/auth/captcha`, nhận `captchaId` và `imageBase64`.
+2. Client gửi request POST `/api/auth/login` với `email/phone` + `password` + `captchaId` + `captchaCode`.
+3. Server kiểm tra mã CAPTCHA trước tiên qua `CaptchaService`:
+   - Nếu CAPTCHA không hợp lệ hoặc hết hạn → reject ngay (HTTP 400), xóa mã khỏi cache (One-Time-Use).
+   - Nếu CAPTCHA hợp lệ → tiếp tục kiểm tra credentials.
+4. Server tìm user theo email/phone, kiểm tra trạng thái tài khoản:
    - Nếu tài khoản bị khóa (do F-277) → reject ngay, trả lỗi `ACCOUNT_LOCKED`.
    - Nếu password không match → tăng counter `failed_login_count`, nếu ≥ threshold (F-277) → lock account.
-3. Nếu password match:
+5. Nếu password match:
    - Nếu `is_totp_enabled = false` (trường hợp edge: user đã đăng ký F-271 nhưng chưa F-272) → redirect về flow F-272 (bắt buộc setup TOTP trước khi đăng nhập).
    - Nếu `is_totp_enabled = true` → yêu cầu bước 2: nhập TOTP code.
 4. Client gửi request POST `/auth/login/totp` với `user_id` (hoặc session token) + `totp_code` 6 chữ số.

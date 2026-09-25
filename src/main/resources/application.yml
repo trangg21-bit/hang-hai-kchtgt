@@ -91,6 +91,14 @@ totp:
   lockout-duration-minutes: 15
   session-ttl-seconds: 300
 
+# -- CAPTCHA Configuration --------------------------------------------
+captcha:
+  enabled: ${CAPTCHA_ENABLED:true}
+  ttl-seconds: ${CAPTCHA_TTL_SECONDS:120}
+  code-length: ${CAPTCHA_CODE_LENGTH:5}
+  width: 130
+  height: 40
+
 # -- Encryption Configuration ------------------------------------------------
 encryption:
   key: ${ENCRYPTION_KEY:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
