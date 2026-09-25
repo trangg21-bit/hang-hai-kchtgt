@@ -264,9 +264,11 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
   const [symbols, setSymbols] = useState<any[]>(providedSymbols);
   const [coordinateList, setCoordinateList] = useState<DmsPoint[]>([]);
   const watchedGeometryType = Form.useWatch('geometryType', form);
-  const effectiveGeometryType = watchedGeometryType || record?.geometryType;
+  // Loại đối tượng đang được chọn trên form (không fallback về record cũ khi đã xóa hoặc chưa chọn)
+  const effectiveGeometryType = watchedGeometryType !== undefined ? watchedGeometryType : undefined;
+  // Biểu tượng chỉ bắt buộc khi người dùng có chọn Loại đối tượng
+  const isGeometryTypeSelected = Boolean(effectiveGeometryType);
   const hasCoordinates = coordinateList.some((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null));
-  const hasLocation = Boolean(effectiveGeometryType || hasCoordinates);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [attachments, setAttachments] = useState<VtsOperationCenterAttachment[]>([]);
@@ -665,6 +667,15 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
           return;
         }
         wkt = serializeCoordinatesToWkt(coordResult.validCoords, currentGeometryType || 'POINT');
+      }
+
+      // Biểu tượng chỉ bắt buộc khi người dùng có chọn Loại đối tượng
+      if (currentGeometryType && !currentSymbolId) {
+        toast.error('Vui lòng chọn biểu tượng bản đồ');
+        setGpsError('Vui lòng chọn biểu tượng bản đồ');
+        setTabKey('gis');
+        setIsSubmitting(false);
+        return;
       }
 
       const payload = {
@@ -1104,8 +1115,8 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                             <Form.Item
                               name="symbolId"
                               {...labelProps('Biểu tượng')}
-                              required={hasLocation}
-                              rules={hasLocation ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
+                              required={isGeometryTypeSelected}
+                              rules={isGeometryTypeSelected ? [{ required: true, message: 'Vui lòng chọn biểu tượng bản đồ' }] : []}
                               style={{ marginBottom: spaceFormField }}
                             >
                               <Select
@@ -1113,7 +1124,7 @@ export const VtsOperationCenterForm: React.FC<VtsOperationCenterFormProps> = ({
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                disabled={!effectiveGeometryType}
+                                disabled={!isGeometryTypeSelected}
                                 filterOption={(input, option) =>
                                   normalizeSearchText(String(option?.label || '')).includes(normalizeSearchText(input))
                                 }

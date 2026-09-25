@@ -18,7 +18,7 @@ import { DataTable, ScreenHeader } from '../../components/list-view';
 import FilterTableLayout from '../../components/list-view/FilterTableLayout';
 import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { normalizeSearchText, OrgUnitTreeSelect, resolveDefaultOrgUnitId, resolveOrgLevel2Name } from '../../components/org-unit';
+import { normalizeSearchText, OrgUnitTreeSelect, resolveDefaultOrgUnitId } from '../../components/org-unit';
 import { AppDrawer } from '../../components/shared/AppDrawer';
 import ApprovalModal from '../../components/shared/ApprovalModal';
 import DeleteConfirmModal from '../../components/shared/DeleteConfirmModal';
@@ -393,6 +393,7 @@ export default function PierListPage() {
   const [filterProvince, setFilterProvince] = useState<string | undefined>();
   const [filterOperationalStatus, setFilterOperationalStatus] = useState<string | undefined>();
   const [filterWaterwayId, setFilterWaterwayId] = useState<string | undefined>();
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; name: string; seaportId?: string }>>([]);
   const [filterConstructionGrade, setFilterConstructionGrade] = useState<number | undefined>();
   const [filterStructureType, setFilterStructureType] = useState<number | undefined>();
   const [filterOperationalFunction, setFilterOperationalFunction] = useState<string | undefined>();
@@ -452,13 +453,13 @@ export default function PierListPage() {
     return m;
   }, [allPorts]);
   const allPortOptions = useMemo(() => {
-    return allPorts.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+    return allPorts.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts]);
   const portOptions = useMemo(() => {
     const filtered = (!orgUnit || orgUnit === '__all__')
       ? allPorts
       : allPorts.filter((p) => !p.orgUnitId || p.orgUnitId === orgUnit);
-    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || p.id }));
+    return filtered.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts, orgUnit]);
   const [historyBerthMap, setHistoryBerthMap] = useState<Map<string, string>>(new Map());
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
@@ -677,7 +678,7 @@ export default function PierListPage() {
   }, []);
 
   useEffect(() => {
-    (async () => { try { const params: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit; if (filterPortId) params.portId = filterPortId; params.approvalStatus = 'APPROVED'; const r = await berthCRUD.search(params); setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthName }))); } catch {} })();
+    (async () => { try { const params: any = { page: 1, pageSize: 1000 }; if (orgUnit && orgUnit !== '__all__') params.orgUnitId = orgUnit; if (filterPortId) params.portId = filterPortId; params.approvalStatus = 'APPROVED'; const r = await berthCRUD.search(params); setBerthOptions((r.data || []).map((b: any) => ({ value: b.id, label: b.berthCode ? `${b.berthCode} - ${b.berthName || ''}` : (b.berthName || b.id) }))); } catch {} })();
   }, [orgUnit, filterPortId]);
 
   useEffect(() => {
@@ -688,16 +689,26 @@ export default function PierListPage() {
     navigationChannelCRUD.getOptions()
       .then((items) => {
         const m = new Map<string, string>();
+        const list: Array<{ id: string; name: string; seaportId?: string }> = [];
         items.forEach(n => {
           const code = n.channelCode?.trim();
           const name = n.channelName?.trim();
           const label = code && name ? `${code} - ${name}` : (code || name || '');
           m.set(n.id, label);
+          list.push({ id: n.id, name: label, seaportId: n.seaportId });
         });
         setWaterwayMap(m);
+        setAllWaterways(list);
       })
       .catch(() => {});
   }, []);
+
+  const filteredWaterwayOptions = useMemo(() => {
+    if (!filterPortId) return [];
+    return allWaterways
+      .filter((w) => w.seaportId && String(w.seaportId).toLowerCase() === String(filterPortId).toLowerCase())
+      .map((w) => ({ value: w.id, label: w.name }));
+  }, [filterPortId, allWaterways]);
 
   useEffect(() => {
     portCRUD.getOptions()
@@ -947,7 +958,7 @@ export default function PierListPage() {
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
           <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn cảng biển" allowClear
-            value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); }}
+            value={filterPortId} onChange={v => { setFilterPortId(v); setFilterBerthId(undefined); setFilterWaterwayId(undefined); }}
             options={portOptions} showSearch filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -958,9 +969,11 @@ export default function PierListPage() {
         </div>
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder="Chọn luồng hàng hải" allowClear showSearch
+          <Select style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} placeholder={!filterPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải'} allowClear showSearch
+            disabled={!filterPortId}
             value={filterWaterwayId} onChange={v => setFilterWaterwayId(v)}
-            options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+            options={filteredWaterwayOptions}
+            notFoundContent="Không có luồng hàng hải thuộc cảng biển"
             filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} />
         </div>
         <div style={{ marginBottom: 12 }}>
@@ -1103,7 +1116,14 @@ export default function PierListPage() {
         </div>
       ) },
     { label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-      render: (v: string | null, r: Pier) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span> },
+      render: (v: string | null, r: Pier) => {
+        const name = orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || '';
+        return (
+          <span title={name} style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {name}
+          </span>
+        );
+      } },
     { label: 'Loại kết cấu cầu cảng', dataIndex: 'structureType', key: 'structureType', width: 240,
       render: (v?: number) => <span style={{ fontSize: fontSizeMd, color: textPrimary }}>{v != null ? (STRUCTURE_TYPE_OPTIONS.find(o => o.value === v)?.label || v.toString()) : ''}</span> },
     { label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200,
@@ -1143,7 +1163,7 @@ export default function PierListPage() {
       ...col,
       sortOrder: col.sortable ? sortOrderFor(col.key) : undefined,
     }));
-  }, [page, pageSize, organizations, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
+  }, [page, pageSize, orgMap, berthOptions, portMap, waterwayMap, userMap, auditColumns, sortOrderFor, openDetailDrawer]);
 
   const headerActions = useMemo(() => {
     const actions: Array<{ key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon?: React.ReactNode; onClick: () => void }> = [];

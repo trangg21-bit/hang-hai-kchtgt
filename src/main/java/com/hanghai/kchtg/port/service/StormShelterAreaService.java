@@ -137,8 +137,21 @@ public class StormShelterAreaService {
         applySaveAction(entity, action);
 
         StormShelterArea saved = stormShelterAreaRepository.saveAndFlush(entity);
-        persistGisAndMooring(saved, request.getGeometryType(), request.getCoordinates(),
-                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
+        GisGeometryType createGeomType = request.getGeometryType();
+        String createCoords = request.getCoordinates();
+        if (createGeomType == null && createCoords != null && !createCoords.isBlank()) {
+            String clean = createCoords.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+            if (clean.startsWith("POLYGON")) {
+                createGeomType = GisGeometryType.POLYGON;
+            } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                createGeomType = GisGeometryType.LINE;
+            } else {
+                createGeomType = GisGeometryType.POINT;
+            }
+        }
+        boolean hasCreateCoords = createCoords != null && !createCoords.isBlank();
+        persistGisAndMooring(saved, createGeomType, createCoords,
+                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas(), false, hasCreateCoords);
         evictAfterCommit();
 
         return toResponse(saved);
@@ -207,9 +220,33 @@ public class StormShelterAreaService {
         entity.setOpeningAnnouncementDate(request.getOpeningAnnouncementDate());
         entity.setPublicDecision(request.getPublicDecision());
         entity.setInvestmentAgreement(request.getInvestmentAgreement());
-        entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setCoordinateSystem(request.getCoordinateSystem());
-        entity.setDisplayRule(request.getDisplayRule());
+        GisGeometryType geomType = request.getGeometryType();
+        if (geomType == null && coordinates != null && !coordinates.isBlank()) {
+            String clean = coordinates.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+            if (clean.startsWith("POLYGON")) {
+                geomType = GisGeometryType.POLYGON;
+            } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                geomType = GisGeometryType.LINE;
+            } else {
+                geomType = GisGeometryType.POINT;
+            }
+        }
+
+        boolean hasCoordinates = coordinates != null && !coordinates.isBlank();
+        boolean hasGeometryType = geomType != null;
+        boolean shouldClearLocation = (request.isFieldPresent("coordinates") || request.isFieldPresent("geometryType"))
+                && !hasCoordinates
+                && (request.getGeometryType() == null);
+
+        if (shouldClearLocation) {
+            entity.setMapSymbolId(null);
+            entity.setCoordinateSystem(null);
+            entity.setDisplayRule(null);
+        } else if (hasGeometryType && hasCoordinates) {
+            entity.setMapSymbolId(request.getMapSymbolId());
+            entity.setCoordinateSystem(request.getCoordinateSystem() != null ? request.getCoordinateSystem() : 1);
+            entity.setDisplayRule(request.getDisplayRule() != null ? request.getDisplayRule() : 1);
+        }
 
         ApprovalStatus previousApprovalStatus = snapshot.getApprovalStatus();
         boolean wasApproved = previousApprovalStatus == ApprovalStatus.APPROVED
@@ -250,26 +287,34 @@ public class StormShelterAreaService {
         }
 
         StormShelterArea saved = stormShelterAreaRepository.saveAndFlush(entity);
-        persistGisAndMooring(saved, request.getGeometryType(), coordinates,
-                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas());
+        persistGisAndMooring(saved, geomType, coordinates,
+                request.getLongitude(), request.getLatitude(), request.getMooringWaterAreas(), shouldClearLocation, hasGeometryType && hasCoordinates);
 
         // Chỉ ghi lịch sử khi hồ sơ đã được duyệt (chuẩn PortService: 2 dòng GIS riêng + summary khu nước).
         if (wasApproved) {
-            if (coordinates != null && !coordinates.trim().isEmpty()) {
-                GisGeometryType geomType = request.getGeometryType() != null
-                        ? request.getGeometryType() : GisGeometryType.POINT;
+            if (hasGeometryType && hasCoordinates) {
+                GisGeometryType effectiveGeomType = geomType != null ? geomType : GisGeometryType.POINT;
                 String newWkt = coordinates.trim();
                 boolean wktChanged = oldWkt == null || !com.hanghai.kchtg.common.util.WktCoordinateUtils.coordinatesEqual(newWkt, oldWkt);
                 if (wktChanged) {
                     changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Tọa độ GIS",
-                            (oldWkt == null || oldWkt.trim().isEmpty()) ? null : oldWkt.trim(),
+                            (oldWkt == null || oldWkt.trim().isEmpty()) ? "Chưa có" : oldWkt.trim(),
                             newWkt, actorId);
                 }
-                boolean typeChanged = request.getGeometryType() != null && oldGeomType != geomType;
+                boolean typeChanged = oldGeomType != null && oldGeomType != effectiveGeomType;
                 if (typeChanged) {
                     changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Loại đối tượng GIS",
-                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : null,
-                            geometryTypeLabel(geomType), actorId);
+                            oldGeomType != null ? geometryTypeLabel(oldGeomType) : "Chưa có",
+                            geometryTypeLabel(effectiveGeomType), actorId);
+                }
+            } else if (shouldClearLocation && (oldWkt != null || oldGeomType != null)) {
+                if (oldWkt != null && !oldWkt.trim().isEmpty()) {
+                    changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Tọa độ GIS",
+                            oldWkt.trim(), "Chưa có", actorId);
+                }
+                if (oldGeomType != null) {
+                    changeHistoryService.insertChangeRecord("StormShelterArea", saved.getId(), "Loại đối tượng GIS",
+                            geometryTypeLabel(oldGeomType), "Chưa có", actorId);
                 }
             }
 
@@ -788,9 +833,24 @@ public class StormShelterAreaService {
             response.setSpatialId(spatialObj.getId());
             if (spatialObj.getGeometryType() != null) {
                 response.setGeometryType(spatialObj.getGeometryType());
+            } else if (spatialObj.getCoordinates() != null) {
+                String clean = spatialObj.getCoordinates().trim().replaceFirst("(?i)^SRID=\\d+;", "").trim().toUpperCase();
+                if (clean.startsWith("POLYGON")) {
+                    response.setGeometryType(GisGeometryType.POLYGON);
+                } else if (clean.startsWith("LINESTRING") || clean.startsWith("LINE")) {
+                    response.setGeometryType(GisGeometryType.LINE);
+                } else {
+                    response.setGeometryType(GisGeometryType.POINT);
+                }
             }
             response.setCoordinates(spatialObj.getCoordinates());
             parseLatLng(spatialObj.getCoordinates(), response);
+            if (response.getCoordinateSystem() == null) {
+                response.setCoordinateSystem(1);
+            }
+            if (response.getDisplayRule() == null) {
+                response.setDisplayRule(1);
+            }
         }
         response.setMooringWaterAreas(toMooringWaterAreaResponses(entity.getId()));
 
@@ -800,7 +860,7 @@ public class StormShelterAreaService {
     private void parseLatLng(String coordinates, StormShelterAreaResponse response) {
         if (coordinates == null || coordinates.isBlank()) return;
         try {
-            String trimmed = coordinates.trim();
+            String trimmed = coordinates.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim();
             if (trimmed.toUpperCase().startsWith("POINT")) {
                 int start = trimmed.indexOf('(') + 1;
                 int end = trimmed.indexOf(')', start);
@@ -837,6 +897,15 @@ public class StormShelterAreaService {
         } catch (Exception ignored) { }
     }
 
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) {
+            return GisSpatialObjectType.POINT_OTHER;
+        } else if (geomType == GisGeometryType.LINE) {
+            return GisSpatialObjectType.LINE_OTHER;
+        }
+        return GisSpatialObjectType.POLYGON_STORM_SHELTER;
+    }
+
     private List<StormShelterMooringWaterAreaResponse> toMooringWaterAreaResponses(UUID stormShelterAreaId) {
         return stormShelterMooringWaterAreaRepository.findByStormShelterAreaId(stormShelterAreaId).stream().map(wa -> {
             List<StormShelterMooringWaterAreaAnchorPointResponse> points = stormShelterMooringWaterAreaAnchorPointRepository
@@ -855,31 +924,45 @@ public class StormShelterAreaService {
 
     private void persistGisAndMooring(StormShelterArea saved, GisGeometryType geometryType, String coordinates,
                                       BigDecimal longitude, BigDecimal latitude,
-                                      List<StormShelterMooringWaterAreaRequest> mooringWaterAreas) {
-        String wkt = coordinates;
-        if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
-            wkt = "POINT(" + longitude + " " + latitude + ")";
-        }
-        if (wkt != null && !wkt.trim().isEmpty()) {
-            GisGeometryType geomType = geometryType != null ? geometryType : GisGeometryType.POINT;
-            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    saved.getSpatialId(), saved.getStormShelterName(), "STORM_SHELTER_" + saved.getStormShelterCode(),
-                    geomType, GisSpatialObjectType.POLYGON_STORM_SHELTER, wkt, saved.getId(),
-                    InfrastructureType.STORM_SHELTER_AREA);
-            saved.setSpatialId(spatialObj.getId());
-            stormShelterAreaRepository.saveAndFlush(saved);
-        } else if (coordinates != null) {
-            // coordinates = '' (có mặt nhưng rỗng) = người dùng đã XÓA TRẮNG vị trí ⇒ phải xóa
-            // spatial object cũ, nếu không tọa độ cũ vẫn còn nguyên — đúng lỗi "xóa triệt để mà
-            // kiểm tra không có gì thay đổi".
-            // coordinates = null (trường không được gửi) ⇒ giữ nguyên hành vi cũ, KHÔNG xóa.
-            if (saved.getSpatialId() != null) {
-                gisSpatialObjectService.delete(saved.getSpatialId());
-                saved.setSpatialId(null);
+                                      List<StormShelterMooringWaterAreaRequest> mooringWaterAreas,
+                                      boolean shouldClear, boolean shouldUpdate) {
+        if (shouldUpdate) {
+            String wkt = coordinates;
+            if (wkt != null) {
+                wkt = wkt.trim().replaceFirst("(?i)^SRID=\\d+;", "").trim();
+            }
+            if ((wkt == null || wkt.trim().isEmpty()) && longitude != null && latitude != null) {
+                wkt = "POINT(" + longitude + " " + latitude + ")";
+            }
+            if (geometryType != null && wkt != null && !wkt.trim().isEmpty()) {
+                GisGeometryType geomType = geometryType;
+                UUID currentSpatialId = saved.getSpatialId();
+                if (currentSpatialId == null && saved.getId() != null) {
+                    currentSpatialId = gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.STORM_SHELTER_AREA)
+                            .map(GisSpatialObject::getId)
+                            .orElse(null);
+                }
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        currentSpatialId, saved.getStormShelterName(), "STORM_SHELTER_" + saved.getStormShelterCode(),
+                        geomType, getSpatialObjectType(geomType), wkt, saved.getId(),
+                        InfrastructureType.STORM_SHELTER_AREA);
+                saved.setSpatialId(spatialObj.getId());
                 stormShelterAreaRepository.saveAndFlush(saved);
             }
+        } else if (shouldClear) {
+            if (saved.getSpatialId() != null) {
+                gisSpatialObjectService.delete(saved.getSpatialId());
+            }
+            if (saved.getId() != null) {
+                gisSpatialObjectService.findByRef(saved.getId(), InfrastructureType.STORM_SHELTER_AREA)
+                        .ifPresent(sp -> gisSpatialObjectService.delete(sp.getId()));
+            }
+            saved.setSpatialId(null);
+            stormShelterAreaRepository.saveAndFlush(saved);
         }
-        replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
+        if (mooringWaterAreas != null) {
+            replaceMooringWaterAreas(saved.getId(), mooringWaterAreas);
+        }
     }
 
     private void replaceMooringWaterAreas(UUID stormShelterAreaId, List<StormShelterMooringWaterAreaRequest> requests) {

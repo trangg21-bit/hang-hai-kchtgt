@@ -45,7 +45,14 @@ import type {
   ChannelRouteDetailRequest,
   NavigationChannelCoordinateRequest,
 } from '../../types/navigationChannel';
-import { CONDITION_STATUS_OPTIONS, GIS_GEOMETRY_TYPE_OPTIONS } from '../../types/navigationChannel';
+import {
+  CONDITION_STATUS_OPTIONS,
+  GIS_GEOMETRY_TYPE_OPTIONS,
+  ROUTE_CLASSIFICATION_OPTIONS,
+  ROUTE_CLASSIFICATION_MAP,
+  ROUTE_GRADE_OPTIONS,
+  ROUTE_GRADE_MAP,
+} from '../../types/navigationChannel';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
@@ -315,15 +322,22 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
         render: (_: any, __: any, index: number) => <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{index + 1}</span>,
       },
       {
-        title: 'Phân loại',
+        title: 'Phân loại tuyến',
         dataIndex: 'routeClassification',
-        width: 110,
+        width: 140,
         render: (text: string, _: any, index: number) => (
-          <Input value={text} onChange={(e) => updateRouteRow(index, 'routeClassification', e.target.value)} placeholder="Phân loại" style={inputCell()} />
+          <Select
+            value={text}
+            onChange={(val) => updateRouteRow(index, 'routeClassification', val)}
+            placeholder="Phân loại tuyến"
+            options={ROUTE_CLASSIFICATION_OPTIONS}
+            allowClear
+            style={{ width: '100%', minWidth: 120 }}
+          />
         ),
       },
       {
-        title: 'Mã',
+        title: 'Mã tuyến luồng',
         dataIndex: 'routeCode',
         width: 120,
         render: (text: string) => (
@@ -339,7 +353,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
         ),
       },
       {
-        title: 'Loại tuyến',
+        title: 'Loại tuyến luồng',
         dataIndex: 'routeType',
         width: 130,
         render: (value: number | undefined, _: any, index: number) => (
@@ -355,7 +369,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
         ),
       },
       {
-        title: 'Bán kính vũng quay (m)',
+        title: 'Bán kính vũng quay tàu (m)',
         dataIndex: 'turningBasinRadiusMeters',
         width: 140,
         render: (value: number | undefined, _: any, index: number) => (
@@ -371,7 +385,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
         ),
       },
       {
-        title: 'Chiều dài (km)',
+        title: 'Chiều dài luồng (km)',
         dataIndex: 'channelLengthKilometers',
         width: 130,
         render: (value: number | undefined, _: any, index: number) => (
@@ -443,11 +457,47 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
         ),
       },
       {
-        title: 'Phân cấp',
+        title: 'Phân cấp luồng',
         dataIndex: 'routeGrade',
-        width: 100,
+        width: 160,
         render: (value: number | undefined, _: any, index: number) => (
-          <InputNumber value={value} onChange={(v) => updateRouteRow(index, 'routeGrade', v)} placeholder="Cấp" min={0} style={inputCell()} />
+          <Select
+            value={value}
+            onChange={(v) => updateRouteRow(index, 'routeGrade', v)}
+            placeholder="Phân cấp luồng"
+            options={ROUTE_GRADE_OPTIONS}
+            allowClear
+            style={{ width: '100%', minWidth: 140 }}
+          />
+        ),
+      },
+      {
+        title: 'Phạm vi bảo vệ luồng',
+        dataIndex: 'protectionScope',
+        width: 150,
+        render: (value: number | undefined, _: any, index: number) => (
+          <InputNumber
+            value={value}
+            onChange={(v) => updateRouteRow(index, 'protectionScope', v ?? undefined)}
+            placeholder="Phạm vi bảo vệ"
+            min={0}
+            max={9999999999}
+            style={inputCell()}
+          />
+        ),
+      },
+      {
+        title: 'Ghi nhớ',
+        dataIndex: 'memo',
+        width: 200,
+        render: (text: string | undefined, _: any, index: number) => (
+          <Input
+            value={text}
+            onChange={(e) => updateRouteRow(index, 'memo', e.target.value)}
+            placeholder="Ghi nhớ"
+            maxLength={2000}
+            style={inputCell()}
+          />
         ),
       },
       {
@@ -533,6 +583,8 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
           routeClassification: trimString(row.routeClassification),
           routeName: trimString(row.routeName),
           turningBasinLocation: trimString(row.turningBasinLocation),
+          memo: trimString(row.memo),
+          protectionScope: row.protectionScope != null && row.protectionScope !== ('' as any) ? Number(row.protectionScope) : undefined,
         })) : undefined,
         coordinates: coordRows.length > 0 ? (coordRows.map((row, i) => ({
           ...row,
@@ -706,14 +758,14 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                     scroll={{ x: 'max-content' }}
                     columns={[
                       { title: 'STT', width: 50, render: (_: any, __: any, i: number) => i + 1 },
-                      { title: 'Phân loại', dataIndex: 'routeClassification', width: 100 },
-                      { title: 'Mã', dataIndex: 'routeCode', width: 110 },
+                      { title: 'Phân loại tuyến', dataIndex: 'routeClassification', width: 140, render: (v: string) => (v != null ? ROUTE_CLASSIFICATION_MAP[String(v)] || v : '—') },
+                      { title: 'Mã tuyến luồng', dataIndex: 'routeCode', width: 120 },
                       { title: 'Tên', dataIndex: 'routeName', width: 180 },
-                      { title: 'Loại tuyến', width: 110, render: (_: any, r: any) => (r.routeType === 1 ? 'Công cộng' : r.routeType === 2 ? 'Chuyên dùng' : '—') },
+                      { title: 'Loại tuyến luồng', width: 110, render: (_: any, r: any) => (r.routeType === 1 ? 'Công cộng' : r.routeType === 2 ? 'Chuyên dùng' : '—') },
                       { title: 'Vị trí vũng quay tàu', dataIndex: 'turningBasinLocation', width: 150 },
-                      { title: 'Bán kính vũng quay (m)', dataIndex: 'turningBasinRadiusMeters', width: 130 },
+                      { title: 'Bán kính vũng quay tàu (m)', dataIndex: 'turningBasinRadiusMeters', width: 130 },
                       { title: 'Chiều cao tĩnh không (m)', dataIndex: 'verticalClearanceMeters', width: 140 },
-                      { title: 'Chiều dài (km)', dataIndex: 'channelLengthKilometers', width: 110 },
+                      { title: 'Chiều dài luồng (km)', dataIndex: 'channelLengthKilometers', width: 110 },
                       { title: 'Rộng TK LN (m)', dataIndex: 'maximumDesignWidthMeters', width: 120 },
                       { title: 'Rộng TK NN (m)', dataIndex: 'minimumDesignWidthMeters', width: 120 },
                       { title: 'Độ sâu TK (m)', dataIndex: 'designDepthMeters', width: 110 },
@@ -722,7 +774,9 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                       { title: 'Bán kính cong NN (m)', dataIndex: 'minimumCurveRadiusMeters', width: 130 },
                       { title: 'KL nạo vét (m³)', dataIndex: 'routeLatestDredgingVolumeCubicMeters', width: 120 },
                       { title: 'Năm bảo trì', dataIndex: 'routeLatestMaintenanceYear', width: 90 },
-                      { title: 'Phân cấp', dataIndex: 'routeGrade', width: 80 },
+                      { title: 'Phân cấp luồng', dataIndex: 'routeGrade', width: 150, render: (v: number) => (v != null ? ROUTE_GRADE_MAP[v] || `Cấp ${v}` : '—') },
+                      { title: 'Phạm vi bảo vệ luồng', dataIndex: 'protectionScope', width: 150, render: (v: any, r: any) => v ?? r.protectionScopeMeters ?? '—' },
+                      { title: 'Ghi nhớ', dataIndex: 'memo', width: 180, render: (v: any, r: any) => v ?? r.notes ?? '—' },
                     ]}
                   />
                 </Card>
@@ -858,7 +912,14 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
   };
 
   const formContent = (
-    <Form form={form} layout="vertical" onFinish={handleSubmitForm} onFinishFailed={handleSubmitFailed} style={{ maxWidth: 1100 }}>
+    <Form
+      form={form}
+      layout="vertical"
+      initialValues={{ conditionStatus: 'NOT_YET_OPERATIONAL' }}
+      onFinish={handleSubmitForm}
+      onFinishFailed={handleSubmitFailed}
+      style={{ maxWidth: 1100 }}
+    >
       <Tabs
         activeKey={activeTabKey}
         onChange={setActiveTabKey}
@@ -883,7 +944,6 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                         <OrgUnitTreeSelect
                           organizations={organizations}
                           placeholder="Chọn đơn vị quản lý..."
-                          showPath
                           treeDefaultExpandAll={false}
                           style={selectStyle}
                           onChange={(orgUnitId) => {
@@ -933,7 +993,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                         style={formFieldStyle}
                         rules={[{ required: true, message: 'Tên luồng hàng hải là bắt buộc' }]}
                       >
-                        <Input.TextArea rows={2} maxLength={100} showCount placeholder="Nhập tên luồng hàng hải" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                        <Input.TextArea rows={2} maxLength={255} showCount placeholder="Nhập tên luồng hàng hải" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
                       </Form.Item>
                     </Col>
                     <Col xs={24} md={12}>
@@ -952,6 +1012,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                         label="Tình trạng"
                         style={formFieldStyle}
                         rules={[{ required: true, message: 'Tình trạng là bắt buộc' }]}
+                        initialValue="NOT_YET_OPERATIONAL"
                       >
                         <Select placeholder="Chọn tình trạng" options={CONDITION_STATUS_OPTIONS} style={selectStyle} />
                       </Form.Item>
@@ -1013,7 +1074,7 @@ function NavigationChannelChkFormInner({ open, editId, mode, onCancel, onSuccess
                     </Col>
                     <Col xs={24} md={12}>
                       <Form.Item name="announcementDecisionIssuer" label="Đơn vị ra quyết định công bố" style={formFieldStyle}>
-                        <Input.TextArea rows={2} maxLength={500} placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
+                        <Input.TextArea rows={2} maxLength={255} showCount placeholder="Nhập đơn vị ra quyết định" style={{ borderRadius: radiusSm, resize: 'vertical' }} />
                       </Form.Item>
                     </Col>
                     <Col xs={24}>

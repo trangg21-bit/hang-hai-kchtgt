@@ -93,9 +93,11 @@ import {
 import { colors } from '../../theme';
 import Flatbush from 'flatbush';
 import MapToolbar from '../../components/gis/MapToolbar';
+import { fmtNum } from '../../utils/numFmt';
 import { getPopupValueByPath, resolveVmdPopupFields } from './vmdPopupFields';
 import {
   buildKchtScreenPath,
+  isKchtSearchResultCompatibleWithFeature,
   resolveKchtCustomFeatureReference,
   resolveKchtInfrastructureType,
 } from './kchtGisDetailRouting';
@@ -639,8 +641,30 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
     return val;
   };
 
-  const formatVal = (val: any) => {
+  const formatVal = (val: any, fieldKey?: string, label?: string) => {
     if (val === undefined || val === null || val === '') return '—';
+    if (typeof val === 'boolean') return val ? 'Có' : 'Không';
+
+    const keyLower = String(fieldKey || '').toLowerCase();
+    const labelLower = String(label || '').toLowerCase();
+
+    const isYear = keyLower.includes('year') || keyLower.includes('nam') || labelLower.includes('năm');
+    const isCodeOrId = keyLower.includes('code') || keyLower.includes('id') || keyLower.startsWith('ma') || labelLower.startsWith('mã');
+    const isPhone = keyLower.includes('phone') || labelLower.includes('điện thoại');
+    const isCoord = keyLower.includes('lat') || keyLower.includes('lng') || keyLower.includes('lon') || labelLower.includes('vĩ độ') || labelLower.includes('kinh độ') || labelLower.includes('tọa độ');
+
+    if (!isYear && !isCodeOrId && !isPhone && !isCoord) {
+      if (typeof val === 'number') {
+        return fmtNum(val, 4);
+      }
+      if (typeof val === 'string' && /^-?\d+(\.\d+)?$/.test(val.trim())) {
+        const numVal = Number(val);
+        if (!(numVal >= 1900 && numVal <= 2100 && /^\d{4}$/.test(val.trim()))) {
+          return fmtNum(val, 4);
+        }
+      }
+    }
+
     return String(val);
   };
 
@@ -1052,7 +1076,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
             }
           }
 
-          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
+          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val, k, label)}</td></tr>`;
           renderedKeys.add(k);
         });
       } else {
@@ -1101,7 +1125,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
               val = '';
             }
 
-            rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
+            rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val, k, label)}</td></tr>`;
             renderedKeys.add(k);
           }
         });
@@ -1156,7 +1180,7 @@ const fetchAndFormatPopupDetails = async (record: any, includeActions = true) =>
           if (k === 'loaiCau') displayVal = getLoaiCauText(String(val));
           displayVal = formatDetailFieldValue(k, displayVal);
 
-          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal)}</td></tr>`;
+          rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal, k, label)}</td></tr>`;
         }
       });
 
@@ -1613,7 +1637,7 @@ export default function GISChartView() {
     { key: 'name', dataIndex: 'name', label: 'Kết cấu hạ tầng', width: 200 },
   ], [searchPage, searchPageSize]);
   const infrastructureTableScroll = useMemo(
-    () => ({ y: tableHeight }),
+    () => ({ y: tableHeight, x: GIS_RESULTS_TABLE_MIN_WIDTH }),
     [tableHeight],
   );
   const handleInfrastructureSelectionChange = useCallback((keys: React.Key[]) => {
@@ -2245,12 +2269,24 @@ export default function GISChartView() {
     const resultsById = new Map(
       infrastructureResults.map((record) => [String(record.id), record]),
     );
+    const findMatchingInfrastructureResult = (feature: any) => {
+      const featureReference = resolveKchtCustomFeatureReference(feature);
+      const candidateIds = [feature.id, featureReference.referenceId]
+        .filter((value): value is string => value !== undefined && value !== null && String(value).trim() !== '')
+        .map(String);
+
+      for (const candidateId of candidateIds) {
+        const candidate = resultsById.get(candidateId);
+        if (!candidate) continue;
+        if (isKchtSearchResultCompatibleWithFeature(feature, candidate)) {
+          return candidate;
+        }
+      }
+      return undefined;
+    };
     const selectedIds = new Set(selectedRowKeys.map(String));
     const visibleCustomFeatures = customGisFeatures.filter((feature) => {
-      const featureId = String(feature.id);
-      const featureReference = resolveKchtCustomFeatureReference(feature);
-      const referenceId = featureReference.referenceId || '';
-      const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
+      const matchingResult = findMatchingInfrastructureResult(feature);
 
       if (matchingResult) {
         if (!selectedIds.has(String(matchingResult.id))) {
@@ -2267,8 +2303,7 @@ export default function GISChartView() {
       try {
         const featureId = String(feature.id);
         const featureReference = resolveKchtCustomFeatureReference(feature);
-        const referenceId = featureReference.referenceId || '';
-        const matchingResult = resultsById.get(featureId) || (referenceId ? resultsById.get(referenceId) : undefined);
+        const matchingResult = findMatchingInfrastructureResult(feature);
         let layer: any = null;
         let interactionPosition: [number, number] | null = null;
         let hitGeometry: MapHitGeometry | null = null;
@@ -4327,22 +4362,22 @@ export default function GISChartView() {
                           <ErrorState message={searchError} onRetry={() => void handleSearchInfrastructure(searchPage, searchPageSize)} />
                         ) : (
                           <>
-                            <div style={{ display: 'flex', flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden' }}>
-                              <DataTable
-                                columns={infrastructureColumns}
-                                dataSource={infrastructureResults}
-                                rowKey="id"
-                                loading={searchingInfrastructure}
-                                fill
-                                scroll={infrastructureTableScroll}
-                                style={{
-                                  minWidth: GIS_RESULTS_TABLE_MIN_WIDTH,
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  minHeight: 0,
-                                  flex: 1,
-                                  height: '100%',
-                                }}
+                      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden', width: '100%' }}>
+                        <DataTable
+                          columns={infrastructureColumns}
+                          dataSource={infrastructureResults}
+                          rowKey="id"
+                          loading={searchingInfrastructure}
+                          fill
+                          scroll={infrastructureTableScroll}
+                          style={{
+                            width: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            minHeight: 0,
+                            flex: 1,
+                            height: '100%',
+                          }}
                                 emptyState={<EmptyState description={hasSearched ? 'Không tìm thấy kết cấu hạ tầng phù hợp' : 'Nhập điều kiện và chọn Tìm kiếm'} />}
                                 rowSelection={infrastructureRowSelection}
                                 onRow={(record: KchtGisSearchResult) => ({
@@ -4622,14 +4657,15 @@ export default function GISChartView() {
       <Modal
         open={!!activeModalUrl}
         footer={null}
-        closable={false}
+        closable={true}
+        closeIcon={<CloseOutlined style={{ fontSize: 16, color: '#333' }} />}
         onCancel={() => setActiveModalUrl(null)}
-        width={850}
+        width={1120}
         destroyOnHidden
         className="kcht-detail-modal"
-        style={{ top: 30 }}
+        style={{ top: 20, maxWidth: '95vw' }}
         styles={{
-          body: { padding: 0, height: 'calc(100vh - 140px)', overflow: 'hidden' },
+          body: { padding: 0, height: 'calc(100vh - 80px)', overflow: 'hidden' },
         }}
       >
         {activeModalUrl && (

@@ -246,6 +246,55 @@ export const CONDITION_OPTIONS = [
   { value: 'Dừng khai thác/vận hành', label: 'Dừng khai thác/vận hành' },
 ];
 
+export const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
+  'Đang khai thác/vận hành': { color: statusOperational, label: 'Đang khai thác/vận hành' },
+  'Chưa khai thác/vận hành': { color: statusAttention, label: 'Chưa khai thác/vận hành' },
+  'Dừng khai thác/vận hành': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
+};
+
+/**
+ * Chuẩn hóa tình trạng phao tiêu về đúng 3 trạng thái chuẩn vi-VN:
+ * - 'Đang khai thác/vận hành'
+ * - 'Chưa khai thác/vận hành'
+ * - 'Dừng khai thác/vận hành'
+ */
+export function normalizeBuoyCondition(v?: string | null): string {
+  if (!v) return '';
+  const s = String(v).trim();
+  if (s === 'Đang khai thác/vận hành' || s === 'Chưa khai thác/vận hành' || s === 'Dừng khai thác/vận hành') {
+    return s;
+  }
+  const lower = s.toLowerCase();
+  if (lower.includes('dừng') || lower.includes('dung') || lower.includes('hỏng') || lower.includes('hong')) {
+    return 'Dừng khai thác/vận hành';
+  }
+  if (lower.includes('bãi') || lower.includes('bai') || lower.includes('chưa') || lower.includes('chua')) {
+    return 'Chưa khai thác/vận hành';
+  }
+  if (
+    lower.includes('luồng') ||
+    lower.includes('luong') ||
+    lower.includes('hoạt động') ||
+    lower.includes('hoat dong') ||
+    lower.includes('gắn đèn') ||
+    lower.includes('gan den') ||
+    lower.includes('đang') ||
+    lower.includes('dang')
+  ) {
+    return 'Đang khai thác/vận hành';
+  }
+  return s;
+}
+
+/**
+ * Trả về { color, label } badge cho tình trạng phao tiêu, chuẩn hóa giá trị legacy về 3 trạng thái chuẩn.
+ */
+export function buoyConditionBadge(v?: string | null): { color: string; label: string } | null {
+  const norm = normalizeBuoyCondition(v);
+  if (!norm) return null;
+  return CONDITION_STYLE[norm] || { color: textTertiary, label: norm };
+}
+
 export const BUOY_LIGHT_OPTIONS = [
   { value: 'Không có đèn', label: 'Không có đèn' },
   { value: 'Có đèn', label: 'Có đèn' },
@@ -266,7 +315,7 @@ export const createSchema = z.object({
     .min(1, 'Tên phao tiêu không được để trống')
     .max(255, 'Tối đa 255 ký tự'),
   color: z.string().optional().or(z.literal('')),
-  shape: z.string().optional().or(z.literal('')),
+  shape: z.string().max(50, 'Hình dạng tối đa 50 ký tự').optional().or(z.literal('')),
   lightCharacteristic: z.string().optional().or(z.literal('')),
   range: z.coerce
     .number()
@@ -298,7 +347,7 @@ export const createSchema = z.object({
   diameter: z.coerce.number().min(0, 'Đường kính phao không được âm').optional(),
   beaconLight: z.string().optional().or(z.literal('')),
   towerHeight: z.coerce.number().min(0, 'Chiều cao tháp đèn không được âm').optional(),
-  lightHeight: z.coerce.number().min(0.01, 'Chiều cao tâm sáng (hải đồ) là bắt buộc và phải lớn hơn 0'),
+  lightHeight: z.coerce.number().min(0, 'Chiều cao tâm sáng không được âm').optional(),
   lightModel: z.string().max(100, 'Chủng loại đèn tối đa 100 ký tự').optional().or(z.literal('')),
   towerColor: z.string().max(200, 'Màu sắc tháp đèn tối đa 200 ký tự').optional().or(z.literal('')),
   powerSupply: z.string().max(500, 'Nguồn năng lượng tối đa 500 ký tự').optional().or(z.literal('')),
@@ -318,7 +367,7 @@ export const updateSchema = z.object({
     .min(1, 'Tên phao tiêu không được để trống')
     .max(255, 'Tối đa 255 ký tự'),
   color: z.string().optional().or(z.literal('')),
-  shape: z.string().optional().or(z.literal('')),
+  shape: z.string().max(50, 'Hình dạng tối đa 50 ký tự').optional().or(z.literal('')),
   lightCharacteristic: z.string().optional().or(z.literal('')),
   range: z.coerce
     .number()
@@ -350,7 +399,7 @@ export const updateSchema = z.object({
   diameter: z.coerce.number().min(0, 'Đường kính phao không được âm').optional(),
   beaconLight: z.string().optional().or(z.literal('')),
   towerHeight: z.coerce.number().min(0, 'Chiều cao tháp đèn không được âm').optional(),
-  lightHeight: z.coerce.number().min(0.01, 'Chiều cao tâm sáng (hải đồ) là bắt buộc và phải lớn hơn 0'),
+  lightHeight: z.coerce.number().min(0, 'Chiều cao tâm sáng không được âm').optional(),
   lightModel: z.string().max(100, 'Chủng loại đèn tối đa 100 ký tự').optional().or(z.literal('')),
   towerColor: z.string().max(200, 'Màu sắc tháp đèn tối đa 200 ký tự').optional().or(z.literal('')),
   powerSupply: z.string().max(500, 'Nguồn năng lượng tối đa 500 ký tự').optional().or(z.literal('')),

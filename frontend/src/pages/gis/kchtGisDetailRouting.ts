@@ -105,14 +105,22 @@ export const resolveKchtCustomFeatureReference = (
   const namedRefType = normalizeKchtGisDrawType(rawRefType)
     || normalizeKchtGisType(rawRefType)
     || (rawRefType ? LEGACY_KCHT_TYPE_MAP[rawRefType] : undefined);
+  const infrastructureType = categoryType
+    || namedRefType
+    || (numericRefType !== undefined ? KCHT_TYPE_BY_BACKEND_ORDINAL[numericRefType] : undefined);
+
+  // DrawSaveModal dùng refType = 0 + refId để lưu quan hệ "Thuộc cảng biển"
+  // cho mọi đối tượng vẽ thủ công không phải Cảng biển. refId trong trường hợp
+  // này là ID cảng cha, KHÔNG phải ID của AIS/Bến cảng/... đang hiển thị.
+  const isParentPortReference = numericRefType === 0
+    && categoryType !== undefined
+    && categoryType !== 'SEAPORT';
 
   return {
     // categoryId mô tả đúng loại đối tượng đang hiển thị và phải thắng dữ liệu
-    // refType legacy (đặc biệt các bản ghi AIS cũ bị lưu refType = 0).
-    infrastructureType: categoryType
-      || namedRefType
-      || (numericRefType !== undefined ? KCHT_TYPE_BY_BACKEND_ORDINAL[numericRefType] : undefined),
-    isSystemLinked: referenceId !== undefined,
+    // refType. Với đối tượng thủ công, refType = 0 chỉ mô tả cảng biển cha.
+    infrastructureType,
+    isSystemLinked: referenceId !== undefined && !isParentPortReference,
     referenceId,
   };
 };
@@ -126,6 +134,14 @@ export const resolveKchtInfrastructureType = (
 
   return KCHT_TYPE_BY_LABEL.get(String(record.kchtTypeLabel || '').trim().toLocaleLowerCase('vi'))
     || normalizedType;
+};
+
+export const isKchtSearchResultCompatibleWithFeature = (
+  feature: KchtCustomFeatureReference,
+  record: Pick<KchtGisSearchResult, 'infrastructureType' | 'kchtTypeLabel'>,
+): boolean => {
+  const expectedType = resolveKchtCustomFeatureReference(feature).infrastructureType;
+  return !expectedType || resolveKchtInfrastructureType(record) === expectedType;
 };
 
 export const buildKchtScreenPath = (

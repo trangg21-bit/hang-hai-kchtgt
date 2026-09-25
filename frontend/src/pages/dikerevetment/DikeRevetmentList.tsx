@@ -24,7 +24,6 @@ import {
   Select,
   Space,
   Tabs,
-  Tooltip,
   Typography,
 } from 'antd';
 import InputNumber from '../../components/shared/LocalizedInputNumber';
@@ -689,8 +688,9 @@ export default function DikeRevetmentList() {
   const [editingRecord, setEditingRecord] = useState<DikeRevetmentResponse | null>(null);
   const [detailRecord, setDetailRecord] = useState<DikeRevetmentResponse | null>(null);
   const [isDetailMode, setIsDetailMode] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [actionType, setActionType] = useState<'draft' | 'submit' | 'approve'>('submit');
+  const submittingRef = useRef(false);
+  const prevGeomTypeRef = useRef<string | undefined>(undefined);
   const [createForm] = Form.useForm();
   const createGeometryType = Form.useWatch('geometryType', createForm);
   const createOrgUnitId = Form.useWatch('orgUnitId', createForm);
@@ -753,13 +753,18 @@ export default function DikeRevetmentList() {
 
   // ── GIS: auto-fill Hệ quy chiếu + Quy tắc hiển thị + đồng bộ số điểm theo Loại đối tượng (chuẩn /berth)
   useEffect(() => {
+    if (!drawerVisible || isDetailMode) return;
     if (!createGeometryType) {
-      createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
-      createForm.setFields([{ name: 'symbolId', errors: [] }]);
-      setCoordinateList([]);
-      setGpsError(null);
+      if (prevGeomTypeRef.current) {
+        createForm.setFieldsValue({ coordinateSystem: undefined, displayRule: undefined, symbolId: undefined });
+        createForm.setFields([{ name: 'symbolId', errors: [] }]);
+        setCoordinateList([]);
+        setGpsError(null);
+      }
+      prevGeomTypeRef.current = undefined;
       return;
     }
+    prevGeomTypeRef.current = String(createGeometryType);
     createForm.setFieldsValue({ coordinateSystem: 1, displayRule: 'Độ, phút, giây (DMS)' });
     setCoordinateList((prev) => {
       const type = String(createGeometryType).toUpperCase();
@@ -778,7 +783,7 @@ export default function DikeRevetmentList() {
       return prev;
     });
     setGpsError(null);
-  }, [createGeometryType, createForm]);
+  }, [createGeometryType, drawerVisible, isDetailMode, createForm]);
 
   // ── File đính kèm (chuẩn InfrastructureAttachmentTab) ───────────────
   const handlePickAttachment = (file: File) => {
@@ -1127,6 +1132,8 @@ export default function DikeRevetmentList() {
       message.warning('Bạn không có quyền thêm mới công trình đê kè');
       return;
     }
+    submittingRef.current = false;
+    setSubmitting(false);
     editOpenSeqRef.current += 1;
     setEditingRecord(null);
     editSeaportIdRef.current = undefined;
@@ -1137,6 +1144,7 @@ export default function DikeRevetmentList() {
       status: '2',
       code: undefined,
     });
+    prevGeomTypeRef.current = undefined;
     setCoordinateList([]);
     setGpsError(null);
     setUploadFileList([]);
@@ -1169,9 +1177,12 @@ export default function DikeRevetmentList() {
       message.warning('Bạn không có quyền chỉnh sửa công trình đê kè này');
       return;
     }
+    submittingRef.current = false;
+    setSubmitting(false);
     editOpenSeqRef.current += 1;
     const seq = editOpenSeqRef.current;
     setEditingRecord(record);
+    prevGeomTypeRef.current = record.geometryType ?? undefined;
     editSeaportIdRef.current = record.seaportId ?? undefined;
     setDetailRecord(null);
     setIsDetailMode(false);
@@ -1222,6 +1233,7 @@ export default function DikeRevetmentList() {
       try {
         const detail = await dikeRevetmentCRUD.getById(record.id);
         if (editOpenSeqRef.current !== seq) return; // drawer đã đóng / mở bản ghi khác
+        prevGeomTypeRef.current = detail.geometryType ?? record.geometryType ?? undefined;
         createForm.setFieldsValue({
           length: normalizeSafeNumber(detail.length),
           crestElevation: normalizeSafeNumber(detail.crestElevation),
@@ -1327,10 +1339,15 @@ export default function DikeRevetmentList() {
 
   // ── Submit ───────────────────────────────────────────────────────
   const handleSubmit = async (action: 'draft' | 'submit' | 'approve') => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
     let values: any;
     try {
       values = await createForm.validateFields();
     } catch (e: any) {
+      submittingRef.current = false;
+      setSubmitting(false);
       const errFields: Array<{ name: Array<string | number>; errors?: string[] }> = e?.errorFields ?? [];
       const firstError = errFields[0]?.errors?.[0] || 'Vui lòng kiểm tra và điền đầy đủ các thông tin bắt buộc (*)';
       toast.error(firstError);
@@ -1343,19 +1360,25 @@ export default function DikeRevetmentList() {
     }
 
     try {
-      const coordResult = validateDmsCoordinates(coordinateList, values.geometryType);
-      if (!coordResult.valid) {
-        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
-        toast.error(errMsg);
-        setGpsError(errMsg);
-        setActiveTabKey('gis');
-        return;
+      const geomType = values.geometryType ?? createForm.getFieldValue('geometryType') ?? editingRecord?.geometryType ?? null;
+      const symbolId = (values.symbolId !== undefined ? values.symbolId : (createForm.getFieldValue('symbolId') ?? editingRecord?.symbolId)) ?? null;
+      const hasGeom = !!geomType;
+
+      let coordinates: string | null = null;
+      if (hasGeom) {
+        const coordResult = validateDmsCoordinates(coordinateList, geomType);
+        if (!coordResult.valid) {
+          const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+          toast.error(errMsg);
+          setGpsError(errMsg);
+          setActiveTabKey('gis');
+          return;
+        }
+        const validCoords = coordResult.validCoords;
+        coordinates = validCoords.length > 0
+          ? serializeCoordinatesToWkt(validCoords, geomType || 'LINE')
+          : (editingRecord?.coordinates ?? null);
       }
-      const hasGeom = !!values.geometryType;
-      const validCoords = coordResult.validCoords;
-      const coordinates = hasGeom && validCoords.length > 0
-        ? serializeCoordinatesToWkt(validCoords, values.geometryType || 'LINE')
-        : null;
       const trimOrNull = (v: unknown): string | null => {
         if (v == null) return null;
         const s = String(v).trim();
@@ -1397,9 +1420,9 @@ export default function DikeRevetmentList() {
         status: trimOrNull(values.status),
         orgUnitId: values.orgUnitId || null,
         code: trimOrNull(values.code),
-        geometryType: hasGeom ? values.geometryType : null,
+        geometryType: hasGeom ? geomType : null,
         coordinates: hasGeom ? coordinates : null,
-        symbolId: hasGeom && values.symbolId ? values.symbolId : null,
+        symbolId: hasGeom && symbolId ? symbolId : null,
         note: trimOrNull(values.note),
       };
 
@@ -1511,12 +1534,16 @@ export default function DikeRevetmentList() {
       setEditingRecord(null);
       setUploadFileList([]);
       setPendingDeletedAttachments([]);
+      setSortField(undefined);
+      setSortOrder(null);
+      setPage(1);
       fetchData();
       fetchTabCounts();
     } catch (err) {
       if ((err as any)?.errorFields) return; // validation errors handled by Form
       toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -2173,24 +2200,22 @@ export default function DikeRevetmentList() {
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -2216,31 +2241,25 @@ export default function DikeRevetmentList() {
       render: (_: any, record: DikeRevetmentResponse) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {hasPerm?.('dikerevetment:read') ? (
-            <Tooltip title={record.dikeRevetmentName || undefined} placement="topLeft">
-              <a
-                title={record.dikeRevetmentName || ''}
-                onClick={() => openDetailDrawer(record)}
-                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                {record.dikeRevetmentName || null}
-              </a>
-            </Tooltip>
+            <a
+              title={record.dikeRevetmentName || ''}
+              onClick={() => openDetailDrawer(record)}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {record.dikeRevetmentName || null}
+            </a>
           ) : (
-            <Tooltip title={record.dikeRevetmentName || undefined} placement="topLeft">
-              <span
-                title={record.dikeRevetmentName || ''}
-                style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}
-              >
-                {record.dikeRevetmentName || null}
-              </span>
-            </Tooltip>
+            <span
+              title={record.dikeRevetmentName || ''}
+              style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}
+            >
+              {record.dikeRevetmentName || null}
+            </span>
           )}
           {record.code && (
-            <Tooltip title={record.code} placement="topLeft">
-              <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
-                {record.code}
-              </span>
-            </Tooltip>
+            <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+              {record.code}
+            </span>
           )}
         </div>
       ),
@@ -2333,9 +2352,7 @@ export default function DikeRevetmentList() {
       render: (val: string, record: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
           {val ? (
-            <Tooltip title={val} placement="topLeft">
-              <span title={val} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
-            </Tooltip>
+            <span style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
           ) : (
             <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
           )}
@@ -2353,9 +2370,7 @@ export default function DikeRevetmentList() {
       render: (val: string, record: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
           {val ? (
-            <Tooltip title={val} placement="topLeft">
-              <span title={val} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
-            </Tooltip>
+            <span style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
           ) : (
             <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
           )}
@@ -2373,9 +2388,7 @@ export default function DikeRevetmentList() {
       render: (v: string, r: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
           {v ? (
-            <Tooltip title={v} placement="topLeft">
-              <span title={v} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
-            </Tooltip>
+            <span style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
           ) : (
             <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
           )}
@@ -2393,9 +2406,7 @@ export default function DikeRevetmentList() {
       render: (v: string, r: DikeRevetmentResponse) => (
         <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
           {v ? (
-            <Tooltip title={v} placement="topLeft">
-              <span title={v} style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
-            </Tooltip>
+            <span style={{ ...cellTitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
           ) : (
             <span style={{ ...cellTitleStyle, display: 'block' }}>—</span>
           )}
@@ -2840,10 +2851,10 @@ export default function DikeRevetmentList() {
     { label: 'Cán bộ gửi phê duyệt', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.submittedByName || '—'}</span> },
     { label: 'Ngày gửi phê duyệt', value: detailRecord.submittedAt ? formatDate(detailRecord.submittedAt) : '—' },
     { label: 'Cán bộ phê duyệt cấp Cảng vụ/Chi cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel1 || '—'}</span> },
-    { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvedDateLevel1 ? formatDate(detailRecord.approvedDateLevel1) : '—' },
+    { label: 'Ngày phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvedDateLevel1 ? <span style={{ whiteSpace: 'nowrap' }}>{formatDate(detailRecord.approvedDateLevel1)}</span> : '—' },
     { label: 'Nội dung phê duyệt cấp Cảng vụ/Chi cục', value: detailRecord.approvalContentLevel1 || '—', fullWidth: true },
     { label: 'Cán bộ phê duyệt cấp Cục', value: <span style={{ fontWeight: fontWeightBold }}>{detailRecord.approvedByNameLevel2 || '—'}</span> },
-    { label: 'Ngày phê duyệt cấp Cục', value: detailRecord.approvedDateLevel2 ? formatDate(detailRecord.approvedDateLevel2) : '—' },
+    { label: 'Ngày phê duyệt cấp Cục', value: detailRecord.approvedDateLevel2 ? <span style={{ whiteSpace: 'nowrap' }}>{formatDate(detailRecord.approvedDateLevel2)}</span> : '—' },
     { label: 'Nội dung phê duyệt cấp Cục', value: detailRecord.approvalContentLevel2 || '—', fullWidth: true },
     ...(detailRecord.rejectionReason && (detailRecord.approvalStatus === 'REJECTED_LEVEL1' || detailRecord.approvalStatus === 'REJECTED_LEVEL2' || String(detailRecord.approvalStatus).toUpperCase().includes('REJECT'))
       ? [{ label: 'Lý do từ chối', value: detailRecord.rejectionReason, fullWidth: true } as DetailRow]
@@ -2874,8 +2885,8 @@ export default function DikeRevetmentList() {
                   flex-shrink: 0 !important;
                 }
                 .dike-revetment-drawer-scope .sec-col2-label {
-                  width: 250px !important;
-                  min-width: 250px !important;
+                  width: auto !important;
+                  min-width: 170px !important;
                   max-width: 250px !important;
                   flex-shrink: 0 !important;
                 }
@@ -3338,7 +3349,7 @@ export default function DikeRevetmentList() {
         ) : (
           <>
             <style>{requiredMarkStyle}</style>
-            <Form form={createForm} layout="vertical" initialValues={{ status: '2' }}>
+            <Form form={createForm} layout="vertical" preserve={true} initialValues={{ status: '2' }}>
               <Tabs activeKey={activeTabKey} onChange={setActiveTabKey} tabBarStyle={tabBarStyle}
                 items={[
                   {
@@ -3640,6 +3651,7 @@ export default function DikeRevetmentList() {
                   },
                   {
                     key: 'gis',
+                    forceRender: true,
                     label: `Thông tin vị trí (${coordinateList.length})`,
                     children: (
                       <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>
@@ -3869,6 +3881,7 @@ export default function DikeRevetmentList() {
                   },
                   {
                     key: 'files',
+                    forceRender: true,
                     label: `File đính kèm (${attachmentItems.length})`,
                     children: (
                       <div style={{ ...themeTokenChk.drawerFormScrollStyle, paddingTop: spaceMd }}>

@@ -28,6 +28,7 @@ import {
   RightOutlined,
   EyeOutlined,
   AuditOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import {
@@ -1045,7 +1046,7 @@ export default function RadarStationList() {
   const effectiveGeom = watchedGeometryType || geometryTypeState;
   const filteredFormSeaportOptions = formSeaportOptions;
   const filteredFormVtsOperationCenterOptions = useMemo(
-    () => formVtsOperationCenterOptions.filter((center) => !createFormVtsSystemId || center.vtsSystemId === createFormVtsSystemId),
+    () => (!createFormVtsSystemId ? [] : formVtsOperationCenterOptions.filter((center) => center.vtsSystemId === createFormVtsSystemId)),
     [createFormVtsSystemId, formVtsOperationCenterOptions],
   );
   const [activeTabKey, setActiveTabKey] = useState('general');
@@ -2130,6 +2131,9 @@ export default function RadarStationList() {
         }
       }
       setDrawerVisible(false);
+      if (isInIframe) {
+        window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+      }
       void fetchData();
       void fetchCounts();
     } catch (err: any) {
@@ -2150,7 +2154,7 @@ export default function RadarStationList() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles, coordinateList, geometryTypeState, hasLocation, hasCoordinates, currentUser, hasPerm]);
+  }, [editingRecord, createForm, fetchData, fetchCounts, uploadedFiles, coordinateList, geometryTypeState, hasLocation, hasCoordinates, currentUser, hasPerm, isInIframe]);
 
   // ── Row actions (chuẩn: Xem chi tiết → Chỉnh sửa → Lịch sử → Gửi duyệt → Phê duyệt/Từ chối theo cấp → Xóa; icon theo themetokenchk) ──
   const rowActions = useCallback((record: RadarStationResponse) => {
@@ -2231,24 +2235,22 @@ export default function RadarStationList() {
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -2263,27 +2265,23 @@ export default function RadarStationList() {
       cellTitle: (record: RadarStationResponse) => record.stationName || '',
       render: (name: string | undefined, record: RadarStationResponse) => (
         <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <Tooltip title={name || undefined} placement="topLeft">
-            <a
-              title={name}
-              onClick={() => openDetailDrawer(record)}
-              style={{
-                ...themeTokenChk.cellTitleStyle,
-                display: 'block',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {name || null}
-            </a>
-          </Tooltip>
+          <a
+            title={name}
+            onClick={() => openDetailDrawer(record)}
+            style={{
+              ...themeTokenChk.cellTitleStyle,
+              display: 'block',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {name || null}
+          </a>
           {record.code && (
-            <Tooltip title={record.code} placement="topLeft">
-              <span style={{ ...themeTokenChk.cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
-                {record.code}
-              </span>
-            </Tooltip>
+            <span style={{ ...themeTokenChk.cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+              {record.code}
+            </span>
           )}
         </div>
       ),
@@ -2370,9 +2368,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -2389,9 +2385,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -2408,9 +2402,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -2427,9 +2419,7 @@ export default function RadarStationList() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.4, overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
-              </Tooltip>
+              <span style={{ fontSize: fontSizeMd, color: textPrimary, fontWeight: fontWeightBold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={name}>{name}</span>
             ) : null}
             <span style={{ fontSize: fontSizeMd, color: textTertiary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{date ? formatDate(date) : ''}</span>
           </div>
@@ -3666,6 +3656,14 @@ export default function RadarStationList() {
         .radar-modal-scope .ant-input {
           font-size: 13.5px !important;
         }
+        .radar-modal-scope .ant-modal-close {
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          top: 14px !important;
+          right: 16px !important;
+          z-index: 100 !important;
+        }
         /* Divider giữa các dòng chi tiết — làm nhạt giống /berth (Berth dùng #f1f5f9 qua override cục bộ) */
         .radar-drawer-scope .chk-detail-grid {
           display: grid !important;
@@ -4002,11 +4000,12 @@ export default function RadarStationList() {
                           <Col span={12}>
                             <Form.Item name="vtsOperationCenterId" {...labelProps('Trung tâm điều hành VTS')} style={{ marginBottom: spaceFormField }}>
                               <Select
-                                placeholder="Chọn trung tâm điều hành VTS"
+                                placeholder={!createFormVtsSystemId ? 'Vui lòng chọn hệ thống VTS trước' : 'Chọn trung tâm điều hành VTS'}
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                disabled={!createFormOrgUnitId}
+                                disabled={!createFormVtsSystemId}
+                                notFoundContent="Không có trung tâm điều hành VTS thuộc hệ thống VTS"
                                 options={filteredFormVtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
                                 style={selectStyle}
                               />
@@ -4588,6 +4587,8 @@ export default function RadarStationList() {
         width="90vw"
         style={{ top: 20, maxWidth: '1400px' }}
         footer={null}
+        closable={true}
+        closeIcon={<CloseOutlined style={{ fontSize: 16, color: colors.sidebarBg }} />}
       >
         {detailRecord && (
           <div style={{ padding: '8px 0' }}>

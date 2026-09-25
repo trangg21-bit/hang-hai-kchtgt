@@ -21,7 +21,6 @@ import {
     Select,
     Space,
     Tabs,
-    Tooltip,
     Typography,
 } from 'antd';
 import { normalizeSafeNumber, fmtNum, formatDotNumber, parseDotNumber } from '../../utils/numFmt';
@@ -990,24 +989,22 @@ export default function BeaconStationList() {
   ) => {
     if (!text) return null;
     return (
-      <Tooltip title={text} placement="topLeft">
-        <span
-          style={{
-            fontSize: fontSizeMd,
-            color: textPrimary,
-            fontWeight: isBold ? fontWeightBold : undefined,
-            display: 'inline-block',
-            maxWidth: '100%',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            verticalAlign: 'middle',
-          }}
-          title={text}
-        >
-          {text}
-        </span>
-      </Tooltip>
+      <span
+        style={{
+          fontSize: fontSizeMd,
+          color: textPrimary,
+          fontWeight: isBold ? fontWeightBold : undefined,
+          display: 'inline-block',
+          maxWidth: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          verticalAlign: 'middle',
+        }}
+        title={text}
+      >
+        {text}
+      </span>
     );
   };
 
@@ -1031,44 +1028,38 @@ export default function BeaconStationList() {
         return (
           <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {canView ? (
-              <Tooltip title={name || undefined} placement="topLeft">
-                <a
-                  title={name}
-                  onClick={() => openDetailDrawer(record)}
-                  style={{
-                    ...cellTitleStyle,
-                    display: 'block',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {name || null}
-                </a>
-              </Tooltip>
+              <a
+                title={name}
+                onClick={() => openDetailDrawer(record)}
+                style={{
+                  ...cellTitleStyle,
+                  display: 'block',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {name || null}
+              </a>
             ) : (
-              <Tooltip title={name || undefined} placement="topLeft">
-                <span
-                  title={name}
-                  style={{
-                    ...cellTitleStyle,
-                    display: 'block',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    cursor: 'default',
-                  }}
-                >
-                  {name || null}
-                </span>
-              </Tooltip>
+              <span
+                title={name}
+                style={{
+                  ...cellTitleStyle,
+                  display: 'block',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  cursor: 'default',
+                }}
+              >
+                {name || null}
+              </span>
             )}
             {record.code && (
-              <Tooltip title={record.code} placement="topLeft">
-                <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
-                  {record.code}
-                </span>
-              </Tooltip>
+              <span style={{ ...cellSubtitleStyle, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.code}>
+                {record.code}
+              </span>
             )}
           </div>
         );
@@ -1144,21 +1135,19 @@ export default function BeaconStationList() {
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <div
-                  title={name}
-                  style={{
-                    fontWeight: fontWeightBold,
-                    color: textPrimary,
-                    fontSize: fontSizeMd,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {name}
-                </div>
-              </Tooltip>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: textPrimary,
+                  fontSize: fontSizeMd,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {name}
+              </div>
             ) : (
               <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
             )}
@@ -1179,21 +1168,19 @@ export default function BeaconStationList() {
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <div
-                  title={name}
-                  style={{
-                    fontWeight: fontWeightBold,
-                    color: textPrimary,
-                    fontSize: fontSizeMd,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {name}
-                </div>
-              </Tooltip>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: textPrimary,
+                  fontSize: fontSizeMd,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {name}
+              </div>
             ) : (
               <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
             )}
@@ -1214,21 +1201,19 @@ export default function BeaconStationList() {
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <div
-                  title={name}
-                  style={{
-                    fontWeight: fontWeightBold,
-                    color: textPrimary,
-                    fontSize: fontSizeMd,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {name}
-                </div>
-              </Tooltip>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: textPrimary,
+                  fontSize: fontSizeMd,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {name}
+              </div>
             ) : (
               <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
             )}
@@ -1249,21 +1234,19 @@ export default function BeaconStationList() {
         return (
           <div style={{ lineHeight: '1.35', overflow: 'hidden' }}>
             {name ? (
-              <Tooltip title={name} placement="topLeft">
-                <div
-                  title={name}
-                  style={{
-                    fontWeight: fontWeightBold,
-                    color: textPrimary,
-                    fontSize: fontSizeMd,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {name}
-                </div>
-              </Tooltip>
+              <div
+                title={name}
+                style={{
+                  fontWeight: fontWeightBold,
+                  color: textPrimary,
+                  fontSize: fontSizeMd,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {name}
+              </div>
             ) : (
               <div style={{ fontWeight: fontWeightBold, color: textPrimary, fontSize: fontSizeMd }}>—</div>
             )}

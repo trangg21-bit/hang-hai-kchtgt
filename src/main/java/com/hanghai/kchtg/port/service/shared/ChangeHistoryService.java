@@ -174,10 +174,16 @@ public class ChangeHistoryService {
                 || name.equals(EntityFields.UPDATED_BY)
                 || name.equals("spatialId")
                 || name.equals("approvalStatus")
+                || name.equals("approvalLevel")
                 || name.equals("approverLevel1")
                 || name.equals("approvedDateLevel1")
+                || name.equals("level1ApprovedBy")
+                || name.equals("level1ApprovedDate")
                 || name.equals("approverLevel2")
                 || name.equals("approvedDateLevel2")
+                || name.equals("level2ApprovedBy")
+                || name.equals("level2ApprovedDate")
+                || name.equals("approvedDate")
                 || name.equals("rejectionReason")
                 || name.equals("level1ApprovalContent")
                 || name.equals("level2ApprovalContent")
@@ -197,7 +203,10 @@ public class ChangeHistoryService {
                 || name.equals("departmentApprovalContent")
                 || name.equals("approvedBy")
                 || name.equals("approvedAt")
-                || name.equals("approvedRemarks");
+                || name.equals("approvedRemarks")
+                || name.equals("coordinateSystem")
+                || name.equals("coordinateReferenceSystem")
+                || name.equals("displayRule");
     }
 
     private boolean valuesEqual(Object a, Object b) {

@@ -73,7 +73,8 @@ import { checkCanSaveAndApprove } from '../../hooks/useKchtPermissions';
 import { countStandardHistoryCards, isBlankOrDash, renderStandardHistoryCards } from '../../utils/changeHistoryRenderer';
 import { formatHistoryNumber } from '../../utils/numFmt';
 import StormShelterDetailContent from './StormShelterDetailContent';
-import StormShelterForm, { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './StormShelterForm';
+import StormShelterForm from './StormShelterForm';
+import { STORM_SHELTER_CLASSIFICATION_OPTIONS } from './stormShelterPayload';
 
 // Cỡ chữ 13.5px đồng bộ chuẩn VTS CHK toàn bộ cell/table/input/button
 const fontSizeMd = 13.5;
@@ -443,7 +444,7 @@ export default function StormShelterListPage() {
     const filtered = allowedOrgIds
       ? allPorts.filter((p) => p.orgUnitId && allowedOrgIds.has(String(p.orgUnitId)))
       : allPorts;
-    return filtered.map((p) => ({ value: p.id, label: p.portName || p.portCode || '' }));
+    return filtered.map((p) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) }));
   }, [allPorts, organizations, orgUnit]);
 
   const [allBuoyBerths, setAllBuoyBerths] = useState<Array<{ id: string; buoyBerthName?: string; buoyBerthCode?: string; orgUnitId?: string; portId?: string }>>([]);
@@ -464,11 +465,11 @@ export default function StormShelterListPage() {
     }
     return filtered.map((b) => ({
       value: b.id,
-      label: b.buoyBerthName || b.buoyBerthCode || b.id,
+      label: b.buoyBerthCode ? `${b.buoyBerthCode} - ${b.buoyBerthName || ''}` : (b.buoyBerthName || b.id),
     }));
   }, [allBuoyBerths, orgUnit, filterPortId]);
 
-  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; channelName?: string; channelCode?: string; orgUnitId?: string }>>([]);
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; channelName?: string; channelCode?: string; orgUnitId?: string; seaportId?: string }>>([]);
   const waterwayMap = useMemo(() => {
     const m = new Map<string, string>();
     allWaterways.forEach((n) => {
@@ -480,16 +481,16 @@ export default function StormShelterListPage() {
     return m;
   }, [allWaterways]);
   const waterwayOptions = useMemo(() => {
-    const filtered = (!orgUnit || orgUnit === '__all__')
-      ? allWaterways
-      : allWaterways.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnit);
-    return filtered.map((n) => {
-      const code = n.channelCode?.trim();
-      const name = n.channelName?.trim();
-      const label = code && name ? `${code} - ${name}` : (code || name || '');
-      return { value: n.id, label };
-    });
-  }, [allWaterways, orgUnit]);
+    if (!filterPortId) return [];
+    return allWaterways
+      .filter((n) => n.seaportId && String(n.seaportId).toLowerCase() === String(filterPortId).toLowerCase())
+      .map((n) => {
+        const code = n.channelCode?.trim();
+        const name = n.channelName?.trim();
+        const label = code && name ? `${code} - ${name}` : (code || name || '');
+        return { value: n.id, label };
+      });
+  }, [allWaterways, filterPortId]);
 
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
   const [createDrawerVisible, setCreateDrawerVisible] = useState(false);
@@ -1056,6 +1057,7 @@ export default function StormShelterListPage() {
               onChange={v => {
                 setFilterPortId(v);
                 setFilterBuoyStationId(undefined);
+                setFilterNavigationChannelId(undefined);
               }}
               options={portOptions}
               filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
@@ -1065,9 +1067,11 @@ export default function StormShelterListPage() {
             <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
             <Select
               style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
-              placeholder="Chọn luồng hàng hải"
+              placeholder={!filterPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải'}
               allowClear
               showSearch
+              disabled={!filterPortId}
+              notFoundContent="Không có luồng hàng hải thuộc cảng biển"
               value={filterNavigationChannelId}
               onChange={v => setFilterNavigationChannelId(v)}
               options={waterwayOptions}
@@ -1249,7 +1253,10 @@ export default function StormShelterListPage() {
       },
       {
         label: 'Đơn vị quản lý', dataIndex: 'orgUnitId', key: 'orgUnitId', width: 260, sortable: true,
-        render: (v: string | null, r: StormShelterArea) => <span style={{ fontWeight: fontWeightBold }}>{resolveOrgLevel2Name(organizations, r.orgUnitId) || orgMap.get(v || '') || ''}</span>,
+        render: (v: string | null, r: StormShelterArea) => {
+          const name = orgMap.get(r.orgUnitId || v || '') || (r as any).orgUnitName || resolveOrgLevel2Name(organizations, r.orgUnitId) || '';
+          return <span style={{ fontWeight: fontWeightBold }} title={name}>{name}</span>;
+        },
       },
       {
         label: 'Thuộc cảng biển', dataIndex: 'portId', key: 'portId', width: 200, sortable: true,

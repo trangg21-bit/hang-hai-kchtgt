@@ -1,0 +1,84 @@
+{
+  "triage_id": "TRI-1790330036691-5ed0",
+  "created_at": 1790330036691,
+  "request_summary": "Fix managing unit display on list tables across all maritime KCHT management screens",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/components/org-unit/orgUnitHelpers.ts",
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx"
+    ],
+    "impact_files": [
+      "frontend/src/components/org-unit/orgUnitHelpers.ts",
+      "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+      "frontend/src/pages/port/BerthListPage.tsx",
+      "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+      "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+      "frontend/src/pages/transfer-area/TransferAreaListPage.tsx"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [],
+    "dev_footprint": "frontend"
+  },
+  "rationale": "C1: 6 edit-target files in one package, no one-way door — pre-declared write scope required (6 edit-target files / 1 package(s) / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "http://localhost:5173/berth",
+  "blast_radius": 6,
+  "done_oracle": "All maritime KCHT list tables display the exact managing unit matching the detail view instead of the Level-2 parent unit.",
+  "verification_commands": [
+    {
+      "command": "bun test src/pages/assetmovement/PierAsset.test.tsx",
+      "cwd": "frontend",
+      "timeout_ms": 30000
+    }
+  ],
+  "change_type": "business_rule",
+  "declared_write_scope": [
+    "frontend/src/components/org-unit/orgUnitHelpers.ts",
+    "frontend/src/pages/anchorage/AnchorageListPage.tsx",
+    "frontend/src/pages/port/BerthListPage.tsx",
+    "frontend/src/pages/ship-repair-yard/ShipRepairYardListPage.tsx",
+    "frontend/src/pages/storm-shelter/StormShelterListPage.tsx",
+    "frontend/src/pages/transfer-area/TransferAreaListPage.tsx"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "903235e160e8e840bb7f7f5f7c46ddbec3b3e805",
+    "dirty": true,
+    "captured_at": 1790330039426
+  },
+  "owner_candidates": [
+    {
+      "module_id": "M-1025",
+      "slug": "berth-chk-ui-sync",
+      "overlap": 5,
+      "total": 6
+    },
+    {
+      "module_id": "M-1026",
+      "slug": "port-chk-ui-sync",
+      "overlap": 5,
+      "total": 6
+    },
+    {
+      "module_id": "M-1027",
+      "slug": "dry-port-ui-chk",
+      "overlap": 5,
+      "total": 6
+    }
+  ],
+  "budget": {
+    "wall_clock_ms": 2460000,
+    "turns": 102,
+    "turns_used": 327
+  }
+}

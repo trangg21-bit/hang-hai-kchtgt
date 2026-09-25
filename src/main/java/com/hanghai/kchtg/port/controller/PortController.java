@@ -257,9 +257,10 @@ public class PortController {
     public ResponseEntity<ApiResponse<Void>> deleteAttachment(
             @PathVariable UUID id,
             @PathVariable UUID attId,
+            @RequestParam(name = "skipHistory", required = false) Boolean skipHistory,
             Authentication authentication) {
         UUID userId = com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId();
-        portService.deleteAttachmentGeneric(id, attId, userId);
+        portService.deleteAttachmentGeneric(id, attId, userId, skipHistory);
         return ResponseEntity.ok(ApiResponse.success("Xóa file đính kèm thành công", null));
     }
 

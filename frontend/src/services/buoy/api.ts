@@ -135,7 +135,47 @@ export async function fetchBuoyHistory(id: string): Promise<BuoyHistoryPayload> 
 
 // ── GET /buoys/history/all — toàn bộ lịch sử thay đổi mọi phao tiêu ──
 
-export async function fetchBuoyAllHistory(): Promise<any> {
+export async function fetchBuoyAllHistory(): Promise<{ changeHistory: unknown[]; entityNames: Record<string, string> }> {
   const res = await api.get(`${BASE}/history/all`);
   return res.data?.data ?? { changeHistory: [], entityNames: {} };
+}
+
+// ── Attachments (chuẩn /beacon-stations) ───────────────────────────
+
+export interface BuoyAttachment {
+  id: string;
+  entityType?: string;
+  entityId?: string;
+  fileName?: string;
+  name?: string;
+  filePath?: string;
+  fileSize?: number;
+  size?: number;
+  contentType?: string;
+  fileType?: string;
+  uploadedBy?: string;
+  uploadedByName?: string;
+  uploadedAt?: string;
+  uploadedDate?: string;
+  createdAt?: string;
+}
+
+export async function uploadBuoyAttachments(id: string, files: File[]): Promise<void> {
+  const fd = new FormData();
+  files.forEach((f) => fd.append('files', f));
+  await api.post(`${BASE}/${id}/attachments`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+}
+
+export async function listBuoyAttachments(id: string): Promise<BuoyAttachment[]> {
+  const res = await api.get(`${BASE}/${id}/attachments`);
+  return res.data.data || [];
+}
+
+export async function deleteBuoyAttachment(id: string, attachmentId: string): Promise<void> {
+  await api.delete(`${BASE}/${id}/attachments/${attachmentId}`);
+}
+
+export async function downloadBuoyAttachment(id: string, attachmentId: string): Promise<Blob> {
+  const res = await api.get(`${BASE}/${id}/attachments/${attachmentId}/download`, { responseType: 'blob' });
+  return res.data as Blob;
 }

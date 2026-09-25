@@ -12,23 +12,28 @@ import { colors } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import { fmtNum } from '../../utils/numFmt';
 import InfrastructureAttachmentTab from '../../components/shared/InfrastructureAttachmentTab';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
+import { buoyCRUD } from '../beaconService';
 import toast from '../../components/ToastNotification';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type { OrgUnitTreeOption } from '../../components/org-unit';
 import {
   surfaceCard, borderDefault,
-  actionPrimary, statusOperational, statusAttention, statusCritical,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontWeightBold,
-  spaceSm, spaceMd, spaceFormField,
+  actionPrimary,
+  fontSizeSm, fontSizeMd, fontWeightBold,
+  spaceSm, spaceMd,
   statusBadgeStyle, outlineButtonStyle, primaryButtonStyle,
   formatUserDisplayName, isUuidString,
   DRAWER_TABLE_SCROLL_Y,
+  textTertiary,
 } from '../../themetokenchk';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import {
   SHAPE_LABEL_MAP,
   formatClassification,
   formatClassificationBuoy,
   formatClassificationMark,
+  buoyConditionBadge,
 } from './schema';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import type { Buoy } from './types';
@@ -39,10 +44,14 @@ export interface BuoyDetailContentProps {
   userMap: Map<string, string>;
   detailFiles: any[];
   buoyStatusBadge: (status: string) => { color: string; label: string };
+  symbols?: any[];
   symbolMap: Map<string, string>;
   symbolImageMap: Map<string, string>;
   ddToDms: (dd: number) => { d: number; m: number; s: number };
   waterwayMap?: Map<string, string>;
+  onDownload?: (id: string, name: string) => void;
+  loadReadonlyPreviewImage?: (attachmentId: string) => Promise<Blob>;
+  loadPreviewAttachment?: (attachmentId: string) => Promise<Blob>;
 }
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -96,12 +105,14 @@ const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) =>
   return (
     <div className="chk-detail-grid">
       {rows.map(([label, value, full, compact]) => {
-        let labelCls = 'sec-col1-label';
+        const labelCls = full
+          ? 'sec-full-label'
+          : colIndex % 2 === 0
+            ? 'sec-col1-label'
+            : 'sec-col2-label';
         if (full) {
-          labelCls = 'sec-full-label';
           colIndex = 0;
         } else {
-          labelCls = colIndex % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label';
           colIndex += 1;
         }
         return (
@@ -115,48 +126,53 @@ const gridRows = (rows: Array<[string, React.ReactNode, boolean?, boolean?]>) =>
   );
 };
 
-// Parse tọa độ GPS: ưu tiên WKT (coordinates) — POINT/MULTIPOINT từ form Phao tiêu;
-// fallback sang latitude/longitude (giống BuoyBerthDetailContent).
-// ⚠️ MULTIPOINT regex ĐÚNG: ((?:\([^)]*\),?)+) — bắt đủ N điểm (KHÔNG dùng (?:,[^)]+)* — chỉ bắt 1 điểm)
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
-  const wkt = record?.coordinates;
+  if (!record) return [];
   const out: Array<{ lat: number; lng: number }> = [];
-  if (wkt && typeof wkt === 'string' && wkt.trim()) {
-    try {
-      if (wkt.startsWith('LINESTRING(')) {
-        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
-        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
-        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
-        if (m) {
-          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
-          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
-          pts.forEach(p => { out.push(p); });
+  const raw = record.coordinates;
+  if (raw && typeof raw === 'string' && raw.trim()) {
+    const cleanWkt = raw.replace(/^SRID=\d+;\s*/i, '').trim();
+    if (cleanWkt.startsWith('[') || cleanWkt.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(cleanWkt);
+        const pts = Array.isArray(parsed) ? parsed : (parsed.coordinates || []);
+        if (Array.isArray(pts)) {
+          pts.forEach((p: any) => {
+            const lat = Number(p.latitude ?? p.lat);
+            const lng = Number(p.longitude ?? p.lng);
+            if (!isNaN(lat) && !isNaN(lng)) out.push({ lat, lng });
+          });
         }
+      } catch {}
+    }
+    if (out.length === 0) {
+      const parsed = parseWktToCoordinates(cleanWkt);
+      if (parsed.length > 0) {
+        parsed.forEach((p) => {
+          if (!isNaN(p.latitude) && !isNaN(p.longitude)) {
+            out.push({ lat: p.latitude, lng: p.longitude });
+          }
+        });
       }
-      if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/);
-        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
-      }
-    } catch { /* ignore */ }
+    }
+  }
+  if (out.length === 0 && Array.isArray(raw)) {
+    raw.forEach((p: any) => {
+      const lat = Number(p.latitude ?? p.lat);
+      const lng = Number(p.longitude ?? p.lng);
+      if (!isNaN(lat) && !isNaN(lng)) out.push({ lat, lng });
+    });
   }
   if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
-    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+    const lat = Number(record.latitude);
+    const lng = Number(record.longitude);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      out.push({ lat, lng });
+    }
   }
   return out;
 };
 
-// Style badge Tình trạng giống bến cảng (operationalStatus pill)
-const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
-  'Đang khai thác/vận hành': { color: statusOperational, label: 'Đang khai thác/vận hành' },
-  'Chưa khai thác/vận hành': { color: statusAttention, label: 'Chưa khai thác/vận hành' },
-  'Dừng khai thác/vận hành': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-};
 
 const GEOMETRY_TYPE_LABELS: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' };
 
@@ -166,10 +182,14 @@ export default function BuoyDetailContent({
   userMap,
   detailFiles,
   buoyStatusBadge,
+  symbols = [],
   symbolMap,
   symbolImageMap,
   ddToDms,
   waterwayMap,
+  onDownload,
+  loadReadonlyPreviewImage,
+  loadPreviewAttachment,
 }: BuoyDetailContentProps) {
   const r = selectedRecord;
   const [operationOpen, setOperationOpen] = useState(true);
@@ -177,6 +197,25 @@ export default function BuoyDetailContent({
   const [incidentOpen, setIncidentOpen] = useState(true);
   const [gisModalOpen, setGisModalOpen] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(true);
+
+  const handleDownloadAttachment = async (attachmentId: string, name: string) => {
+    if (onDownload) {
+      onDownload(attachmentId, name);
+      return;
+    }
+    const entityId = selectedRecord?.id;
+    if (!entityId) {
+      toast.error('Không tìm thấy bản ghi để tải tệp đính kèm');
+      return;
+    }
+    try {
+      const blob = await buoyCRUD.downloadAttachment(entityId, attachmentId);
+      triggerBlobDownload(blob, name || 'attachment');
+    } catch {
+      toast.error('Không thể tải xuống tệp đính kèm');
+    }
+  };
+
   const userName = (id: number | string | undefined | null, fallbackName?: string | null) =>
     formatUserDisplayName(id != null ? String(id) : null, fallbackName, userMap);
   const provinceName = (id: number | undefined | null) =>
@@ -329,7 +368,7 @@ export default function BuoyDetailContent({
                     ['Phân loại phao', formatClassificationBuoy(r.classificationBuoy)],
                     ['Phân loại tiêu', formatClassificationMark(r.classificationMark)],
                     ['Địa điểm (Tỉnh/Thành Phố)', provinceName(r.provinceId)],
-                    ['Tình trạng', (() => { const s = r.condition ? CONDITION_STYLE[r.condition] : null; return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : ''; })()],
+                    ['Tình trạng', (() => { const s = buoyConditionBadge(r.condition); return s ? <span style={statusBadgeStyle(s.color)}>{s.label}</span> : ''; })()],
                     ['Địa điểm chi tiết', r.locationDetail || '', true],
                   ]);
                 })()}
@@ -424,73 +463,156 @@ export default function BuoyDetailContent({
           ),
         },
         {
-          key: 'gis', label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
-          children: (
-            <div style={{ paddingTop: 3 }}>
-              <div className="chk-detail-grid">
-                {[
-                  ['Loại đối tượng', GEOMETRY_TYPE_LABELS[(r as any).geometryType || ''] || (r as any).geometryType || ''],
-                  ['Biểu tượng bản đồ', (() => { const symId = r.mapSymbolId || ''; const symName = symbolMap.get(symId) || symId || ''; const symImg = symbolImageMap.get(symId); if (!symName && !symImg) return ''; return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>{symImg ? <img src={symImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{symName}</span>; })(),],
-                  ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem ? String(r.coordinateSystem) : '')],
-                  ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || r.latitude != null || r.longitude != null) ? 'Độ, phút, giây (DMS)' : ''],
-                ].map(([label, value], i) => (
-                  <div key={i} className="chk-detail-row">
-                    <span className="chk-detail-label">{label}</span>
-                    <span className="chk-detail-value">{value}</span>
+          key: 'gis',
+          label: `Thông tin vị trí (${parseGisCoordinates(r).length})`,
+          children: (() => {
+            const coordinates = parseGisCoordinates(r);
+            return (
+              <div style={{ paddingTop: 6 }}>
+                <div style={{ ...sectionBoxStyle, marginBottom: 12 }}>
+                  <div className="chk-detail-grid">
+                    {[
+                      {
+                        label: 'Loại đối tượng',
+                        value:
+                          coordinates.length === 0
+                            ? '—'
+                            : (GEOMETRY_TYPE_LABELS[(r as any)?.geometryType || ''] ||
+                              (r as any)?.geometryType ||
+                              'Đối tượng điểm'),
+                      },
+                      {
+                        label: 'Biểu tượng',
+                        value: (() => {
+                          const symId = r?.mapSymbolId || (r as any)?.symbolId || '';
+                          if (!symId && coordinates.length === 0) return '—';
+                          const sym = symbols?.find(
+                            (s: any) => String(s.id) === String(symId) || s.code === symId
+                          ) || (symbolMap?.get(String(symId)) ? { name: symbolMap.get(String(symId)), image: symbolImageMap?.get(String(symId)) } : null);
+                          const symName = sym?.name || sym?.code || (symId ? String(symId) : 'Phao báo hiệu hàng hải');
+                          const symImg = sym?.image
+                            ? sym.image.startsWith('data:') || sym.image.startsWith('http') || sym.image.startsWith('/')
+                              ? sym.image
+                              : `data:image/png;base64,${sym.image}`
+                            : undefined;
+                          return (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                              {symImg ? (
+                                <img
+                                  src={symImg}
+                                  alt=""
+                                  style={{ width: 20, height: 20, objectFit: 'contain', verticalAlign: 'middle', display: 'inline-block' }}
+                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                />
+                              ) : null}
+                              {symName}
+                            </span>
+                          );
+                        })(),
+                      },
+                      {
+                        label: 'Hệ quy chiếu',
+                        value:
+                          coordinates.length === 0
+                            ? '—'
+                            : (r?.coordinateSystem === 1
+                                ? 'WGS-84'
+                                : r?.coordinateSystem === 2
+                                  ? 'VN-2000'
+                                  : (r?.coordinateSystem ? String(r?.coordinateSystem) : 'WGS-84')),
+                      },
+                      {
+                        label: 'Quy tắc hiển thị',
+                        value: coordinates.length === 0 ? '—' : 'Độ, phút, giây (DMS)',
+                      },
+                    ].map((row, i) => (
+                      <div key={i} className="chk-detail-row">
+                        <span className={`chk-detail-label ${i % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{row.label}</span>
+                        <span className="chk-detail-value">{row.value}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div style={{ marginTop: spaceMd }}>
-                <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
+                </div>
+
+                <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>
-                    Tọa độ GPS ({parseGisCoordinates(r).length})
+                    Tọa độ GPS ({coordinates.length})
                   </span>
                   <Button
-                    icon={<EnvironmentOutlined style={{ color: actionPrimary }} />}
+                    icon={<EnvironmentOutlined style={{ color: coordinates.length === 0 ? textTertiary : actionPrimary }} />}
                     onClick={() => setGisModalOpen(true)}
-                    style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    disabled={coordinates.length === 0}
+                    style={{
+                      ...outlineButtonStyle,
+                      height: 32,
+                      fontSize: fontSizeSm,
+                      padding: '0 14px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      opacity: coordinates.length === 0 ? 0.6 : 1,
+                      cursor: coordinates.length === 0 ? 'not-allowed' : 'pointer',
+                    }}
                   >
                     Xem vị trí trên bản đồ
                   </Button>
                 </div>
-                {(() => {
-                  const pts = parseGisCoordinates(r);
-                  return (
-                    <DetailTable
-                      dataSource={pts.map((p) => ({ ...p }))}
-                      emptyText="Chưa có tọa độ GPS nào"
-                      scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
-                      columns={[
-                        { title: 'STT', width: 50 },
-                        { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => renderDms(rec.lat, 'N') },
-                        { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => renderDms(rec.lng, 'E') },
-                      ]}
-                    />
-                  );
-                })()}
+                <DetailTable
+                  scrollY={DRAWER_TABLE_SCROLL_Y.detailGis}
+                  dataSource={coordinates.map((p, idx) => ({ ...p, id: idx }))}
+                  rowKey="id"
+                  emptyText="Chưa có tọa độ GPS nào"
+                  columns={[
+                    { title: 'STT', width: 50, align: 'center' as const },
+                    { title: 'Vĩ độ (Latitude - N)', key: 'lat', render: (_v: any, rec: any) => renderDms(rec.lat, 'N') },
+                    { title: 'Kinh độ (Longitude - E)', key: 'lng', render: (_v: any, rec: any) => renderDms(rec.lng, 'E') },
+                  ]}
+                />
               </div>
-            </div>
-          ),
+            );
+          })(),
         },
         {
           key: 'files',
           label: `File đính kèm (${detailFiles.length})`,
           children: (
             <div style={{ paddingTop: 6 }}>
+              <div style={{ marginBottom: 8 }}>
+                <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: 13.5 }}>File đính kèm</span>
+              </div>
               <InfrastructureAttachmentTab
                 attachments={detailFiles.map((f: any) => ({
                   ...f,
                   id: f.id || f.uid,
                   fileName: f.fileName || f.name,
+                  fileType: f.contentType || f.fileType,
                   fileSize: f.fileSize ?? f.size,
                   uploadedByName: (!isUuidString(f.uploadedByName) ? f.uploadedByName : '') || (f.uploadedBy ? userMap.get(String(f.uploadedBy)) : '') || 'Cán bộ quản lý',
                   uploadedDate: f.uploadedDate || f.uploadedAt || f.createdAt,
                 }))}
                 readonly={true}
+                readonlyBerthLayout={true}
                 userMap={userMap}
-                onDownload={(_id, name) => {
-                  toast.info(`Đang tải xuống tệp: ${name}`);
-                }}
+                onDownload={(id, name) => void handleDownloadAttachment(id, name)}
+                loadReadonlyPreviewImage={
+                  loadReadonlyPreviewImage ||
+                  ((attachmentId) => {
+                    const entityId = selectedRecord?.id;
+                    return entityId
+                      ? buoyCRUD.downloadAttachment(entityId, attachmentId)
+                      : Promise.reject(new Error('Chưa xác định được bản ghi phao tiêu để tải tệp đính kèm'));
+                  })
+                }
+                loadPreviewAttachment={
+                  loadPreviewAttachment ||
+                  ((attachmentId) => {
+                    const entityId = selectedRecord?.id;
+                    return entityId
+                      ? buoyCRUD.downloadAttachment(entityId, attachmentId)
+                      : Promise.reject(new Error('Chưa xác định được bản ghi phao tiêu để tải tệp đính kèm'));
+                  })
+                }
+                scrollY={DRAWER_TABLE_SCROLL_Y.detailView}
               />
             </div>
           ),
@@ -573,9 +695,7 @@ export default function BuoyDetailContent({
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <EnvironmentOutlined style={{ color: actionPrimary }} />
-          <span style={{ fontWeight: fontWeightBold, color: colors.sidebarBg, fontSize: fontSizeLg }}>
-            Xem vị trí trên bản đồ chuyên dụng
-          </span>
+          <span>Xem vị trí trên bản đồ chuyên dụng</span>
         </div>
       }
       open={gisModalOpen}
@@ -592,7 +712,7 @@ export default function BuoyDetailContent({
       <div style={{ padding: '8px 0' }}>
         <GisLocationSelector
           inline={true}
-          defaultGeometryType="POINT"
+          defaultGeometryType={(r?.geometryType as any) || 'POINT'}
           disabled
           height={520}
           value={(() => {

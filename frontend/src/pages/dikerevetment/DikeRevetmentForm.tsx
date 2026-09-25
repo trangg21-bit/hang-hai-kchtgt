@@ -129,6 +129,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   const watchedOrgUnitId = Form.useWatch('orgUnitId', form);
   const watchedSeaportId = Form.useWatch('seaportId', form);
   const editSeaportIdRef = useRef<string | undefined>(undefined);
+  const submittingRef = useRef(false);
   const [codeLoading, setCodeLoading] = useState(false);
 
   const filteredSeaports = useMemo(() => {
@@ -285,6 +286,8 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
   }, [id, isDetailMode]);
 
   const handleSubmitForm = async (values: Record<string, unknown>) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       const spatialData = values.spatialData as { geometryType?: string; coordinates?: string; symbolId?: string } | undefined;
@@ -386,6 +389,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
       toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
       setIsSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -1028,20 +1032,20 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
         ]}
       />
 
-      <Form.Item style={formFieldStyle}>
+      <Form.Item style={{ ...formFieldStyle, pointerEvents: isSubmitting ? 'none' : 'auto' }}>
         <Space wrap>
           {isCreateMode ? (
             <>
-              <Button onClick={() => { setSaveAction('draft'); form.submit(); }} loading={isSubmitting && saveAction === 'draft'} style={outlineButtonStyle}>
+              <Button disabled={isSubmitting} onClick={() => { setSaveAction('draft'); form.submit(); }} loading={isSubmitting && saveAction === 'draft'} style={outlineButtonStyle}>
                 Lưu tạm
               </Button>
               {hasPermissionFromList(userPermissions, 'dikerevetment:create') && (
-                <Button type="primary" onClick={() => { setSaveAction('submit'); form.submit(); }} loading={isSubmitting && saveAction === 'submit'} style={primaryButtonStyle}>
+                <Button disabled={isSubmitting} type="primary" onClick={() => { setSaveAction('submit'); form.submit(); }} loading={isSubmitting && saveAction === 'submit'} style={primaryButtonStyle}>
                   Lưu và gửi phê duyệt
                 </Button>
               )}
               {canApproveDirect && (
-                <Button type="primary" onClick={() => { setSaveAction('approve'); form.submit(); }} loading={isSubmitting && saveAction === 'approve'}
+                <Button disabled={isSubmitting} type="primary" onClick={() => { setSaveAction('approve'); form.submit(); }} loading={isSubmitting && saveAction === 'approve'}
                   style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
@@ -1052,7 +1056,7 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
               {/* T12 — chỉ người có quyền phê duyệt (approvec2) được sửa hồ sơ Đã duyệt;
                   không có quyền thì ẩn nút (quy tắc 4, approval-2-level-spec.md 3.9). */}
               {canApproveDirect && (
-                <Button type="primary" onClick={() => { setSaveAction('approve'); form.submit(); }} loading={isSubmitting && saveAction === 'approve'}
+                <Button disabled={isSubmitting} type="primary" onClick={() => { setSaveAction('approve'); form.submit(); }} loading={isSubmitting && saveAction === 'approve'}
                   style={{ ...primaryButtonStyle, background: statusOperational, borderColor: statusOperational }}>
                   Lưu và phê duyệt
                 </Button>
@@ -1060,15 +1064,15 @@ function DikeRevetmentFormInner({ open, editId, mode, onCancel, onSuccess }: Dik
             </>
           ) : (
             <>
-              <Button onClick={() => { setSaveAction('draft'); form.submit(); }} loading={isSubmitting && saveAction === 'draft'} style={outlineButtonStyle}>
+              <Button disabled={isSubmitting} onClick={() => { setSaveAction('draft'); form.submit(); }} loading={isSubmitting && saveAction === 'draft'} style={outlineButtonStyle}>
                 Lưu tạm
               </Button>
-              <Button type="primary" onClick={() => { setSaveAction('submit'); form.submit(); }} loading={isSubmitting && saveAction === 'submit'} style={primaryButtonStyle}>
+              <Button disabled={isSubmitting} type="primary" onClick={() => { setSaveAction('submit'); form.submit(); }} loading={isSubmitting && saveAction === 'submit'} style={primaryButtonStyle}>
                 Lưu và gửi phê duyệt
               </Button>
             </>
           )}
-          <Button onClick={isModalMode ? onCancel : (isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/dike-revetment'))} style={outlineButtonStyle}>
+          <Button disabled={isSubmitting} onClick={isModalMode ? onCancel : (isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/dike-revetment'))} style={outlineButtonStyle}>
             Hủy
           </Button>
         </Space>

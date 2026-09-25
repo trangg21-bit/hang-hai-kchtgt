@@ -1364,6 +1364,20 @@ export default function PortForm({
             inline={true}
             defaultGeometryType={(effectiveGeometryType as any) || 'POINT'}
             height={520}
+            value={{
+              geometryType: (effectiveGeometryType as any) || 'POINT',
+              coordinates: serializeCoordinatesToWkt(
+                gpsCoordList
+                  .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
+                  .map((c) => ({
+                    latitude: dmsToDd(c.latD, c.latM, c.latS),
+                    longitude: dmsToDd(c.lngD, c.lngM, c.lngS),
+                  }))
+                  .filter((c) => c.latitude != null && c.longitude != null) as { latitude: number; longitude: number }[],
+                effectiveGeometryType || 'POINT',
+              ),
+              symbolId: form.getFieldValue('mapSymbolId') || form.getFieldValue('symbolId'),
+            }}
             onChange={(val) => {
               if (val?.coordinates && setGpsCoordList) {
                 // Nhận mọi dạng WKT (POINT/MULTIPOINT/LINESTRING/POLYGON) — chọn NHIỀU tọa độ trên bản đồ

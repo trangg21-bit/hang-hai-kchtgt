@@ -242,6 +242,14 @@ export default function BuoyStationListPage() {
   const [userMap, setUserMap] = useState<Map<string, string>>(new Map());
   const [portMap, setPortMap] = useState<Map<string, string>>(new Map());
   const [waterwayMap, setWaterwayMap] = useState<Map<string, string>>(new Map());
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; name: string; seaportId?: string }>>([]);
+
+  const filteredWaterwayOptions = useMemo(() => {
+    if (!filterValues.portId) return [];
+    return allWaterways
+      .filter((w) => w.seaportId && String(w.seaportId).toLowerCase() === String(filterValues.portId).toLowerCase())
+      .map((w) => ({ value: w.id, label: w.name }));
+  }, [filterValues.portId, allWaterways]);
   const [routeMap, setRouteMap] = useState<Map<string, string>>(new Map());
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const orgMap = useMemo(() => {
@@ -381,13 +389,19 @@ export default function BuoyStationListPage() {
     symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
       .then((r) => setSymbols(r.data || []))
       .catch(() => {});
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then((r) => {
+    navigationChannelCRUD.getOptions()
+      .then((items) => {
         const m = new Map<string, string>();
-        (r.items || []).forEach((n: any) => {
-          m.set(n.id, n.channelName || n.channelCode || '');
+        const list: Array<{ id: string; name: string; seaportId?: string }> = [];
+        items.forEach((n) => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (name || code || '');
+          m.set(n.id, label);
+          list.push({ id: n.id, name: label, seaportId: n.seaportId });
         });
         setWaterwayMap(m);
+        setAllWaterways(list);
       })
       .catch(() => {});
     lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.SHIPPING_ROUTE, pageSize: 1000 })
@@ -1201,16 +1215,18 @@ export default function BuoyStationListPage() {
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc cảng biển</div>
               <Select placeholder="Chọn cảng biển" allowClear showSearch optionFilterProp="label"
                 value={filterValues.portId || undefined}
-                onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val }))}
+                onChange={(val) => setFilterValues((prev) => ({ ...prev, portId: val, waterwayId: undefined }))}
                 options={Array.from(portMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>
               <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
-              <Select placeholder="Chọn luồng hàng hải" allowClear showSearch optionFilterProp="label"
+              <Select placeholder={!filterValues.portId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải'} allowClear showSearch optionFilterProp="label"
+                disabled={!filterValues.portId}
+                notFoundContent="Không có luồng hàng hải thuộc cảng biển"
                 value={filterValues.waterwayId || undefined}
                 onChange={(val) => setFilterValues((prev) => ({ ...prev, waterwayId: val }))}
-                options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+                options={filteredWaterwayOptions}
                 style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
             </div>
             <div style={{ marginBottom: 12 }}>

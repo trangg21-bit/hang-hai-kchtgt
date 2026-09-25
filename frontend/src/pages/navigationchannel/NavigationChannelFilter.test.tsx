@@ -124,4 +124,10 @@ describe('NavigationChannel Filter Reordering (/navigation-channel)', () => {
     expect(idxApproveC1).toBeGreaterThan(idxSubmitted);
     expect(idxApproveC2).toBeGreaterThan(idxApproveC1);
   });
+
+  it('defaults sortField to updatedAt and sortOrder to desc', () => {
+    expect(fileContent).toContain("const [sortField, setSortField] = useState<string | undefined>('updatedAt');");
+    expect(fileContent).toContain("const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>('desc');");
+  });
 });
+

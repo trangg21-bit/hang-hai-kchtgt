@@ -33,7 +33,8 @@ import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { fmtInputNumber, normalizeSafeNumber } from '../../utils/numFmt';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
-import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt } from '../../utils/gisGeometry';
+import { GEOMETRY_POINT_COUNT, serializeCoordinatesToWkt, parseWktToCoordinates } from '../../utils/gisGeometry';
+import { parseGisCoordinates, STORM_SHELTER_CLASSIFICATION_OPTIONS } from './stormShelterPayload';
 import { DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import {
   buildStormShelterBuoyBerthQuery,
@@ -91,12 +92,6 @@ const OPERATIONAL_STATUS_OPTIONS = [
   { value: 'SUSPENDED', label: 'Dừng khai thác/vận hành' },
 ];
 
-export const STORM_SHELTER_CLASSIFICATION_OPTIONS = [
-  { value: 'Tránh bão', label: 'Tránh bão' },
-  { value: 'Trú bão', label: 'Trú bão' },
-  { value: 'Tránh, trú bão', label: 'Tránh, trú bão' },
-];
-
 const GEOMETRY_TYPE_OPTIONS = [
   { value: 'POINT', label: 'Đối tượng điểm' },
   { value: 'LINE', label: 'Đối tượng đường' },
@@ -106,31 +101,6 @@ const COORD_SYS_OPTIONS = [
   { value: 1, label: 'WGS-84' },
   { value: 2, label: 'VN-2000' },
 ];
-
-const parseGisCoordinates = (gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> => {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    const trimmed = wkt.trim();
-    if (trimmed.toUpperCase().startsWith('LINESTRING')) {
-      const m = trimmed.match(/LINESTRING\s*\(\s*([^)]+)\s*\)/i);
-      if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    }
-    if (trimmed.toUpperCase().startsWith('POLYGON')) {
-      const m = trimmed.match(/POLYGON\s*\(\s*\(\s*([^)]+)\s*\)\s*\)/i);
-      if (m) {
-        const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-        if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude && pts[0].latitude === pts[pts.length - 1].latitude) pts.pop();
-        return pts;
-      }
-    }
-    const mm = trimmed.match(/MULTIPOINT\s*\(\s*((?:\([^)]*\),?)+)\s*\)/i);
-    if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = trimmed.match(/POINT\s*\(\s*([-\d.]+)\s+([-\d.]+)\s*\)/i);
-    if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* ignore */ }
-  return [];
-};
 
 function ddToDms(dd: number | null | undefined): { d: number | null; m: number | null; s: number | null } {
   if (dd == null || isNaN(dd)) return { d: null, m: null, s: null };
@@ -179,17 +149,6 @@ const getFilterSearchTopY = (): number => {
 
 const dmsUnitStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, borderRight: 0, height: 32, fontSize: fontSizeSm, color: textTertiary };
 const dmsUnitEndStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', padding: '0 3px', background: '#f5f5f5', border: `1px solid ${borderDefault}`, borderLeft: 0, height: 32, borderRadius: '0 999px 999px 0', fontSize: fontSizeSm, color: textTertiary };
-
-const dmsInputCss = `
-.dms-input-row .ant-input-number {
-  padding: 0 4px !important;
-}
-.dms-input-row .ant-input-number .ant-input-number-input {
-  padding: 0 2px !important;
-  font-size: 13px !important;
-  text-align: center !important;
-}
-`;
 
 interface DmsInputConfig {
   key: string;
@@ -447,6 +406,8 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
   const editPortIdRef = useRef<string | undefined>(undefined);
   const initialApprovalStatusRef = useRef<string | undefined>(undefined);
   const isInitialLoadDoneRef = useRef(false);
+  const initialCoordinatesRef = useRef<string | null>(null);
+  const initialRecordRef = useRef<any>(null);
 
   // Load organizations
   useEffect(() => {
@@ -485,16 +446,16 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     })();
   }, []);
 
-  // Load waterways
-  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
-    if (!orgUnitId) {
+  // Load waterways - theo Cảng biển được chọn
+  const loadWaterwayOptions = useCallback(async (portId?: string) => {
+    if (!portId) {
       setWaterwayOptions([]);
       return;
     }
     setLoadingWaterways(true);
     try {
       const items = await navigationChannelCRUD.getOptions();
-      const filtered = items.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnitId);
+      const filtered = items.filter((n) => n.seaportId && String(n.seaportId).toLowerCase() === String(portId).toLowerCase());
       const options = filtered.map((n) => {
         const code = n.channelCode?.trim();
         const name = n.channelName?.trim();
@@ -561,7 +522,6 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       setWaterwayOptions([]);
       return () => { cancelled = true; };
     }
-    loadWaterwayOptions(watchedOrgUnitId);
     (async () => {
       setLoadingPorts(true);
       try {
@@ -588,11 +548,17 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       }
     })();
     return () => { cancelled = true; };
-  }, [watchedOrgUnitId, loadWaterwayOptions, orgUnits, form]);
+  }, [watchedOrgUnitId, orgUnits, form]);
 
   // Auto-generate code when portId selected (for create mode)
   useEffect(() => {
-    if (!watchedPortId || (isEdit && editPortIdRef.current === watchedPortId)) return;
+    if (!watchedPortId) {
+      setWaterwayOptions([]);
+      form.setFieldsValue({ navigationChannelId: undefined });
+      return;
+    }
+    void loadWaterwayOptions(watchedPortId);
+    if (isEdit && editPortIdRef.current === watchedPortId) return;
     setStormShelterCodeLoading(true);
     stormShelterCRUD.generateCode(watchedPortId)
       .then((res: any) => {
@@ -601,7 +567,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       })
       .catch(() => {})
       .finally(() => setStormShelterCodeLoading(false));
-  }, [watchedPortId, isEdit, form]);
+  }, [watchedPortId, isEdit, form, loadWaterwayOptions]);
 
   // Load initial data for Edit mode
   useEffect(() => {
@@ -613,39 +579,45 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     (async () => {
       try {
         const d: any = await stormShelterCRUD.findById(id);
+        initialRecordRef.current = d;
+        initialCoordinatesRef.current = d.coordinates || null;
         editPortIdRef.current = d.portId;
         initialApprovalStatusRef.current = d.approvalStatus;
 
         let geomType = d.geometryType;
         if (!geomType && d.coordinates) {
-          const upperWkt = d.coordinates.trim().toUpperCase();
+          const upperWkt = d.coordinates.trim().replace(/^SRID=\d+\s*;/i, '').trim().toUpperCase();
           if (upperWkt.startsWith('POLYGON')) geomType = 'POLYGON';
-          else if (upperWkt.startsWith('LINESTRING')) geomType = 'LINE';
+          else if (upperWkt.startsWith('LINESTRING') || upperWkt.startsWith('LINE')) geomType = 'LINE';
           else geomType = 'POINT';
         } else if (!geomType && (d.latitude != null || d.longitude != null || d.mapSymbolId)) {
           geomType = 'POINT';
         }
 
         // Parse coordinates
-        const ec = d.coordinates ? parseGisCoordinates({ geometryType: geomType, coordinates: d.coordinates }) : [];
+        const ec = d.coordinates ? parseWktToCoordinates(d.coordinates) : [];
         if (ec.length > 0) {
-          setCoordinateList(ec.map(c => {
+          if (!geomType) {
+            geomType = ec.length > 2 ? 'POLYGON' : ec.length === 2 ? 'LINE' : 'POINT';
+          }
+          setCoordinateList(ec.map((c, idx) => {
             const latDms = ddToDms(c.latitude);
             const lngDms = ddToDms(c.longitude);
-            return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
+            return { _idx: idx, latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
           }));
         } else if (d.latitude != null && d.longitude != null) {
+          if (!geomType) geomType = 'POINT';
           const latDms = ddToDms(Number(d.latitude));
           const lngDms = ddToDms(Number(d.longitude));
-          setCoordinateList([{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
+          setCoordinateList([{ _idx: 0, latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]);
         } else if (geomType) {
           const count = GEOMETRY_POINT_COUNT[geomType] ?? 1;
-          setCoordinateList(Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
+          setCoordinateList(Array.from({ length: count }, (_, idx) => ({ _idx: idx, latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null })));
         } else {
           setCoordinateList([]);
         }
 
-        if (d.orgUnitId) loadWaterwayOptions(d.orgUnitId);
+        if (d.portId) void loadWaterwayOptions(d.portId);
         form.setFieldsValue({
           orgUnitId: d.orgUnitId,
           portId: d.portId,
@@ -1016,40 +988,24 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
       return false;
     }
 
-    const currentGeometryType = vals.geometryType ?? form.getFieldValue('geometryType');
-    const currentMapSymbolId = vals.mapSymbolId ?? form.getFieldValue('mapSymbolId');
-    const currentCoordSys = vals.coordinateSystem ?? form.getFieldValue('coordinateSystem');
+    const geomType = vals.geometryType ?? form.getFieldValue('geometryType');
+    const hasGeom = Boolean(geomType);
+    let wktCoordinates: string | undefined;
+    let lat: number | undefined;
+    let lng: number | undefined;
 
-    if (currentGeometryType) {
-      if (!currentMapSymbolId) {
+    if (hasGeom) {
+      const mapSymbolId = vals.mapSymbolId ?? form.getFieldValue('mapSymbolId');
+      if (!mapSymbolId) {
         setActiveTabKey('location');
         form.setFields([{ name: ['mapSymbolId'], errors: ['Biểu tượng là bắt buộc khi đã chọn loại đối tượng'] }]);
         toast.error('Biểu tượng là bắt buộc khi đã chọn loại đối tượng');
         return false;
       }
 
-      const minCount = GEOMETRY_POINT_COUNT[vals.geometryType as string] ?? 1;
       const validCoords = coordinateList.filter(
         (c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null
       );
-
-      if (validCoords.length < minCount) {
-        setActiveTabKey('location');
-        const msg =
-          vals.geometryType === 'POLYGON'
-            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
-            : vals.geometryType === 'LINE'
-            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
-            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
-        toast.error(msg);
-        return false;
-      }
-
-      if (vals.geometryType === 'POINT' && validCoords.length > 1) {
-        setActiveTabKey('location');
-        toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
-        return false;
-      }
 
       const partial = coordinateList.find((c) => {
         const latSet = c.latD != null || c.latM != null || c.latS != null;
@@ -1078,20 +1034,46 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
         toast.error('Tọa độ GPS nằm ngoài dải hợp lệ (Vĩ độ: 0-90°, Kinh độ: 0-180°, Phút/Giây: 0-59.99)');
         return false;
       }
-    }
 
-    const validCoords = vals.geometryType
-      ? coordinateList.filter((c) => c.latD != null && c.latM != null && c.latS != null && c.lngD != null && c.lngM != null && c.lngS != null)
-      : [];
-    const wktCoordinates = vals.geometryType && validCoords.length > 0
-      ? serializeCoordinatesToWkt(
+      const minCount = GEOMETRY_POINT_COUNT[geomType as string] ?? 1;
+      if (validCoords.length >= minCount) {
+        if (geomType === 'POINT' && validCoords.length > 1) {
+          setActiveTabKey('location');
+          toast.error('Loại đối tượng điểm chỉ cho phép 1 tọa độ GPS');
+          return false;
+        }
+        wktCoordinates = serializeCoordinatesToWkt(
           validCoords.map((c) => ({
             latitude: dmToDd(c.latD, c.latM, c.latS),
             longitude: dmToDd(c.lngD, c.lngM, c.lngS),
           })),
-          vals.geometryType || 'POINT'
-        )
-      : undefined;
+          geomType || 'POINT'
+        );
+        lat = dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS);
+        lng = dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS);
+      } else if (isEdit && initialCoordinatesRef.current) {
+        // Fallback bảo toàn tọa độ gốc khi người dùng không sửa đổi bảng tọa độ
+        wktCoordinates = initialCoordinatesRef.current;
+        const pts = parseWktToCoordinates(wktCoordinates);
+        if (pts.length > 0) {
+          lat = pts[0].latitude;
+          lng = pts[0].longitude;
+        } else if (initialRecordRef.current?.latitude != null && initialRecordRef.current?.longitude != null) {
+          lat = Number(initialRecordRef.current.latitude);
+          lng = Number(initialRecordRef.current.longitude);
+        }
+      } else {
+        setActiveTabKey('location');
+        const msg =
+          geomType === 'POLYGON'
+            ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ'
+            : geomType === 'LINE'
+            ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ'
+            : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ';
+        toast.error(msg);
+        return false;
+      }
+    }
 
     const wasApproved = isEdit && (initialApprovalStatusRef.current === 'APPROVED' || initialApprovalStatusRef.current === 'APPROVED_LEVEL2');
     if (wasApproved) {
@@ -1136,40 +1118,58 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
             })),
         }));
 
+      const cleanString = (val: any) => {
+        if (val === null || val === undefined) return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return s === '' ? (isEdit ? null : undefined) : s;
+      };
+      const cleanNumber = (val: any) => {
+        if (val === null || val === undefined || val === '') return isEdit ? null : undefined;
+        const num = Number(val);
+        return isNaN(num) ? (isEdit ? null : undefined) : num;
+      };
+      const cleanDecimal = (val: any) => {
+        if (val === 0 || val === '0') return '0';
+        if (val === null || val === undefined || String(val).trim() === '') return isEdit ? null : undefined;
+        const s = String(val).trim();
+        return isNaN(Number(s)) ? (isEdit ? null : undefined) : s;
+      };
+
       const payload: Record<string, unknown> = {
-        orgUnitId: vals.orgUnitId,
-        portId: vals.portId,
-        navigationChannelId: vals.navigationChannelId || undefined,
-        buoyStationId: vals.buoyStationId || undefined,
+        orgUnitId: vals.orgUnitId ?? (isEdit ? null : undefined),
+        portId: vals.portId ?? (isEdit ? null : undefined),
+        navigationChannelId: vals.navigationChannelId || (isEdit ? null : undefined),
+        buoyStationId: vals.buoyStationId || (isEdit ? null : undefined),
         stormShelterCode: vals.stormShelterCode?.trim() || undefined,
-        stormShelterName: vals.stormShelterName?.trim(),
-        classification: vals.classification || undefined,
-        provinceId: provinceNumber,
-        detailedLocation: vals.detailedLocation?.trim() || undefined,
-        operationalStatus: vals.operationalStatus || undefined,
-        shapeDescription: vals.shapeDescription?.trim() || undefined,
-        area: (vals.area === 0 || vals.area === '0') ? 0 : (vals.area != null && String(vals.area).trim() !== '' && !isNaN(Number(vals.area)) ? String(vals.area).trim() : undefined),
-        designWaterDepth: (vals.designWaterDepth === 0 || vals.designWaterDepth === '0') ? '0' : (vals.designWaterDepth || undefined),
-        currentWaterDepth: (vals.currentWaterDepth === 0 || vals.currentWaterDepth === '0') ? '0' : (vals.currentWaterDepth || undefined),
-        bottomElevationDesign: (vals.bottomElevationDesign === 0 || vals.bottomElevationDesign === '0') ? '0' : (vals.bottomElevationDesign || undefined),
-        maxVesselDWT: (vals.maxVesselDWT === 0 || vals.maxVesselDWT === '0') ? '0' : (vals.maxVesselDWT || undefined),
-        activeStormShelterCount: vals.activeStormShelterCount != null && !isNaN(Number(vals.activeStormShelterCount)) ? Number(vals.activeStormShelterCount) : undefined,
-        publishedStormShelterCount: vals.publishedStormShelterCount != null && !isNaN(Number(vals.publishedStormShelterCount)) ? Number(vals.publishedStormShelterCount) : undefined,
-        underInvestmentStormShelterCount: vals.underInvestmentStormShelterCount != null && !isNaN(Number(vals.underInvestmentStormShelterCount)) ? Number(vals.underInvestmentStormShelterCount) : undefined,
-        remarks: vals.remarks?.trim() || undefined,
-        openingAnnouncementDate: vals.openingAnnouncementDate ? dayjs(vals.openingAnnouncementDate).format('YYYY-MM-DDTHH:mm:ss') : undefined,
-        publicDecision: vals.publicDecision?.trim() || undefined,
-        investmentAgreement: vals.investmentAgreement?.trim() || undefined,
-        geometryType: currentGeometryType || undefined,
-        mapSymbolId: currentMapSymbolId || undefined,
-        coordinateSystem: currentCoordSys != null ? Number(currentCoordSys) : undefined,
-        displayRule: currentGeometryType ? 1 : undefined,
-        latitude: validCoords.length > 0 ? dmToDd(validCoords[0].latD, validCoords[0].latM, validCoords[0].latS) : undefined,
-        longitude: validCoords.length > 0 ? dmToDd(validCoords[0].lngD, validCoords[0].lngM, validCoords[0].lngS) : undefined,
-        // Gửi chuỗi rỗng TƯỜNG MINH khi không có tọa độ (thay vì `undefined` bị dòng dọn key bên
-        // dưới xóa mất): server dùng '' = "người dùng đã xóa trắng vị trí" để chạy nhánh xóa
-        // spatial object; nếu key bị xóa thì server nhận null và GIỮ NGUYÊN hình học cũ.
-        coordinates: wktCoordinates || '',
+        stormShelterName: cleanString(vals.stormShelterName),
+        classification: cleanString(vals.classification),
+        provinceId: provinceNumber != null ? provinceNumber : (isEdit ? null : undefined),
+        detailedLocation: cleanString(vals.detailedLocation),
+        operationalStatus: vals.operationalStatus || (isEdit ? null : undefined),
+        shapeDescription: cleanString(vals.shapeDescription),
+        area: cleanDecimal(vals.area),
+        designWaterDepth: cleanString(vals.designWaterDepth),
+        currentWaterDepth: cleanString(vals.currentWaterDepth),
+        bottomElevationDesign: cleanString(vals.bottomElevationDesign),
+        maxVesselDWT: cleanString(vals.maxVesselDWT),
+        activeStormShelterCount: cleanNumber(vals.activeStormShelterCount),
+        publishedStormShelterCount: cleanNumber(vals.publishedStormShelterCount),
+        underInvestmentStormShelterCount: cleanNumber(vals.underInvestmentStormShelterCount),
+        remarks: cleanString(vals.remarks),
+        openingAnnouncementDate: vals.openingAnnouncementDate
+          ? (typeof vals.openingAnnouncementDate === 'string'
+              ? vals.openingAnnouncementDate
+              : (dayjs.isDayjs(vals.openingAnnouncementDate) ? vals.openingAnnouncementDate.toISOString() : String(vals.openingAnnouncementDate)))
+          : (isEdit ? null : undefined),
+        publicDecision: cleanString(vals.publicDecision),
+        investmentAgreement: cleanString(vals.investmentAgreement),
+        geometryType: hasGeom ? (geomType || null) : (isEdit ? null : undefined),
+        mapSymbolId: hasGeom ? (vals.mapSymbolId ?? form.getFieldValue('mapSymbolId') ?? null) : (isEdit ? null : undefined),
+        coordinateSystem: hasGeom && (vals.coordinateSystem ?? form.getFieldValue('coordinateSystem')) != null ? Number(vals.coordinateSystem ?? form.getFieldValue('coordinateSystem')) : (hasGeom ? 1 : (isEdit ? null : undefined)),
+        displayRule: hasGeom ? 1 : (isEdit ? null : undefined),
+        latitude: hasGeom ? (lat ?? (isEdit ? null : undefined)) : (isEdit ? null : undefined),
+        longitude: hasGeom ? (lng ?? (isEdit ? null : undefined)) : (isEdit ? null : undefined),
+        coordinates: hasGeom ? (wktCoordinates || (isEdit && initialCoordinatesRef.current ? initialCoordinatesRef.current : null)) : (isEdit ? null : undefined),
         mooringWaterAreas: mooringPayload,
         ...(targetApprovalStatus ? { approvalStatus: targetApprovalStatus } : {}),
       };
@@ -1304,7 +1304,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
             <Row gutter={[24, 0]}>
               <Col span={12}>
                 <Form.Item name="navigationChannelId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
-                  <Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải...'} options={waterwayOptions} loading={loadingWaterways} disabled={!watchedOrgUnitId} showSearch allowClear optionFilterProp="label" notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc đơn vị quản lý'} style={selectStyle} />
+                  <Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải...'} options={waterwayOptions} loading={loadingWaterways} disabled={!watchedPortId} showSearch allowClear optionFilterProp="label" notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc cảng biển'} style={selectStyle} />
                 </Form.Item>
               </Col>
               <Col span={12}>
@@ -1641,6 +1641,7 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
     {
       key: 'location',
       label: `Thông tin vị trí (${coordinateList.length})`,
+      forceRender: true,
       children: (
         <div style={drawerFormScrollStyle}>
           <div style={sectionBoxStyle}>
@@ -1660,6 +1661,10 @@ const StormShelterForm = forwardRef<StormShelterFormHandle, StormShelterFormProp
                     style={selectStyle}
                     onChange={(val) => {
                       if (!val) {
+                        initialCoordinatesRef.current = null;
+                        if (initialRecordRef.current) {
+                          initialRecordRef.current.geometryType = null;
+                        }
                         form.setFieldsValue({
                           mapSymbolId: undefined,
                           coordinateSystem: undefined,

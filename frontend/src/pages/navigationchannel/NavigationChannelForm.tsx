@@ -61,7 +61,13 @@ import type {
   ChannelRouteDetailRequest,
   NavigationChannelAttachment,
 } from '../../types/navigationChannel';
-import { CONDITION_STATUS_OPTIONS } from '../../types/navigationChannel';
+import {
+  CONDITION_STATUS_OPTIONS,
+  ROUTE_CLASSIFICATION_OPTIONS,
+  ROUTE_CLASSIFICATION_MAP,
+  ROUTE_GRADE_OPTIONS,
+  ROUTE_GRADE_MAP,
+} from '../../types/navigationChannel';
 import { VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import { useAuthStore } from '../../store/authStore';
 import { fmtInputNumber } from '../../utils/numFmt';
@@ -73,6 +79,9 @@ import {
   parseNumber5,
   getValueFromEvent5,
   integer5NonNegativeRule,
+  parseNumber10,
+  getValueFromEvent10,
+  integer10NonNegativeRule,
   safeDecimal,
 } from '../../utils/numberRuleHelper';
 import {
@@ -171,9 +180,10 @@ const COORD_SYS_OPTIONS = [
 const ROUTE_TYPE_OPTIONS = [
   { value: 1, label: 'Tuyến luồng công cộng' },
   { value: 2, label: 'Tuyến luồng chuyên dùng' },
+  { value: 3, label: 'Tuyến luồng khác' },
 ];
 
-const ROUTE_TYPE_MAP: Record<number, string> = { 1: 'Công cộng', 2: 'Chuyên dùng' };
+const ROUTE_TYPE_MAP: Record<number, string> = { 1: 'Tuyến luồng công cộng', 2: 'Tuyến luồng chuyên dùng', 3: 'Tuyến luồng khác' };
 
 export const DEFAULT_CHANNEL_GIS_SYMBOLS = [
   { id: 'a1b2c3d4-e5f6-7a8b-9c0d-112233445523', code: 'CHANNEL', name: 'Luồng hàng hải', image: '' },
@@ -560,11 +570,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
     }
 
     routeForm.setFieldsValue({
-      routeClassification: item.routeClassification,
+      routeClassification: item.routeClassification != null ? String(item.routeClassification) : undefined,
       routeCode: item.routeCode,
       routeName: item.routeName,
       routeType: item.routeType,
-      routeGrade: item.routeGrade,
+      routeGrade: item.routeGrade != null ? Number(item.routeGrade) : undefined,
       channelLengthKilometers: safeDecimal(item.channelLengthKilometers),
       designDepthMeters: safeDecimal(item.designDepthMeters),
       currentDepthMeters: safeDecimal(item.currentDepthMeters),
@@ -577,6 +587,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       turningBasinRadiusMeters: safeDecimal(item.turningBasinRadiusMeters),
       routeLatestMaintenanceYear: item.routeLatestMaintenanceYear ? dayjs(String(item.routeLatestMaintenanceYear), 'YYYY') : null,
       routeLatestDredgingVolumeCubicMeters: safeDecimal(item.routeLatestDredgingVolumeCubicMeters),
+      protectionScope: item.protectionScope != null ? item.protectionScope : (item.protectionScopeMeters != null ? item.protectionScopeMeters : undefined),
+      memo: item.memo || item.notes || undefined,
       geometryType: item.geometryType || undefined,
       mapIconId: item.mapIconId || item.symbolId || undefined,
       symbolId: item.mapIconId || item.symbolId || undefined,
@@ -627,7 +639,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         routeCode: values.routeCode?.trim() || generatedRouteCode,
         routeName: trimString(values.routeName) || '',
         routeType: values.routeType,
-        routeGrade: values.routeGrade,
+        routeGrade: values.routeGrade != null && values.routeGrade !== '' ? Number(values.routeGrade) : undefined,
         channelLengthKilometers: values.channelLengthKilometers != null && values.channelLengthKilometers !== '' ? Number(values.channelLengthKilometers) : undefined,
         designDepthMeters: values.designDepthMeters != null && values.designDepthMeters !== '' ? Number(values.designDepthMeters) : undefined,
         currentDepthMeters: values.currentDepthMeters != null && values.currentDepthMeters !== '' ? Number(values.currentDepthMeters) : undefined,
@@ -640,6 +652,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         turningBasinRadiusMeters: values.turningBasinRadiusMeters != null && values.turningBasinRadiusMeters !== '' ? Number(values.turningBasinRadiusMeters) : undefined,
         routeLatestMaintenanceYear: values.routeLatestMaintenanceYear ? (dayjs.isDayjs(values.routeLatestMaintenanceYear) ? values.routeLatestMaintenanceYear.year() : Number(values.routeLatestMaintenanceYear)) : undefined,
         routeLatestDredgingVolumeCubicMeters: values.routeLatestDredgingVolumeCubicMeters != null && values.routeLatestDredgingVolumeCubicMeters !== '' ? Number(values.routeLatestDredgingVolumeCubicMeters) : undefined,
+        protectionScope: values.protectionScope != null && values.protectionScope !== '' ? Number(values.protectionScope) : undefined,
+        memo: trimString(values.memo),
         geometryType: values.geometryType,
         mapIconId: values.mapIconId,
         symbolId: values.mapIconId,
@@ -897,7 +911,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
             channelName: data.channelName,
             provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
             detailedLocation: data.detailedLocation,
-            conditionStatus: data.conditionStatus || 'OPERATIONAL',
+            conditionStatus: data.conditionStatus || 'NOT_YET_OPERATIONAL',
             managementStation: data.managementStation,
             stationCount: data.stationCount,
             stationStaffCount: data.stationStaffCount,
@@ -977,7 +991,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       form.resetFields();
       form.setFieldsValue({
         orgUnitId: defaultFormOrgUnitIdRef.current,
-        conditionStatus: 'OPERATIONAL',
+        conditionStatus: 'NOT_YET_OPERATIONAL',
         coordinateReferenceSystem: 'WGS-84',
         displayRule: 'Độ, phút, giây (DMS)',
       });
@@ -988,7 +1002,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
       setPendingDeletedAttachmentIds([]);
       setRouteDetails([]);
     }
-  }, [id, form, userMap]);
+  }, [id, form, userMap, open]);
 
   // ── Đổi loại đối tượng: đồng bộ tọa độ theo chuẩn /vts-operation-center ──
   // Bỏ trống Loại đối tượng → xóa sạch tọa độ và trả 'Hệ quy chiếu'/'Quy tắc hiển thị'/
@@ -1309,6 +1323,8 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
           routeCode: trimString(r.routeCode),
           routeName: trimString(r.routeName) || '',
           turningBasinLocation: trimString(r.turningBasinLocation),
+          memo: trimString(r.memo),
+          protectionScope: r.protectionScope != null && r.protectionScope !== ('' as any) ? Number(r.protectionScope) : undefined,
         })),
       };
 
@@ -1471,7 +1487,13 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
 
   const formContent = (
     <>
-      <Form form={form} layout="vertical" onFinish={handleSubmitForm} onFinishFailed={handleSubmitFailed}>
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ conditionStatus: 'NOT_YET_OPERATIONAL' }}
+        onFinish={handleSubmitForm}
+        onFinishFailed={handleSubmitFailed}
+      >
         <Tabs
           activeKey={activeTabKey}
           onChange={setActiveTabKey}
@@ -1504,10 +1526,10 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                         >
                           <FormOrgUnitTreeSelect
                             organizations={organizations}
-                            placeholder="Chọn đơn vị quản lý..."
-                            showPath
+                            placeholder="Chọn đơn vị quản lý"
                             treeDefaultExpandAll={false}
                             disabled={isEditMode}
+                            popupMatchSelectWidth={true}
                             style={selectStyle}
                             onChange={(orgUnitId) => {
                               const seaportId = form.getFieldValue('seaportId');
@@ -1568,7 +1590,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                         </Form.Item>
                       </Col>
 
-                      {/* Row 3: Đơn vị vận hành | Tình trạng */}
+                      {/* Row 3: Đơn vị vận hành */}
                       <Col span={12}>
                         <Form.Item name="operatingUnitId" {...labelProps('Đơn vị vận hành')} style={{ marginBottom: spaceFormField }}>
                           <Select
@@ -1619,56 +1641,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     </Row>
                   </div>
 
-                  {/* ── Section Card 2: Thông số kỹ thuật & Khai thác ── */}
-                  <div style={sectionBoxStyle}>
-                    <div style={sectionHeaderStyle}>
-                      <div style={sectionTitleStyle}>
-                        <SlidersOutlined style={{ color: actionPrimary }} />
-                        <span>Thông số kỹ thuật & Khai thác</span>
-                      </div>
-                    </div>
-                    <Row gutter={[24, 0]}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="protectionScopeMeters"
-                          {...labelProps('Phạm vi bảo vệ luồng (m)')}
-                          style={{ marginBottom: spaceFormField }}
-                          getValueFromEvent={getValueFromEvent20}
-                          rules={[decimalNumberRule]}
-                        >
-                          <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập phạm vi bảo vệ" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="latestDredgingVolumeCubicMeters"
-                          {...labelProps('Khối lượng nạo vét (m³)')}
-                          style={{ marginBottom: spaceFormField }}
-                          getValueFromEvent={getValueFromEvent20}
-                          rules={[decimalNumberRule]}
-                        >
-                          <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập khối lượng nạo vét" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item name="latestStationRepairMonth" {...labelProps('Sửa chữa trạm gần nhất')} style={{ marginBottom: spaceFormField }}>
-                          <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn tháng/năm" style={selectStyle} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item name="latestMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}>
-                          <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={selectStyle} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={24}>
-                        <Form.Item name="protectionNotes" {...labelProps('Ghi chú phạm vi bảo vệ')} style={{ marginBottom: spaceFormField }}>
-                          <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập ghi chú phạm vi bảo vệ" style={{ ...textAreaStyle, fontSize: 13.5 }} />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                  </div>
-
-                  {/* ── Section Card 3: Thông tin trạm quản lý luồng & phao tiêu ── */}
+                  {/* ── Section Card 2: Thông tin trạm quản lý luồng & phao tiêu ── */}
                   <div style={sectionBoxStyle}>
                     <div style={sectionHeaderStyle}>
                       <div style={sectionTitleStyle}>
@@ -1677,9 +1650,9 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </div>
                     </div>
                     <Row gutter={[24, 0]}>
-                      <Col span={12}>
+                      <Col span={24}>
                         <Form.Item name="managementStation" {...labelProps('Trạm quản lý luồng')} style={{ marginBottom: spaceFormField }}>
-                          <Input placeholder="Nhập trạm quản lý luồng" maxLength={255} showCount style={inputStyle} />
+                          <Input placeholder="Nhập trạm quản lý luồng" maxLength={500} showCount style={inputStyle} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -1690,7 +1663,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           getValueFromEvent={getValueFromEvent5}
                           rules={[integer5NonNegativeRule]}
                         >
-                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng trạm" style={numberInputStyle} maxLength={5} parser={parseNumber5} />
+                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng trạm" style={numberInputStyle} maxLength={2} parser={parseNumber5} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -1701,7 +1674,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           getValueFromEvent={getValueFromEvent5}
                           rules={[integer5NonNegativeRule]}
                         >
-                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng nhân sự" style={numberInputStyle} maxLength={5} parser={parseNumber5} />
+                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng nhân sự" style={numberInputStyle} maxLength={2} parser={parseNumber5} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -1717,13 +1690,24 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Col>
                       <Col span={12}>
                         <Form.Item
+                          name="latestDredgingVolumeCubicMeters"
+                          {...labelProps('Khối lượng nạo vét năm gần nhất (m³)')}
+                          style={{ marginBottom: spaceFormField }}
+                          getValueFromEvent={getValueFromEvent20}
+                          rules={[decimalNumberRule]}
+                        >
+                          <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập khối lượng nạo vét năm gần nhất (m³)" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item
                           name="buoyCount"
                           {...labelProps('Số lượng phao')}
                           style={{ marginBottom: spaceFormField }}
-                          getValueFromEvent={getValueFromEvent5}
-                          rules={[integer5NonNegativeRule]}
+                          getValueFromEvent={getValueFromEvent10}
+                          rules={[integer10NonNegativeRule]}
                         >
-                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng phao" style={numberInputStyle} maxLength={5} parser={parseNumber5} />
+                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng phao" style={numberInputStyle} maxLength={10} parser={parseNumber10} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -1731,15 +1715,25 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           name="beaconCount"
                           {...labelProps('Số lượng tiêu')}
                           style={{ marginBottom: spaceFormField }}
-                          getValueFromEvent={getValueFromEvent5}
-                          rules={[integer5NonNegativeRule]}
+                          getValueFromEvent={getValueFromEvent10}
+                          rules={[integer10NonNegativeRule]}
                         >
-                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng tiêu" style={numberInputStyle} maxLength={5} parser={parseNumber5} />
+                          <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập số lượng tiêu" style={numberInputStyle} maxLength={10} parser={parseNumber10} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item name="latestStationRepairMonth" {...labelProps('Thời điểm sửa chữa trạm gần nhất')} style={{ marginBottom: spaceFormField }}>
+                          <DatePicker picker="month" format="MM/YYYY" placeholder="Chọn thời điểm sửa chữa trạm gần nhất" style={selectStyle} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item name="latestMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}>
+                          <DatePicker picker="year" format="YYYY" placeholder="Chọn năm bảo trì gần nhất" style={selectStyle} />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
                         <Form.Item name="notes" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
-                          <Input.TextArea rows={3} maxLength={500} showCount placeholder="Nhập ghi chú" style={{ ...textAreaStyle, fontSize: 13.5 }} />
+                          <Input.TextArea rows={3} maxLength={2000} showCount placeholder="Nhập ghi chú" style={{ ...textAreaStyle, fontSize: 13.5 }} />
                         </Form.Item>
                       </Col>
                     </Row>
@@ -1756,7 +1750,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     <Row gutter={[24, 0]}>
                       <Col span={12}>
                         <Form.Item name="announcementDecisionNumber" {...labelProps('Quyết định công bố số')} style={{ marginBottom: spaceFormField }}>
-                          <Input maxLength={100} showCount placeholder="Nhập số quyết định công bố" style={inputStyle} />
+                          <Input maxLength={20} showCount placeholder="Nhập số quyết định công bố" style={inputStyle} />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -1766,13 +1760,13 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </Col>
                       <Col span={24}>
                         <Form.Item name="announcementDecisionIssuer" {...labelProps('Đơn vị ra quyết định công bố')} style={{ marginBottom: spaceFormField }}>
-                          <Input.TextArea rows={2} maxLength={500} showCount placeholder="Nhập đơn vị ra quyết định" style={{ ...textAreaStyle, fontSize: 13.5 }} />
+                          <Input.TextArea rows={1} maxLength={255} showCount placeholder="Nhập đơn vị ra quyết định" style={{ ...textAreaStyle, fontSize: 13.5 }} />
                         </Form.Item>
                       </Col>
                     </Row>
                   </div>
 
-                  {/* ── Section Card 5: Thông tin phân đoạn tuyến luồng (chuẩn /anchorage) ── */}
+                  {/* ── Section Card 5: Thông tin chi tiết luồng (chuẩn /anchorage) ── */}
                   <div style={sectionBoxStyle}>
                     <div
                       onClick={() => setRouteOpen(!routeOpen)}
@@ -1787,7 +1781,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                     >
                       <div style={sectionTitleStyle}>
                         <SlidersOutlined style={{ color: actionPrimary }} />
-                        <span>Thông tin phân đoạn tuyến luồng ({routeDetails.length})</span>
+                        <span>Thông tin chi tiết luồng ({routeDetails.length})</span>
                       </div>
                       <span style={{ color: actionPrimary, fontSize: fontSizeSm }}>
                         {routeOpen ? <DownOutlined /> : <RightOutlined />}
@@ -1798,7 +1792,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       <div>
                         <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>
-                            Danh sách phân đoạn tuyến luồng ({routeDetails.length})
+                            Danh sách thông tin chi tiết tuyến luồng ({routeDetails.length})
                           </span>
                           <Button
                             type="primary"
@@ -1833,11 +1827,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                               {
                                 title: 'Phân loại tuyến',
                                 dataIndex: 'routeClassification',
-                                width: 130,
-                                render: (v?: string) => v || '—',
+                                width: 140,
+                                render: (v?: string) => (v != null ? ROUTE_CLASSIFICATION_MAP[String(v)] || v : '—'),
                               },
                               {
-                                title: 'Mã tuyến',
+                                title: 'Mã tuyến luồng',
                                 dataIndex: 'routeCode',
                                 width: 130,
                                 render: (v?: string) => <span style={{ fontWeight: 500 }}>{v || '—'}</span>,
@@ -1856,66 +1850,21 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                                 ),
                               },
                               {
-                                title: 'Loại tuyến',
+                                title: 'Loại tuyến luồng',
                                 dataIndex: 'routeType',
                                 width: 120,
                                 render: (v?: number) => (v != null ? ROUTE_TYPE_MAP[v] || v : '—'),
                               },
                               {
-                                title: 'Cấp luồng',
-                                dataIndex: 'routeGrade',
-                                width: 90,
-                                align: 'center' as const,
-                                render: (v?: number) => (v != null ? `Cấp ${v}` : '—'),
-                              },
-                              {
-                                title: 'Chiều dài (km)',
-                                dataIndex: 'channelLengthKilometers',
-                                width: 110,
-                                align: 'right' as const,
-                                render: (v?: number) => formatNumber(v) || '—',
-                              },
-                              {
-                                title: 'Độ sâu thiết kế (m)',
-                                dataIndex: 'designDepthMeters',
-                                width: 130,
-                                align: 'right' as const,
-                                render: (v?: number) => formatNumber(v) || '—',
-                              },
-                              {
-                                title: 'Độ sâu hiện trạng (m)',
+                                title: 'Độ sâu hiện tại (m)',
                                 dataIndex: 'currentDepthMeters',
                                 width: 130,
-                                align: 'right' as const,
                                 render: (v?: number) => formatNumber(v) || '—',
                               },
                               {
-                                title: 'Bề rộng thiết kế (m)',
-                                width: 140,
-                                align: 'right' as const,
-                                render: (_: unknown, rec: ChannelRouteDetailRequest) =>
-                                  rec.maximumDesignWidthMeters != null && rec.minimumDesignWidthMeters != null
-                                    ? `${rec.minimumDesignWidthMeters}–${rec.maximumDesignWidthMeters}`
-                                    : (formatNumber(rec.maximumDesignWidthMeters ?? rec.minimumDesignWidthMeters) || '—'),
-                              },
-                              {
-                                title: 'Bán kính cong nhỏ nhất (m)',
-                                dataIndex: 'minimumCurveRadiusMeters',
-                                width: 160,
-                                align: 'right' as const,
-                                render: (v?: number) => formatNumber(v) || '—',
-                              },
-                              {
-                                title: 'Vị trí vũng quay tàu',
-                                dataIndex: 'turningBasinLocation',
-                                width: 160,
-                                render: (v?: string) => v || '—',
-                              },
-                              {
-                                title: 'Bán kính vũng quay (m)',
-                                dataIndex: 'turningBasinRadiusMeters',
-                                width: 140,
-                                align: 'right' as const,
+                                title: 'Mái dốc thiết kế',
+                                dataIndex: 'designSlope',
+                                width: 130,
                                 render: (v?: number) => formatNumber(v) || '—',
                               },
                               {
@@ -2404,7 +2353,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         className="channel-drawer-scope"
         title={
           <span style={{ ...drawerTitleStyle, fontSize: 16 }}>
-            {editingRouteIndex == null ? 'Thêm mới thông tin phân đoạn tuyến luồng' : 'Chỉnh sửa thông tin phân đoạn tuyến luồng'}
+            {editingRouteIndex == null ? 'Thêm mới thông tin chi tiết tuyến luồng' : 'Chỉnh sửa thông tin chi tiết tuyến luồng'}
           </span>
         }
         open={routeDrawerOpen}
@@ -2447,7 +2396,17 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       </div>
 
                       <Row gutter={[24, 0]}>
-                        {/* Row 1: Tên tuyến luồng | Phân loại tuyến */}
+                        <Col span={12}>
+                          <Form.Item
+                            name="routeCode"
+                            {...labelProps('Mã tuyến luồng')}
+                            style={{ marginBottom: spaceFormField }}
+                            tooltip="Mã tuyến luồng được tự động đồng bộ theo [Mã luồng]-[Số thứ tự]"
+                          >
+                            <Input disabled placeholder="Mã tuyến luồng tự sinh" maxLength={50} style={readonlyInputStyle} />
+                          </Form.Item>
+                        </Col>
+
                         <Col span={12}>
                           <Form.Item
                             name="routeName"
@@ -2459,45 +2418,59 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                             <Input placeholder="Nhập tên tuyến luồng" maxLength={255} showCount style={inputStyle} />
                           </Form.Item>
                         </Col>
+
                         <Col span={12}>
                           <Form.Item name="routeClassification" {...labelProps('Phân loại tuyến')} style={{ marginBottom: spaceFormField }}>
-                            <Input placeholder="Nhập phân loại tuyến" maxLength={50} showCount style={inputStyle} />
+                            <Select placeholder="Chọn phân loại tuyến" allowClear options={ROUTE_CLASSIFICATION_OPTIONS} style={selectStyle} />
                           </Form.Item>
                         </Col>
 
-                        {/* Row 2: Mã tuyến | Loại tuyến */}
                         <Col span={12}>
-                          <Form.Item
-                            name="routeCode"
-                            {...labelProps('Mã tuyến')}
-                            style={{ marginBottom: spaceFormField }}
-                            tooltip="Mã tuyến được tự động đồng bộ theo [Mã luồng]-[Số thứ tự] hoặc có thể tự nhập"
-                          >
-                            <Input placeholder="Mã tuyến tự động hoặc tự nhập" maxLength={50} style={inputStyle} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item name="routeType" {...labelProps('Loại tuyến')} style={{ marginBottom: spaceFormField }}>
-                            <Select placeholder="Chọn loại tuyến" options={ROUTE_TYPE_OPTIONS} style={selectStyle} />
+                          <Form.Item name="routeType" {...labelProps('Loại tuyến luồng')} style={{ marginBottom: spaceFormField }}>
+                            <Select placeholder="Chọn loại tuyến" allowClear options={ROUTE_TYPE_OPTIONS} style={selectStyle} />
                           </Form.Item>
                         </Col>
 
-                        {/* Row 3: Cấp luồng | Chiều dài (km) */}
-                        <Col span={12}>
-                          <Form.Item
-                            name="routeGrade"
-                            {...labelProps('Cấp luồng')}
-                            style={{ marginBottom: spaceFormField }}
-                            getValueFromEvent={getValueFromEvent5}
-                            rules={[integer5NonNegativeRule]}
-                          >
-                            <NumberInputWithCount min={0} step={1} precision={0} placeholder="Nhập cấp luồng" style={numberInputStyle} maxLength={5} parser={parseNumber5} />
+                        <Col span={24}>
+                          <Form.Item name="turningBasinLocation" {...labelProps('Vị trí vũng quay tàu')} style={{ marginBottom: spaceFormField }} rules={[{ max: 2000, message: 'Vị trí vũng quay tàu tối đa 2000 ký tự' }]}>
+                            <Input.TextArea
+                              rows={3}
+                              maxLength={2000}
+                              showCount
+                              placeholder="Nhập vị trí vũng quay tàu"
+                              style={{ ...textAreaStyle, fontSize: 13.5 }}
+                            />
                           </Form.Item>
                         </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            name="turningBasinRadiusMeters"
+                            {...labelProps('Bán kính vũng quay tàu (m)')}
+                            style={{ marginBottom: spaceFormField }}
+                            getValueFromEvent={getValueFromEvent20}
+                            rules={[decimalNumberRule]}
+                          >
+                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập bán kính vũng quay" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            name="verticalClearanceMeters"
+                            {...labelProps('Chiều cao tĩnh không (m)')}
+                            style={{ marginBottom: spaceFormField }}
+                            getValueFromEvent={getValueFromEvent20}
+                            rules={[decimalNumberRule]}
+                          >
+                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập chiều cao tĩnh không" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                          </Form.Item>
+                        </Col>
+
                         <Col span={12}>
                           <Form.Item
                             name="channelLengthKilometers"
-                            {...labelProps('Chiều dài (km)')}
+                            {...labelProps('Chiều dài luồng (km)')}
                             style={{ marginBottom: spaceFormField }}
                             getValueFromEvent={getValueFromEvent20}
                             rules={[decimalNumberRule]}
@@ -2506,7 +2479,30 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           </Form.Item>
                         </Col>
 
-                        {/* Row 4: Độ sâu thiết kế (m) | Độ sâu hiện trạng (m) */}
+                        <Col span={12}>
+                          <Form.Item
+                            name="maximumDesignWidthMeters"
+                            {...labelProps('Chiều rộng thiết kế lớn nhất (m)')}
+                            style={{ marginBottom: spaceFormField }}
+                            getValueFromEvent={getValueFromEvent20}
+                            rules={[decimalNumberRule]}
+                          >
+                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập bề rộng lớn nhất" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            name="minimumDesignWidthMeters"
+                            {...labelProps('Chiều rộng thiết kế nhỏ nhất (m)')}
+                            style={{ marginBottom: spaceFormField }}
+                            getValueFromEvent={getValueFromEvent20}
+                            rules={[decimalNumberRule]}
+                          >
+                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập bề rộng nhỏ nhất" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                          </Form.Item>
+                        </Col>
+
                         <Col span={12}>
                           <Form.Item
                             name="designDepthMeters"
@@ -2518,10 +2514,11 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                             <NumberInputWithCount allowDecimal step={0.01} placeholder="Nhập độ sâu thiết kế" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
+
                         <Col span={12}>
                           <Form.Item
                             name="currentDepthMeters"
-                            {...labelProps('Độ sâu hiện trạng (m)')}
+                            {...labelProps('Độ sâu hiện tại (m)')}
                             style={{ marginBottom: spaceFormField }}
                             getValueFromEvent={getValueFromEvent20}
                             rules={[decimalNumberRule]}
@@ -2530,31 +2527,6 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           </Form.Item>
                         </Col>
 
-                        {/* Row 5: Bề rộng thiết kế nhỏ nhất (m) | Bề rộng thiết kế lớn nhất (m) */}
-                        <Col span={12}>
-                          <Form.Item
-                            name="minimumDesignWidthMeters"
-                            {...labelProps('Bề rộng thiết kế nhỏ nhất (m)')}
-                            style={{ marginBottom: spaceFormField }}
-                            getValueFromEvent={getValueFromEvent20}
-                            rules={[decimalNumberRule]}
-                          >
-                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập bề rộng nhỏ nhất" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="maximumDesignWidthMeters"
-                            {...labelProps('Bề rộng thiết kế lớn nhất (m)')}
-                            style={{ marginBottom: spaceFormField }}
-                            getValueFromEvent={getValueFromEvent20}
-                            rules={[decimalNumberRule]}
-                          >
-                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập bề rộng lớn nhất" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
-                          </Form.Item>
-                        </Col>
-
-                        {/* Row 6: Mái dốc thiết kế | Bán kính cong nhỏ nhất (m) */}
                         <Col span={12}>
                           <Form.Item
                             name="designSlope"
@@ -2566,6 +2538,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                             <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập mái dốc thiết kế" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
+
                         <Col span={12}>
                           <Form.Item
                             name="minimumCurveRadiusMeters"
@@ -2578,52 +2551,68 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                           </Form.Item>
                         </Col>
 
-                        {/* Row 7: Chiều cao tĩnh không (m) | Vị trí vũng quay tàu */}
                         <Col span={12}>
                           <Form.Item
-                            name="verticalClearanceMeters"
-                            {...labelProps('Chiều cao tĩnh không (m)')}
+                            name="routeLatestDredgingVolumeCubicMeters"
+                            {...labelProps('Khối lượng nạo vét năm gần nhất (m³)')}
                             style={{ marginBottom: spaceFormField }}
                             getValueFromEvent={getValueFromEvent20}
                             rules={[decimalNumberRule]}
                           >
-                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập chiều cao tĩnh không" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item name="turningBasinLocation" {...labelProps('Vị trí vũng quay tàu')} style={{ marginBottom: spaceFormField }}>
-                            <Input placeholder="Nhập vị trí vũng quay tàu" maxLength={255} showCount style={inputStyle} />
+                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập khối lượng nạo vét" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
                           </Form.Item>
                         </Col>
 
-                        {/* Row 8: Bán kính vũng quay (m) | Năm bảo trì gần nhất */}
-                        <Col span={12}>
-                          <Form.Item
-                            name="turningBasinRadiusMeters"
-                            {...labelProps('Bán kính vũng quay (m)')}
-                            style={{ marginBottom: spaceFormField }}
-                            getValueFromEvent={getValueFromEvent20}
-                            rules={[decimalNumberRule]}
-                          >
-                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập bán kính vũng quay" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
-                          </Form.Item>
-                        </Col>
                         <Col span={12}>
                           <Form.Item name="routeLatestMaintenanceYear" {...labelProps('Năm bảo trì gần nhất')} style={{ marginBottom: spaceFormField }}>
                             <DatePicker picker="year" format="YYYY" placeholder="Chọn năm" style={selectStyle} />
                           </Form.Item>
                         </Col>
 
-                        {/* Row 9: Khối lượng nạo vét gần nhất (m³) */}
                         <Col span={12}>
                           <Form.Item
-                            name="routeLatestDredgingVolumeCubicMeters"
-                            {...labelProps('Khối lượng nạo vét gần nhất (m³)')}
+                            name="routeGrade"
+                            {...labelProps('Phân cấp luồng')}
                             style={{ marginBottom: spaceFormField }}
-                            getValueFromEvent={getValueFromEvent20}
-                            rules={[decimalNumberRule]}
                           >
-                            <NumberInputWithCount allowDecimal min={0} step={0.01} placeholder="Nhập khối lượng nạo vét" style={numberInputStyle} maxLength={20} parser={parseNumber20} formatter={fmtInputNumber} />
+                            <Select placeholder="Chọn phân cấp luồng" allowClear options={ROUTE_GRADE_OPTIONS} style={selectStyle} />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={12}>
+                          <Form.Item
+                            name="protectionScope"
+                            {...labelProps('Phạm vi bảo vệ luồng')}
+                            style={{ marginBottom: spaceFormField }}
+                            getValueFromEvent={getValueFromEvent10}
+                            rules={[integer10NonNegativeRule]}
+                          >
+                            <NumberInputWithCount
+                              min={0}
+                              step={1}
+                              precision={0}
+                              placeholder="Nhập phạm vi bảo vệ luồng"
+                              style={numberInputStyle}
+                              maxLength={10}
+                              parser={parseNumber10}
+                            />
+                          </Form.Item>
+                        </Col>
+
+                        <Col span={24}>
+                          <Form.Item
+                            name="memo"
+                            {...labelProps('Ghi chú')}
+                            style={{ marginBottom: spaceFormField }}
+                            rules={[{ max: 2000, message: 'Ghi chú tối đa 2000 ký tự' }]}
+                          >
+                            <Input.TextArea
+                              rows={3}
+                              maxLength={2000}
+                              showCount
+                              placeholder="Nhập ghi chú"
+                              style={{ ...textAreaStyle, fontSize: 13.5 }}
+                            />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -2907,7 +2896,7 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
         width={1080}
         rootClassName="channel-drawer-scope"
         className="channel-drawer-scope"
-        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin phân đoạn tuyến luồng</span>}
+        title={<span style={{ ...drawerTitleStyle, fontSize: 16 }}>Chi tiết thông tin chi tiết tuyến luồng</span>}
         open={!!viewingRoute}
         onClose={() => {
           setViewingRoute(null);
@@ -2937,31 +2926,33 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       <div style={{ ...sectionHeaderStyle, borderBottom: '1px solid #f1f5f9', paddingBottom: 8, marginBottom: 12 }}>
                         <div style={sectionTitleStyle}>
                           <SlidersOutlined style={{ color: actionPrimary }} />
-                          <span>Thông tin phân đoạn tuyến luồng</span>
+                          <span>Thông tin chi tiết luồng</span>
                         </div>
                       </div>
                       {renderDetailRowsTwoCol([
-                        { label: 'Phân loại tuyến', value: viewingRoute.routeClassification || '—' },
-                        { label: 'Mã tuyến', value: viewingRoute.routeCode || '—' },
-                        { label: 'Tên tuyến luồng', value: viewingRoute.routeName || '—' },
-                        { label: 'Loại tuyến', value: viewingRoute.routeType != null ? (ROUTE_TYPE_MAP[viewingRoute.routeType] || viewingRoute.routeType) : '—' },
-                        { label: 'Cấp luồng', value: viewingRoute.routeGrade != null ? `Cấp ${viewingRoute.routeGrade}` : '—' },
-                        { label: 'Chiều dài (km)', value: formatNumber(viewingRoute.channelLengthKilometers) || '—' },
-                        { label: 'Độ sâu thiết kế (m)', value: formatNumber(viewingRoute.designDepthMeters) || '—' },
-                        { label: 'Độ sâu hiện trạng (m)', value: formatNumber(viewingRoute.currentDepthMeters) || '—' },
+                        { label: 'Phân loại tuyến', value: viewingRoute.routeClassification != null ? (ROUTE_CLASSIFICATION_MAP[String(viewingRoute.routeClassification)] || viewingRoute.routeClassification) : '' },
+                        { label: 'Mã tuyến luồng', value: viewingRoute.routeCode || '' },
+                        { label: 'Tên tuyến luồng', value: viewingRoute.routeName || '' },
+                        { label: 'Loại tuyến luồng', value: viewingRoute.routeType != null ? (ROUTE_TYPE_MAP[viewingRoute.routeType] || viewingRoute.routeType) : '' },
+                        { label: 'Phân cấp luồng', value: viewingRoute.routeGrade != null ? (ROUTE_GRADE_MAP[viewingRoute.routeGrade] || `Cấp ${viewingRoute.routeGrade}`) : '' },
+                        { label: 'Chiều dài luồng (km)', value: formatNumber(viewingRoute.channelLengthKilometers) || '' },
+                        { label: 'Độ sâu thiết kế (m)', value: formatNumber(viewingRoute.designDepthMeters) || '' },
+                        { label: 'Độ sâu hiện tại (m)', value: formatNumber(viewingRoute.currentDepthMeters) || '' },
                         {
                           label: 'Bề rộng thiết kế (m)',
                           value: viewingRoute.maximumDesignWidthMeters != null && viewingRoute.minimumDesignWidthMeters != null
                             ? `${viewingRoute.minimumDesignWidthMeters}–${viewingRoute.maximumDesignWidthMeters}`
-                            : (formatNumber(viewingRoute.maximumDesignWidthMeters ?? viewingRoute.minimumDesignWidthMeters) || '—'),
+                            : (formatNumber(viewingRoute.maximumDesignWidthMeters ?? viewingRoute.minimumDesignWidthMeters) || ''),
                         },
-                        { label: 'Mái dốc thiết kế', value: formatNumber(viewingRoute.designSlope) || '—' },
-                        { label: 'Bán kính cong nhỏ nhất (m)', value: formatNumber(viewingRoute.minimumCurveRadiusMeters) || '—' },
-                        { label: 'Chiều cao tĩnh không (m)', value: formatNumber(viewingRoute.verticalClearanceMeters) || '—' },
-                        { label: 'Vị trí vũng quay tàu', value: viewingRoute.turningBasinLocation || '—' },
-                        { label: 'Bán kính vũng quay (m)', value: formatNumber(viewingRoute.turningBasinRadiusMeters) || '—' },
-                        { label: 'Năm bảo trì gần nhất', value: viewingRoute.routeLatestMaintenanceYear || '—' },
-                        { label: 'Khối lượng nạo vét gần nhất (m³)', value: formatNumber(viewingRoute.routeLatestDredgingVolumeCubicMeters) || '—' },
+                        { label: 'Mái dốc thiết kế', value: formatNumber(viewingRoute.designSlope) || '' },
+                        { label: 'Bán kính cong nhỏ nhất (m)', value: formatNumber(viewingRoute.minimumCurveRadiusMeters) || '' },
+                        { label: 'Chiều cao tĩnh không (m)', value: formatNumber(viewingRoute.verticalClearanceMeters) || '' },
+                        { label: 'Vị trí vũng quay tàu', value: viewingRoute.turningBasinLocation || '' },
+                        { label: 'Bán kính vũng quay tàu (m)', value: formatNumber(viewingRoute.turningBasinRadiusMeters) || '' },
+                        { label: 'Năm bảo trì gần nhất', value: viewingRoute.routeLatestMaintenanceYear || '' },
+                        { label: 'Khối lượng nạo vét năm gần nhất (m³)', value: formatNumber(viewingRoute.routeLatestDredgingVolumeCubicMeters) || '' },
+                        { label: 'Phạm vi bảo vệ luồng', value: formatNumber(viewingRoute.protectionScope ?? viewingRoute.protectionScopeMeters) || '' },
+                        { label: 'Ghi nhớ', value: viewingRoute.memo || viewingRoute.notes || '' },
                       ])}
                     </div>
                   </div>
@@ -2982,14 +2973,14 @@ function NavigationChannelFormInner({ open, editId, mode, onCancel, onSuccess }:
                       {renderDetailRowsTwoCol([
                         {
                           label: 'Loại đối tượng',
-                          value: GEOMETRY_TYPE_OPTIONS.find((o) => o.value === viewingRoute.geometryType)?.label || viewingRoute.geometryType || '—',
+                          value: GEOMETRY_TYPE_OPTIONS.find((o) => o.value === viewingRoute.geometryType)?.label || viewingRoute.geometryType || '',
                         },
                         {
                           label: 'Biểu tượng',
                           value: (() => {
                             const symId = viewingRoute.mapIconId || viewingRoute.symbolId;
                             const sym = symbols.find((s: any) => String(s.id) === String(symId));
-                            if (!sym) return '—';
+                            if (!sym) return '';
                             return (
                               <Space style={{ display: 'inline-flex', alignItems: 'center' }}>
                                 {sym.image && (

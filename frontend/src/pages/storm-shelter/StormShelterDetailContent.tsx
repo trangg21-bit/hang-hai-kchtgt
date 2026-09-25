@@ -32,9 +32,9 @@ import {
 import { colors, DRAWER_TABLE_SCROLL_Y } from '../../themetokenchk';
 import DetailTable from '../../components/shared/DetailTable';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { parseWktToCoordinates } from '../../utils/gisGeometry';
 import {
-  actionPrimary, textTertiary, textPrimary, surfaceCard, borderDefault,
-  statusOperational, statusAttention, statusCritical, statusDraft,
+  textTertiary, textPrimary, surfaceCard, borderDefault,
   fontSizeSm, fontSizeLg, fontWeightBold,
   spaceSm, spaceMd, spaceFormField,
   outlineButtonStyle, primaryButtonStyle, statusBadgeStyle,
@@ -43,6 +43,10 @@ import {
 import type { StormShelterArea } from '../../types/port';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import { fmtNum } from '../../utils/numFmt';
+import {
+  DEFAULT_APPROVAL_STYLE_MAP,
+  DEFAULT_OPERATIONAL_STYLE_MAP,
+} from './stormShelterPayload';
 
 const fontSizeMd = 13.5;
 
@@ -79,33 +83,6 @@ interface DetailTableRow {
   time?: string;
   type?: string;
 }
-
-export const DEFAULT_APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  NHAP: { color: statusDraft, label: 'Lưu tạm' },
-  DRAFT: { color: statusDraft, label: 'Lưu tạm' },
-  PROPOSED: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  CHO_PHE_DUYET: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  PENDING_APPROVAL: { color: actionPrimary, label: 'Chờ phê duyệt cấp Cảng vụ/Chi cục' },
-  APPROVED_LEVEL1: { color: statusAttention, label: 'Chờ phê duyệt cấp Cục' },
-  APPROVED: { color: statusOperational, label: 'Đã phê duyệt' },
-  DA_PHE_DUYET: { color: statusOperational, label: 'Đã phê duyệt' },
-  REJECTED: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  TU_CHOI: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL1: { color: statusCritical, label: 'Từ chối cấp Cảng vụ/Chi cục' },
-  REJECTED_LEVEL2: { color: statusCritical, label: 'Từ chối cấp Cục' },
-};
-
-export const DEFAULT_OPERATIONAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
-  OPERATIONAL: { color: statusOperational, label: 'Đang khai thác/vận hành' },
-  NOT_YET_OPERATIONAL: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
-  SUSPENDED: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-  HIEN_HANH: { color: statusOperational, label: 'Hiện hành' },
-  TAM_NGUNG: { color: statusCritical, label: 'Tạm ngừng' },
-  DANG_KHAI_THAC: { color: statusOperational, label: 'Đang khai thác/vận hành' },
-  CHUA_KHAI_THAC: { color: statusAttention, label: 'Chưa khai thác/vận hành' },
-  DUNG_KHAI_THAC: { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-};
 
 export interface StormShelterDetailContentProps {
   selectedRecord: StormShelterArea;
@@ -150,37 +127,20 @@ const isImageFile = (fileName?: string): boolean => {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff'].includes(ext || '');
 };
 
+// Parse tọa độ GPS: ưu tiên WKT (coordinates) từ backend — hỗ trợ POINT/MULTIPOINT/LINESTRING/POLYGON;
+// fallback sang latitude/longitude (backend chỉ parse được cho POINT).
 const parseGisCoordinates = (record: any): Array<{ lat: number; lng: number }> => {
   const wkt = record?.coordinates;
-  const out: Array<{ lat: number; lng: number }> = [];
   if (wkt && typeof wkt === 'string' && wkt.trim()) {
-    try {
-      if (wkt.startsWith('LINESTRING(')) {
-        const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/);
-        if (m) m[1].split(',').forEach((p: string) => { const [lng, lat] = p.trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0 && wkt.startsWith('POLYGON((')) {
-        const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/);
-        if (m) {
-          const pts = m[1].split(',').map((p: string) => { const [lng, lat] = p.trim().split(/\s+/); return { lng: Number(lng), lat: Number(lat) }; }).filter(c => !isNaN(c.lat));
-          if (pts.length > 1 && pts[0].lng === pts[pts.length - 1].lng) pts.pop();
-          pts.forEach(p => { out.push(p); });
-        }
-      }
-      if (out.length === 0) {
-        const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)\)/);
-        if (mm) mm[1].split('),(').forEach((pt: string) => { const [lng, lat] = pt.replace(/[()]/g, '').trim().split(/\s+/); if (!isNaN(Number(lat))) out.push({ lng: Number(lng), lat: Number(lat) }); });
-      }
-      if (out.length === 0) {
-        const pm = wkt.match(/POINT\s*\(([\d.-]+)\s+([\d.-]+)\)/);
-        if (pm) out.push({ lng: Number(pm[1]), lat: Number(pm[2]) });
-      }
-    } catch { /* ignore */ }
+    const pts = parseWktToCoordinates(wkt);
+    if (pts.length > 0) {
+      return pts.map(p => ({ lat: p.latitude, lng: p.longitude }));
+    }
   }
-  if (out.length === 0 && record?.latitude != null && record?.longitude != null) {
-    out.push({ lat: Number(record.latitude), lng: Number(record.longitude) });
+  if (record?.latitude != null && record?.longitude != null) {
+    return [{ lat: Number(record.latitude), lng: Number(record.longitude) }];
   }
-  return out;
+  return [];
 };
 
 export default function StormShelterDetailContent({
@@ -718,10 +678,10 @@ export default function StormShelterDetailContent({
               <div style={sectionBoxStyle}>
                 <div className="chk-detail-grid">
                   {[
-                    ['Loại đối tượng', (() => { const gt = String((r as any).geometryType || ''); const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return labels[gt] || gt || ''; })()],
-                    ['Biểu tượng', (() => { const symbolId = r.mapSymbolId || (r as any).bieuTuongId || ''; const name = symbolMap.get(symbolId) || symbolId || ''; const image = symbolImageMap.get(symbolId); return <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>{image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{name}</span>; })()],
-                    ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem || '')],
-                    ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : ''],
+                    ['Loại đối tượng', (() => { const gt = String((r as any).geometryType || ''); const labels: Record<string, string> = { POINT: 'Đối tượng điểm', LINE: 'Đối tượng đường', POLYGON: 'Đối tượng vùng' }; return labels[gt] || gt || '—'; })()],
+                    ['Biểu tượng', (() => { const symbolId = r.mapSymbolId || (r as any).bieuTuongId || ''; const name = symbolMap.get(symbolId) || symbolId || ''; const image = symbolImageMap.get(symbolId); return symbolId ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: spaceSm }}>{image ? <img src={image} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} /> : null}{name}</span> : '—'; })()],
+                    ['Hệ quy chiếu', r.coordinateSystem === 1 ? 'WGS-84' : r.coordinateSystem === 2 ? 'VN-2000' : (r.coordinateSystem || '—')],
+                    ['Quy tắc hiển thị', ((r as any).geometryType || (r as any).coordinates || (r as any).latitude != null || (r as any).longitude != null) ? 'Độ, phút, giây (DMS)' : '—'],
                   ].map(([label, value], index) => (
                     <div key={label as string} className="chk-detail-row">
                       <span className={`chk-detail-label ${index % 2 === 0 ? 'sec-col1-label' : 'sec-col2-label'}`}>{label}</span>
@@ -733,7 +693,7 @@ export default function StormShelterDetailContent({
               <div style={{ marginTop: spaceMd }}>
                 <div style={{ marginBottom: spaceFormField, display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 32 }}>
                   <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, lineHeight: '32px', display: 'inline-flex', alignItems: 'center', height: 32 }}>Tọa độ GPS ({coords.length})</span>
-                  <Button icon={<EnvironmentOutlined style={{ color: actionPrimary }} />} onClick={() => setGisModalOpen(true)} style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>Xem vị trí trên bản đồ</Button>
+                  <Button icon={<EnvironmentOutlined style={{ color: actionPrimary }} />} disabled={coords.length === 0} onClick={() => setGisModalOpen(true)} style={{ ...outlineButtonStyle, height: 32, fontSize: fontSizeSm, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 4 }}>Xem vị trí trên bản đồ</Button>
                 </div>
                 <DetailTable
                   dataSource={coords.map((point) => ({ ...point }))}
@@ -967,14 +927,22 @@ export default function StormShelterDetailContent({
           value={(() => {
             const pts = parseGisCoordinates(r);
             if (pts.length > 0) {
-              const rawWkt = (r as any).coordinates || '';
+              const rawWkt = ((r as any).coordinates || '').trim().replace(/^SRID=\d+\s*;/i, '').trim();
               let geom: 'POINT' | 'LINE' | 'POLYGON' = 'POINT';
-              let coordinates: string;
-              if (rawWkt.startsWith('LINESTRING')) {
-                geom = 'LINE';
-                coordinates = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
-              } else if (rawWkt.startsWith('POLYGON')) {
+              const upperGeom = String((r as any).geometryType || '').toUpperCase();
+              if (upperGeom === 'POLYGON' || rawWkt.toUpperCase().startsWith('POLYGON')) {
                 geom = 'POLYGON';
+              } else if (upperGeom === 'LINE' || upperGeom === 'LINESTRING' || rawWkt.toUpperCase().startsWith('LINESTRING')) {
+                geom = 'LINE';
+              } else if (pts.length > 2) {
+                geom = 'POLYGON';
+              } else if (pts.length === 2) {
+                geom = 'LINE';
+              }
+              let coordinates: string;
+              if (geom === 'LINE') {
+                coordinates = `LINESTRING(${pts.map(p => `${p.lng} ${p.lat}`).join(', ')})`;
+              } else if (geom === 'POLYGON') {
                 coordinates = `POLYGON((${pts.map(p => `${p.lng} ${p.lat}`).join(', ')}))`;
               } else if (pts.length > 1) {
                 coordinates = `MULTIPOINT(${pts.map(p => `(${p.lng} ${p.lat})`).join(',')})`;

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Button, Space, Tag, Tooltip, Popconfirm } from 'antd';
+import { Button, Space, Tag, Popconfirm } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,

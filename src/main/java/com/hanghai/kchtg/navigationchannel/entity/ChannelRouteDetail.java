@@ -40,43 +40,43 @@ public class ChannelRouteDetail extends BaseEntity {
     @Column(name = "route_code", length = 50)
     private String routeCode;
 
-    @Column(name = "route_name", length = 500)
+    @Column(name = "route_name", length = 255)
     private String routeName;
 
     @Column(name = "route_type")
     private Integer routeType;
 
-    @Column(name = "turning_basin_location", length = 500)
+    @Column(name = "turning_basin_location", length = 2000)
     private String turningBasinLocation;
 
-    @Column(name = "turning_basin_radius_meters")
+    @Column(name = "turning_basin_radius_meters", precision = 20, scale = 4)
     private BigDecimal turningBasinRadiusMeters;
 
-    @Column(name = "vertical_clearance_meters")
+    @Column(name = "vertical_clearance_meters", precision = 20, scale = 4)
     private BigDecimal verticalClearanceMeters;
 
-    @Column(name = "channel_length_kilometers")
+    @Column(name = "channel_length_kilometers", precision = 20, scale = 4)
     private BigDecimal channelLengthKilometers;
 
-    @Column(name = "maximum_design_width_meters")
+    @Column(name = "maximum_design_width_meters", precision = 20, scale = 4)
     private BigDecimal maximumDesignWidthMeters;
 
-    @Column(name = "minimum_design_width_meters")
+    @Column(name = "minimum_design_width_meters", precision = 20, scale = 4)
     private BigDecimal minimumDesignWidthMeters;
 
-    @Column(name = "design_depth_meters")
+    @Column(name = "design_depth_meters", precision = 20, scale = 4)
     private BigDecimal designDepthMeters;
 
-    @Column(name = "current_depth_meters")
+    @Column(name = "current_depth_meters", precision = 20, scale = 4)
     private BigDecimal currentDepthMeters;
 
-    @Column(name = "design_slope")
+    @Column(name = "design_slope", precision = 20, scale = 4)
     private BigDecimal designSlope;
 
     @Column(name = "minimum_curve_radius_meters")
     private BigDecimal minimumCurveRadiusMeters;
 
-    @Column(name = "route_latest_dredging_volume_cubic_meters")
+    @Column(name = "route_latest_dredging_volume_cubic_meters", precision = 20, scale = 4)
     private BigDecimal routeLatestDredgingVolumeCubicMeters;
 
     @Column(name = "route_latest_maintenance_year")
@@ -84,4 +84,10 @@ public class ChannelRouteDetail extends BaseEntity {
 
     @Column(name = "route_grade")
     private Integer routeGrade;
+
+    @Column(name = "protection_scope", precision = 10, scale = 4)
+    private BigDecimal protectionScope;
+
+    @Column(name = "memo", length = 2000)
+    private String memo;
 }

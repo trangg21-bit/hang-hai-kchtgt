@@ -11,7 +11,6 @@ import {
     Modal,
     Select,
     Space,
-    Tooltip,
 } from 'antd';
 import dayjs from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -398,6 +397,7 @@ export default function BuoyBerthList() {
   }, [portOptions]);
 
   // ── Waterway options (Thuộc luồng hàng hải) ──
+  const [allWaterways, setAllWaterways] = useState<Array<{ id: string; name: string; seaportId?: string }>>([]);
   const [waterwayOptions, setWaterwayOptions] = useState<Array<{ value: string; label: string }>>([]);
 
   const waterwayMap = useMemo(() => {
@@ -405,6 +405,13 @@ export default function BuoyBerthList() {
     waterwayOptions.forEach((o) => { map.set(o.value, o.label); });
     return map;
   }, [waterwayOptions]);
+
+  const filteredWaterwayOptions = useMemo(() => {
+    if (!filterPortId) return [];
+    return allWaterways
+      .filter((w) => w.seaportId && String(w.seaportId).toLowerCase() === String(filterPortId).toLowerCase())
+      .map((w) => ({ value: w.id, label: w.name }));
+  }, [filterPortId, allWaterways]);
 
   // ── Tab counts ──────────────────────────────────────────────────
   const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
@@ -650,7 +657,16 @@ export default function BuoyBerthList() {
     })();
     // ── Thuộc luồng hàng hải (cùng nguồn options như form và Cầu cảng) ──
     navigationChannelCRUD.getOptions()
-      .then(items => setWaterwayOptions(items.map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
+      .then(items => {
+        const list = items.map(n => {
+          const code = n.channelCode?.trim();
+          const name = n.channelName?.trim();
+          const label = code && name ? `${code} - ${name}` : (name || code || '');
+          return { id: n.id, name: label, seaportId: n.seaportId };
+        });
+        setAllWaterways(list);
+        setWaterwayOptions(list.map(w => ({ value: w.id, label: w.name })));
+      })
       .catch(() => {});
   }, []);
 
@@ -663,7 +679,7 @@ export default function BuoyBerthList() {
         const filtered = (!managingUnitId || managingUnitId === '__all__')
           ? allPorts
           : allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === managingUnitId);
-        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portName })));
+        setPortOptions(filtered.map((p: any) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.id) })));
       } catch { /* ignore */ }
     })();
   }, [managingUnitId, orgUnitReady]);
@@ -1017,7 +1033,7 @@ export default function BuoyBerthList() {
             showSearch
             optionFilterProp="label"
             value={filterPortId}
-            onChange={(v) => { setFilterPortId(v); setPage(1); }}
+            onChange={(v) => { setFilterPortId(v); setFilterWaterwayId(undefined); setPage(1); }}
             options={portOptions}
             style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
           />
@@ -1026,13 +1042,15 @@ export default function BuoyBerthList() {
         <div style={{ marginBottom: 12 }}>
           <div style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, marginBottom: spaceSm }}>Thuộc luồng hàng hải</div>
           <Select
-            placeholder="Chọn luồng hàng hải"
+            placeholder={!filterPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải'}
             allowClear
             showSearch
+            disabled={!filterPortId}
             optionFilterProp="label"
             value={filterWaterwayId}
             onChange={(v) => { setFilterWaterwayId(v); setPage(1); }}
-            options={Array.from(waterwayMap.entries()).map(([id, name]) => ({ value: id, label: name }))}
+            options={filteredWaterwayOptions}
+            notFoundContent="Không có luồng hàng hải thuộc cảng biển"
             filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))}
             style={{ width: '100%', borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}
           />
@@ -1215,11 +1233,9 @@ export default function BuoyBerthList() {
         render: (_v: string | null, record: BuoyBerth) => {
           const name = orgMap.get(record.orgUnitId || '') || (record as any).orgUnitName || record.orgUnitId || '';
           return (
-            <Tooltip title={name}>
-              <span style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {name}
-              </span>
-            </Tooltip>
+            <span style={{ fontWeight: fontWeightBold, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {name}
+            </span>
           );
         },
       },

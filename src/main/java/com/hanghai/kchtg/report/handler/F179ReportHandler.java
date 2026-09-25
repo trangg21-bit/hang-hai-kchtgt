@@ -78,30 +78,6 @@ public class F179ReportHandler extends BaseReportHandler {
     }
 
     private List<Map<String, Object>> getDefaultRows() {
-        List<Map<String, Object>> rows = new ArrayList<>();
-        String[] fields = {
-            "Vận tải đường biển",
-            "Vận tải đường thủy nội địa",
-            "Dịch vụ hỗ trợ vận tải biển (bốc dỡ, lưu kho bãi, đại lý, hoa tiêu, lai dắt)",
-            "Dịch vụ logistics và dịch vụ hàng hải khác"
-        };
-        int[] dnCounts = { 45, 120, 85, 60 };
-        double[] vc = { 15200.5, 32100.0, 0.0, 0.0 };
-        double[] lc = { 85200.0, 42100.0, 0.0, 0.0 };
-        double[] hk = { 1250.0, 3500.0, 0.0, 0.0 };
-        double[] dt = { 12500.0, 6800.0, 18500.0, 9200.0 };
-
-        for (int i = 0; i < fields.length; i++) {
-            Map<String, Object> r = new LinkedHashMap<>();
-            r.put("STT", String.valueOf(i + 1));
-            r.put("Lĩnh vực hoạt động", fields[i]);
-            r.put("Số doanh nghiệp", dnCounts[i]);
-            r.put("Khối lượng vận chuyển (Nghìn tấn)", vc[i]);
-            r.put("Khối lượng luân chuyển (Triệu Tấn.km)", lc[i]);
-            r.put("Lượt hành khách (Nghìn lượt)", hk[i]);
-            r.put("Doanh thu (Tỷ đồng)", dt[i]);
-            rows.add(r);
-        }
-        return rows;
+        return new ArrayList<>();
     }
 }

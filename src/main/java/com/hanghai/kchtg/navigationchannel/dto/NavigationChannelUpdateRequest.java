@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.dto.FieldPresenceTrackedRequest;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.vtssystem.entity.ConditionStatus;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -37,14 +38,17 @@ public class NavigationChannelUpdateRequest extends FieldPresenceTrackedRequest 
 
     private UUID operatingUnitId;
 
+    @Size(max = 255, message = "Tên luồng hàng hải tối đa 255 ký tự")
     private String channelName;
 
     private Integer provinceId;
 
+    @Size(max = 500, message = "Địa điểm chi tiết tối đa 500 ký tự")
     private String detailedLocation;
 
     private ConditionStatus conditionStatus;
 
+    @Size(max = 500, message = "Trạm quản lý luồng tối đa 500 ký tự")
     private String managementStation;
 
     private Integer stationCount;
@@ -69,6 +73,7 @@ public class NavigationChannelUpdateRequest extends FieldPresenceTrackedRequest 
 
     private LocalDate announcementDecisionDate;
 
+    @Size(max = 255, message = "Đơn vị ra quyết định công bố tối đa 255 ký tự")
     private String announcementDecisionIssuer;
 
     private List<ChannelRouteDetailRequest> routeDetails;

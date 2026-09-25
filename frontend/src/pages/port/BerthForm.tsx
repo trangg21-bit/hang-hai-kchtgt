@@ -264,16 +264,16 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
 
   useEffect(() => { symbolService.list({ page: 1, pageSize: 1000, status: 'active' }).then(r => setSymbols(r.data || [])).catch(() => {}); }, []);
   useEffect(() => { setLoadingOrgs(true); organizationService.list({ pageSize: 1000 }).then(r => setOrgUnits(r.data || [])).catch(() => {}).finally(() => setLoadingOrgs(false)); }, []);
-  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt thuộc đơn vị quản lý
-  const loadWaterwayOptions = useCallback(async (orgUnitId?: string) => {
-    if (!orgUnitId) {
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt thuộc Cảng biển được chọn
+  const loadWaterwayOptions = useCallback(async (portId?: string) => {
+    if (!portId) {
       setWaterwayOptions([]);
       return;
     }
     setLoadingWaterways(true);
     try {
       const items = await navigationChannelCRUD.getOptions();
-      const filtered = items.filter((n) => !n.orgUnitId || n.orgUnitId === orgUnitId);
+      const filtered = items.filter((n) => n.seaportId && String(n.seaportId).toLowerCase() === String(portId).toLowerCase());
       const options = filtered.map((n) => {
         const code = n.channelCode?.trim();
         const name = n.channelName?.trim();
@@ -297,7 +297,7 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
     try {
       const allPorts = await portCRUD.getOptions();
       const filtered = allPorts.filter((p: any) => !p.orgUnitId || p.orgUnitId === orgUnitId);
-      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portName || p.name || p.id }));
+      const ports = filtered.map((p: any) => ({ value: p.id, label: p.portCode ? `${p.portCode} - ${p.portName || ''}` : (p.portName || p.name || p.id) }));
       setPortOptions(ports);
       if (ports.length === 0) toast.warning('Đơn vị quản lý chưa có cảng biển được phê duyệt');
     } catch { setPortOptions([]); }
@@ -317,10 +317,25 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
       form.setFieldsValue({ waterwayId: undefined });
     }
     loadPortOptions(watchedOrgUnitId);
-    loadWaterwayOptions(watchedOrgUnitId);
-  }, [watchedOrgUnitId, isEdit, form, loadWaterwayOptions]);
+  }, [watchedOrgUnitId, isEdit, form]);
 
-  useEffect(() => { if (!watchedPortId || (isEdit && editPortIdRef.current === watchedPortId)) return; setBerthCodeLoading(true); api.get('/v1/berths/generate-code', { params: { portId: watchedPortId } }).then(r => { const c = r.data?.data?.berthCode ?? r.data?.data?.portCode ?? r.data?.data; if (c) form.setFieldsValue({ berthCode: c }); }).catch(() => {}).finally(() => setBerthCodeLoading(false)); }, [watchedPortId]);
+  useEffect(() => {
+    if (!watchedPortId) {
+      setWaterwayOptions([]);
+      form.setFieldsValue({ waterwayId: undefined });
+      return;
+    }
+    void loadWaterwayOptions(watchedPortId);
+    if (isEdit && editPortIdRef.current === watchedPortId) return;
+    setBerthCodeLoading(true);
+    api.get('/v1/berths/generate-code', { params: { portId: watchedPortId } })
+      .then(r => {
+        const c = r.data?.data?.berthCode ?? r.data?.data?.portCode ?? r.data?.data;
+        if (c) form.setFieldsValue({ berthCode: c });
+      })
+      .catch(() => {})
+      .finally(() => setBerthCodeLoading(false));
+  }, [watchedPortId, isEdit, form, loadWaterwayOptions]);
 
   // Khi chọn loại đối tượng → tự set hệ quy chiếu, quy tắc hiển thị và thêm sẵn số dòng tọa độ tương ứng
   // (GIỮ tọa độ đã nhập/chọn, chỉ thêm dòng trống cho đủ số lượng — không xóa dữ liệu cũ)
@@ -361,10 +376,10 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
           return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
         }) : data.latitude != null ? (() => { const latDms = ddToDms(Number(data.latitude)); const lngDms = ddToDms(Number(data.longitude)); return [{ latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s }]; })() : []);
         if (data.orgUnitId) {
-          await Promise.all([
-            loadPortOptions(data.orgUnitId),
-            loadWaterwayOptions(data.orgUnitId),
-          ]);
+          await loadPortOptions(data.orgUnitId);
+        }
+        if (data.portId) {
+          await loadWaterwayOptions(data.portId);
         }
         try {
           const fr = await api.get(`/v1/berths/${id}/attachments`, { params: { page: 0, size: 50 } });
@@ -653,14 +668,14 @@ export default forwardRef(function BerthForm({ form, id, onFinish, onSubmittingC
               <Col span={12}>
                 <Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}>
                   <Select
-                    placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : 'Chọn luồng hàng hải...'}
+                    placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải...'}
                     options={waterwayOptions}
                     loading={loadingWaterways}
-                    disabled={!watchedOrgUnitId}
+                    disabled={!watchedPortId}
                     showSearch
                     allowClear
                     optionFilterProp="label"
-                    notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc đơn vị quản lý'}
+                    notFoundContent={loadingWaterways ? 'Đang tải...' : 'Không có luồng hàng hải thuộc cảng biển'}
                     style={selectStyle}
                   />
                 </Form.Item>

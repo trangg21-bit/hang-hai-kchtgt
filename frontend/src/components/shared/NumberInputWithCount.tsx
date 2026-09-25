@@ -7,7 +7,6 @@ import {
   decideKeyInput,
   DEFAULT_MAX_DIGITS,
 } from '../../utils/numberInputGuards';
-import { fmtInputNumber, parseDotNumber } from '../../utils/numFmt';
 
 export type NumberInputWithCountProps = InputNumberProps<string | number> & {
   /** Số CHỮ SỐ 0-9 tối đa cho phép nhập (mặc định 20). Chỉ đếm chữ số — '-' và dấu thập phân không tính. */
@@ -24,12 +23,6 @@ export type NumberInputWithCountProps = InputNumberProps<string | number> & {
   allowDecimal?: boolean;
   /** Cho phép 1 dấu '-' ở ĐẦU để nhập giá trị âm (mặc định false). */
   allowNegative?: boolean;
-  /**
-   * Định dạng hiển thị chuỗi số (mặc định theo chuẩn vi-VN: dấu chấm '.' hàng nghìn, dấu phẩy ',' thập phân).
-   */
-  formatter?: InputNumberProps<string | number>['formatter'];
-  /** Chuẩn hoá giá trị khi AntD đọc chuỗi hiển thị (mặc định parseDotNumber chuẩn vi-VN). */
-  parser?: InputNumberProps<string | number>['parser'];
 };
 
 const ALLOWED_NAV_KEYS = [
@@ -38,8 +31,7 @@ const ALLOWED_NAV_KEYS = [
 ];
 
 /**
- * Ô số dùng chung: đếm và giới hạn CHỮ SỐ, định dạng hiển thị real-time chuẩn vi-VN
- * (dấu chấm '.' phân tách hàng nghìn, dấu phẩy ',' phân tách phần thập phân).
+ * Ô số dùng chung: đếm và giới hạn CHỮ SỐ, hỗ trợ số thập phân (dấu ',' hoặc '.') và số âm.
  * Chi tiết luật nhập xem `utils/numberInputGuards.ts`.
  */
 export function NumberInputWithCount({
@@ -54,23 +46,20 @@ export function NumberInputWithCount({
   onPaste,
   ...inputProps
 }: NumberInputWithCountProps) {
-  const isYearInput = Number(inputProps.min) >= 1800 && Number(inputProps.max) <= 2200;
-  const isDecimalAllowed = allowDecimal === true || (typeof inputProps.step === 'number' && inputProps.step > 0 && inputProps.step < 1);
-  const effectiveFormatter = formatter ?? (isYearInput ? undefined : fmtInputNumber);
-  const effectiveParser = (parser ?? (isYearInput ? undefined : parseDotNumber)) as (
-    displayValue: string | undefined,
-  ) => string | number;
-
   const digitLimit = maxDigits ?? maxLength ?? DEFAULT_MAX_DIGITS;
   const valStr = value === null || value === undefined ? '' : String(value);
   const digitsCount = countDigits(valStr);
+  const effectiveFormatter = formatter;
+  const step = inputProps.step;
+  const isDecimalAllowed =
+    allowDecimal === true ||
+    (typeof step === 'number' && step > 0 && step < 1);
 
   return (
     <InputNumber
       stringMode
-      decimalSeparator=","
       formatter={effectiveFormatter}
-      parser={effectiveParser}
+      parser={parser}
       {...inputProps}
       value={value}
       onKeyDown={(e) => {
@@ -88,34 +77,6 @@ export function NumberInputWithCount({
         if (e.key.length === 1) {
           const inputEl = e.currentTarget as HTMLInputElement;
           const currentVal = inputEl ? inputEl.value : valStr;
-
-          // Nếu bấm phím '.' trên bàn phím số (numpad) hoặc bàn phím khi cho phép số thập phân:
-          // Tự động chuyển thành dấu phẩy ',' theo chuẩn hiển thị vi-VN
-          if (e.key === '.' && isDecimalAllowed) {
-            e.preventDefault();
-            if (inputEl) {
-              const current = inputEl.value;
-              const start = inputEl.selectionStart ?? current.length;
-              const end = inputEl.selectionEnd ?? start;
-              const outside = current.slice(0, start) + current.slice(end);
-              if (!outside.includes(',')) {
-                const success = document.execCommand?.('insertText', false, ',');
-                if (!success) {
-                  const next = current.slice(0, start) + ',' + current.slice(end);
-                  const nativeSetter = Object.getOwnPropertyDescriptor(
-                    window.HTMLInputElement.prototype,
-                    'value',
-                  )?.set;
-                  if (nativeSetter) {
-                    nativeSetter.call(inputEl, next);
-                    inputEl.setSelectionRange(start + 1, start + 1);
-                    inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-                  }
-                }
-              }
-            }
-            return;
-          }
           const decision = decideKeyInput({
             key: e.key,
             currentValue: currentVal,
@@ -130,6 +91,31 @@ export function NumberInputWithCount({
             return;
           }
 
+          // Khi người dùng bấm dấu '.' trên bàn phím (đặc biệt bàn phím số numpad)
+          // mà ô số đang dùng dấu phẩy (decimalSeparator = ','):
+          // Tự động chèn ',' để người dùng gõ '.' hay ',' đều vào được dấu thập phân.
+          const currentSep = (inputProps.decimalSeparator as string | undefined) ?? ',';
+          if (isDecimalAllowed && e.key === '.' && currentSep === ',') {
+            e.preventDefault();
+            if (document.execCommand && document.execCommand('insertText', false, ',')) {
+              return;
+            }
+            if (inputEl) {
+              const start = inputEl.selectionStart ?? inputEl.value.length;
+              const end = inputEl.selectionEnd ?? start;
+              const nativeSetter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype,
+                'value',
+              )?.set;
+              const nextVal = inputEl.value.slice(0, start) + ',' + inputEl.value.slice(end);
+              if (nativeSetter) {
+                nativeSetter.call(inputEl, nextVal);
+                inputEl.setSelectionRange(start + 1, start + 1);
+                inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }
+            return;
+          }
         }
 
         onKeyDown?.(e);
@@ -172,3 +158,4 @@ export function NumberInputWithCount({
 }
 
 export default NumberInputWithCount;
+

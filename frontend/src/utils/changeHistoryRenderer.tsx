@@ -10,6 +10,7 @@ import {
   fontSizeSm,
   fontSizeMd,
   fontWeightMedium,
+  fontWeightBold,
   radiusPill,
   spaceXs,
   spaceSm,
@@ -109,7 +110,11 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   provinceId: 'Địa điểm (Tỉnh/Thành phố)',
   address: 'Địa chỉ',
   locationDetail: 'Địa điểm chi tiết',
-  coordinates: 'Tọa độ GPS',
+  coordinates: 'Tọa độ GIS',
+  toadogis: 'Tọa độ GIS',
+  toadogps: 'Tọa độ GIS',
+  'Tọa độ GIS': 'Tọa độ GIS',
+  'Tọa độ GPS': 'Tọa độ GIS',
   latitude: 'Vĩ độ',
   longitude: 'Kinh độ',
   geometryType: 'Loại đối tượng',
@@ -179,6 +184,10 @@ export const GLOBAL_KCHT_FIELD_LABELS: Record<string, string> = {
   documentDate: 'Ngày văn bản',
   remarks: 'Ghi chú',
   note: 'Ghi chú',
+  notes: 'Ghi chú',
+  memo: 'Ghi nhớ',
+  protectionScope: 'Phạm vi bảo vệ luồng',
+  protectionScopeMeters: 'Phạm vi bảo vệ luồng (m)',
   description: 'Mô tả',
 
   // Attachments
@@ -403,6 +412,11 @@ export function autoFormatHistoryValue(fn: string, raw: unknown): string | null 
     if (s === '1' || s.toUpperCase() === 'WGS84' || s.toUpperCase() === 'WGS_84') return 'WGS-84';
     if (s === '2' || s.toUpperCase() === 'VN2000' || s.toUpperCase() === 'VN_2000') return 'VN-2000';
   }
+  // 9b. Display Rule
+  if (normKey === 'displayrule' || normKey === 'quytachienthi') {
+    if (s === '1' || s.toUpperCase() === 'DMS' || s.includes('Độ, phút, giây')) return 'Độ, phút, giây (DMS)';
+    if (s === '2' || s.toUpperCase() === 'DD' || s.includes('Độ thập phân')) return 'Độ thập phân (DD)';
+  }
   if (normKey.includes('geometrytype') || normKey.includes('loaidoituong')) {
     const geoMap: Record<string, string> = {
       POINT: 'Điểm',
@@ -593,10 +607,16 @@ export const DEFAULT_IGNORED_FIELDS = new Set([
   'spatialId',
   'infrastructureList_raw',
   'approvalStatus',
+  'approvalLevel',
   'approverLevel1',
   'approvedDateLevel1',
+  'level1ApprovedBy',
+  'level1ApprovedDate',
   'approverLevel2',
   'approvedDateLevel2',
+  'level2ApprovedBy',
+  'level2ApprovedDate',
+  'approvedDate',
   'rejectionReason',
   'Lý do từ chối',
   'ly do tu choi',
@@ -635,10 +655,47 @@ export const DEFAULT_IGNORED_FIELDS = new Set([
   'Nội dung Cục phê duyệt',
   'Cán bộ Cảng vụ phê duyệt',
   'Cán bộ Cục phê duyệt',
+  'Ngày duyệt Cục',
+  'Ngày duyệt Cảng vụ',
+  'Ngày phê duyệt',
+  'ngay duyet cuc',
+  'ngay duyet cang vu',
+  'ngay phe duyet',
   'approvedBy',
   'approvedAt',
   'approvedRemarks',
+  'coordinateSystem',
+  'coordinateReferenceSystem',
+  'displayRule',
+  'Hệ quy chiếu',
+  'Quy tắc hiển thị',
+  'he quy chieu',
+  'quy tac hien thi',
 ]);
+
+export const isIgnoredAuditField = (rawFn: string, normFn?: string): boolean => {
+  const norm = normFn || normalizeHistoryKey(rawFn);
+  return (
+    DEFAULT_IGNORED_FIELDS.has(rawFn) ||
+    DEFAULT_IGNORED_FIELDS.has(rawFn.toLowerCase()) ||
+    norm === 'ngayduyetcuc' ||
+    norm === 'ngayduyetcangvu' ||
+    norm === 'ngaypheduyet' ||
+    norm === 'approveddate' ||
+    norm === 'approveddatelevel1' ||
+    norm === 'approveddatelevel2' ||
+    norm === 'level1approveddate' ||
+    norm === 'level2approveddate' ||
+    norm === 'level1approvedby' ||
+    norm === 'level2approvedby' ||
+    norm === 'approvallevel' ||
+    norm === 'coordinatesystem' ||
+    norm === 'coordinatereferencesystem' ||
+    norm === 'hequychieu' ||
+    norm === 'displayrule' ||
+    norm === 'quytachienthi'
+  );
+};
 
 export interface HistoryUpdateSession {
   group: { tsMs: number; ts: string; actor: string; items: RawHistoryRecord[] };
@@ -715,7 +772,7 @@ export function buildHistoryUpdateSessions(options: ChangeHistoryRendererOptions
 
     for (const it of g.items) {
       const rawFn = (it.changedField ?? it.fieldName ?? '').trim();
-      if (ignoredFields.has(rawFn)) continue;
+      if (ignoredFields.has(rawFn) || isIgnoredAuditField(rawFn)) continue;
 
       if (rawFn === 'attachments' || rawFn === 'Tài liệu đính kèm' || rawFn === 'File đính kèm') {
         attachmentItems.push(it);
@@ -975,6 +1032,164 @@ export function buildHistoryUpdateSessions(options: ChangeHistoryRendererOptions
   return sessions;
 }
 
+export function formatCoordPointDms(xStr: string, yStr?: string): string {
+  const x = Number(xStr);
+  const y = yStr !== undefined && yStr !== '' ? Number(yStr) : NaN;
+
+  const toDmsString = (val: number, isLat: boolean) => {
+    if (isNaN(val)) return '';
+    const abs = Math.abs(val);
+    const d = Math.floor(abs);
+    const minFloat = (abs - d) * 60;
+    const m = Math.floor(minFloat);
+    const s = Math.round((minFloat - m) * 60 * 10) / 10;
+    const dir = isLat ? (val >= 0 ? 'N' : 'S') : (val >= 0 ? 'E' : 'W');
+    return `${d}° ${m}' ${s.toFixed(1)}" ${dir}`;
+  };
+
+  if (!isNaN(x) && !isNaN(y)) {
+    let lat = y;
+    let lng = x;
+    if (x < 35 && y > 50) {
+      lat = x;
+      lng = y;
+    }
+    const latDms = toDmsString(lat, true);
+    const lngDms = toDmsString(lng, false);
+    return `${latDms}, ${lngDms}`;
+  }
+
+  if (!isNaN(x)) {
+    const isLat = x <= 35 && x >= -35;
+    return toDmsString(x, isLat);
+  }
+
+  return xStr;
+}
+
+export function parseCoordinatesPoints(raw: string | null): { typeName?: string; points: Array<{ x: string; y: string; index: number }> } | null {
+  if (!raw || isBlankOrDash(raw)) return null;
+  const str = raw.trim();
+
+  if (/^(Đường|Vùng|Điểm)\s+bản\s+đồ\s*\(\d+\s+điểm/i.test(str)) {
+    return { typeName: str, points: [] };
+  }
+
+  let typeName = '';
+  let inner = str;
+
+  if (/^POINT\s*\(/i.test(str)) {
+    typeName = 'Điểm';
+    inner = str.replace(/^POINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINESTRING\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINESTRING\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^LINE\s*\(/i.test(str)) {
+    typeName = 'Đường';
+    inner = str.replace(/^LINE\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^POLYGON\s*\(\(/i.test(str)) {
+    typeName = 'Vùng';
+    inner = str.replace(/^POLYGON\s*\(\(/i, '').replace(/\)\)\s*$/, '');
+  } else if (/^MULTIPOINT\s*\(/i.test(str)) {
+    typeName = 'Tập hợp điểm';
+    inner = str.replace(/^MULTIPOINT\s*\(/i, '').replace(/\)\s*$/, '');
+  } else if (/^MULTILINESTRING\s*\(\(/i.test(str)) {
+    typeName = 'Đa đường';
+    inner = str.replace(/^MULTILINESTRING\s*\(\(/i, '').replace(/\)\)\s*$/, '');
+  } else if (/^MULTIPOLYGON\s*\(\(\(/i.test(str)) {
+    typeName = 'Đa vùng';
+    inner = str.replace(/^MULTIPOLYGON\s*\(\(\(/i, '').replace(/\)\)\)\s*$/, '');
+  } else if (str.startsWith('(') && str.endsWith(')')) {
+    inner = str.slice(1, -1);
+  }
+
+  const pointStrings = inner.split(',').map((s) => s.trim()).filter(Boolean);
+  if (pointStrings.length === 0) return null;
+
+  const points = pointStrings.map((ps, idx) => {
+    const clean = ps.replace(/[()]/g, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return { x: parts[0], y: parts[1], index: idx + 1 };
+    }
+    return { x: clean, y: '', index: idx + 1 };
+  });
+
+  return { typeName, points };
+}
+
+export function renderCoordinatesDisplay(val: string | null, isOld: boolean = false): React.ReactNode {
+  if (!val || isBlankOrDash(val)) {
+    return <span style={{ color: textTertiary }}>—</span>;
+  }
+  const parsed = parseCoordinatesPoints(val);
+  if (!parsed || parsed.points.length === 0) {
+    return <span style={{ color: isOld ? textSecondary : textPrimary }}>{parsed?.typeName || val}</span>;
+  }
+  const { typeName, points } = parsed;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: spaceXs, width: '100%' }}>
+      {typeName && (
+        <span style={{ fontSize: fontSizeSm, fontWeight: fontWeightBold, color: isOld ? textSecondary : actionPrimary }}>
+          {typeName} ({points.length} điểm)
+        </span>
+      )}
+      {points.map((pt) => (
+        <div key={pt.index} style={{ fontSize: fontSizeSm, color: isOld ? textSecondary : textPrimary, lineHeight: 1.5 }}>
+          {points.length > 1 && <span style={{ color: textTertiary, marginRight: spaceXs }}>#{pt.index}:</span>}
+          <span>{formatCoordPointDms(pt.x, pt.y)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export const isCoordinatesHistoryValue = (field: string, value: unknown): boolean => {
+  const normKey = normalizeHistoryKey(field);
+  if (
+    normKey === 'coordinates' ||
+    normKey === 'toadogis' ||
+    normKey === 'toadogps' ||
+    normKey === 'toado' ||
+    field === 'coordinates' ||
+    field === 'Tọa độ GIS' ||
+    field === 'Tọa độ GPS'
+  ) {
+    return true;
+  }
+  if (typeof value === 'string') {
+    const s = value.trim().toUpperCase();
+    return (
+      s.startsWith('POINT') ||
+      s.startsWith('LINESTRING') ||
+      s.startsWith('LINE') ||
+      s.startsWith('POLYGON') ||
+      s.startsWith('MULTIPOINT') ||
+      s.startsWith('MULTILINESTRING') ||
+      s.startsWith('MULTIPOLYGON')
+    );
+  }
+  return false;
+};
+
+export const renderStandardHistoryValue = (field: string, value: React.ReactNode, isOld: boolean = false): React.ReactNode => {
+  if (value === null || value === undefined || isBlankOrDash(value)) {
+    return <span style={{ color: textTertiary }}>—</span>;
+  }
+  if (React.isValidElement(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    if (isCoordinatesHistoryValue(field, value)) {
+      return renderCoordinatesDisplay(value, isOld);
+    }
+    if (isServicesProvidedHistoryField(field)) {
+      return renderServiceHistoryValue(field, value, isOld);
+    }
+  }
+  return value;
+};
+
 const renderServiceHistoryValue = (field: string, value: React.ReactNode, isOld: boolean = false) => {
   if (!isServicesProvidedHistoryField(field) || typeof value !== 'string') return value;
   const rawTokens = parseMaritimeServiceTokens(value);
@@ -1072,14 +1287,14 @@ export function getStandardHistoryCards(options: ChangeHistoryRendererOptions): 
                   style={historyOldValueStyle}
                   title={typeof x.ov === 'string' ? x.ov : undefined}
                 >
-                  {renderServiceHistoryValue(x.field, x.ov, true)}
+                  {renderStandardHistoryValue(x.field, x.ov, true)}
                 </span>
                 <Typography.Text style={historyArrowStyle}>→</Typography.Text>
                 <span
                   style={historyNewValueStyle}
                   title={typeof x.nv === 'string' ? x.nv : undefined}
                 >
-                  {renderServiceHistoryValue(x.field, x.nv, false)}
+                  {renderStandardHistoryValue(x.field, x.nv, false)}
                 </span>
               </div>
             );

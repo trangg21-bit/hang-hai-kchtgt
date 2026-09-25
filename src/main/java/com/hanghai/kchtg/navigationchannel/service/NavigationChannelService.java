@@ -112,7 +112,7 @@ public class NavigationChannelService {
                 .channelName(trimToNull(req.getChannelName()))
                 .seaportId(req.getSeaportId())
                 .operatingUnitId(req.getOperatingUnitId())
-                .conditionStatus(req.getConditionStatus() != null ? req.getConditionStatus() : ConditionStatus.OPERATIONAL)
+                .conditionStatus(req.getConditionStatus() != null ? req.getConditionStatus() : ConditionStatus.NOT_YET_OPERATIONAL)
                 .detailedLocation(trimToNull(req.getDetailedLocation()))
                 .managementStation(trimToNull(req.getManagementStation()))
                 .stationCount(req.getStationCount())
@@ -1041,6 +1041,8 @@ public class NavigationChannelService {
                 .routeLatestDredgingVolumeCubicMeters(ct.getRouteLatestDredgingVolumeCubicMeters())
                 .routeLatestMaintenanceYear(ct.getRouteLatestMaintenanceYear())
                 .routeGrade(ct.getRouteGrade())
+                .protectionScope(ct.getProtectionScope())
+                .memo(ct.getMemo())
                 .build();
     }
 
@@ -1172,6 +1174,8 @@ public class NavigationChannelService {
                 .routeLatestDredgingVolumeCubicMeters(d.getRouteLatestDredgingVolumeCubicMeters())
                 .routeLatestMaintenanceYear(d.getRouteLatestMaintenanceYear())
                 .routeGrade(d.getRouteGrade())
+                .protectionScope(d.getProtectionScope())
+                .memo(trimToNull(d.getMemo()))
                 .build();
     }
 
@@ -1480,7 +1484,7 @@ public class NavigationChannelService {
                         e.getMaximumDesignWidthMeters(), e.getMinimumDesignWidthMeters(), e.getDesignDepthMeters(),
                         e.getCurrentDepthMeters(), e.getDesignSlope(), e.getMinimumCurveRadiusMeters(),
                         e.getRouteLatestDredgingVolumeCubicMeters(), e.getRouteLatestMaintenanceYear(),
-                        e.getRouteGrade());
+                        e.getRouteGrade(), e.getProtectionScope(), e.getMemo());
             }
             if (d instanceof ChannelRouteDetailRequest r) {
                 return routeDetailFields(r.getSequenceNo(), r.getRouteClassification(), r.getRouteName(),
@@ -1489,7 +1493,7 @@ public class NavigationChannelService {
                         r.getMaximumDesignWidthMeters(), r.getMinimumDesignWidthMeters(), r.getDesignDepthMeters(),
                         r.getCurrentDepthMeters(), r.getDesignSlope(), r.getMinimumCurveRadiusMeters(),
                         r.getRouteLatestDredgingVolumeCubicMeters(), r.getRouteLatestMaintenanceYear(),
-                        r.getRouteGrade());
+                        r.getRouteGrade(), r.getProtectionScope(), r.getMemo());
             }
             return String.valueOf(d);
         }).collect(Collectors.joining("; "));
@@ -1500,7 +1504,8 @@ public class NavigationChannelService {
             BigDecimal verticalClearanceMeters, BigDecimal channelLengthKilometers,
             BigDecimal maximumDesignWidthMeters, BigDecimal minimumDesignWidthMeters, BigDecimal designDepthMeters,
             BigDecimal currentDepthMeters, BigDecimal designSlope, BigDecimal minimumCurveRadiusMeters,
-            BigDecimal routeLatestDredgingVolumeCubicMeters, Integer routeLatestMaintenanceYear, Integer routeGrade) {
+            BigDecimal routeLatestDredgingVolumeCubicMeters, Integer routeLatestMaintenanceYear, Integer routeGrade,
+            BigDecimal protectionScope, String memo) {
         return String.join("|",
                 String.valueOf(sequenceNo),
                 nullToEmpty(routeClassification),
@@ -1518,7 +1523,9 @@ public class NavigationChannelService {
                 String.valueOf(minimumCurveRadiusMeters),
                 String.valueOf(routeLatestDredgingVolumeCubicMeters),
                 String.valueOf(routeLatestMaintenanceYear),
-                String.valueOf(routeGrade));
+                String.valueOf(routeGrade),
+                String.valueOf(protectionScope),
+                nullToEmpty(memo));
     }
 
     private String formatCoordinateList(List<?> coordinateList) {

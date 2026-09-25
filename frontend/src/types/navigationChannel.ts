@@ -52,6 +52,49 @@ export const GIS_GEOMETRY_TYPE_OPTIONS: { value: GisGeometryType; label: string 
   { value: 'POLYGON', label: 'Vùng' },
 ];
 
+// ── #22 Phân loại tuyến (RouteClassification) ────────────────────────────
+export const ROUTE_CLASSIFICATION_OPTIONS: { value: string; label: string }[] = [
+  { value: '1', label: 'Đoạn' },
+  { value: '2', label: 'Vùng đón trả hoa tiêu' },
+  { value: '3', label: 'Vùng quay vũng tàu' },
+  { value: '4', label: 'Ga tránh tàu' },
+];
+
+export const ROUTE_CLASSIFICATION_MAP: Record<string, string> = {
+  '1': 'Đoạn',
+  '2': 'Vùng đón trả hoa tiêu',
+  '3': 'Vùng quay vũng tàu',
+  '4': 'Ga tránh tàu',
+};
+
+// ── #38 Phân cấp luồng (RouteGrade) ──────────────────────────────────────
+export const ROUTE_GRADE_OPTIONS: { value: number; label: string }[] = [
+  { value: 7, label: 'Luồng cấp đặc biệt' },
+  { value: 1, label: 'Luồng cấp I' },
+  { value: 2, label: 'Luồng cấp II' },
+  { value: 3, label: 'Luồng cấp III' },
+  { value: 4, label: 'Luồng cấp IV' },
+  { value: 5, label: 'Luồng cấp V' },
+  { value: 6, label: 'Luồng cấp VI' },
+];
+
+export const ROUTE_GRADE_MAP: Record<number | string, string> = {
+  7: 'Luồng cấp đặc biệt',
+  1: 'Luồng cấp I',
+  2: 'Luồng cấp II',
+  3: 'Luồng cấp III',
+  4: 'Luồng cấp IV',
+  5: 'Luồng cấp V',
+  6: 'Luồng cấp VI',
+  '7': 'Luồng cấp đặc biệt',
+  '1': 'Luồng cấp I',
+  '2': 'Luồng cấp II',
+  '3': 'Luồng cấp III',
+  '4': 'Luồng cấp IV',
+  '5': 'Luồng cấp V',
+  '6': 'Luồng cấp VI',
+};
+
 // ── #22-#38 Bảng con tuyến luồng (channel_route_detail) ──────────────────
 export interface ChannelRouteDetailResponse {
   id?: string;
@@ -74,6 +117,11 @@ export interface ChannelRouteDetailResponse {
   routeLatestDredgingVolumeCubicMeters?: number; // #36
   routeLatestMaintenanceYear?: number; // #37
   routeGrade?: number; // #38
+  protectionScope?: number; // Phạm vi bảo vệ luồng (tối đa 10 chữ số, int / numeric(10,0))
+  memo?: string; // Ghi nhớ (tối đa 2000 ký tự)
+  // Compatibility aliases
+  protectionScopeMeters?: number;
+  notes?: string;
   // Tab Thông tin vị trí (chuẩn /vts-operation-center)
   geometryType?: GisGeometryType | string;
   mapIconId?: string;

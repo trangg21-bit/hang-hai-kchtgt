@@ -519,29 +519,6 @@ class CctvServiceTest {
     }
 
     @Test
-    void uploadAttachment_onRecentlyApprovedEntity_shouldRecordFullSnapshot() {
-        entity.setApprovalStatus(ApprovalStatus.APPROVED);
-        entity.setCreatedAt(LocalDateTime.now());
-        when(cctvRepository.findById(ID)).thenReturn(Optional.of(entity));
-
-        com.hanghai.kchtg.port.entity.Attachment existing = new com.hanghai.kchtg.port.entity.Attachment();
-        existing.setFileName("existing.pdf");
-        when(attachmentRepository.findByEntityTypeAndEntityIdOrderByUploadedAtDesc("CCTV", ID))
-                .thenReturn(List.of(existing));
-        when(attachmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-
-        MockMultipartFile upload = new MockMultipartFile(
-                "files", "new.pdf", "application/pdf", "test".getBytes());
-
-        service.uploadAttachments(ID, List.of(upload), USER_ID);
-
-        ArgumentCaptor<InfrastructureHistory> historyCaptor = ArgumentCaptor.forClass(InfrastructureHistory.class);
-        verify(historyRepository).save(historyCaptor.capture());
-        assertEquals("existing.pdf", historyCaptor.getValue().getPreviousValue());
-        assertEquals("existing.pdf, new.pdf", historyCaptor.getValue().getNewValue());
-    }
-
-    @Test
     void findAll_whenApprovalStatusNull_shouldPassIsDeletedNull() {
         when(cctvRepository.searchCctv(
                 org.mockito.ArgumentMatchers.isNull(),

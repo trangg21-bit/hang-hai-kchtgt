@@ -39,14 +39,22 @@ import {
   CLASSIFICATION_OPTIONS,
   CLASSIFICATION_LABEL_MAP, CLASSIFICATION_BUOY_LABEL_MAP, CLASSIFICATION_MARK_LABEL_MAP,
   formatClassification, formatClassificationBuoy, formatClassificationMark,
-  CONDITION_OPTIONS, buoyStatusBadge, TAB_STATUS_LIST, normalizeBuoyStatus,
+  CONDITION_OPTIONS, CONDITION_STYLE, normalizeBuoyCondition, buoyConditionBadge,
+  buoyStatusBadge, TAB_STATUS_LIST, normalizeBuoyStatus,
 } from './schema';
 import type { Buoy, ChangeHistory, CreateBuoyRequest } from './types';
-import { documentApi } from '../../app/document/api';
-import DocumentUploadModal from '../../app/document/DocumentUploadModal';
+import { triggerBlobDownload } from '../../components/shared/infrastructureAttachmentUtils';
+import { buoyCRUD } from '../beaconService';
 import BuoyFormContent from './BuoyFormContent';
 import { resolveGisFieldValue } from './resolveGisFields';
 import BuoyDetailContent from './BuoyDetailContent';
+import {
+  GEOMETRY_POINT_COUNT,
+  parseWktToCoordinates,
+  serializeCoordinatesToWkt,
+  validateDmsCoordinates,
+} from '../../utils/gisGeometry';
+import { focusErrorTab } from '../../utils/formValidationHelper';
 import { ScreenHeader, DataTable } from '../../components/list-view';
 import { VIETNAM_PROVINCES, VIETNAM_PROVINCE_OPTIONS } from '../../types/common';
 import type { DataTableColumn } from '../../components/list-view/DataTable';
@@ -217,40 +225,7 @@ function formatDateTime(dateStr: string | null | undefined): string {
   }
 }
 
-function parseGisCoordinateList(gisLocation: { geometryType?: string; coordinates?: string } | undefined | null): Array<{ latitude: number; longitude: number }> {
-  const wkt = gisLocation?.coordinates;
-  if (!wkt || typeof wkt !== 'string' || !wkt.trim()) return [];
-  try {
-    if (wkt.startsWith('LINESTRING(')) { const m = wkt.match(/LINESTRING\s*\(([^)]+)\)/); if (m) return m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); }
-    if (wkt.startsWith('POLYGON((')) { const m = wkt.match(/POLYGON\s*\(\(([^)]+)\)\)/); if (m) { const pts = m[1].split(',').map(p => { const [lng, lat] = p.trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude)); if (pts.length > 1 && pts[0].longitude === pts[pts.length - 1].longitude) pts.pop(); return pts; } }
-    const mm = wkt.match(/MULTIPOINT\s*\(((?:\([^)]*\),?)+)/); if (mm) return mm[1].split('),(').map(p => { const [lng, lat] = p.replace(/[()]/g, '').trim().split(/\s+/); return { latitude: parseFloat(lat), longitude: parseFloat(lng) }; }).filter(c => !isNaN(c.latitude));
-    const pm = wkt.match(/POINT\s*\(([\d.+-]+)\s+([\d.+-]+)\)/); if (pm) return [{ latitude: parseFloat(pm[2]), longitude: parseFloat(pm[1]) }];
-  } catch { /* invalid */ }
-  return [];
-}
 
-function buildCoordinatesWkt(
-  coordinates: Array<{ latitude: number; longitude: number }>,
-  geometryType?: string,
-): string | undefined {
-  if (coordinates.length === 0) return undefined;
-  const pairs = coordinates.map((coordinate) => `${coordinate.longitude} ${coordinate.latitude}`);
-  if (geometryType === 'POLYGON') return `POLYGON((${[...pairs, pairs[0]].join(',')}))`;
-  if (geometryType === 'LINE') return `LINESTRING(${pairs.join(',')})`;
-  return coordinates.length === 1
-    ? `POINT(${pairs[0]})`
-    : `MULTIPOINT(${pairs.map((pair) => `(${pair})`).join(',')})`;
-}
-
-// Số lượng tọa độ mặc định tương ứng với từng loại đối tượng: điểm → 1, đường → 2, vùng → 3
-const GEOMETRY_POINT_COUNT: Record<string, number> = { POINT: 1, LINE: 2, POLYGON: 3 };
-
-// Style badge Tình trạng giống bến cảng (operationalStatus pill)
-const CONDITION_STYLE: Record<string, { color: string; label: string }> = {
-  'Đang khai thác/vận hành': { color: statusOperational, label: 'Đang khai thác/vận hành' },
-  'Chưa khai thác/vận hành': { color: statusAttention, label: 'Chưa khai thác/vận hành' },
-  'Dừng khai thác/vận hành': { color: statusCritical, label: 'Dừng khai thác/vận hành' },
-};
 
 // Map tab key → giá trị status lọc (giống BerthList TAB_QUERY_MAP; giá trị theo field `status` của Buoy)
 const TAB_QUERY_MAP: Record<string, string | undefined> = {
@@ -462,18 +437,69 @@ export default function BuoyListPage() {
   }, [approvedWaterways, createUnitId, organizations]);
 
   const [uploadFileList, setUploadFileList] = useState<any[]>([]);
+  const [existingFiles, setExistingFiles] = useState<any[]>([]);
   const [pendingDeletedAttachmentIds, setPendingDeletedAttachmentIds] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<GisSymbol[]>([]);
   const [createCoords, setCreateCoords] = useState<Array<{ latD: number | null; latM: number | null; latS: number | null; lngD: number | null; lngM: number | null; lngS: number | null }>>([]);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const createGeomType = Form.useWatch('geometryType', createForm);
 
-  // ── GIS: symbols + coordinate list (giống BerthForm tab Thông tin vị trí) ──
+  // ── GIS: symbols + coordinate list (chuẩn VTS CHK tab Thông tin vị trí) ──
   useEffect(() => {
-    symbolService.list({ page: 1, pageSize: 1000, status: 'active' })
-      .then((r) => setSymbols(r.data || []))
-      .catch(() => { });
+    symbolService.getOptions()
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) {
+          setSymbols(res);
+        } else {
+          symbolService.list({ pageSize: 1000 }).then((listRes) => {
+            const items = listRes?.data || (Array.isArray(listRes) ? listRes : []);
+            setSymbols(items.length > 0 ? items : DEFAULT_GIS_SYMBOLS);
+          }).catch(() => setSymbols(DEFAULT_GIS_SYMBOLS));
+        }
+      })
+      .catch(() => {
+        symbolService.list({ pageSize: 1000 }).then((res) => {
+          const items = res?.data || (Array.isArray(res) ? res : []);
+          setSymbols(items.length > 0 ? items : DEFAULT_GIS_SYMBOLS);
+        }).catch(() => setSymbols(DEFAULT_GIS_SYMBOLS));
+      });
   }, []);
+
+  // Bù symbol cho editingRecord nếu id chưa có trong symbols (chuẩn VTS CHK)
+  useEffect(() => {
+    const symId = editingRecord?.mapSymbolId || (editingRecord as any)?.symbolId;
+    if (symId && !symbols.some((s: any) => String(s.id) === String(symId))) {
+      const fallbackName = (editingRecord as any)?.symbolName;
+      const fallbackCode = (editingRecord as any)?.symbolCode;
+      const fallbackImage = (editingRecord as any)?.symbolImage;
+
+      if (fallbackName) {
+        setSymbols((prev) => {
+          if (prev.some((item: any) => String(item.id) === String(symId))) return prev;
+          return [
+            ...prev,
+            { id: String(symId), name: fallbackName, code: fallbackCode, image: fallbackImage }
+          ];
+        });
+      } else {
+        symbolService.getById(String(symId))
+          .then((s) => {
+            if (s) {
+              setSymbols((prev) => {
+                if (prev.some((item: any) => String(item.id) === String(s.id))) return prev;
+                return [...prev, s];
+              });
+            }
+          })
+          .catch(() => {
+            setSymbols((prev) => {
+              if (prev.some((item: any) => String(item.id) === String(symId))) return prev;
+              return [...prev, { id: String(symId), name: 'Biểu tượng đã chọn', code: '', image: '' }];
+            });
+          });
+      }
+    }
+  }, [editingRecord?.mapSymbolId, (editingRecord as any)?.symbolId, (editingRecord as any)?.symbolName, (editingRecord as any)?.symbolCode, (editingRecord as any)?.symbolImage, symbols]);
 
   // Bản đồ tên + ảnh biểu tượng theo id (giống BerthList → BuoyDetailContent tab Thông tin vị trí)
   const symbolMap = useMemo(() => {
@@ -497,9 +523,17 @@ export default function BuoyListPage() {
     // Đổi loại đối tượng GIỮ tọa độ đã nhập — chỉ thêm dòng trống cho đủ số lượng (chuẩn VTS CHK)
     const count = GEOMETRY_POINT_COUNT[createGeomType] ?? 1;
     setCreateCoords((prev) => {
-      if (!prev || prev.length >= count) return prev;
-      const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
-      return [...prev, ...added];
+      if (!prev || prev.length === 0) {
+        return Array.from({ length: count }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+      }
+      if (createGeomType === 'POINT' && prev.length > 1) {
+        return [prev[0]];
+      }
+      if (prev.length < count) {
+        const added = Array.from({ length: count - prev.length }, () => ({ latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }));
+        return [...prev, ...added];
+      }
+      return prev;
     });
   }, [createGeomType, createForm]);
 
@@ -518,13 +552,20 @@ export default function BuoyListPage() {
   }, []);
   const addCreateGps = useCallback(() => { setCreateCoords((p) => [...p, { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null }]); setGpsError(null); }, []);
   const removeCreateGps = useCallback((i: number) => { setCreateCoords((p) => (p.length <= 1 ? p : p.filter((_, idx) => idx !== i))); setGpsError(null); }, []);
+  const clearCreateGps = useCallback((i: number) => {
+    setCreateCoords((p) => {
+      const n = [...p];
+      n[i] = { latD: null, latM: null, latS: null, lngD: null, lngM: null, lngS: null };
+      return n;
+    });
+    setGpsError(null);
+  }, []);
 
   // ── Detail Drawer ───────────────────────────────────────────────
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [detailRecord, setDetailRecord] = useState<Buoy | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
-  const [uploadModalVisible, setUploadModalVisible] = useState(false);
 
   // ── Delete confirmation modal ───────────────────────────────────
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -633,7 +674,7 @@ export default function BuoyListPage() {
                 if (sortField === 'buoyStationId') return record.buoyStationName || (record.buoyStationId ? (buoyStations.find((station) => station.id === record.buoyStationId)?.name || '') : '');
                 if (sortField === 'navigationChannelId') return waterwayMap.get(record.navigationChannelId) ?? record.navigationChannelId ?? '';
                 if (sortField === 'provinceId') return record.provinceId != null ? (VIETNAM_PROVINCE_OPTIONS.find((option) => option.value === String(record.provinceId))?.label || String(record.provinceId)) : '';
-                if (sortField === 'condition') return CONDITION_STYLE[record.condition || '']?.label ?? record.condition ?? '';
+                if (sortField === 'condition') return normalizeBuoyCondition(record.condition);
                 if (sortField === 'status') return buoyStatusBadge(record.status).label;
                 const value = record[sortField as keyof Buoy];
                 if (sortField.endsWith('At') || sortField.endsWith('Date')) return value ? new Date(value).getTime() : 0;
@@ -714,9 +755,18 @@ export default function BuoyListPage() {
       const fresh = await fetchBuoyById(record.id);
       setDetailRecord(fresh);
       try {
-        const fileRes = await documentApi.listByEntity('buoy', record.id, { page: 1, size: 20 });
-        setDetailFiles(fileRes.data || []);
-      } catch { setDetailFiles([]); }
+        const files = await buoyCRUD.listAttachments(record.id);
+        setDetailFiles(
+          (files || []).map((f: any) => ({
+            ...f,
+            id: f.id || f.uid,
+            fileType: f.contentType || f.fileType,
+            uploadedDate: f.uploadedAt || f.uploadedDate,
+          }))
+        );
+      } catch {
+        setDetailFiles([]);
+      }
     } catch {
       // keep initial data
     } finally {
@@ -734,6 +784,7 @@ export default function BuoyListPage() {
   const closeDetailDrawer = useCallback(() => {
     setActionClosed(true);
     setDetailDrawerOpen(false);
+    setDetailFiles([]);
     notifyEmbeddedActionClosed();
   }, [notifyEmbeddedActionClosed]);
 
@@ -743,22 +794,35 @@ export default function BuoyListPage() {
     setEditingRecord(null);
     setCreateDrawerOpen(true);
     setCreateTabKey('general');
+    setExistingFiles([]);
     setUploadFileList([]);
     setPendingDeletedAttachmentIds([]);
     setCreateCoords([]);
+    setGpsError(null);
     createForm.resetFields();
+    createForm.setFieldsValue({
+      geometryType: undefined,
+      mapSymbolId: undefined,
+      coordinateSystem: undefined,
+      displayRule: undefined,
+    });
     // Không tự sinh mã khi chưa chọn nhà trạm (Bug 3)
   }, [createForm]);
 
   const closeCreateDrawer = useCallback(() => {
     setActionClosed(true);
     setCreateDrawerOpen(false);
+    setExistingFiles([]);
+    setUploadFileList([]);
+    setPendingDeletedAttachmentIds([]);
     notifyEmbeddedActionClosed();
   }, [notifyEmbeddedActionClosed]);
 
   const handleDeleteAttachment = useCallback((uid: string) => {
-    setPendingDeletedAttachmentIds((prev) => [...prev, uid]);
-  }, []);
+    if (existingFiles.some((ef: any) => (ef.id || ef.uid) === uid)) {
+      setPendingDeletedAttachmentIds((prev) => (prev.includes(uid) ? prev : [...prev, uid]));
+    }
+  }, [existingFiles]);
 
   // Người dùng đã mở tab GIS trong phiên chỉnh sửa này chưa — dùng để phân biệt
   // "chưa mount Form.Item" với "đã xóa trắng" (xem resolveGisFieldValue).
@@ -768,6 +832,7 @@ export default function BuoyListPage() {
     gisTabTouchedRef.current = false;
     setEditingRecord(record);
     setCreateDrawerOpen(true);
+    setExistingFiles([]);
     setUploadFileList([]);
     setPendingDeletedAttachmentIds([]);
     createForm.resetFields();
@@ -777,18 +842,39 @@ export default function BuoyListPage() {
       setEditingRecord(data);
       // Load existing attachments
       try {
-        const fileRes = await documentApi.listByEntity('buoy', data.id, { page: 1, size: 50 });
-        setUploadFileList((fileRes.data || []).map((a: any) => ({
-          uid: a.id, name: a.fileName, size: a.fileSize, status: 'done' as const,
-          uploadedBy: a.uploadedBy, uploadedAt: a.uploadedAt,
-        })));
-      } catch { setUploadFileList([]); }
-      const loadedCoords = parseGisCoordinateList({ geometryType: data.geometryType, coordinates: data.coordinates });
-      setCreateCoords(loadedCoords.length > 0 ? loadedCoords.map((c) => {
+        const files = await buoyCRUD.listAttachments(data.id);
+        const safeFiles = files || [];
+        setExistingFiles(safeFiles);
+        setPendingDeletedAttachmentIds([]);
+        setUploadFileList(
+          safeFiles.map((a: any) => ({
+            ...a,
+            uid: a.id || a.uid,
+            name: a.fileName || a.name,
+            fileName: a.fileName || a.name,
+            size: a.fileSize ?? a.size,
+            fileSize: a.fileSize ?? a.size,
+            fileType: a.fileType ?? a.contentType,
+            uploadedByName: a.uploadedByName || (a.uploadedBy ? (userMap.get(a.uploadedBy) || a.uploadedBy) : '') || 'Cán bộ quản lý',
+            uploadedBy: a.uploadedBy,
+            uploadedDate: a.uploadedDate || a.uploadedAt || a.createdAt,
+            uploadedAt: a.uploadedAt || a.uploadedDate || a.createdAt,
+            status: 'done' as const,
+          }))
+        );
+      } catch {
+        setExistingFiles([]);
+        setPendingDeletedAttachmentIds([]);
+        setUploadFileList([]);
+      }
+      const geom = data.geometryType || undefined;
+      const pts = parseWktToCoordinates(data.coordinates);
+      setCreateCoords(pts.map((c) => {
         const latDms = ddToDms(c.latitude);
         const lngDms = ddToDms(c.longitude);
         return { latD: latDms.d, latM: latDms.m, latS: latDms.s, lngD: lngDms.d, lngM: lngDms.m, lngS: lngDms.s };
-      }) : []);
+      }));
+      setGpsError(null);
       createForm.setFieldsValue({
         code: data.code,
         name: data.name,
@@ -806,7 +892,7 @@ export default function BuoyListPage() {
         classificationMark: data.classificationMark ? (CLASSIFICATION_MARK_LABEL_MAP[String(data.classificationMark).trim()] || data.classificationMark) : undefined,
         provinceId: data.provinceId != null ? String(data.provinceId) : undefined,
         locationDetail: data.locationDetail || undefined,
-        condition: data.condition || undefined,
+        condition: normalizeBuoyCondition(data.condition) || undefined,
         structure: data.structure || undefined,
         area: normalizeSafeNumber(data.area),
         bodyHeight: normalizeSafeNumber(data.bodyHeight),
@@ -822,10 +908,10 @@ export default function BuoyListPage() {
         lightColor: data.lightColor || undefined,
         flashType: data.flashType || undefined,
         period: data.period || undefined,
-        geometryType: data.geometryType || undefined,
-        mapSymbolId: data.mapSymbolId || undefined,
-        coordinateSystem: data.coordinateSystem != null ? data.coordinateSystem : undefined,
-        displayRule: data.displayRule || undefined,
+        geometryType: geom,
+        mapSymbolId: data.mapSymbolId || (data as any).symbolId || undefined,
+        coordinateSystem: geom ? (typeof data.coordinateSystem === 'number' ? data.coordinateSystem : 1) : undefined,
+        displayRule: geom ? (data.displayRule || 'Độ, phút, giây (DMS)') : undefined,
       });
     } catch {
       toast.error('Không thể tải thông tin phao tiêu');
@@ -864,25 +950,20 @@ export default function BuoyListPage() {
     };
   }, [isEmbeddedDetail, linkedAction, linkedRecordId, openDetailDrawer, openEditDrawer, notifyEmbeddedActionClosed]);
 
-  // ── Upload helper (after save) ──────────────────────────────────
-
-  const uploadFilesAfterSave = useCallback(async (savedId: string, files: any[], skipHistory = false) => {
-    let uploaded = 0;
-    for (const fileItem of files) {
-      const originFile = (fileItem.originFileObj || fileItem.file || (fileItem instanceof File ? fileItem : undefined)) as File | undefined;
-      if (!originFile) continue; // existing attachment (no originFileObj) — skip
-      try {
-        const formData = new FormData();
-        formData.append('file', originFile);
-        await api.post(`/v1/documents/upload/buoy/${savedId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          params: { skipHistory },
-        });
-        uploaded++;
-      } catch { toast.error(`Tải lên tệp "${fileItem.name || originFile.name}" thất bại`); }
+  // ── Download attachment helper (chuẩn /beacon-stations) ────────────
+  const handleDownloadAttachment = useCallback(async (attachmentId: string, name: string) => {
+    const entityId = detailRecord?.id || editingRecord?.id;
+    if (!entityId) {
+      toast.error('Không tìm thấy bản ghi để tải tệp đính kèm');
+      return;
     }
-    if (uploaded > 0) toast.success(`Đã tải lên ${uploaded} tệp đính kèm`);
-  }, []);
+    try {
+      const blob = await buoyCRUD.downloadAttachment(entityId, attachmentId);
+      triggerBlobDownload(blob, name || 'attachment');
+    } catch {
+      toast.error('Không thể tải xuống tệp đính kèm');
+    }
+  }, [detailRecord, editingRecord]);
 
   // ── Create save (design §4.3 — action draft/submit) ─────────────
 
@@ -897,33 +978,32 @@ export default function BuoyListPage() {
       toast.error('Phạm vi chiếu sáng không được âm'); return;
     }
 
-    const manualCoords = createCoords
-      .filter((c) => (c.latD != null || c.latM != null || c.latS != null) && (c.lngD != null || c.lngM != null || c.lngS != null))
-      .map((c) => ({ latitude: (c.latD ?? 0) + (c.latM ?? 0) / 60 + (c.latS ?? 0) / 3600, longitude: (c.lngD ?? 0) + (c.lngM ?? 0) / 60 + (c.lngS ?? 0) / 3600 }));
-    if (manualCoords.length > 0) {
-      if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
-        toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
-      }
-      if (manualCoords[0].longitude < -180 || manualCoords[0].longitude > 180) {
-        toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); return;
-      }
-    }
+    const currentGeometryType = values.geometryType ?? createForm.getFieldValue('geometryType');
+    const currentSymbolId = values.mapSymbolId !== undefined ? values.mapSymbolId : (values.symbolId !== undefined ? values.symbolId : (createForm.getFieldValue('mapSymbolId') ?? createForm.getFieldValue('symbolId')));
+    const currentCoordinateSystem = values.coordinateSystem !== undefined ? values.coordinateSystem : createForm.getFieldValue('coordinateSystem');
+    const currentDisplayRule = values.displayRule !== undefined ? values.displayRule : createForm.getFieldValue('displayRule');
 
-    if (values.geometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[values.geometryType] ?? 1;
-      if (manualCoords.length < minCount) {
-        toast.error(values.geometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : values.geometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+    let wkt: string | undefined = undefined;
+    let latFirst: number | undefined = undefined;
+    let lngFirst: number | undefined = undefined;
+    if (currentGeometryType || createCoords.length > 0) {
+      const coordResult = validateDmsCoordinates(createCoords, currentGeometryType);
+      if (!coordResult.valid) {
+        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+        toast.error(errMsg);
+        setGpsError(errMsg);
         setCreateTabKey('gis');
         return;
       }
+      wkt = serializeCoordinatesToWkt(coordResult.validCoords, currentGeometryType || 'POINT');
+      if (coordResult.validCoords.length > 0) {
+        latFirst = coordResult.validCoords[0].latitude;
+        lngFirst = coordResult.validCoords[0].longitude;
+      }
     }
-    if ((values.geometryType || manualCoords.length > 0) && !values.mapSymbolId) {
+    // Biểu tượng chỉ bắt buộc khi người dùng có chọn Loại đối tượng
+    if (Boolean(currentGeometryType) && !currentSymbolId) {
       toast.error('Vui lòng chọn biểu tượng bản đồ');
-      setCreateTabKey('gis');
-      return;
-    }
-    if (manualCoords.length > 0 && !values.geometryType) {
-      toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setCreateTabKey('gis');
       return;
     }
@@ -948,14 +1028,16 @@ export default function BuoyListPage() {
     try {
       const toPayloadNumber = (v: unknown): number | undefined => {
         if (v == null || v === '') return undefined;
-        const n = typeof v === 'number' ? v : Number(v);
+        if (typeof v === 'number') return isNaN(v) ? undefined : v;
+        const s = String(v).replace(/,/g, '.').replace(/\.$/, '').trim();
+        const n = Number(s);
         return isNaN(n) ? undefined : n;
       };
       const payload: Partial<CreateBuoyRequest> = {
         code,
         name,
-        latitude: manualCoords.length > 0 ? manualCoords[0].latitude : undefined,
-        longitude: manualCoords.length > 0 ? manualCoords[0].longitude : undefined,
+        latitude: latFirst,
+        longitude: lngFirst,
         unitId: values.unitId || undefined,
         orgUnitId: values.unitId || undefined,
         buoyStationId: values.buoyStationId || undefined,
@@ -991,16 +1073,12 @@ export default function BuoyListPage() {
         flashType: values.flashType?.trim() || undefined,
         period: values.period || undefined,
         isActive: values.isActive !== undefined ? values.isActive : true,
+        coordinates: createCoords.length > 0 ? (wkt ?? null) : null,
+        geometryType: currentGeometryType ?? null,
+        mapSymbolId: currentSymbolId ?? null,
+        coordinateSystem: currentCoordinateSystem != null ? Number(currentCoordinateSystem) : null,
+        displayRule: currentDisplayRule ?? null,
       };
-      if (manualCoords.length > 0) {
-        payload.latitude = manualCoords[0].latitude;
-        payload.longitude = manualCoords[0].longitude;
-        payload.coordinates = buildCoordinatesWkt(manualCoords, values.geometryType);
-      }
-      payload.geometryType = values.geometryType || undefined;
-      payload.mapSymbolId = values.mapSymbolId || undefined;
-      payload.coordinateSystem = values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined;
-      payload.displayRule = values.displayRule || undefined;
       Object.keys(payload).forEach((key) => { if ((payload as any)[key] === undefined) delete (payload as any)[key]; });
       payload.code = code;
 
@@ -1008,8 +1086,13 @@ export default function BuoyListPage() {
       const savedId = (res as any)?.id;
       toast.success(action === 'draft' ? 'Lưu nháp thành công' : action === 'approved' ? 'Lưu và phê duyệt thành công' : 'Gửi phê duyệt thành công');
 
-      if (savedId && uploadFileList.length > 0) {
-        await uploadFilesAfterSave(savedId, uploadFileList, true);
+      const newFiles = uploadFileList.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
+      if (savedId && newFiles.length > 0) {
+        try {
+          await buoyCRUD.uploadAttachments(savedId, newFiles);
+        } catch {
+          /* ignore attachment upload error */
+        }
       }
 
       closeCreateDrawer();
@@ -1022,7 +1105,7 @@ export default function BuoyListPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [createCoords, uploadFileList, uploadFilesAfterSave, closeCreateDrawer, fetchData]);
+  }, [createCoords, uploadFileList, closeCreateDrawer, fetchData]);
 
   // ── Edit save (design §4.3 — no action, no code) ────────────────
 
@@ -1050,33 +1133,31 @@ export default function BuoyListPage() {
     // nghĩa. Trước đây luôn fallback về `editingRecord` nên xóa trắng 1 trong 4 trường này bị
     // khôi phục âm thầm về giá trị cũ — đúng lỗi "xóa trường mà dữ liệu không hề thay đổi".
     const resolvedGeometryType = resolveGisFieldValue(values.geometryType, editingRecord.geometryType, gisTabTouchedRef.current);
-    const resolvedMapSymbolId = resolveGisFieldValue(values.mapSymbolId, editingRecord.mapSymbolId, gisTabTouchedRef.current);
+    const resolvedMapSymbolId = resolveGisFieldValue(values.mapSymbolId ?? values.symbolId, editingRecord.mapSymbolId || (editingRecord as any).symbolId, gisTabTouchedRef.current);
     const resolvedCoordinateSystem = resolveGisFieldValue(values.coordinateSystem, editingRecord.coordinateSystem, gisTabTouchedRef.current);
     const resolvedDisplayRule = resolveGisFieldValue(values.displayRule, editingRecord.displayRule, gisTabTouchedRef.current);
-    if (manualCoords.length > 0) {
-      if (manualCoords[0].latitude < -90 || manualCoords[0].latitude > 90) {
-        toast.error('Vĩ độ phải từ -90° đến 90° (WGS84)'); return;
-      }
-      if (manualCoords[0].longitude < -180 || manualCoords[0].longitude > 180) {
-        toast.error('Kinh độ phải từ -180° đến 180° (WGS84)'); return;
-      }
-    }
 
-    if (resolvedGeometryType) {
-      const minCount = GEOMETRY_POINT_COUNT[resolvedGeometryType] ?? 1;
-      if (manualCoords.length < minCount) {
-        toast.error(resolvedGeometryType === 'POLYGON' ? 'Đối tượng vùng cần ít nhất 3 tọa độ hợp lệ' : resolvedGeometryType === 'LINE' ? 'Đối tượng đường cần ít nhất 2 tọa độ hợp lệ' : 'Đối tượng điểm cần ít nhất 1 tọa độ hợp lệ');
+    let wkt: string | undefined = undefined;
+    let latFirst: number | undefined = undefined;
+    let lngFirst: number | undefined = undefined;
+    if (resolvedGeometryType || createCoords.length > 0) {
+      const coordResult = validateDmsCoordinates(createCoords, resolvedGeometryType);
+      if (!coordResult.valid) {
+        const errMsg = coordResult.errorMessage || 'Tọa độ GPS không hợp lệ';
+        toast.error(errMsg);
+        setGpsError(errMsg);
         setCreateTabKey('gis');
         return;
       }
+      wkt = serializeCoordinatesToWkt(coordResult.validCoords, resolvedGeometryType || 'POINT');
+      if (coordResult.validCoords.length > 0) {
+        latFirst = coordResult.validCoords[0].latitude;
+        lngFirst = coordResult.validCoords[0].longitude;
+      }
     }
-    if ((resolvedGeometryType || manualCoords.length > 0) && !resolvedMapSymbolId) {
+    // Biểu tượng chỉ bắt buộc khi người dùng có chọn Loại đối tượng
+    if (Boolean(resolvedGeometryType) && !resolvedMapSymbolId) {
       toast.error('Vui lòng chọn biểu tượng bản đồ');
-      setCreateTabKey('gis');
-      return;
-    }
-    if (manualCoords.length > 0 && !resolvedGeometryType) {
-      toast.error('Loại đối tượng là bắt buộc khi có tọa độ');
       setCreateTabKey('gis');
       return;
     }
@@ -1097,11 +1178,15 @@ export default function BuoyListPage() {
     try {
       const toPayloadNumber = (v: unknown): number | undefined => {
         if (v == null || v === '') return undefined;
-        const n = typeof v === 'number' ? v : Number(v);
+        if (typeof v === 'number') return isNaN(v) ? undefined : v;
+        const s = String(v).replace(/,/g, '.').replace(/\.$/, '').trim();
+        const n = Number(s);
         return isNaN(n) ? undefined : n;
       };
       const payload: Partial<CreateBuoyRequest> = {
         name,
+        latitude: latFirst,
+        longitude: lngFirst,
         unitId: values.unitId || undefined,
         orgUnitId: values.unitId || undefined,
         buoyStationId: values.buoyStationId || undefined,
@@ -1137,16 +1222,14 @@ export default function BuoyListPage() {
         flashType: values.flashType?.trim() || undefined,
         period: values.period || undefined,
         isActive: values.isActive !== undefined ? values.isActive : true,
+        // Khi Loại đối tượng bị xóa → luôn gửi null để backend xóa GIS spatial object.
+        // Không dùng createCoords.length vì state có thể chưa được clear kịp do async.
+        coordinates: resolvedGeometryType ? (createCoords.length > 0 ? (wkt ?? null) : null) : null,
+        geometryType: resolvedGeometryType ?? null,
+        mapSymbolId: resolvedMapSymbolId ?? null,
+        coordinateSystem: resolvedCoordinateSystem != null ? Number(resolvedCoordinateSystem) : null,
+        displayRule: resolvedDisplayRule ?? null,
       };
-      if (manualCoords.length > 0) {
-        payload.latitude = manualCoords[0].latitude;
-        payload.longitude = manualCoords[0].longitude;
-        payload.coordinates = buildCoordinatesWkt(manualCoords, resolvedGeometryType);
-      }
-      payload.geometryType = resolvedGeometryType || undefined;
-      payload.mapSymbolId = resolvedMapSymbolId || undefined;
-      payload.coordinateSystem = resolvedCoordinateSystem != null ? Number(resolvedCoordinateSystem) : undefined;
-      payload.displayRule = resolvedDisplayRule || undefined;
       Object.keys(payload).forEach((key) => { if ((payload as any)[key] === undefined) delete (payload as any)[key]; });
 
       const isCuc = isCucLevelUser(currentUser);
@@ -1177,16 +1260,24 @@ export default function BuoyListPage() {
           : 'Lưu và gửi phê duyệt thành công'
       );
 
-      if (pendingDeletedAttachmentIds.length > 0) {
+      const targetId = editingRecord.id;
+      if (targetId && pendingDeletedAttachmentIds.length > 0) {
         for (const attId of pendingDeletedAttachmentIds) {
-          await api.delete(`/v1/documents/${attId}`, {
-            params: { skipHistory: !wasApproved },
-          }).catch(() => {});
+          try {
+            await buoyCRUD.deleteAttachment(targetId, attId);
+          } catch {
+            /* ignore individual attachment delete error */
+          }
         }
       }
 
-      if (uploadFileList.length > 0) {
-        await uploadFilesAfterSave(editingRecord.id, uploadFileList, !wasApproved);
+      const newFiles = uploadFileList.filter((f) => f.originFileObj).map((f) => f.originFileObj as File);
+      if (targetId && newFiles.length > 0) {
+        try {
+          await buoyCRUD.uploadAttachments(targetId, newFiles);
+        } catch {
+          /* ignore attachment upload error */
+        }
       }
 
       closeCreateDrawer();
@@ -1199,7 +1290,7 @@ export default function BuoyListPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRecord, createCoords, uploadFileList, pendingDeletedAttachmentIds, uploadFilesAfterSave, closeCreateDrawer, fetchData, createForm, currentUser, hasPerm]);
+  }, [editingRecord, createCoords, uploadFileList, pendingDeletedAttachmentIds, closeCreateDrawer, fetchData, createForm, currentUser, hasPerm]);
 
   // ── History Drawer ──────────────────────────────────────────────
 
@@ -1246,6 +1337,7 @@ export default function BuoyListPage() {
     if (fn === 'geometryType') return GEOMETRY_TYPE_LABELS[val] || val;
     if (fn === 'provinceId') return VIETNAM_PROVINCE_OPTIONS.find((o) => o.value === val)?.label || val;
     if (fn === 'coordinateSystem') return COORD_SYS_LABELS[val] || val;
+    if (fn === 'condition') return normalizeBuoyCondition(val);
     if (fn === 'lastInspectionDate' || fn === 'nextInspectionDate') return formatDateOnly(val);
     return val;
   }, [orgLevel2Map, orgMap, stationMap, waterwayMap]);
@@ -1577,9 +1669,9 @@ export default function BuoyListPage() {
       width: 250,
       ellipsis: false,
       render: (v: string) => {
-        if (!v) return '';
-        const s = CONDITION_STYLE[v] || { color: textTertiary, label: v };
-        return <span style={statusBadgeStyle(s.color)}>{s.label}</span>;
+        const b = buoyConditionBadge(v);
+        if (!b) return '';
+        return <span style={statusBadgeStyle(b.color)}>{b.label}</span>;
       },
     },
     {
@@ -1708,17 +1800,6 @@ export default function BuoyListPage() {
         label: 'Chỉnh sửa',
         icon: icons.edit,
         onClick: () => openEditDrawer(record),
-      });
-    }
-
-    if (record.latitude != null && record.longitude != null) {
-      actions.push({
-        key: 'location',
-        label: 'Xem vị trí',
-        icon: icons.location,
-        onClick: () => {
-          window.open(`https://www.google.com/maps?q=${record.latitude},${record.longitude}`, '_blank');
-        },
       });
     }
 
@@ -2092,18 +2173,28 @@ export default function BuoyListPage() {
             return handleCreateFinish(values);
           }}
           onFinishFailed={(e: any) => {
-            const firstErr = e?.errorFields?.[0]?.name?.[0];
-            if (['mapSymbolId', 'coordinateSystem', 'displayRule', 'geometryType'].includes(firstErr)) {
-              setCreateTabKey('gis');
-            } else if (['lightColor', 'flashType', 'period'].includes(firstErr)) {
-              setCreateTabKey('light');
-            } else {
-              setCreateTabKey('general');
-            }
+            focusErrorTab(
+              e,
+              {
+                general: [
+                  'code', 'name', 'unitId', 'buoyStationId', 'navigationChannelId',
+                  'classification', 'classificationBuoy', 'classificationMark',
+                  'provinceId', 'locationDetail', 'condition', 'structure', 'area',
+                  'bodyHeight', 'diameter', 'beaconLight', 'towerHeight', 'lightHeight',
+                  'lightModel', 'towerColor', 'powerSupply', 'commissionedDate', 'lastRepairDate',
+                  'description', 'isActive',
+                ],
+                light: ['lightColor', 'flashType', 'period'],
+                gis: ['geometryType', 'mapSymbolId', 'symbolId', 'coordinateSystem', 'displayRule'],
+              },
+              setCreateTabKey
+            );
             showValidationFeedback(e);
           }}
         >
           <BuoyFormContent
+            form={createForm}
+            record={editingRecord}
             isEdit={!!editingRecord}
             currentStationId={editingRecord?.buoyStationId ?? null}
             codeLoading={codeLoading}
@@ -2127,6 +2218,7 @@ export default function BuoyListPage() {
             gpsError={gpsError}
             addGpsPoint={addCreateGps}
             removeGpsPoint={removeCreateGps}
+            clearGpsPoint={clearCreateGps}
             updateGpsPoint={updateCreateGps}
             replaceGpsPoints={setCreateCoords}
             ddToDms={ddToDms}
@@ -2165,10 +2257,24 @@ export default function BuoyListPage() {
             userMap={userMap}
             detailFiles={detailFiles}
             buoyStatusBadge={buoyStatusBadge}
+            symbols={symbols}
             symbolMap={symbolMap}
             symbolImageMap={symbolImageMap}
             ddToDms={ddToDms}
             waterwayMap={waterwayMap}
+            onDownload={handleDownloadAttachment}
+            loadReadonlyPreviewImage={(attachmentId) => {
+              const entityId = editingRecord?.id || detailRecord?.id;
+              return entityId
+                ? buoyCRUD.downloadAttachment(entityId, attachmentId)
+                : Promise.reject(new Error('Chưa xác định được bản ghi phao tiêu để tải tệp đính kèm'));
+            }}
+            loadPreviewAttachment={(attachmentId) => {
+              const entityId = editingRecord?.id || detailRecord?.id;
+              return entityId
+                ? buoyCRUD.downloadAttachment(entityId, attachmentId)
+                : Promise.reject(new Error('Chưa xác định được bản ghi phao tiêu để tải tệp đính kèm'));
+            }}
           />
         ) : null}
       </AppDrawer>
@@ -2266,16 +2372,6 @@ export default function BuoyListPage() {
           )}
         </div>
       </AppDrawer>
-
-      {/* ── DocumentUploadModal (detail drawer) ────────────────────── */}
-      {detailRecord && (
-        <DocumentUploadModal
-          entityType="buoy"
-          entityId={detailRecord.id}
-          open={uploadModalVisible}
-          onCancel={() => setUploadModalVisible(false)}
-        />
-      )}
 
       {/* ── Submit Approval Modal ──────────────────────────────────── */}
       <Modal

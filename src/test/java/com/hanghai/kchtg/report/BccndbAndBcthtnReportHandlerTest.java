@@ -153,4 +153,36 @@ public class BccndbAndBcthtnReportHandlerTest {
         assertNotNull(data188);
         assertFalse(data188.isEmpty());
     }
+
+    @Test
+    void testExportPdfF180AndF183N() {
+        ReportPreviewRequest req180 = ReportPreviewRequest.builder()
+                .reportCode("F-180")
+                .format("PDF")
+                .startDate(LocalDate.of(2026, 1, 1))
+                .endDate(LocalDate.of(2026, 12, 31))
+                .build();
+
+        List<Map<String, Object>> exportData180 = f180Handler.getExportData(req180, 2026);
+        assertNotNull(exportData180);
+        assertEquals(1, exportData180.size(), "F-180 export data must contain exactly 1 aggregate row");
+
+        ReportResponse preview180 = f180Handler.getPreview(req180);
+        assertNotNull(preview180);
+        assertEquals(5, preview180.getRows().size(), "F-180 preview must contain exactly 5 summary metric rows");
+
+        byte[] pdfBytes180 = reportService.exportReport(req180);
+        assertNotNull(pdfBytes180);
+        assertTrue(pdfBytes180.length > 0);
+
+        ReportPreviewRequest req183N = ReportPreviewRequest.builder()
+                .reportCode("F-183N")
+                .format("PDF")
+                .startDate(LocalDate.of(2026, 8, 25))
+                .endDate(LocalDate.of(2026, 9, 25))
+                .build();
+        byte[] pdfBytes183N = reportService.exportReport(req183N);
+        assertNotNull(pdfBytes183N);
+        assertTrue(pdfBytes183N.length > 0);
+    }
 }

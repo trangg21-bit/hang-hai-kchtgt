@@ -1184,21 +1184,19 @@ export default function PortListPage() {
   }, [filteredHistory, orgMap, symbolMap, symbolImageMap]);
 
   const handleFilterApply = useCallback(() => {
-    const portName = String(filterValues.portName || '').trim();
-    const portCode = String(filterValues.portCode || '').trim();
-    setFilterValues((previous) => (
-      previous.portName === portName && previous.portCode === portCode
-        ? previous
-        : { ...previous, portName, portCode }
-    ));
-    setFilterName(portName);
-    setFilterCode(portCode);
-    setFilterOrgUnitId(filterValues.orgUnitId === '__all__' ? undefined : filterValues.orgUnitId || undefined);
-    setFilterPortClass(filterValues.portClass ? Number(filterValues.portClass) : undefined);
-    setFilterPortGroup(filterValues.portGroup ? Number(filterValues.portGroup) : undefined);
+    const portName = String(filterValues.portName || '');
+    const portCode = String(filterValues.portCode || '');
+    setFilterName(portName.trim());
+    setFilterCode(portCode.trim());
+    setFilterOrgUnitId(filterValues.orgUnitId === '__all__' ? undefined : filterValues.orgUnitId);
     setFilterTinh(filterValues.province || '');
+    setFilterPortGroup(filterValues.portGroup || undefined);
+    setFilterPortClass(filterValues.portClass || undefined);
     setFilterUpdatedFrom(filterValues.updatedFrom || undefined);
     setFilterUpdatedTo(filterValues.updatedTo || undefined);
+    setFilterStatus(filterValues.status || undefined);
+    setFilterApprovalStatus(filterValues.approvalStatus || undefined);
+    setActiveStatusTab(filterValues.approvalStatus || '');
     setPage(1);
   }, [filterValues]);
 
@@ -1797,8 +1795,9 @@ export default function PortListPage() {
       }
       // Delete removed attachments (tuần tự tránh race condition trong DB)
       if (selectedRecord?.id && pendingDeletedAttachmentIds.length > 0) {
+        const isApproved = selectedRecord?.approvalStatus === 'APPROVED' || (selectedRecord as any)?.status === 'APPROVED';
         for (const attId of pendingDeletedAttachmentIds) {
-          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}`);
+          await api.delete(`/v1/ports/${selectedRecord.id}/attachments/${attId}${isApproved ? '?skipHistory=true' : ''}`);
         }
       }
       // Upload files after port updated
