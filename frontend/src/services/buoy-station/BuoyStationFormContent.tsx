@@ -293,11 +293,41 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
       .catch(() => {});
   }, []);
 
-  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt (chuẩn Cầu cảng / PierForm)
+  // Luồng hàng hải lấy từ module Luồng hàng hải (/navigation-channel) đã được duyệt thuộc Cảng biển được chọn
+  const loadWaterwayOptions = useCallback(async (portId?: string) => {
+    if (!portId) {
+      setWaterwayOptions([]);
+      return;
+    }
+    setLoadingWaterways(true);
+    try {
+      const items = await navigationChannelCRUD.getOptions();
+      const filtered = items.filter((n) => n.seaportId && String(n.seaportId).toLowerCase() === String(portId).toLowerCase());
+      setWaterwayOptions(filtered.map(n => ({
+        value: n.id,
+        label: n.channelCode && n.channelName ? `${n.channelCode} - ${n.channelName}` : (n.channelName || n.channelCode || ''),
+      })));
+      const currentWaterwayId = form.getFieldValue('waterwayId');
+      if (currentWaterwayId && !filtered.some(n => n.id === currentWaterwayId)) {
+        form.setFieldsValue({ waterwayId: undefined });
+      }
+    } catch {
+      setWaterwayOptions([]);
+    } finally {
+      setLoadingWaterways(false);
+    }
+  }, [form]);
+
   useEffect(() => {
-    navigationChannelCRUD.search({ approvalStatus: 'APPROVED', page: 0, size: 1000 })
-      .then(r => setWaterwayOptions((r.items || []).map(n => ({ value: n.id, label: n.channelName || n.channelCode || '' }))))
-      .catch(() => {});
+    if (!watchedPortId) {
+      setWaterwayOptions([]);
+      form.setFieldsValue({ waterwayId: undefined });
+      return;
+    }
+    void loadWaterwayOptions(watchedPortId);
+  }, [watchedPortId, loadWaterwayOptions, form]);
+
+  useEffect(() => {
     (async () => {
       try { const r = await lineObjectService.list({ status: 'PUBLISHED', objectType: LineObject.ObjectType.SHIPPING_ROUTE, pageSize: 1000 }); setRouteOptions((r.data || []).map((l) => ({ value: l.id, label: l.name || l.code }))); } catch { /* */ }
     })();
@@ -542,7 +572,7 @@ export default forwardRef<BuoyStationFormContentHandle, BuoyStationFormContentPr
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}><Form.Item name="portId" {...labelProps('Thuộc cảng biển')} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedOrgUnitId ? 'Vui lòng chọn đơn vị quản lý trước' : portOptions.length === 0 && !loadingPorts ? 'Không có cảng biển thuộc đơn vị quản lý' : 'Chọn cảng biển...'} loading={loadingPorts} disabled={isEdit || !watchedOrgUnitId || (portOptions.length === 0 && !loadingPorts)} options={portOptions} showSearch optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} notFoundContent="Không có cảng biển thuộc đơn vị quản lý" style={selectStyle} /></Form.Item></Col>
-          <Col span={12}><Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn luồng hàng hải..." options={waterwayOptions} showSearch allowClear optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} style={selectStyle} /></Form.Item></Col>
+          <Col span={12}><Form.Item name="waterwayId" {...labelProps('Thuộc luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder={!watchedPortId ? 'Vui lòng chọn cảng biển trước' : 'Chọn luồng hàng hải...'} loading={loadingWaterways} disabled={!watchedPortId} options={waterwayOptions} notFoundContent="Không có luồng hàng hải thuộc cảng biển" showSearch allowClear optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} style={selectStyle} /></Form.Item></Col>
         </Row>
         <Row gutter={[24, 0]}>
           <Col span={12}><Form.Item name="waterwayRouteId" {...labelProps('Tuyến luồng hàng hải')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn tuyến luồng hàng hải..." options={routeOptions} showSearch allowClear optionFilterProp="label" filterOption={(i, o) => normalizeSearchText(o?.label).includes(normalizeSearchText(i))} style={selectStyle} /></Form.Item></Col>

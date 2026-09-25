@@ -1045,7 +1045,7 @@ export default function RadarStationList() {
   const effectiveGeom = watchedGeometryType || geometryTypeState;
   const filteredFormSeaportOptions = formSeaportOptions;
   const filteredFormVtsOperationCenterOptions = useMemo(
-    () => formVtsOperationCenterOptions.filter((center) => !createFormVtsSystemId || center.vtsSystemId === createFormVtsSystemId),
+    () => (!createFormVtsSystemId ? [] : formVtsOperationCenterOptions.filter((center) => center.vtsSystemId === createFormVtsSystemId)),
     [createFormVtsSystemId, formVtsOperationCenterOptions],
   );
   const [activeTabKey, setActiveTabKey] = useState('general');
@@ -4037,11 +4037,12 @@ export default function RadarStationList() {
                           <Col span={12}>
                             <Form.Item name="vtsOperationCenterId" {...labelProps('Trung tâm điều hành VTS')} style={{ marginBottom: spaceFormField }}>
                               <Select
-                                placeholder="Chọn trung tâm điều hành VTS"
+                                placeholder={!createFormVtsSystemId ? 'Vui lòng chọn hệ thống VTS trước' : 'Chọn trung tâm điều hành VTS'}
                                 allowClear
                                 showSearch
                                 optionFilterProp="label"
-                                disabled={!createFormOrgUnitId}
+                                disabled={!createFormVtsSystemId}
+                                notFoundContent="Không có trung tâm điều hành VTS thuộc hệ thống VTS"
                                 options={filteredFormVtsOperationCenterOptions.map((oc) => ({ value: oc.id, label: oc.code ? `${oc.code} - ${oc.name || ''}` : oc.name || oc.id }))}
                                 style={selectStyle}
                               />
